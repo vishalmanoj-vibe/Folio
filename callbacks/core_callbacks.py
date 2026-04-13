@@ -1,7 +1,7 @@
 import logging
 from dash import Input, Output, html
 
-from config import GREEN, RED, T_PRI, T_SEC, SURFACE, BORDER
+from config import GREEN, RED, T_PRI, T_SEC, SURFACE, BORDER, get_theme
 from data.portfolio_builder import build_holdings
 from services.market_data import fetch_live
 from services.market_status import market_badge
@@ -92,10 +92,16 @@ def register_callbacks(app) -> None:
 
     # ── Live positions table ──────────────────────────────────────────────────
     @app.callback(
-        Output("live-table", "children"),
+        Output("live-table",     "children"),
         Input("portfolio-store", "data"),
+        Input("theme-store",     "data"),
     )
-    def update_live_table(data):
+    def update_live_table(data, theme):
+        t_ = get_theme(theme or "dark")
+        SURFACE = t_["SURFACE"]
+        BORDER  = t_["BORDER"]
+        T_SEC   = t_["T_SEC"]
+
         if not data or "holdings" not in data:
             return html.P("Loading...", style={"color": T_SEC, "fontSize": "13px"})
 

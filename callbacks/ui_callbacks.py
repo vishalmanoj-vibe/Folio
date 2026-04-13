@@ -9,6 +9,7 @@ def register_callbacks(app) -> None:
         function(n, current) {
             const theme = current === 'dark' ? 'light' : 'dark';
             document.body.setAttribute('data-theme', theme);
+            document.documentElement.style.backgroundColor = theme === 'dark' ? '#111110' : '#ffffff';
             return theme;
         }
         """,

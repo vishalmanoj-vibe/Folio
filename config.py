@@ -7,7 +7,7 @@ CSV_PATH   = os.path.join(SCRIPT_DIR, "stock_portfolio_transactions.csv")
 # ── Intervals ─────────────────────────────────────────────────────────────────
 REFRESH_INTERVAL = 60_000   # milliseconds
 
-# ── Theme tokens ──────────────────────────────────────────────────────────────
+# ── Dark theme tokens (defaults) ──────────────────────────────────────────────
 BG      = "#111110"
 SURFACE = "#1c1c1a"
 BORDER  = "rgba(255,255,255,0.08)"
@@ -29,6 +29,40 @@ PLOTLY_BASE = dict(
     margin=dict(l=16, r=16, t=40, b=16),
     legend=dict(bgcolor="rgba(0,0,0,0)", borderwidth=0),
 )
+
+# ── Theme-aware style resolver ────────────────────────────────────────────────
+def get_theme(theme: str) -> dict:
+    """
+    Return a dict of colour tokens and a PLOTLY_BASE for the given theme.
+    Usage:  t = get_theme(theme);  t["BG"], t["PLOTLY_BASE"], ...
+    """
+    if theme == "light":
+        bg      = "#ffffff"
+        surface = "#f4f4f2"
+        border  = "rgba(0,0,0,0.09)"
+        t_pri   = "#1a1a1a"
+        t_sec   = "#6b6b67"
+    else:  # dark (default)
+        bg      = "#111110"
+        surface = "#1c1c1a"
+        border  = "rgba(255,255,255,0.08)"
+        t_pri   = "#f0ede8"
+        t_sec   = "#8a8880"
+
+    return {
+        "BG":      bg,
+        "SURFACE": surface,
+        "BORDER":  border,
+        "T_PRI":   t_pri,
+        "T_SEC":   t_sec,
+        "PLOTLY_BASE": dict(
+            paper_bgcolor=bg,
+            plot_bgcolor=surface,
+            font=dict(family="system-ui,sans-serif", color=t_pri, size=13),
+            margin=dict(l=16, r=16, t=40, b=16),
+            legend=dict(bgcolor="rgba(0,0,0,0)", borderwidth=0),
+        ),
+    }
 
 # ── ETF display names ─────────────────────────────────────────────────────────
 NAMES = {

@@ -9,8 +9,11 @@ INDEX_STRING = '''
 <html>
 <head>{%metas%}<title>{%title%}</title>{%favicon%}{%css%}
 <style>
-/* ── Dark / light theme vars ── */
-body[data-theme="dark"] {
+/* ── Reset ── */
+*, *::before, *::after { box-sizing: border-box; }
+
+/* ── Dark / light theme vars — applied to html AND body so full page is covered ── */
+html, body[data-theme="dark"] {
   --bg: #111110; --surface: #1c1c1a; --border: rgba(255,255,255,0.08);
   --t-pri: #f0ede8; --t-sec: #8a8880;
 }
@@ -18,6 +21,24 @@ body[data-theme="light"] {
   --bg: #ffffff; --surface: #f8f8f6; --border: rgba(0,0,0,0.09);
   --t-pri: #1a1a1a; --t-sec: #6b6b67;
 }
+
+/* ── Full page background always follows theme ── */
+html {
+  background-color: #111110;
+}
+body {
+  margin: 0;
+  background-color: var(--bg) !important;
+  color: var(--t-pri);
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+/* ── React root fills full viewport ── */
+#react-entry-point, ._dash-loading {
+  min-height: 100vh;
+  background-color: var(--bg);
+}
+
 /* ── Form elements inherit theme ── */
 input, select, button {
   background: var(--surface) !important;
@@ -33,13 +54,46 @@ input::placeholder { color: var(--t-sec) !important; }
 }
 .Select .Select-option { background: var(--surface) !important; color: var(--t-pri) !important; }
 .Select .Select-option:hover { background: var(--bg) !important; }
-/* ── Print / PDF ── */
+
+/* ── Print / PDF — A4 landscape, graphs scale to fit ── */
 @media print {
+  /* Hide UI controls */
   #controls-bar, #txn-panel, #toggle-area,
-  button, .Select, [id$="-btn"] { display: none !important; }
-  body { background: white !important; }
-  .js-plotly-plot { break-inside: avoid; }
-  @page { size: A4 landscape; margin: 1.5cm; }
+  button, .Select, [id$="-btn"],
+  .dash-loading-callback { display: none !important; }
+
+  /* Full white page */
+  html, body {
+    background: white !important;
+    color: black !important;
+    margin: 0 !important;
+  }
+
+  /* Remove max-width constraint so content fills the page */
+  body > div, #react-entry-point > div, #react-entry-point > div > div {
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  /* Each chart block fits on the page */
+  .js-plotly-plot {
+    break-inside: avoid;
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+
+  /* Charts fill their containers */
+  .js-plotly-plot .plotly, .js-plotly-plot .plotly svg {
+    width: 100% !important;
+    height: auto !important;
+  }
+
+  /* Two charts per row on landscape A4 */
+  @page {
+    size: A4 landscape;
+    margin: 1cm 1.5cm;
+  }
 }
 </style>
 </head>
@@ -330,10 +384,11 @@ def create_layout(initial_history: list[dict] | None = None) -> html.Div:
             ),
         ],
         style={
-            "fontFamily":    "system-ui,-apple-system,sans-serif",
-            "color":         "#f0ede8",
-            "maxWidth":      "1300px",
-            "margin":        "0 auto",
-            "backgroundColor": BG,
+            "fontFamily":      "system-ui,-apple-system,sans-serif",
+            "color":           "var(--t-pri)",
+            "maxWidth":        "1300px",
+            "margin":          "0 auto",
+            "backgroundColor": "var(--bg)",
+            "minHeight":       "100vh",
         },
     )
