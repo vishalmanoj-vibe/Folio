@@ -145,7 +145,7 @@ def create_layout(initial_history: list[dict] | None = None) -> html.Div:
                 style={
                     "display": "flex", "justifyContent": "space-between",
                     "alignItems": "flex-start", "padding": "18px 24px 12px",
-                    "borderBottom": f"0.5px solid {BORDER}",
+                    "borderBottom": "0.5px solid var(--border)",
                 },
             ),
 
@@ -191,7 +191,7 @@ def create_layout(initial_history: list[dict] | None = None) -> html.Div:
                 ],
                 style={
                     "display": "flex", "gap": "16px", "alignItems": "flex-end",
-                    "padding": "14px 24px", "borderBottom": f"0.5px solid {BORDER}",
+                    "padding": "14px 24px", "borderBottom": "0.5px solid var(--border)",
                     "flexWrap": "wrap",
                 },
             ),
@@ -296,8 +296,8 @@ def create_layout(initial_history: list[dict] | None = None) -> html.Div:
                         html.Div(id="txn-log", style={"marginTop": "10px", "overflowX": "auto"}),
                     ]),
                 ],
-                style={"padding": "16px 24px", "background": SURFACE,
-                       "borderBottom": f"0.5px solid {BORDER}"},
+                style={"padding": "16px 24px", "background": "var(--surface)",
+                       "borderBottom": f"0.5px solid var(--border)"},
             ),
 
             # ── Live positions table ──────────────────────────────────────────

@@ -69,7 +69,7 @@ def register_callbacks(app) -> None:
                       "across all positions", dc, dc),
             stat_card("Annual dividends", f"${annual_div:,.2f}",
                       f"{port_yield:.2f}% yield",
-                      GREEN if port_yield > 0 else T_PRI, T_SEC),
+                      GREEN if port_yield > 0 else None),
             stat_card("Holdings",         str(len(h))),
         ]
 
