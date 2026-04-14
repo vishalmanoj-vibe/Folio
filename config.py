@@ -2,7 +2,7 @@ import os
 
 # ── Paths ─────────────────────────────────────────────────────────────────────
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-CSV_PATH   = os.path.join(SCRIPT_DIR, "stock_portfolio_transactions.csv")
+CSV_PATH = os.path.join(SCRIPT_DIR, "data", "raw", "stock_portfolio_transactions.csv")
 
 # ── Intervals ─────────────────────────────────────────────────────────────────
 REFRESH_INTERVAL = 60_000   # milliseconds

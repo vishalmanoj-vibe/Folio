@@ -35,11 +35,11 @@ logging.basicConfig(
     datefmt="%H:%M:%S",
 )
 
-from components.layout import create_layout, INDEX_STRING
+from components.layout import create_layout
 from data.csv_handler import load_csv
 
 import callbacks.core_callbacks  as core
-import callbacks.transaction     as txn
+import callbacks.transaction_callbacks as txn
 import callbacks.chart_callbacks as charts
 import callbacks.alert_callbacks as alerts
 import callbacks.ui_callbacks    as ui
@@ -58,7 +58,6 @@ app = dash.Dash(
     suppress_callback_exceptions=True,   # required for dynamic ticker buttons
 )
 app.title        = "Portfolio — Live"
-app.index_string = INDEX_STRING
 app.layout       = create_layout(INITIAL_HISTORY)
 
 # ── Register all callbacks ────────────────────────────────────────────────────
