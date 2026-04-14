@@ -3,3 +3,8 @@ plotly>=5.20.0
 pandas>=2.0.0
 yfinance>=0.2.38
 pytz>=2024.1
+
+# Testing
+pytest>=7.0.0
+pytest-cov>=4.0.0
+

@@ -2,7 +2,7 @@ import pandas as pd
 from datetime import datetime
 from dash import Input, Output, State
 
-from config import GREEN, RED
+from config.constants import GREEN, RED
 from data.csv_handler import save_csv
 from components.ui_helpers import txn_table
 

@@ -1,6 +1,6 @@
 from dash import Input, Output, html
-from config import RED
-from services.alert_service import check_alerts
+from config.constants import RED
+from services.alerts import check_alerts
 
 
 def register_callbacks(app) -> None:

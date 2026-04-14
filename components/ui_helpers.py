@@ -9,7 +9,7 @@ and should never invert with the theme.
 """
 
 from dash import html
-from config import GREEN, RED, CHART_INFO
+from config.constants import GREEN, RED, CHART_INFO
 
 
 def stat_card(

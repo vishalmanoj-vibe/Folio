@@ -29,10 +29,10 @@ import plotly.graph_objects as go
 import yfinance as yf
 from dash import ALL, ClientsideFunction, Input, Output, State, dcc, html, register_page
 
-from config import (
+from config.constants import (
     BG, SURFACE, BORDER, GREEN, RED, T_PRI, T_SEC, COLORS, PLOTLY_BASE, NAMES
 )
-from services.market_status import market_badge
+from services.market.status import market_badge
 
 # ── Register page ─────────────────────────────────────────────────────────────
 register_page(__name__, path_template="/etf/<ticker>", title="ETF Detail")

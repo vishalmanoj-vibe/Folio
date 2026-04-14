@@ -9,10 +9,11 @@ renders correctly in both dark and light themes.
 
 from dash import Input, Output, html
 
-from config import GREEN, RED, T_PRI, T_SEC
+from config.constants import GREEN, RED, T_PRI, T_SEC
+from config.settings import REFRESH_INTERVAL
 from data.portfolio_builder import build_holdings
-from services.market_data import fetch_live
-from services.market_status import market_badge
+from services.market.fetcher import fetch_live
+from services.market.status import market_badge
 from components.ui_helpers import stat_card
 
 

@@ -1,12 +1,65 @@
+"""
+Market data fetching service.
+
+Fetches live prices, history, dividends, and P&L from yfinance.
+Includes retry logic and caching.
+"""
+
 import logging
+import time
 import pandas as pd
 import yfinance as yf
 from datetime import datetime, timedelta
 
-from services.cache import get_cache, set_cache
+from core import get_cache, set_cache
+from config.settings import API_MAX_RETRIES, API_RETRY_BACKOFF_BASE, CACHE_TTL_SECONDS
 
-logger    = logging.getLogger(__name__)
-CACHE_TTL = 60   # seconds
+logger = logging.getLogger(__name__)
+
+
+def _download_with_retry(
+    tickers: str,
+    period: str,
+    max_retries: int = API_MAX_RETRIES,
+    backoff_base: float = API_RETRY_BACKOFF_BASE,
+) -> pd.DataFrame:
+    """
+    Download data from yfinance with exponential backoff retry logic.
+    
+    Args:
+        tickers: Space-separated ticker symbols (e.g., "VHY.AX VAS.AX")
+        period: yfinance period string (e.g., "3mo", "max", "1y")
+        max_retries: Maximum number of retry attempts
+        backoff_base: Base for exponential backoff (delay = backoff_base ^ attempt)
+    
+    Returns:
+        DataFrame on success, empty DataFrame on failure after all retries
+    """
+    for attempt in range(max_retries):
+        try:
+            df = yf.download(
+                tickers,
+                period=period,
+                group_by="ticker",
+                auto_adjust=False,
+                progress=False,
+            )
+            logger.debug(f"Download succeeded for {len(tickers.split()) if isinstance(tickers, str) else len(tickers)} tickers, period={period}")
+            return df
+        except Exception as e:
+            is_last_attempt = attempt == max_retries - 1
+            if is_last_attempt:
+                logger.warning(
+                    f"Download failed after {max_retries} attempts (period={period}): {e}"
+                )
+                return pd.DataFrame()
+            else:
+                # Exponential backoff
+                delay = backoff_base ** attempt
+                logger.debug(
+                    f"Download attempt {attempt + 1}/{max_retries} failed, retrying in {delay}s (period={period}): {e}"
+                )
+                time.sleep(delay)
 
 
 def _extract_close(bulk_df: pd.DataFrame, ticker_yf: str) -> pd.Series:
@@ -68,24 +121,9 @@ def fetch_live(holdings: list[dict], hist_period: str = "3mo") -> dict:
     tickers_str = " ".join(tickers_yf)
     logger.info("Fetching %s  period=%s", tickers_yf, hist_period)
 
-    # ── Bulk downloads (auto_adjust=False preserves Dividends column) ─────────
-    try:
-        multi_period = yf.download(
-            tickers_str, period=hist_period,
-            group_by="ticker", auto_adjust=False, progress=False,
-        )
-    except Exception as exc:
-        logger.warning("Bulk period download failed: %s", exc)
-        multi_period = pd.DataFrame()
-
-    try:
-        multi_full = yf.download(
-            tickers_str, period="max",
-            group_by="ticker", auto_adjust=False, progress=False,
-        )
-    except Exception as exc:
-        logger.warning("Bulk full download failed: %s", exc)
-        multi_full = pd.DataFrame()
+    # ── Bulk downloads with retry logic (auto_adjust=False preserves Dividends column) ──
+    multi_period = _download_with_retry(tickers_str, period=hist_period)
+    multi_full = _download_with_retry(tickers_str, period="max")
 
     enriched:  list[dict] = []
     histories: dict        = {}
@@ -227,6 +265,6 @@ def fetch_live(holdings: list[dict], hist_period: str = "3mo") -> dict:
         "histories":  histories,
         "fetched_at": datetime.now().strftime("%H:%M:%S"),
     }
-    set_cache(cache_key, result, ttl=CACHE_TTL)
-    logger.info("Done — %d enriched, %d with history, cached %ds", len(enriched), len(histories), CACHE_TTL)
+    set_cache(cache_key, result, ttl=CACHE_TTL_SECONDS)
+    logger.info("Done — %d enriched, %d with history, cached %ds", len(enriched), len(histories), CACHE_TTL_SECONDS)
     return result

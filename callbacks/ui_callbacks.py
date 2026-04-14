@@ -7,7 +7,11 @@ def register_callbacks(app) -> None:
     app.clientside_callback(
         """
         function(n, current) {
-            const theme = current === 'dark' ? 'light' : 'dark';
+            // If this is initial call (n is null/undefined), use current theme
+            // If button was clicked (n > 0), toggle the theme
+            const shouldToggle = n > 0;
+            const theme = shouldToggle ? (current === 'dark' ? 'light' : 'dark') : current;
+            
             document.body.setAttribute('data-theme', theme);
             document.documentElement.style.backgroundColor = theme === 'dark' ? '#111110' : '#ffffff';
             return theme;
@@ -16,7 +20,6 @@ def register_callbacks(app) -> None:
         Output("theme-store",    "data"),
         Input("theme-toggle",    "n_clicks"),
         State("theme-store",     "data"),
-        prevent_initial_call=True,
     )
 
     # ── PDF / print button ────────────────────────────────────────────────────

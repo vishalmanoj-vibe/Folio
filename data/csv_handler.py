@@ -1,7 +1,9 @@
 import logging
 import os
+import shutil
+from pathlib import Path
 import pandas as pd
-from config import CSV_PATH
+from config.settings import CSV_PATH
 
 logger = logging.getLogger(__name__)
 
@@ -76,8 +78,40 @@ def load_csv() -> list[dict]:
 
 
 def save_csv(history: list[dict]) -> None:
-    """Write the full transaction list back to CSV."""
+    """
+    Write the full transaction list back to CSV with automatic backup.
+    
+    Creates a backup (.bak) before write. If write fails, backup is restored.
+    Raises exception on failure so caller can handle.
+    """
     df = pd.DataFrame(history)[["type", "ticker", "shares", "price", "date"]]
     df.columns = ["Type", "Ticker", "Shares", "Price", "Date"]
-    df.to_csv(CSV_PATH, index=False)
-    logger.info("Saved %d transactions to %s", len(history), CSV_PATH)
+    
+    backup_path = f"{CSV_PATH}.bak"
+    csv_dir = os.path.dirname(CSV_PATH)
+    
+    try:
+        # Create backup of existing CSV if it exists
+        if Path(CSV_PATH).exists():
+            shutil.copy2(CSV_PATH, backup_path)
+            logger.debug("Created backup at %s", backup_path)
+        
+        # Ensure directory exists
+        os.makedirs(csv_dir, exist_ok=True)
+        
+        # Write new CSV
+        df.to_csv(CSV_PATH, index=False)
+        logger.info("Saved %d transactions to %s", len(history), CSV_PATH)
+        
+    except Exception as e:
+        logger.error("Failed to write CSV at %s: %s", CSV_PATH, e)
+        
+        # Attempt recovery from backup
+        if Path(backup_path).exists():
+            try:
+                shutil.copy2(backup_path, CSV_PATH)
+                logger.info("Restored previous CSV from backup")
+            except Exception as restore_err:
+                logger.critical("Failed to restore from backup: %s", restore_err)
+        
+        raise

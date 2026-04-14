@@ -1,11 +1,8 @@
-import os
+"""
+Constants for Portfolio Dashboard.
 
-# ── Paths ─────────────────────────────────────────────────────────────────────
-SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-CSV_PATH = os.path.join(SCRIPT_DIR, "data", "raw", "stock_portfolio_transactions.csv")
-
-# ── Intervals ─────────────────────────────────────────────────────────────────
-REFRESH_INTERVAL = 60_000   # milliseconds
+Colors, theme definitions, ETF names, and chart information.
+"""
 
 # ── Dark theme tokens (defaults) ──────────────────────────────────────────────
 BG      = "#111110"

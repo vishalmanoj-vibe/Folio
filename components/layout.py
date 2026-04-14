@@ -3,15 +3,16 @@ components/layout.py
 ====================
 Portfolio page layout.
 
-All colours use CSS variables (var(--bg), var(--surface), var(--border),
-var(--t-pri), var(--t-sec)) so the dark/light theme toggle works correctly.
-The only remaining hardcoded hex values are GREEN (always green) and the
-Plotly chart backgrounds (Plotly cannot read CSS vars at canvas render time).
+Changes from previous version
+------------------------------
+- Header now includes an "Intelligence →" nav link next to the title.
+  All other structure is unchanged.
 """
 
 from datetime import datetime
 from dash import dcc, html
-from config import GREEN, CSV_PATH
+from config.constants import GREEN
+from config.settings import CSV_PATH
 from components.ui_helpers import chart_title, section
 
 # ── CSS injected into <head> ───────────────────────────────────────────────────
@@ -29,53 +30,41 @@ body[data-theme="light"] {
   --bg: #ffffff; --surface: #f8f8f6; --border: rgba(0,0,0,0.09);
   --t-pri: #1a1a1a; --t-sec: #6b6b67;
 }
-
-/* ── Global resets ── */
 body {
   background-color: var(--bg) !important;
   color: var(--t-pri) !important;
 }
-
-/* ── Form elements ── */
 input, select, button {
   background: var(--surface) !important;
   color: var(--t-pri) !important;
   border: 1px solid var(--border) !important;
 }
 input::placeholder { color: var(--t-sec) !important; }
-
-/* ── Dash Dropdown (Select) ── */
-.Select-control,
-.Select { background: var(--surface) !important; color: var(--t-pri) !important; }
+.Select-control, .Select {
+  background: var(--surface) !important; color: var(--t-pri) !important;
+}
 .Select input { background: transparent !important; color: var(--t-pri) !important; }
 .Select-menu-outer, .Select .Select-menu-outer {
-  background: var(--surface) !important;
-  border: 1px solid var(--border) !important;
+  background: var(--surface) !important; border: 1px solid var(--border) !important;
 }
 .Select-option, .Select .Select-option {
-  background: var(--surface) !important;
-  color: var(--t-pri) !important;
+  background: var(--surface) !important; color: var(--t-pri) !important;
 }
-.Select-option:hover, .Select .Select-option:hover {
-  background: var(--bg) !important;
-}
+.Select-option:hover, .Select .Select-option:hover { background: var(--bg) !important; }
 .Select-value-label { color: var(--t-pri) !important; }
 .Select-placeholder  { color: var(--t-sec) !important; }
-
-/* ── ETF ticker links in live table ── */
 a.ticker-link {
-  color: var(--t-pri);
-  text-decoration: none;
-  font-weight: 500;
-  border-bottom: 1px solid var(--border);
-  transition: border-color 0.15s;
+  color: var(--t-pri); text-decoration: none; font-weight: 500;
+  border-bottom: 1px solid var(--border); transition: border-color 0.15s;
 }
 a.ticker-link:hover { border-color: var(--t-sec); }
-
-/* ── Details/summary ── */
+a.nav-link {
+  color: var(--t-sec); text-decoration: none;
+  border: 0.5px solid var(--border); border-radius: 20px;
+  padding: 3px 10px; font-size: 12px; transition: color 0.15s, border-color 0.15s;
+}
+a.nav-link:hover { color: var(--t-pri); border-color: var(--t-sec); }
 details summary { color: var(--t-sec); }
-
-/* ── Print / PDF ── */
 @media print {
   #controls-bar, #txn-panel, #toggle-area,
   button, .Select, [id$="-btn"] { display: none !important; }
@@ -91,20 +80,29 @@ details summary { color: var(--t-sec); }
 
 
 def create_layout(initial_history: list[dict] | None = None) -> html.Div:
-    """
-    Portfolio page inner content.
-    Stores / Interval are in app.layout — do NOT add them here.
-    """
     return html.Div(
         [
             # ── Header ────────────────────────────────────────────────────────
             html.Div(
                 [
                     html.Div([
-                        html.H1(
-                            "Portfolio — Live P&L",
-                            style={"margin": "0", "fontSize": "20px",
-                                   "fontWeight": "500", "color": "var(--t-pri)"},
+                        # Title row with nav link
+                        html.Div(
+                            [
+                                html.H1(
+                                    "Portfolio — Live P&L",
+                                    style={"margin": "0", "fontSize": "20px",
+                                           "fontWeight": "500",
+                                           "color": "var(--t-pri)"},
+                                ),
+                                html.A(
+                                    "Intelligence →",
+                                    href="/intelligence",
+                                    className="nav-link",
+                                ),
+                            ],
+                            style={"display": "flex", "alignItems": "center",
+                                   "gap": "12px", "flexWrap": "wrap"},
                         ),
                         html.P(
                             "Auto-refreshes every 60 s · Yahoo Finance · ASX ETFs",
@@ -213,10 +211,9 @@ def create_layout(initial_history: list[dict] | None = None) -> html.Div:
                     html.Div(
                         [
                             html.Div([
-                                html.P("Type",
-                                       style={"fontSize": "11px",
-                                              "color": "var(--t-sec)",
-                                              "margin": "0 0 4px"}),
+                                html.P("Type", style={"fontSize": "11px",
+                                                       "color": "var(--t-sec)",
+                                                       "margin": "0 0 4px"}),
                                 dcc.Dropdown(
                                     id="txn-type",
                                     options=[{"label": "Buy",  "value": "buy"},
@@ -226,10 +223,9 @@ def create_layout(initial_history: list[dict] | None = None) -> html.Div:
                                 ),
                             ]),
                             html.Div([
-                                html.P("Ticker",
-                                       style={"fontSize": "11px",
-                                              "color": "var(--t-sec)",
-                                              "margin": "0 0 4px"}),
+                                html.P("Ticker", style={"fontSize": "11px",
+                                                         "color": "var(--t-sec)",
+                                                         "margin": "0 0 4px"}),
                                 dcc.Input(
                                     id="txn-ticker", type="text",
                                     placeholder="e.g. VHY",
@@ -240,13 +236,11 @@ def create_layout(initial_history: list[dict] | None = None) -> html.Div:
                                 ),
                             ]),
                             html.Div([
-                                html.P("Shares",
-                                       style={"fontSize": "11px",
-                                              "color": "var(--t-sec)",
-                                              "margin": "0 0 4px"}),
+                                html.P("Shares", style={"fontSize": "11px",
+                                                         "color": "var(--t-sec)",
+                                                         "margin": "0 0 4px"}),
                                 dcc.Input(
-                                    id="txn-shares", type="number",
-                                    placeholder="0",
+                                    id="txn-shares", type="number", placeholder="0",
                                     style={"width": "90px", "fontSize": "13px",
                                            "padding": "6px 8px",
                                            "border": "0.5px solid var(--border)",
@@ -254,13 +248,11 @@ def create_layout(initial_history: list[dict] | None = None) -> html.Div:
                                 ),
                             ]),
                             html.Div([
-                                html.P("Price ($)",
-                                       style={"fontSize": "11px",
-                                              "color": "var(--t-sec)",
-                                              "margin": "0 0 4px"}),
+                                html.P("Price ($)", style={"fontSize": "11px",
+                                                            "color": "var(--t-sec)",
+                                                            "margin": "0 0 4px"}),
                                 dcc.Input(
-                                    id="txn-price", type="number",
-                                    placeholder="0.00",
+                                    id="txn-price", type="number", placeholder="0.00",
                                     style={"width": "100px", "fontSize": "13px",
                                            "padding": "6px 8px",
                                            "border": "0.5px solid var(--border)",
@@ -282,9 +274,8 @@ def create_layout(initial_history: list[dict] | None = None) -> html.Div:
                                 ),
                             ]),
                             html.Div([
-                                html.P("\u00a0",
-                                       style={"fontSize": "11px",
-                                              "margin": "0 0 4px"}),
+                                html.P("\u00a0", style={"fontSize": "11px",
+                                                         "margin": "0 0 4px"}),
                                 html.Button(
                                     "Add transaction", id="txn-submit", n_clicks=0,
                                     style={"fontWeight": "500", "fontSize": "13px",
@@ -295,17 +286,15 @@ def create_layout(initial_history: list[dict] | None = None) -> html.Div:
                         style={"display": "flex", "gap": "12px",
                                "flexWrap": "wrap", "alignItems": "flex-end"},
                     ),
-                    html.P(
-                        id="txn-msg",
-                        style={"fontSize": "12px", "marginTop": "8px",
-                               "minHeight": "18px", "color": GREEN},
-                    ),
+                    html.P(id="txn-msg",
+                           style={"fontSize": "12px", "marginTop": "8px",
+                                  "minHeight": "18px", "color": GREEN}),
                     html.Details([
-                        html.Summary(
-                            "Transaction history",
-                            style={"fontSize": "12px", "color": "var(--t-sec)",
-                                   "cursor": "pointer", "marginTop": "8px"},
-                        ),
+                        html.Summary("Transaction history",
+                                     style={"fontSize": "12px",
+                                            "color": "var(--t-sec)",
+                                            "cursor": "pointer",
+                                            "marginTop": "8px"}),
                         html.Div(id="txn-log",
                                  style={"marginTop": "10px", "overflowX": "auto"}),
                     ]),
@@ -326,11 +315,10 @@ def create_layout(initial_history: list[dict] | None = None) -> html.Div:
                 html.Div([
                     html.Div(
                         [
-                            html.P("View:",
-                                   style={"fontSize": "12px",
-                                          "color": "var(--t-sec)",
-                                          "margin": "0 8px 0 0",
-                                          "alignSelf": "center"}),
+                            html.P("View:", style={"fontSize": "12px",
+                                                    "color": "var(--t-sec)",
+                                                    "margin": "0 8px 0 0",
+                                                    "alignSelf": "center"}),
                             html.Div(id="ticker-toggle-btns",
                                      style={"display": "flex", "gap": "6px",
                                             "flexWrap": "wrap"}),
@@ -346,7 +334,6 @@ def create_layout(initial_history: list[dict] | None = None) -> html.Div:
             # ── Charts grid ───────────────────────────────────────────────────
             html.Div(
                 [
-                    # Row 1
                     html.Div(
                         [
                             html.Div(
@@ -366,7 +353,6 @@ def create_layout(initial_history: list[dict] | None = None) -> html.Div:
                         style={"display": "flex", "gap": "14px",
                                "flexWrap": "wrap", "marginBottom": "14px"},
                     ),
-                    # Row 2
                     html.Div(
                         [
                             html.Div(
@@ -385,7 +371,6 @@ def create_layout(initial_history: list[dict] | None = None) -> html.Div:
                         style={"display": "flex", "gap": "14px",
                                "flexWrap": "wrap", "marginBottom": "14px"},
                     ),
-                    # Row 3
                     html.Div(
                         [
                             html.Div(

@@ -1,0 +1,80 @@
+"""
+Logging configuration for Portfolio Dashboard.
+
+Centralized logging with console and file handlers.
+Configure via environment variables:
+  - LOG_LEVEL: DEBUG, INFO, WARNING, ERROR (default: INFO)
+  - LOG_FILE: Path to log file (default: portfolio.log in script dir)
+  - LOG_FILE_ENABLED: true/false to enable file logging (default: true)
+"""
+
+import logging.config
+import os
+from pathlib import Path
+
+SCRIPT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO").upper()
+LOG_FILE = os.getenv("LOG_FILE", os.path.join(SCRIPT_DIR, "portfolio.log"))
+LOG_FILE_ENABLED = os.getenv("LOG_FILE_ENABLED", "true").lower() == "true"
+
+# Create handlers list dynamically
+handlers_list = ["console"]
+if LOG_FILE_ENABLED:
+    handlers_list.append("file")
+
+CONFIG = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "formatters": {
+        "standard": {
+            "format": "%(asctime)s [%(levelname)-8s] %(name)-20s: %(message)s",
+            "datefmt": "%Y-%m-%d %H:%M:%S",
+        },
+        "simple": {
+            "format": "[%(levelname)-8s] %(name)-20s: %(message)s",
+        },
+    },
+    "handlers": {
+        "console": {
+            "level": LOG_LEVEL,
+            "class": "logging.StreamHandler",
+            "formatter": "simple",
+            "stream": "ext://sys.stdout",
+        },
+        "file": {
+            "level": "DEBUG",
+            "class": "logging.FileHandler",
+            "filename": LOG_FILE,
+            "formatter": "standard",
+            "mode": "a",
+        },
+    },
+    "loggers": {
+        "": {
+            "level": LOG_LEVEL,
+            "handlers": handlers_list,
+            "propagate": True,
+        },
+        # Suppress noisy third-party loggers
+        "yfinance": {
+            "level": "WARNING",
+        },
+        "urllib3": {
+            "level": "WARNING",
+        },
+        "dash": {
+            "level": "INFO",
+        },
+    },
+}
+
+
+def setup_logging():
+    """Initialize logging configuration."""
+    logging.config.dictConfig(CONFIG)
+    logger = logging.getLogger(__name__)
+    
+    if LOG_FILE_ENABLED:
+        logger.info(f"Logging configured: console={LOG_LEVEL}, file={LOG_FILE}")
+    else:
+        logger.info(f"Logging configured: console={LOG_LEVEL} (file logging disabled)")

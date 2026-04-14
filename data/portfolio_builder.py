@@ -1,8 +1,43 @@
 import logging
 import pandas as pd
-from config import NAMES
+from config.constants import NAMES
 
 logger = logging.getLogger(__name__)
+
+
+def validate_transaction(txn: dict) -> tuple[bool, str]:
+    """
+    Validate transaction structure before aggregation.
+    
+    Returns:
+        (is_valid, error_message)
+    """
+    required_keys = ["type", "ticker", "shares", "price", "date"]
+    missing = [k for k in required_keys if k not in txn]
+    if missing:
+        return False, f"Transaction missing keys: {missing}"
+    
+    # Validate types
+    try:
+        shares = float(txn["shares"])
+        price = float(txn["price"])
+    except (TypeError, ValueError):
+        return False, "Shares and price must be numeric"
+    
+    if shares <= 0 or price <= 0:
+        return False, "Shares and price must be positive"
+    
+    txn_type = str(txn.get("type", "buy")).lower().strip()
+    if txn_type not in ["buy", "sell"]:
+        return False, f"Type must be 'buy' or 'sell', got '{txn_type}'"
+    
+    # Validate date format
+    try:
+        pd.to_datetime(str(txn["date"]), format="%Y-%m-%d")
+    except (ValueError, TypeError):
+        return False, f"Date must be YYYY-MM-DD, got '{txn['date']}'"
+    
+    return True, ""
 
 
 def build_holdings(history: list[dict]) -> list[dict]:
@@ -20,7 +55,28 @@ def build_holdings(history: list[dict]) -> list[dict]:
     if not history:
         return []
 
-    df = pd.DataFrame(history)
+    # Validate all transactions before processing
+    invalid_txns = []
+    for i, txn in enumerate(history):
+        is_valid, error_msg = validate_transaction(txn)
+        if not is_valid:
+            invalid_txns.append((i, error_msg))
+            logger.warning("Invalid transaction at index %d: %s", i, error_msg)
+    
+    if invalid_txns:
+        logger.error("Found %d invalid transactions — skipping them", len(invalid_txns))
+
+    # Filter out invalid transactions
+    valid_history = [
+        txn for i, txn in enumerate(history)
+        if not any(idx == i for idx, _ in invalid_txns)
+    ]
+
+    if not valid_history:
+        logger.warning("No valid transactions after validation")
+        return []
+
+    df = pd.DataFrame(valid_history)
     results = []
 
     for ticker, grp in df.groupby("ticker"):

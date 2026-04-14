@@ -6,40 +6,20 @@ Open:  http://127.0.0.1:8050
 
 Pages
 -----
-  /             → pages/portfolio.py   (existing dashboard, unchanged)
-  /etf/<ticker> → pages/etf_detail.py  (new ETF drill-down)
-
-File layout:
-  app.py                          ← this file
-  config.py                       ← all constants / colours / paths
-  data/
-    csv_handler.py                ← load_csv / save_csv
-    portfolio_builder.py          ← build_holdings
-  services/
-    cache.py                      ← simple TTL cache
-    market_data.py                ← fetch_live (yfinance)
-    alert_service.py              ← check_alerts
-    market_status.py              ← is_market_open / market_badge
-  components/
-    layout.py                     ← portfolio page layout tree
-    ui_helpers.py                 ← stat_card, chart_title, section, txn_table
-  callbacks/
-    core_callbacks.py             ← refresh, stat cards, live table  (+ ticker links)
-    transaction_callbacks.py      ← add_transaction, txn log
-    chart_callbacks.py            ← all 7 charts + ticker toggle buttons
-    alert_callbacks.py            ← alerts banner
-    ui_callbacks.py               ← theme toggle, PDF print (clientside)
-  pages/
-    portfolio.py                  ← Dash page wrapper: /
-    etf_detail.py                 ← Dash page wrapper: /etf/<ticker>  ← NEW
+  /             → pages/portfolio.py      (main dashboard)
+  /etf/<ticker> → pages/etf_detail.py     (ETF drill-down)
+  /intelligence → pages/intelligence.py  (risk & allocation)  ← NEW
 """
+
+from config.logging import setup_logging
+setup_logging()
 
 import dash
 from dash import html, dcc
 
 from components.layout import INDEX_STRING
 from data.csv_handler import load_csv
-from config import REFRESH_INTERVAL
+from config.settings import REFRESH_INTERVAL
 
 import callbacks.core_callbacks         as core
 import callbacks.transaction_callbacks  as txn
@@ -55,6 +35,20 @@ except Exception as e:
     print(f"\nERROR loading CSV:\n{e}")
     print("Dashboard will start with an empty portfolio.\n")
 
+# ── Compute initial portfolio data ────────────────────────────────────────────
+from data.portfolio_builder import build_holdings
+from services.market.fetcher import fetch_live
+
+INITIAL_HOLDINGS = build_holdings(INITIAL_HISTORY)
+INITIAL_PORTFOLIO_DATA = {}
+if INITIAL_HOLDINGS:
+    try:
+        INITIAL_PORTFOLIO_DATA = fetch_live(INITIAL_HOLDINGS, "1Y")
+        print("✅ Initial portfolio data loaded")
+    except Exception as e:
+        print(f"⚠️  Could not fetch initial market data: {e}")
+        INITIAL_PORTFOLIO_DATA = {"holdings": INITIAL_HOLDINGS, "histories": {}}
+
 # ── Dash app (Pages enabled) ──────────────────────────────────────────────────
 app = dash.Dash(
     __name__,
@@ -65,16 +59,15 @@ app = dash.Dash(
 app.title        = "Portfolio — Live"
 app.index_string = INDEX_STRING
 
-# pages/* imported HERE — after dash.Dash() — so register_page() succeeds
-import pages.etf_detail as etf_detail  # noqa: E402
+# ── pages/* imported AFTER dash.Dash() so register_page() succeeds ───────────
+import pages.etf_detail    as etf_detail     # noqa: E402
+import pages.intelligence  as intelligence   # noqa: E402
 
 # ── Root layout ───────────────────────────────────────────────────────────────
-# Shared stores + interval live here so they survive page navigation.
-# Each page renders its own chrome inside dash.page_container.
 app.layout = html.Div(
     [
         dcc.Store(id="txn-store",        data=INITIAL_HISTORY),
-        dcc.Store(id="portfolio-store"),
+        dcc.Store(id="portfolio-store",  data=INITIAL_PORTFOLIO_DATA),
         dcc.Store(id="alerts-store"),
         dcc.Store(id="theme-store",      data="dark"),
         dcc.Interval(id="live-interval", interval=REFRESH_INTERVAL, n_intervals=0),
@@ -97,12 +90,14 @@ charts.register_callbacks(app)
 alerts.register_callbacks(app)
 ui.register_callbacks(app)
 etf_detail.register_callbacks(app)
+intelligence.register_callbacks(app)
 
 # ── Run ───────────────────────────────────────────────────────────────────────
 if __name__ == "__main__":
-    from config import CSV_PATH
+    from config.settings import CSV_PATH
     print(f"\n  Portfolio Dashboard — Live P&L  (multi-page)")
-    print(f"  CSV:        {CSV_PATH}")
-    print(f"  Portfolio:  http://127.0.0.1:8050/")
-    print(f"  ETF detail: http://127.0.0.1:8050/etf/VHY\n")
+    print(f"  CSV:           {CSV_PATH}")
+    print(f"  Portfolio:     http://127.0.0.1:8050/")
+    print(f"  ETF detail:    http://127.0.0.1:8050/etf/VHY")
+    print(f"  Intelligence:  http://127.0.0.1:8050/intelligence\n")
     app.run(debug=False, port=8050)

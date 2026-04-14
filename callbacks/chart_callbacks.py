@@ -3,7 +3,7 @@ import pandas as pd
 import plotly.graph_objects as go
 from dash import Input, Output, State, ALL, html
 
-from config import GREEN, RED, COLORS, get_theme
+from config.constants import GREEN, RED, COLORS, get_theme
 
 logger = logging.getLogger(__name__)
 
