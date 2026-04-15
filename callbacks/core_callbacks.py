@@ -72,6 +72,18 @@ def register_callbacks(app) -> None:
                       "var(--t-sec)"),
             stat_card("Holdings", str(len(h))),
         ]
+    
+    # Add this to callbacks/core_callbacks.py inside register_callbacks(app):
+
+    @app.callback(
+        Output("last-updated", "children"),
+        Input("live-interval", "n_intervals"),
+        Input("portfolio-store", "data"),
+    )
+    def update_last_refreshed(n, portfolio_data):
+        if not portfolio_data or "fetched_at" not in portfolio_data:
+            return "Last refreshed: just now"
+        return f"Last refreshed: {portfolio_data['fetched_at']}"
 
     # ── Live positions table ──────────────────────────────────────────────────
     @app.callback(

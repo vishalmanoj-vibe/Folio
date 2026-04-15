@@ -13,6 +13,222 @@ def register_callbacks(app) -> None:
     # ── Ticker toggle buttons ─────────────────────────────────────────────────
     @app.callback(
         Output("ticker-toggle-btns", "children"),
+        Input("portfolio-store", "data"),
+        Input("theme-store", "data"),
+    )
+    def build_toggle_btns(data, theme):
+        t_ = get_theme(theme or "dark")
+        T_PRI = t_["T_PRI"]
+
+        if not data or "holdings" not in data:
+            return []
+
+        tickers = ["Portfolio"] + [h["ticker"] for h in data["holdings"]]
+
+        return [
+            html.Button(
+                t,
+                id={"type": "ticker-btn", "index": t},
+                n_clicks=0,
+                style={
+                    "fontSize": "12px",
+                    "padding": "4px 12px",
+                    "borderRadius": "20px",
+                    "cursor": "pointer",
+                    "fontWeight": "500",
+                    "background": "transparent",
+                    "border": f"1.5px solid {T_PRI if t == 'Portfolio' else COLORS[(i - 1) % len(COLORS)]}",
+                    "color": T_PRI if t == "Portfolio" else COLORS[(i - 1) % len(COLORS)],
+                },
+            )
+            for i, t in enumerate(tickers)
+        ]
+
+    # ── P&L history ───────────────────────────────────────────────────────────
+    @app.callback(
+        Output("pnl-history-chart", "figure"),
+        Input("portfolio-store", "data"),
+        Input("pnl-mode", "value"),
+        Input("theme-store", "data"),
+        Input({"type": "ticker-btn", "index": ALL}, "n_clicks"),
+        State({"type": "ticker-btn", "index": ALL}, "id"),
+    )
+    def pnl_history_chart(data, mode, theme, n_clicks_list, btn_ids):
+        t_ = get_theme(theme or "dark")
+        BORDER = t_["BORDER"]
+        PLOTLY_BASE = t_["PLOTLY_BASE"]
+
+        fig = go.Figure()
+        fig.update_layout(
+            xaxis=dict(showgrid=False, type="date"),
+            yaxis=dict(
+                gridcolor=BORDER,
+                ticksuffix="%" if mode == "pct" else "",
+                tickprefix="" if mode == "pct" else "$",
+                zeroline=True,
+                zerolinecolor=BORDER,
+            ),
+            hovermode="x unified",
+            height=380,
+            transition=dict(   # 🔥 THIS LINE
+                duration=500,
+                easing="cubic-in-out"
+            ),
+            **PLOTLY_BASE,
+        )
+
+        if not data or "holdings" not in data:
+            return fig
+
+        # ── Determine selected ticker ─────────────────────────────────────────
+        selected = "Portfolio"
+        if n_clicks_list and any(n and n > 0 for n in n_clicks_list):
+            last_idx = max(range(len(n_clicks_list)), key=lambda i: n_clicks_list[i] or 0)
+            selected = btn_ids[last_idx]["index"]
+
+        holdings = data["holdings"]
+        color_map = {h["ticker"]: COLORS[i % len(COLORS)] for i, h in enumerate(holdings)}
+
+        # ── Helper: Build clean series with buy anchor ─────────────────────────
+        def build_series(tr):
+            idx = pd.to_datetime(tr["dates"])
+            pnl_series = pd.Series(tr["pnl"], index=idx)
+
+            buy_dt = pd.to_datetime(tr["buy_date"])
+
+            # 🔥 Anchor P&L = 0 at buy date
+            if buy_dt not in pnl_series.index:
+                pnl_series.loc[buy_dt] = 0
+
+            pnl_series = pnl_series.sort_index()
+
+            cost_series = pd.Series(
+                [tr["shares"] * tr["buy_price"]] * len(pnl_series),
+                index=pnl_series.index
+            )
+
+            return pnl_series, cost_series
+
+        # ── Portfolio View ────────────────────────────────────────────────────
+        if selected == "Portfolio":
+            pnl_list = []
+            cost_list = []
+
+            for h in holdings:
+                for tr in h.get("tranches", []):
+                    pnl_s, cost_s = build_series(tr)
+                    pnl_list.append(pnl_s)
+                    cost_list.append(cost_s)
+
+                    # 🔶 Purchase marker
+                    fig.add_trace(go.Scatter(
+                        x=[tr["buy_date"]],
+                        y=[0],
+                        mode="markers",
+                        marker=dict(
+                            size=9,
+                            color="#EF9F27",
+                            symbol="diamond",
+                            line=dict(width=1.5, color="white")
+                        ),
+                        name=f"{h['ticker']} Buy",
+                        hovertemplate=f"{h['ticker']} bought on {tr['buy_date']}<extra></extra>",
+                        showlegend=False,
+                    ))
+
+            if pnl_list:
+                all_pnl = pd.concat(pnl_list, axis=1).sort_index().ffill().fillna(0)
+                all_cost = pd.concat(cost_list, axis=1).sort_index().ffill().fillna(0)
+
+                cpnl = all_pnl.sum(axis=1)
+                ccost = all_cost.sum(axis=1)
+
+                y = (cpnl / ccost * 100).round(2) if mode == "pct" else cpnl.round(2)
+
+                lv = y.iloc[-1] if len(y) else 0
+                lc = GREEN if lv >= 0 else RED
+                fc = "rgba(29,158,117,0.12)" if lv >= 0 else "rgba(226,75,74,0.10)"
+
+                fig.add_trace(go.Scatter(
+                    x=cpnl.index.strftime("%Y-%m-%d").tolist(),
+                    y=y.tolist(),
+                    name="Portfolio",
+                    mode="lines",
+                    fill="tozeroy",
+                    fillcolor=fc,
+                    line=dict(color=lc, width=2.5),
+                    hovertemplate=(
+                        "%{y:.2f}%<extra>Portfolio</extra>"
+                        if mode == "pct"
+                        else "$%{y:,.2f}<extra>Portfolio</extra>"
+                    ),
+                ))
+
+        # ── Individual Ticker View ────────────────────────────────────────────
+        else:
+            hm = next((h for h in holdings if h["ticker"] == selected), None)
+
+            if hm:
+                tranches = hm.get("tranches", [])
+                bc = color_map.get(selected, COLORS[0])
+
+                pnl_p, cost_p = [], []
+
+                for tr in tranches:
+                    pnl_s, cost_s = build_series(tr)
+                    pnl_p.append(pnl_s)
+                    cost_p.append(cost_s)
+
+                    fig.add_trace(go.Scatter(
+                        x=pnl_s.index.strftime("%Y-%m-%d"),
+                        y=(pnl_s / cost_s * 100).round(2) if mode == "pct" else pnl_s.round(2),
+                        name=f"{tr['buy_date']} ({int(tr['shares'])} shares)",
+                        mode="lines",
+                        line=dict(color=bc, width=1, dash="dot"),
+                        opacity=0.5,
+                    ))
+
+                    # 🔶 Purchase marker
+                    fig.add_trace(go.Scatter(
+                        x=[tr["buy_date"]],
+                        y=[0],
+                        mode="markers",
+                        marker=dict(
+                            size=9,
+                            color="#EF9F27",
+                            symbol="diamond",
+                            line=dict(width=1.5, color="white")
+                        ),
+                        showlegend=False,
+                    ))
+
+                if pnl_p:
+                    all_pnl = pd.concat(pnl_p, axis=1).sort_index().ffill().fillna(0)
+                    all_cost = pd.concat(cost_p, axis=1).sort_index().ffill().fillna(0)
+
+                    cpnl = all_pnl.sum(axis=1)
+                    ccost = all_cost.sum(axis=1)
+
+                    yc = (cpnl / ccost * 100).round(2) if mode == "pct" else cpnl.round(2)
+
+                    fig.add_trace(go.Scatter(
+                        x=cpnl.index.strftime("%Y-%m-%d").tolist(),
+                        y=yc.tolist(),
+                        name=f"{selected} (combined)",
+                        mode="lines",
+                        fill="tozeroy",
+                        fillcolor="rgba(55,138,221,0.10)",
+                        line=dict(color=bc, width=2.5),
+                    ))
+
+        fig.add_hline(y=0, line_color=BORDER, line_width=0.8)
+        return fig
+
+    # ── Rest of your callbacks (UNCHANGED) ────────────────────────────────────
+
+    # ── Ticker toggle buttons ─────────────────────────────────────────────────
+    @app.callback(
+        Output("ticker-toggle-btns", "children"),
         Input("portfolio-store",     "data"),
         Input("theme-store",         "data"),
     )
@@ -44,25 +260,28 @@ def register_callbacks(app) -> None:
     # ── P&L history ───────────────────────────────────────────────────────────
     @app.callback(
         Output("pnl-history-chart", "figure"),
-        Input("portfolio-store",    "data"),
-        Input("pnl-mode",           "value"),
-        Input("theme-store",        "data"),
+        Input("portfolio-store", "data"),
+        Input("pnl-mode", "value"),
+        Input("theme-store", "data"),
         Input({"type": "ticker-btn", "index": ALL}, "n_clicks"),
         State({"type": "ticker-btn", "index": ALL}, "id"),
     )
     def pnl_history_chart(data, mode, theme, n_clicks_list, btn_ids):
+
         t_ = get_theme(theme or "dark")
         BORDER = t_["BORDER"]
         PLOTLY_BASE = t_["PLOTLY_BASE"]
 
         fig = go.Figure()
+
         fig.update_layout(
-            xaxis=dict(showgrid=False),
+            xaxis=dict(showgrid=False, type="date"),  # 🔥 FIXED
             yaxis=dict(
                 gridcolor=BORDER,
                 ticksuffix="%" if mode == "pct" else "",
                 tickprefix="" if mode == "pct" else "$",
-                zeroline=True, zerolinecolor=BORDER, zerolinewidth=1,
+                zeroline=True,
+                zerolinecolor=BORDER,
             ),
             hovermode="x unified",
             height=380,
@@ -72,75 +291,133 @@ def register_callbacks(app) -> None:
         if not data or "holdings" not in data:
             return fig
 
+        # ── Selected ticker ─────────────────────────────────────────
         selected = "Portfolio"
         if n_clicks_list and any(n and n > 0 for n in n_clicks_list):
             last_idx = max(range(len(n_clicks_list)), key=lambda i: n_clicks_list[i] or 0)
             selected = btn_ids[last_idx]["index"]
 
-        holdings  = data["holdings"]
+        holdings = data["holdings"]
         color_map = {h["ticker"]: COLORS[i % len(COLORS)] for i, h in enumerate(holdings)}
 
+        # ── Helper ─────────────────────────────────────────────────
+        def build_series(tr):
+            idx = pd.to_datetime(tr["dates"])
+            pnl_series = pd.Series(tr["pnl"], index=idx)
+
+            buy_dt = pd.to_datetime(tr["buy_date"])
+
+            # 🔥 anchor purchase point
+            pnl_series.loc[buy_dt] = 0
+            pnl_series = pnl_series.sort_index()
+
+            cost_series = pd.Series(
+                tr["shares"] * tr["buy_price"],
+                index=pnl_series.index
+            )
+
+            return pnl_series, cost_series, buy_dt
+
+        # ── Portfolio view ─────────────────────────────────────────
         if selected == "Portfolio":
-            series = {}
+
+            pnl_all, cost_all = [], []
+            purchase_pts = []
+
             for h in holdings:
                 for tr in h.get("tranches", []):
-                    idx = pd.to_datetime(tr["dates"])
-                    key = f"{h['ticker']}_{tr['buy_date']}"
-                    series[key] = {
-                        "pnl":  pd.Series(tr["pnl"], index=idx),
-                        "cost": pd.Series([tr["shares"] * tr["buy_price"]] * len(idx), index=idx),
-                    }
-            if series:
-                cpnl  = pd.concat([v["pnl"]  for v in series.values()], axis=1).ffill().sum(axis=1).sort_index()
-                ccost = pd.concat([v["cost"] for v in series.values()], axis=1).ffill().sum(axis=1).sort_index()
-                y  = (cpnl / ccost * 100).round(2) if mode == "pct" else cpnl.round(2)
-                lv = y.iloc[-1] if len(y) else 0
-                lc = GREEN if lv >= 0 else RED
-                fc = "rgba(29,158,117,0.12)" if lv >= 0 else "rgba(226,75,74,0.10)"
+                    pnl_s, cost_s, buy_dt = build_series(tr)
+                    pnl_all.append(pnl_s)
+                    cost_all.append(cost_s)
+                    purchase_pts.append((buy_dt, h["ticker"]))
+
+            if pnl_all:
+                all_pnl = pd.concat(pnl_all, axis=1).sort_index().ffill().fillna(0)
+                all_cost = pd.concat(cost_all, axis=1).sort_index().ffill().fillna(0)
+
+                cpnl = all_pnl.sum(axis=1)
+                ccost = all_cost.sum(axis=1)
+
+                y = (cpnl / ccost * 100).round(2) if mode == "pct" else cpnl.round(2)
+
                 fig.add_trace(go.Scatter(
-                    x=cpnl.index.strftime("%Y-%m-%d").tolist(), y=y.tolist(),
-                    name="Portfolio", mode="lines", fill="tozeroy", fillcolor=fc,
-                    line=dict(color=lc, width=2.5),
-                    hovertemplate=("%{y:.2f}%<extra>Portfolio</extra>" if mode == "pct"
-                                   else "$%{y:,.2f}<extra>Portfolio</extra>"),
+                    x=cpnl.index,
+                    y=y,
+                    name="Portfolio",
+                    mode="lines",
+                    fill="tozeroy",
+                    fillcolor="rgba(29,158,117,0.12)" if y.iloc[-1] >= 0 else "rgba(226,75,74,0.10)",
+                    line=dict(color=GREEN if y.iloc[-1] >= 0 else RED, width=2.5),
                 ))
+
+                # 🔥 markers
+                for dt, ticker in purchase_pts:
+                    fig.add_trace(go.Scatter(
+                        x=[dt],
+                        y=[0],
+                        mode="markers",
+                        marker=dict(
+                            size=10,
+                            color="#EF9F27",
+                            symbol="diamond",
+                            line=dict(width=1.5, color="white"),
+                        ),
+                        hovertemplate=f"{ticker} bought<br>{dt.date()}<extra></extra>",
+                        showlegend=False,
+                    ))
+
+        # ── Individual ticker ──────────────────────────────────────
         else:
             hm = next((h for h in holdings if h["ticker"] == selected), None)
+
             if hm:
-                tranches = hm.get("tranches", [])
-                bc = color_map.get(selected, COLORS[0])
-                if len(tranches) == 1:
-                    tr = tranches[0]
+                bc = color_map[selected]
+
+                pnl_all, cost_all = [], []
+
+                for tr in hm.get("tranches", []):
+                    pnl_s, cost_s, buy_dt = build_series(tr)
+
+                    pnl_all.append(pnl_s)
+                    cost_all.append(cost_s)
+
                     fig.add_trace(go.Scatter(
-                        x=tr["dates"], y=tr["pct"] if mode == "pct" else tr["pnl"],
-                        name=selected, mode="lines", fill="tozeroy",
-                        fillcolor="rgba(55,138,221,0.10)",
-                        line=dict(color=bc, width=2.5),
+                        x=pnl_s.index,
+                        y=(pnl_s / cost_s * 100).round(2) if mode == "pct" else pnl_s,
+                        mode="lines",
+                        line=dict(color=bc, width=1, dash="dot"),
+                        opacity=0.5,
                     ))
-                else:
-                    pnl_p, cost_p = [], []
-                    for tr in tranches:
-                        idx   = pd.to_datetime(tr["dates"])
-                        pnl_s = pd.Series(tr["pnl"], index=idx)
-                        cst_s = pd.Series([tr["shares"] * tr["buy_price"]] * len(idx), index=idx)
-                        pnl_p.append(pnl_s)
-                        cost_p.append(cst_s)
-                        fig.add_trace(go.Scatter(
-                            x=tr["dates"], y=tr["pct"] if mode == "pct" else tr["pnl"],
-                            name=f"  {tr['buy_date']} ({int(tr['shares'])} shares)",
-                            mode="lines", line=dict(color=bc, width=1, dash="dot"), opacity=0.45,
-                        ))
-                    cpnl  = pd.concat(pnl_p,  axis=1).ffill().sum(axis=1).sort_index()
-                    ccost = pd.concat(cost_p, axis=1).ffill().sum(axis=1).sort_index()
-                    yc    = (cpnl / ccost * 100).round(2) if mode == "pct" else cpnl.round(2)
+
                     fig.add_trace(go.Scatter(
-                        x=cpnl.index.strftime("%Y-%m-%d").tolist(), y=yc.tolist(),
-                        name=f"{selected} (combined)", mode="lines",
-                        fill="tozeroy", fillcolor="rgba(55,138,221,0.10)",
+                        x=[buy_dt],
+                        y=[0],
+                        mode="markers",
+                        marker=dict(size=10, color="#EF9F27", symbol="diamond"),
+                        showlegend=False,
+                    ))
+
+                if pnl_all:
+                    all_pnl = pd.concat(pnl_all, axis=1).sort_index().ffill().fillna(0)
+                    all_cost = pd.concat(cost_all, axis=1).sort_index().ffill().fillna(0)
+
+                    cpnl = all_pnl.sum(axis=1)
+                    ccost = all_cost.sum(axis=1)
+
+                    y = (cpnl / ccost * 100).round(2) if mode == "pct" else cpnl
+
+                    fig.add_trace(go.Scatter(
+                        x=cpnl.index,
+                        y=y,
+                        mode="lines",
                         line=dict(color=bc, width=2.5),
+                        fill="tozeroy",
+                        fillcolor="rgba(55,138,221,0.10)",
+                        name=selected,
                     ))
 
         fig.add_hline(y=0, line_color=BORDER, line_width=0.8)
+
         return fig
 
     # ── Normalised price history ──────────────────────────────────────────────

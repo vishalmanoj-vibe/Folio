@@ -120,4 +120,23 @@ input::placeholder {
     size: A4 landscape;
     margin: 1cm 1.5cm;
   }
+}/* Smooth fade for all graphs */
+.js-plotly-plot {
+    transition: opacity 0.35s ease-in-out;
+}
+
+/* Button hover effect */
+button:hover {
+    transform: translateY(-1px);
+    opacity: 0.9;
+}
+
+/* Active click feel */
+button:active {
+    transform: scale(0.97);
+}
+
+/* Smooth page feel */
+body {
+    transition: background-color 0.3s ease;
 }
