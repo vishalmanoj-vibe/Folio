@@ -1,6 +1,21 @@
+"""
+data/portfolio_builder.py
+=========================
+Portfolio aggregation logic.
+
+Builds consolidated holdings from raw buy/sell transactions.
+Now uses automatic name resolution via get_etf_name() so any ETF
+(CLNE, XMET, new tickers, etc.) shows its full proper name without
+hardcoding.
+
+Preserves original architecture and naming conventions.
+"""
+
 import logging
 import pandas as pd
-from config.constants import NAMES
+
+from config.constants import NAMES   # lightweight fallback only
+from services.market.fetcher import get_etf_name   # ← Automatic name fetching
 
 logger = logging.getLogger(__name__)
 
@@ -45,12 +60,10 @@ def build_holdings(history: list[dict]) -> list[dict]:
     Aggregate buy/sell transactions into one consolidated row per ticker.
 
     Returns a list of dicts, one per held ticker, with:
-      - ticker, ticker_yf, name, market
+      - ticker, ticker_yf, name (auto-fetched), market
       - total_shares (net after sells)
-      - total_cost   (remaining cost at avg price)
-      - avg_cost     (weighted avg of all buys)
-      - first_purchase (earliest buy date string)
-      - buy_tranches  (list of individual buy rows — needed for P&L history chart)
+      - total_cost, avg_cost
+      - first_purchase, buy_tranches (for P&L history chart)
     """
     if not history:
         return []
@@ -109,16 +122,19 @@ def build_holdings(history: list[dict]) -> list[dict]:
                 "shares":    float(r["shares"]),
                 "price":     float(r["price"]),
                 "date":      str(r["date"]),
-                "buy_price": float(r["price"]),   # alias kept for chart compat
-                "buy_date":  str(r["date"]),       # alias kept for chart compat
+                "buy_price": float(r["price"]),
+                "buy_date":  str(r["date"]),
             }
             for _, r in buys.iterrows()
         ]
 
+        # ── Automatic name fetching (this is the key improvement) ─────────────
+        full_name = get_etf_name(ticker)
+
         results.append({
             "ticker":         ticker,
             "ticker_yf":      ticker + ".AX",
-            "name":           NAMES.get(ticker, ticker),
+            "name":           full_name,                    # ← Now automatic!
             "market":         "ETF/ASX",
             "total_shares":   net_shares,
             "total_cost":     remaining_cost,

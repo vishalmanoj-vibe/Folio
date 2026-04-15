@@ -3,114 +3,245 @@ services/intelligence.py
 =========================
 Pure-Python risk & allocation analytics.
 
-All functions accept plain dicts/lists (the portfolio-store payload) and
-return plain dicts so they can be called from any callback without coupling
-to Dash internals.
+Geographic exposure fix
+-----------------------
+Previous version called yf.Ticker(symbol).fast_info and tried
+getattr(info, "country") — but FastInfo has NO country attribute.
+It only holds price/volume fields.
 
-Risk metrics
-------------
-  portfolio_returns(histories)      → daily return Series (portfolio-level)
-  volatility(returns)               → annualised vol %
-  sharpe_ratio(returns)             → Sharpe (RBA cash rate Rf)
-  max_drawdown(returns)             → max peak-to-trough %
-  drawdown_series(returns)          → rolling drawdown Series (for chart)
-  compute_risk_metrics(port_data)   → full metrics dict
+Fixed approach: parse the Yahoo Finance exchange suffix from the
+holding symbol itself (e.g. "0700.HK" → Hong Kong, "AAPL" → USA,
+"CBA.AX" → Australia). This requires zero extra API calls and works
+for every symbol that appears in funds_data.top_holdings.
 
-Allocation insights
--------------------
-  sector_exposure(port_data)        → {sector: weight%}
-  geo_exposure(port_data)           → {region: weight%}
+Sector exposure
+---------------
+Uses yf.Ticker.funds_data.sector_weightings — already correct,
+just needed the label mapping verified.
 
-Smart alerts
-------------
-  compute_smart_alerts(metrics, port_data) → list of alert dicts
+Both are cached 24 h in-process.
 """
 
 from __future__ import annotations
 
 import math
+import time
+import logging
 import pandas as pd
-import numpy as np
-from datetime import datetime
+import yfinance as yf
+
+logger = logging.getLogger(__name__)
 
 # ── Risk-free rate ─────────────────────────────────────────────────────────────
-# RBA cash rate target (update periodically or pull from an API)
-RISK_FREE_ANNUAL = 0.0435     # 4.35 % p.a.
+RISK_FREE_ANNUAL = 0.0435
 RISK_FREE_DAILY  = RISK_FREE_ANNUAL / 252
 
-# ── ETF metadata ──────────────────────────────────────────────────────────────
-# Sector and geography breakdown (% of ETF exposure, manually curated).
-# Values are approximate blends based on fund fact sheets as of 2025.
-# This serves as a fallback for known ETFs, but the system now dynamically
-# handles unknown tickers from your portfolio CSV.
-ETF_SECTOR: dict[str, dict[str, float]] = {
-    "VHY":  {"Financials": 45, "Materials": 15, "Energy": 12,
-             "Utilities": 8,  "Real Estate": 7, "Other": 13},
-    "IOZ":  {"Financials": 32, "Materials": 22, "Healthcare": 10,
-             "Energy": 8,     "Consumer Staples": 7, "Other": 21},
-    "IOO":  {"Technology": 28, "Financials": 17, "Healthcare": 14,
-             "Consumer Disc.": 11, "Industrials": 8, "Other": 22},
-    "ASIA": {"Technology": 55, "Consumer Disc.": 18, "Financials": 10,
-             "Communication": 9, "Other": 8},
-    "SEMI": {"Technology": 95, "Industrials": 3, "Other": 2},
-    "AINF": {"Utilities": 35, "Industrials": 30, "Energy": 18,
-             "Real Estate": 10, "Other": 7},
-}
-
-ETF_GEO: dict[str, dict[str, float]] = {
-    "VHY":  {"Australia": 100},
-    "IOZ":  {"Australia": 100},
-    "IOO":  {"USA": 65, "Europe": 14, "Japan": 7,  "Other": 14},
-    "ASIA": {"China": 38, "Taiwan": 18, "South Korea": 13,
-             "India": 12, "Other Asia": 19},
-    "SEMI": {"USA": 50, "Taiwan": 15, "South Korea": 10,
-             "Netherlands": 8, "Japan": 7, "Other": 10},
-    "AINF": {"USA": 35, "Europe": 25, "Australia": 15,
-             "Canada": 10, "Other": 15},
-}
-
-
-def get_unique_tickers(port_data: dict) -> list[str]:
-    """
-    Extract unique ticker symbols from portfolio data.
-    """
-    holdings = port_data.get("holdings", [])
-    return list(set(h["ticker"] for h in holdings if "ticker" in h))
-
-
-def get_ticker_sector_breakdown(ticker: str) -> dict[str, float]:
-    """
-    Get sector breakdown for a ticker. Uses hardcoded data if available,
-    otherwise assigns to 'Other' category.
-    """
-    if ticker in ETF_SECTOR:
-        return ETF_SECTOR[ticker]
-    else:
-        # For unknown tickers, assign 100% to "Other"
-        return {"Other": 100.0}
-
-
-def get_ticker_geo_breakdown(ticker: str) -> dict[str, float]:
-    """
-    Get geographic breakdown for a ticker. Uses hardcoded data if available,
-    otherwise assigns to 'Other' category.
-    """
-    if ticker in ETF_GEO:
-        return ETF_GEO[ticker]
-    else:
-        # For unknown tickers, assign 100% to "Other"
-        return {"Other": 100.0}
-
-# Alert thresholds
+# ── Alert thresholds ──────────────────────────────────────────────────────────
 THRESHOLDS = {
-    "sector_overweight":   40.0,   # warn if any sector > 40% of portfolio
-    "geo_overweight":      60.0,   # warn if any region > 60% of portfolio
-    "high_vol_annualised": 20.0,   # warn if annualised vol > 20%
-    "low_sharpe":           0.5,   # warn if Sharpe < 0.5
-    "bad_drawdown":        -15.0,  # warn if current drawdown worse than -15%
-    "single_etf_weight":   40.0,   # warn if one ETF > 40% of portfolio
-    "tech_overweight":     35.0,   # tech-specific overweight threshold
+    "sector_overweight":   40.0,
+    "geo_overweight":      60.0,
+    "high_vol_annualised": 20.0,
+    "low_sharpe":           0.5,
+    "bad_drawdown":        -15.0,
+    "single_etf_weight":   40.0,
+    "tech_overweight":     35.0,
 }
+
+# ── Yahoo Finance sector key → display label ──────────────────────────────────
+_SECTOR_LABELS: dict[str, str] = {
+    "basic-materials":        "Materials",
+    "communication-services": "Communication",
+    "consumer-cyclical":      "Consumer Disc.",
+    "consumer-defensive":     "Consumer Staples",
+    "energy":                 "Energy",
+    "financial-services":     "Financials",
+    "healthcare":             "Healthcare",
+    "industrials":            "Industrials",
+    "real-estate":            "Real Estate",
+    "technology":             "Technology",
+    "utilities":              "Utilities",
+}
+
+# ── Yahoo Finance ticker suffix → display region ──────────────────────────────
+# Symbol format: "AAPL" (no suffix = US), "CBA.AX", "0700.HK", "2330.TW"
+# Suffixes come directly from funds_data.top_holdings index — no API call needed.
+_SUFFIX_REGION: dict[str, str] = {
+    # Australia / NZ
+    "AX": "Australia",   "XA": "Australia",   "NZ": "New Zealand",
+    # UK
+    "L":  "United Kingdom",  "IL": "United Kingdom",
+    # Europe
+    "PA": "France",      "F":  "Germany",      "DE": "Germany",
+    "BE": "Germany",     "DU": "Germany",      "MU": "Germany",
+    "SG": "Germany",     "HM": "Germany",      "HA": "Germany",
+    "AS": "Netherlands", "SW": "Switzerland",  "ST": "Sweden",
+    "CO": "Denmark",     "OL": "Norway",       "HE": "Finland",
+    "LS": "Portugal",    "MC": "Spain",        "MI": "Italy",
+    "IR": "Ireland",     "VI": "Austria",      "WA": "Poland",
+    "PR": "Czech Rep.",  "BU": "Hungary",      "AT": "Greece",
+    "RG": "Baltic",      "TL": "Baltic",
+    # Asia-Pacific
+    "HK": "Hong Kong",   "SS": "China",        "SZ": "China",
+    "TW": "Taiwan",      "TWO": "Taiwan",
+    "T":  "Japan",       "KS": "South Korea",  "KQ": "South Korea",
+    "BO": "India",       "NS": "India",
+    "SI": "Singapore",   "KL": "Malaysia",
+    "JK": "Indonesia",   "BK": "Thailand",
+    "PS": "Philippines", "VN": "Vietnam",
+    # Americas
+    "TO": "Canada",      "V":  "Canada",       "CN": "Canada",
+    "NE": "Canada",
+    "SA": "Brazil",      "MX": "Mexico",       "SN": "Chile",
+    "CL": "Colombia",
+    # Middle East & Africa
+    "TA": "Israel",      "SR": "Saudi Arabia",
+    "JO": "South Africa","QA": "Qatar",        "AE": "UAE",
+}
+
+
+def _symbol_to_region(symbol: str) -> str:
+    """
+    Infer geographic region from a Yahoo Finance ticker symbol.
+
+    Logic:
+      - No "." in symbol  →  NYSE / NASDAQ  →  "USA"
+      - Has suffix        →  look up in _SUFFIX_REGION
+      - Unknown suffix    →  "Other"
+    """
+    s = symbol.strip()
+    if "." not in s:
+        return "USA"
+    suffix = s.rsplit(".", 1)[1].upper()
+    return _SUFFIX_REGION.get(suffix, "Other")
+
+
+# ── In-process TTL cache ──────────────────────────────────────────────────────
+_INTEL_CACHE: dict[str, tuple] = {}
+_SECTOR_TTL = 86_400   # 24 h — sector weights barely change
+_GEO_TTL    = 86_400
+
+
+def _cache_get(key: str):
+    entry = _INTEL_CACHE.get(key)
+    if not entry:
+        return None
+    value, expiry = entry
+    if time.time() > expiry:
+        del _INTEL_CACHE[key]
+        return None
+    return value
+
+
+def _cache_set(key: str, value, ttl: int) -> None:
+    _INTEL_CACHE[key] = (value, time.time() + ttl)
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Live ETF metadata
+# ─────────────────────────────────────────────────────────────────────────────
+
+def fetch_etf_sector_weights(ticker_yf: str) -> dict[str, float]:
+    """
+    Fetch sector weightings from yfinance funds_data.sector_weightings.
+
+    Returns {display_label: pct%} normalised to 100.
+    Cached 24 h. Returns {"Unclassified": 100.0} on failure.
+    """
+    key = f"sector_{ticker_yf}"
+    cached = _cache_get(key)
+    if cached is not None:
+        return cached
+
+    try:
+        sw = yf.Ticker(ticker_yf).funds_data.sector_weightings  # {yf_key: 0-1 float}
+
+        if not sw:
+            result = {"Unclassified": 100.0}
+        else:
+            labelled: dict[str, float] = {}
+            other = 0.0
+            for raw_key, fraction in sw.items():
+                label = _SECTOR_LABELS.get(str(raw_key).lower())
+                if label:
+                    labelled[label] = round(float(fraction) * 100, 2)
+                else:
+                    other += float(fraction) * 100
+            if other > 0.01:
+                labelled["Other"] = round(other, 2)
+            total = sum(labelled.values())
+            result = {k: round(v / total * 100, 2) for k, v in labelled.items()} \
+                     if total > 0 else {"Unclassified": 100.0}
+
+        _cache_set(key, result, _SECTOR_TTL)
+        logger.debug("Sector %s: %s", ticker_yf, result)
+        return result
+
+    except Exception as exc:
+        logger.warning("Sector fetch failed %s: %s", ticker_yf, exc)
+        result = {"Unclassified": 100.0}
+        _cache_set(key, result, 300)   # short TTL → retry sooner
+        return result
+
+
+def fetch_etf_geo_weights(ticker_yf: str) -> dict[str, float]:
+    """
+    Infer geographic exposure from top holdings symbols.
+
+    Strategy (no extra API calls per holding):
+      1. Fetch top_holdings DataFrame (symbol → holding_percent)
+         from funds_data — already part of the same API call used
+         by sector weights.
+      2. Parse the exchange suffix from each symbol string to
+         determine the region (e.g. ".HK" → "Hong Kong", no suffix → "USA").
+      3. Aggregate weights by region; residual → "Other".
+      4. Normalise to sum = 100.
+
+    Cached 24 h.
+    """
+    key = f"geo_{ticker_yf}"
+    cached = _cache_get(key)
+    if cached is not None:
+        return cached
+
+    try:
+        fd = yf.Ticker(ticker_yf).funds_data
+        df = fd.top_holdings   # index=Symbol, col="Holding Percent" (0–1)
+
+        if df is None or df.empty:
+            result = {"Unclassified": 100.0}
+            _cache_set(key, result, 300)
+            return result
+
+        region_weights: dict[str, float] = {}
+        accounted = 0.0
+
+        for symbol, row in df.iterrows():
+            pct = float(row.get("Holding Percent", 0)) * 100
+            if pct <= 0:
+                continue
+            region = _symbol_to_region(str(symbol))
+            region_weights[region] = region_weights.get(region, 0) + pct
+            accounted += pct
+
+        # Remaining weight → Other (holdings below the top-N cutoff)
+        residual = max(0.0, 100.0 - accounted)
+        if residual > 0.5:
+            region_weights["Other"] = region_weights.get("Other", 0) + residual
+
+        total = sum(region_weights.values())
+        result = {k: round(v / total * 100, 1) for k, v in region_weights.items()} \
+                 if total > 0 else {"Unclassified": 100.0}
+        result = dict(sorted(result.items(), key=lambda x: x[1], reverse=True))
+
+        _cache_set(key, result, _GEO_TTL)
+        logger.debug("Geo %s: %s", ticker_yf, result)
+        return result
+
+    except Exception as exc:
+        logger.warning("Geo fetch failed %s: %s", ticker_yf, exc)
+        result = {"Unclassified": 100.0}
+        _cache_set(key, result, 300)
+        return result
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -118,28 +249,18 @@ THRESHOLDS = {
 # ─────────────────────────────────────────────────────────────────────────────
 
 def _histories_to_returns(histories: dict) -> pd.DataFrame:
-    """
-    Convert the histories dict from portfolio-store into a DataFrame of
-    daily returns with one column per ticker.  Dates are the index.
-    """
     frames = {}
     for ticker, records in histories.items():
         df = pd.DataFrame(records)
         if df.empty or "Close" not in df.columns:
             continue
         df["Date"] = pd.to_datetime(df["Date"])
-        df = df.set_index("Date").sort_index()
-        frames[ticker] = df["Close"].pct_change().dropna()
-
-    if not frames:
-        return pd.DataFrame()
-
-    return pd.DataFrame(frames).dropna(how="all")
+        frames[ticker] = df.set_index("Date").sort_index()["Close"].pct_change().dropna()
+    return pd.DataFrame(frames).dropna(how="all") if frames else pd.DataFrame()
 
 
 def _portfolio_weights(holdings: list[dict]) -> dict[str, float]:
-    """Return {ticker: weight (0–1)} based on current market value."""
-    total = sum(h["mkt_value"] for h in holdings)
+    total = sum(h.get("mkt_value", 0) for h in holdings)
     if total <= 0:
         return {}
     return {h["ticker"]: h["mkt_value"] / total for h in holdings}
@@ -150,38 +271,25 @@ def _portfolio_weights(holdings: list[dict]) -> dict[str, float]:
 # ─────────────────────────────────────────────────────────────────────────────
 
 def portfolio_returns(histories: dict, holdings: list[dict]) -> pd.Series:
-    """
-    Value-weighted daily portfolio return series.
-
-    Each ticker's daily return is weighted by its portfolio weight.
-    """
     ret_df  = _histories_to_returns(histories)
     weights = _portfolio_weights(holdings)
-
     if ret_df.empty or not weights:
         return pd.Series(dtype=float)
-
-    # Keep only tickers present in both
     common = [t for t in weights if t in ret_df.columns]
     if not common:
         return pd.Series(dtype=float)
-
     w = pd.Series({t: weights[t] for t in common})
-    w = w / w.sum()                          # re-normalise to 1
-
-    port_ret = ret_df[common].mul(w, axis=1).sum(axis=1)
-    return port_ret.dropna()
+    w = w / w.sum()
+    return ret_df[common].mul(w, axis=1).sum(axis=1).dropna()
 
 
 def annualised_volatility(returns: pd.Series) -> float:
-    """Annualised volatility as a percentage."""
     if returns.empty or len(returns) < 5:
         return float("nan")
     return round(float(returns.std() * math.sqrt(252) * 100), 2)
 
 
 def sharpe_ratio(returns: pd.Series) -> float:
-    """Annualised Sharpe ratio using the RBA cash rate as Rf."""
     if returns.empty or len(returns) < 5:
         return float("nan")
     excess = returns - RISK_FREE_DAILY
@@ -191,66 +299,39 @@ def sharpe_ratio(returns: pd.Series) -> float:
 
 
 def max_drawdown(returns: pd.Series) -> float:
-    """Maximum peak-to-trough drawdown as a percentage (negative number)."""
     if returns.empty:
         return float("nan")
-    equity   = (1 + returns).cumprod()
-    peak     = equity.cummax()
-    drawdown = (equity - peak) / peak * 100
-    return round(float(drawdown.min()), 2)
+    equity = (1 + returns).cumprod()
+    return round(float(((equity - equity.cummax()) / equity.cummax() * 100).min()), 2)
 
 
 def drawdown_series(returns: pd.Series) -> pd.Series:
-    """Rolling drawdown from rolling peak — used to draw the drawdown curve."""
     if returns.empty:
         return pd.Series(dtype=float)
-    equity   = (1 + returns).cumprod()
-    peak     = equity.cummax()
-    dd       = (equity - peak) / peak * 100
-    return dd.round(2)
+    equity = (1 + returns).cumprod()
+    return ((equity - equity.cummax()) / equity.cummax() * 100).round(2)
 
 
 def per_ticker_volatility(histories: dict) -> dict[str, float]:
-    """Annualised volatility per ticker."""
     ret_df = _histories_to_returns(histories)
-    result = {}
-    for col in ret_df.columns:
-        s = ret_df[col].dropna()
-        result[col] = round(float(s.std() * math.sqrt(252) * 100), 2) if len(s) >= 5 else float("nan")
-    return result
+    return {
+        col: round(float(ret_df[col].dropna().std() * math.sqrt(252) * 100), 2)
+             if len(ret_df[col].dropna()) >= 5 else float("nan")
+        for col in ret_df.columns
+    }
 
 
 def compute_risk_metrics(port_data: dict) -> dict:
-    """
-    Top-level function: compute all risk metrics from a portfolio-store payload.
-
-    Returns
-    -------
-    {
-      "vol":          annualised portfolio volatility %
-      "sharpe":       annualised Sharpe ratio
-      "max_dd":       max drawdown %
-      "current_dd":   current drawdown from all-time high %
-      "ticker_vols":  {ticker: annualised vol %}
-      "dd_dates":     [date strings]   ← for chart x-axis
-      "dd_values":    [drawdown %]     ← for chart y-axis
-      "ret_dates":    [date strings]
-      "ret_values":   [cumulative return %]
-      "n_days":       int
-    }
-    """
     empty = {
         "vol": None, "sharpe": None, "max_dd": None, "current_dd": None,
         "ticker_vols": {}, "dd_dates": [], "dd_values": [],
         "ret_dates": [], "ret_values": [], "n_days": 0,
     }
-
     if not port_data:
         return empty
 
     histories = port_data.get("histories", {})
     holdings  = port_data.get("holdings",  [])
-
     if not histories or not holdings:
         return empty
 
@@ -258,9 +339,11 @@ def compute_risk_metrics(port_data: dict) -> dict:
     if port_ret.empty:
         return empty
 
-    dd_s   = drawdown_series(port_ret)
-    equity = (1 + port_ret).cumprod()
-    cum_ret = (equity - 1) * 100
+    dd_s    = drawdown_series(port_ret)
+    cum_ret = ((1 + port_ret).cumprod() - 1) * 100
+
+    def _fmt(idx):
+        return [d.strftime("%Y-%m-%d") if hasattr(d, "strftime") else str(d) for d in idx]
 
     return {
         "vol":         annualised_volatility(port_ret),
@@ -268,11 +351,9 @@ def compute_risk_metrics(port_data: dict) -> dict:
         "max_dd":      max_drawdown(port_ret),
         "current_dd":  round(float(dd_s.iloc[-1]), 2) if not dd_s.empty else None,
         "ticker_vols": per_ticker_volatility(histories),
-        "dd_dates":    [d.strftime("%Y-%m-%d") if hasattr(d, "strftime") else str(d)
-                        for d in dd_s.index],
+        "dd_dates":    _fmt(dd_s.index),
         "dd_values":   dd_s.tolist(),
-        "ret_dates":   [d.strftime("%Y-%m-%d") if hasattr(d, "strftime") else str(d)
-                        for d in cum_ret.index],
+        "ret_dates":   _fmt(cum_ret.index),
         "ret_values":  cum_ret.round(2).tolist(),
         "n_days":      len(port_ret),
     }
@@ -283,48 +364,42 @@ def compute_risk_metrics(port_data: dict) -> dict:
 # ─────────────────────────────────────────────────────────────────────────────
 
 def sector_exposure(port_data: dict) -> dict[str, float]:
-    """
-    Portfolio-level sector exposure as % of total value.
-
-    Each ETF's sector weights are blended by the ETF's portfolio weight.
-    Uses dynamic ticker data from portfolio, with fallbacks for unknown ETFs.
-    Returns {sector: weight%} sorted descending.
-    """
+    """Portfolio-weighted sector blend from live yfinance funds_data."""
     holdings = port_data.get("holdings", [])
-    weights = _portfolio_weights(holdings)
+    weights  = _portfolio_weights(holdings)
     blended: dict[str, float] = {}
 
-    for ticker, port_w in weights.items():
-        etf_sectors = get_ticker_sector_breakdown(ticker)
-        for sector, etf_pct in etf_sectors.items():
-            blended[sector] = blended.get(sector, 0) + port_w * etf_pct
+    for h in holdings:
+        ticker_yf = h.get("ticker_yf", h["ticker"] + ".AX")
+        port_w    = weights.get(h["ticker"], 0)
+        if port_w <= 0:
+            continue
+        for sector, pct in fetch_etf_sector_weights(ticker_yf).items():
+            blended[sector] = blended.get(sector, 0) + port_w * pct
 
-    # Normalise so total = 100
     total = sum(blended.values())
     if total > 0:
         blended = {k: round(v / total * 100, 1) for k, v in blended.items()}
-
     return dict(sorted(blended.items(), key=lambda x: x[1], reverse=True))
 
 
 def geo_exposure(port_data: dict) -> dict[str, float]:
-    """
-    Portfolio-level geographic exposure as % of total value.
-    Uses dynamic ticker data from portfolio, with fallbacks for unknown ETFs.
-    """
+    """Portfolio-weighted geographic blend inferred from top-holdings symbols."""
     holdings = port_data.get("holdings", [])
-    weights = _portfolio_weights(holdings)
+    weights  = _portfolio_weights(holdings)
     blended: dict[str, float] = {}
 
-    for ticker, port_w in weights.items():
-        etf_geos = get_ticker_geo_breakdown(ticker)
-        for region, etf_pct in etf_geos.items():
-            blended[region] = blended.get(region, 0) + port_w * etf_pct
+    for h in holdings:
+        ticker_yf = h.get("ticker_yf", h["ticker"] + ".AX")
+        port_w    = weights.get(h["ticker"], 0)
+        if port_w <= 0:
+            continue
+        for region, pct in fetch_etf_geo_weights(ticker_yf).items():
+            blended[region] = blended.get(region, 0) + port_w * pct
 
     total = sum(blended.values())
     if total > 0:
         blended = {k: round(v / total * 100, 1) for k, v in blended.items()}
-
     return dict(sorted(blended.items(), key=lambda x: x[1], reverse=True))
 
 
@@ -333,122 +408,113 @@ def geo_exposure(port_data: dict) -> dict[str, float]:
 # ─────────────────────────────────────────────────────────────────────────────
 
 def compute_smart_alerts(metrics: dict, port_data: dict) -> list[dict]:
-    """
-    Generate smart intelligence alerts.
-
-    Each alert has:
-      level   — "warning" | "info" | "danger"
-      icon    — emoji shorthand
-      title   — short headline
-      detail  — one-sentence explanation
-    """
     alerts: list[dict] = []
     holdings = port_data.get("holdings", [])
     if not holdings:
         return alerts
 
-    weights     = _portfolio_weights(holdings)
-    sec_exp     = sector_exposure(port_data)
-    geo_exp     = geo_exposure(port_data)
+    weights      = _portfolio_weights(holdings)
+    sec_exp      = sector_exposure(port_data)
+    geo_exp_data = geo_exposure(port_data)
 
-    # ── Single ETF concentration ──────────────────────────────────────────────
+    # Single ETF concentration
     for ticker, w in weights.items():
         pct = round(w * 100, 1)
         if pct >= THRESHOLDS["single_etf_weight"]:
             alerts.append({
-                "level":  "warning",
-                "icon":   "⚖",
-                "title":  f"{ticker} is {pct}% of your portfolio",
+                "level": "warning", "icon": "⚖",
+                "title": f"{ticker} is {pct}% of your portfolio",
                 "detail": f"A single ETF above {THRESHOLDS['single_etf_weight']:.0f}% "
-                          f"concentrates risk. Consider rebalancing.",
+                          "concentrates risk. Consider rebalancing.",
             })
 
-    # ── Sector overweight ─────────────────────────────────────────────────────
+    # Sector overweight
     for sector, pct in sec_exp.items():
-        if sector == "Other":
+        if sector in ("Other", "Unclassified"):
             continue
         if pct >= THRESHOLDS["sector_overweight"]:
             alerts.append({
-                "level":  "warning",
-                "icon":   "🏭",
-                "title":  f"Overweight {sector} ({pct}%)",
+                "level": "warning", "icon": "🏭",
+                "title": f"Overweight {sector} ({pct}%)",
                 "detail": f"More than {THRESHOLDS['sector_overweight']:.0f}% in one "
-                          f"sector increases idiosyncratic risk.",
+                          "sector increases idiosyncratic risk.",
             })
 
-    # ── Tech-specific threshold (tighter) ────────────────────────────────────
+    # Tech tighter threshold
     tech_pct = sec_exp.get("Technology", 0)
-    if tech_pct >= THRESHOLDS["tech_overweight"]:
+    if THRESHOLDS["tech_overweight"] <= tech_pct < THRESHOLDS["sector_overweight"]:
         alerts.append({
-            "level":  "warning",
-            "icon":   "💻",
-            "title":  f"High Technology exposure ({tech_pct}%)",
+            "level": "warning", "icon": "💻",
+            "title": f"High Technology exposure ({tech_pct}%)",
             "detail": "Technology is historically more volatile than the broad market.",
         })
 
-    # ── Geographic concentration ──────────────────────────────────────────────
-    for region, pct in geo_exp.items():
-        if region == "Other":
+    # Geographic concentration
+    for region, pct in geo_exp_data.items():
+        if region in ("Other", "Unclassified"):
             continue
         if pct >= THRESHOLDS["geo_overweight"]:
             alerts.append({
-                "level":  "info",
-                "icon":   "🌏",
-                "title":  f"Heavy {region} exposure ({pct}%)",
+                "level": "info", "icon": "🌏",
+                "title": f"Heavy {region} exposure ({pct}%)",
                 "detail": f"Over {THRESHOLDS['geo_overweight']:.0f}% in one region "
-                          f"reduces geographic diversification.",
+                          "reduces geographic diversification.",
             })
 
-    # ── Volatility ────────────────────────────────────────────────────────────
+    # Volatility
     vol = metrics.get("vol")
-    if vol is not None and not math.isnan(vol):
-        if vol >= THRESHOLDS["high_vol_annualised"]:
-            alerts.append({
-                "level":  "warning",
-                "icon":   "📈",
-                "title":  f"Portfolio volatility elevated ({vol:.1f}% p.a.)",
-                "detail": f"Annualised volatility above {THRESHOLDS['high_vol_annualised']:.0f}% "
-                          f"indicates higher short-term price swings.",
-            })
+    if vol is not None and not math.isnan(vol) and vol >= THRESHOLDS["high_vol_annualised"]:
+        alerts.append({
+            "level": "warning", "icon": "📈",
+            "title": f"Portfolio volatility elevated ({vol:.1f}% p.a.)",
+            "detail": f"Annualised vol above {THRESHOLDS['high_vol_annualised']:.0f}% "
+                      "means higher short-term price swings.",
+        })
 
-    # ── Sharpe ratio ─────────────────────────────────────────────────────────
+    # Sharpe
     sharpe = metrics.get("sharpe")
     if sharpe is not None and not math.isnan(sharpe):
         if sharpe < THRESHOLDS["low_sharpe"]:
             alerts.append({
-                "level":  "info",
-                "icon":   "📉",
-                "title":  f"Low risk-adjusted return (Sharpe {sharpe:.2f})",
-                "detail": "A Sharpe below 0.5 means you're taking more risk than "
-                          "the return justifies vs the risk-free rate.",
+                "level": "info", "icon": "📉",
+                "title": f"Low risk-adjusted return (Sharpe {sharpe:.2f})",
+                "detail": "A Sharpe below 0.5 means risk taken isn't justified "
+                          "vs the RBA cash rate.",
             })
         elif sharpe >= 1.5:
             alerts.append({
-                "level":  "info",
-                "icon":   "⭐",
-                "title":  f"Strong risk-adjusted return (Sharpe {sharpe:.2f})",
-                "detail": "A Sharpe above 1.5 is excellent — the portfolio is "
-                          "generating good returns per unit of risk.",
+                "level": "info", "icon": "⭐",
+                "title": f"Strong risk-adjusted return (Sharpe {sharpe:.2f})",
+                "detail": "A Sharpe above 1.5 is excellent — strong returns per unit of risk.",
             })
 
-    # ── Drawdown ──────────────────────────────────────────────────────────────
+    # Drawdown
     current_dd = metrics.get("current_dd")
-    if current_dd is not None and not math.isnan(current_dd):
-        if current_dd <= THRESHOLDS["bad_drawdown"]:
+    if current_dd is not None and not math.isnan(current_dd) \
+            and current_dd <= THRESHOLDS["bad_drawdown"]:
+        alerts.append({
+            "level": "danger", "icon": "🔻",
+            "title": f"Portfolio in drawdown ({current_dd:.1f}%)",
+            "detail": f"Portfolio is {abs(current_dd):.1f}% below its recent peak.",
+        })
+
+    # Note unclassified tickers
+    unclassified = sec_exp.get("Unclassified", 0)
+    if unclassified > 5:
+        unknown = [h["ticker"] for h in holdings
+                   if _cache_get(f"sector_{h.get('ticker_yf', h['ticker']+'.AX')}")
+                   == {"Unclassified": 100.0}]
+        if unknown:
             alerts.append({
-                "level":  "danger",
-                "icon":   "🔻",
-                "title":  f"Portfolio in drawdown ({current_dd:.1f}%)",
-                "detail": f"The portfolio is currently {abs(current_dd):.1f}% below "
-                          f"its recent peak.",
+                "level": "info", "icon": "❓",
+                "title": f"{unclassified:.0f}% of portfolio unclassified",
+                "detail": f"No sector/geo data from Yahoo for: {', '.join(unknown)}.",
             })
 
-    # ── No alerts ─────────────────────────────────────────────────────────────
     if not alerts:
         alerts.append({
-            "level":  "info",
-            "icon":   "✅",
-            "title":  "Portfolio looks well-balanced",
+            "level": "info", "icon": "✅",
+            "title": "Portfolio looks well-balanced",
             "detail": "No concentration, volatility, or drawdown alerts at this time.",
         })
 

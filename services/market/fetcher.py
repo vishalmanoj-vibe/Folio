@@ -16,6 +16,74 @@ from config.settings import API_MAX_RETRIES, API_RETRY_BACKOFF_BASE, CACHE_TTL_S
 
 logger = logging.getLogger(__name__)
 
+# Add this after the existing imports in services/market/fetcher.py
+
+# Add / replace this function in services/market/fetcher.py
+# (place it after the imports and before fetch_live)
+
+_NAME_CACHE: dict = {}
+_NAME_CACHE_TTL = 86400  # 24 hours
+
+
+def get_etf_name(ticker: str) -> str:
+    """
+    Automatically fetch the clean, official name for any ETF.
+    Priority order:
+      1. funds_data (most reliable for ASX ETFs like CLNE, XMET)
+      2. ticker.info longName / shortName
+      3. Static fallback in config.constants.NAMES
+      4. Ticker itself
+    Cached 24h.
+    """
+    from config.constants import NAMES
+    import time
+
+    ticker_upper = ticker.strip().upper()
+
+    cache_key = f"name_{ticker_upper}"
+    cached = _NAME_CACHE.get(cache_key)
+    if cached and time.time() < cached[1]:
+        return cached[0]
+
+    fallback = NAMES.get(ticker_upper, ticker_upper)
+
+    try:
+        yf_ticker = f"{ticker_upper}.AX" if "." not in ticker_upper else ticker_upper
+        tk = yf.Ticker(yf_ticker)
+
+        # Best source for ASX ETFs: funds_data
+        try:
+            if hasattr(tk, 'funds_data') and tk.funds_data is not None:
+                name = tk.funds_data.name
+                if name and isinstance(name, str) and len(name) > 3:
+                    result = name.strip()
+                    _NAME_CACHE[cache_key] = (result, time.time() + _NAME_CACHE_TTL)
+                    logger.debug(f"Got name from funds_data for {ticker_upper}: {result}")
+                    return result
+        except Exception:
+            pass
+
+        # Fallback to standard .info
+        info = tk.info or {}
+        name = (
+            info.get("longName")
+            or info.get("shortName")
+            or info.get("quoteType", "").replace("ETF", "ETF").strip()
+        )
+
+        if name and isinstance(name, str) and len(name) > 3 and name != ticker_upper:
+            result = name.strip()
+        else:
+            result = fallback
+
+        _NAME_CACHE[cache_key] = (result, time.time() + _NAME_CACHE_TTL)
+        logger.debug(f"Fetched name for {ticker_upper}: {result}")
+        return result
+
+    except Exception as e:
+        logger.warning(f"Name fetch failed for {ticker_upper}: {e}. Using fallback '{fallback}'")
+        _NAME_CACHE[cache_key] = (fallback, time.time() + 3600)  # shorter retry
+        return fallback    
 
 def _download_with_retry(
     tickers: str,

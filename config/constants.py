@@ -62,6 +62,8 @@ def get_theme(theme: str) -> dict:
     }
 
 # ── ETF display names ─────────────────────────────────────────────────────────
+# Full names are now fetched automatically from yfinance for any ticker.
+# This dict is used only as a fast fallback or for very new/niche ETFs.
 NAMES = {
     "VHY":  "Vanguard High Yield ETF",
     "AINF": "Betashares Global Infra ETF",
@@ -69,6 +71,7 @@ NAMES = {
     "SEMI": "Betashares Global Semis ETF",
     "IOO":  "iShares Global 100 ETF",
     "IOZ":  "iShares Core ASX 200 ETF",
+    "XMET": "BetaShares Energy Transition Metals ETF",   # fallback
 }
 
 # ── Chart tooltip copy ────────────────────────────────────────────────────────

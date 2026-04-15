@@ -1,88 +1,127 @@
-import pandas as pd
+"""
+callbacks/transaction_callbacks.py
+====================================
+Transaction management callbacks for the Portfolio Dashboard.
+
+Handles:
+- Adding new Buy/Sell transactions
+- Input validation
+- Saving to CSV (persistence)
+- Updating the shared txn-store
+- User feedback messages
+
+This file preserves the original architecture and integrates with:
+- data/csv_handler.py (save_csv)
+- core/validators.py (validate_transaction)
+- components/layout.py (transaction form UI)
+"""
+
+from dash import Input, Output, State, callback_context
+import dash
 from datetime import datetime
-from dash import Input, Output, State
 
-from config.constants import GREEN, RED
+from core.validators import validate_transaction
 from data.csv_handler import save_csv
-from components.ui_helpers import txn_table
+from config.constants import GREEN, RED   # For success/error coloring
+
+import logging
+logger = logging.getLogger(__name__)
 
 
-def register_callbacks(app) -> None:
+def register_callbacks(app):
 
     @app.callback(
-        Output("txn-store",  "data"),
-        Output("txn-msg",    "children"),
-        Output("txn-msg",    "style"),
-        Input("txn-submit",  "n_clicks"),
-        State("txn-type",    "value"),
-        State("txn-ticker",  "value"),
-        State("txn-shares",  "value"),
-        State("txn-price",   "value"),
-        State("txn-date",    "value"),
-        State("txn-store",   "data"),
+        Output("txn-store", "data"),          # Update the shared transaction store
+        Output("txn-msg", "children"),        # User feedback message
+        Output("txn-msg", "style"),           # Color the message (green/red)
+        Input("txn-submit", "n_clicks"),
+        State("txn-type", "value"),
+        State("txn-ticker", "value"),
+        State("txn-shares", "value"),
+        State("txn-price", "value"),
+        State("txn-date", "value"),
+        State("txn-store", "data"),           # Current transactions in memory
         prevent_initial_call=True,
     )
-    def add_transaction(_, txn_type, ticker, shares, price, date, history):
-        base = {"fontSize": "12px", "marginTop": "8px", "minHeight": "18px"}
+    def add_transaction(n_clicks, txn_type, ticker, shares, price, date_str, current_history):
+        """
+        Main callback to add a new transaction.
+        
+        Triggered when user clicks "Add transaction".
+        Validates → Saves to CSV → Updates store → Shows feedback.
+        """
+        if n_clicks is None or n_clicks == 0:
+            return dash.no_update, "", {}
 
-        # ── Basic validation ──────────────────────────────────────────────────
-        if not ticker or shares is None or price is None:
-            return history, "Please fill in ticker, shares and price.", {**base, "color": RED}
-
-        ticker = ticker.strip().upper()
-        try:
-            shares = float(shares)
-            price  = float(price)
-        except (TypeError, ValueError):
-            return history, "Shares and price must be numbers.", {**base, "color": RED}
-
-        if shares <= 0 or price <= 0:
-            return history, "Shares and price must be positive.", {**base, "color": RED}
-
-        try:
-            datetime.strptime(date.strip(), "%Y-%m-%d")
-        except (ValueError, AttributeError):
-            return history, "Date must be YYYY-MM-DD (e.g. 2026-03-30).", {**base, "color": RED}
-
-        # ── Sell validation ───────────────────────────────────────────────────
-        if txn_type == "sell":
-            df = pd.DataFrame(history)
-            if df.empty or ticker not in df["ticker"].values:
-                return history, f"No holdings found for {ticker}.", {**base, "color": RED}
-            grp  = df[df["ticker"] == ticker]
-            held = (
-                grp[grp["type"] == "buy"]["shares"].sum()
-                - grp[grp["type"] == "sell"]["shares"].sum()
-                if "sell" in grp["type"].values
-                else grp[grp["type"] == "buy"]["shares"].sum()
+        # Basic required field check
+        if not all([txn_type, ticker, shares, price, date_str]):
+            return (
+                dash.no_update,
+                "❌ Please fill in all fields (Type, Ticker, Shares, Price, Date)",
+                {"color": RED, "fontSize": "13px"},
             )
-            if shares > held:
-                return history, f"Cannot sell {shares} — only holding {held}.", {**base, "color": RED}
 
-        # ── Commit ────────────────────────────────────────────────────────────
+        # Clean and prepare transaction dict
         new_txn = {
-            "type":   txn_type,
-            "ticker": ticker,
-            "shares": shares,
-            "price":  price,
-            "date":   date.strip(),
+            "type": str(txn_type).strip().lower(),
+            "ticker": str(ticker).strip().upper(),
+            "shares": float(shares),
+            "price": float(price),
+            "date": str(date_str).strip(),
         }
-        updated = history + [new_txn]
 
+        # Validate transaction using shared validator
+        is_valid, error_msg = validate_transaction(new_txn)
+        if not is_valid:
+            logger.warning(f"Invalid transaction attempt: {error_msg}")
+            return (
+                dash.no_update,
+                f"❌ Validation error: {error_msg}",
+                {"color": RED, "fontSize": "13px"},
+            )
+
+        # Add creation timestamp for better tracking (optional but useful)
+        new_txn["created_at"] = datetime.now().isoformat()
+
+        # Append to current history
+        updated_history = (current_history or []) + [new_txn]
+
+        # Persist to CSV (this is the key for refresh persistence)
         try:
-            save_csv(updated)
-            msg = f"{txn_type.capitalize()} {shares} {ticker} @ ${price:.4f} saved to CSV."
+            save_csv(updated_history)
+            logger.info(f"Transaction saved successfully: {new_txn['type']} {new_txn['shares']} {new_txn['ticker']} @ ${new_txn['price']}")
+            
+            success_msg = (
+                f"✅ Added {new_txn['type'].upper()} "
+                f"{new_txn['shares']:.2f} shares of {new_txn['ticker']} "
+                f"at ${new_txn['price']:.4f} on {new_txn['date']}"
+            )
+            
+            return (
+                updated_history,                    # Update the store
+                success_msg,
+                {"color": GREEN, "fontSize": "13px", "marginTop": "8px"},
+            )
+
         except Exception as e:
-            msg = f"Added to dashboard but CSV save failed: {e}"
+            logger.error(f"Failed to save transaction to CSV: {e}")
+            return (
+                dash.no_update,
+                f"❌ Failed to save transaction: {str(e)}",
+                {"color": RED, "fontSize": "13px"},
+            )
 
-        color = GREEN if txn_type == "buy" else RED
-        return updated, msg, {**base, "color": color}
 
-    # ── Transaction log display ───────────────────────────────────────────────
-
+    # Optional: Clear message after a few seconds (nice UX)
     @app.callback(
-        Output("txn-log", "children"),
-        Input("txn-store", "data"),
+        Output("txn-msg", "children"),
+        Input("live-interval", "n_intervals"),
+        State("txn-msg", "children"),
+        prevent_initial_call=True,
     )
-    def update_txn_log(history):
-        return txn_table(history)
+    def clear_transaction_message(n_intervals, current_msg):
+        """Auto-clear success/error message after ~60 seconds (one interval)."""
+        if current_msg and ("✅" in current_msg or "❌" in current_msg):
+            # Only clear success/error messages, keep empty string
+            return ""
+        return dash.no_update

@@ -77,6 +77,25 @@ def load_csv() -> list[dict]:
     return records
 
 
+def get_unique_tickers() -> list[str]:
+    """
+    Return unique ticker symbols found in the portfolio CSV.
+    """
+    try:
+        df = pd.read_csv(CSV_PATH)
+    except FileNotFoundError:
+        return []
+    except Exception:
+        return []
+
+    df.columns = [c.strip().lower() for c in df.columns]
+    if "ticker" not in df.columns:
+        return []
+
+    tickers = df["ticker"].astype(str).str.strip().str.upper()
+    return sorted(tickers.dropna().unique().tolist())
+
+
 def save_csv(history: list[dict]) -> None:
     """
     Write the full transaction list back to CSV with automatic backup.
