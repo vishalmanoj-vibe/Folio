@@ -20,3 +20,7 @@ env/
 
 # Logs
 *.log
+
+#Gemini Agents
+.agent/
+GEMINI.md
