@@ -34,10 +34,19 @@ body {
   background-color: var(--bg) !important;
   color: var(--t-pri) !important;
 }
-input, select, button {
+input, select, button, .dash-input {
   background: var(--surface) !important;
   color: var(--t-pri) !important;
   border: 1px solid var(--border) !important;
+  outline: none !important;
+  box-shadow: none !important;
+  border-radius: 6px;
+}
+input:focus, select:focus, button:focus,
+.dash-input:focus, input:focus-visible, .dash-input:focus-visible {
+  outline: none !important;
+  box-shadow: none !important;
+  border-color: var(--t-sec) !important;
 }
 input::placeholder { color: var(--t-sec) !important; }
 .Select-control, .Select {
@@ -118,10 +127,6 @@ def create_layout(initial_history: list[dict] | None = None) -> html.Div:
                             style={"margin": "3px 0 0", "fontSize": "12px",
                                    "color": "var(--t-sec)"},
                         ),
-                        html.Button(
-                            "☀ / ☾", id="theme-toggle", n_clicks=0,
-                            style={"fontSize": "12px", "padding": "4px 10px"},
-                        ),
                     ]),
                     html.Div(
                         [
@@ -129,6 +134,26 @@ def create_layout(initial_history: list[dict] | None = None) -> html.Div:
                             html.Span(id="last-updated",
                                       style={"fontSize": "12px",
                                              "color": "var(--t-sec)"}),
+                            html.Div(
+                                [
+                                    html.Button(
+                                        "☀ / ☾", id="theme-toggle", n_clicks=0,
+                                        style={"fontSize": "12px", "padding": "4px 10px"},
+                                    ),
+                                    html.Button(
+                                        "Refresh now", id="refresh-btn", n_clicks=0,
+                                        style={"fontWeight": "500", "fontSize": "12px",
+                                               "padding": "4px 10px"},
+                                    ),
+                                    html.Button(
+                                        "⬇ PDF", id="pdf-btn", n_clicks=0,
+                                        style={"fontWeight": "500", "fontSize": "12px",
+                                               "padding": "4px 10px"},
+                                    ),
+                                ],
+                                style={"display": "flex", "gap": "8px",
+                                       "marginTop": "6px"},
+                            ),
                         ],
                         style={"display": "flex", "flexDirection": "column",
                                "alignItems": "flex-end", "gap": "6px"},
@@ -138,60 +163,6 @@ def create_layout(initial_history: list[dict] | None = None) -> html.Div:
                     "display": "flex", "justifyContent": "space-between",
                     "alignItems": "flex-start", "padding": "18px 24px 12px",
                     "borderBottom": "0.5px solid var(--border)",
-                },
-            ),
-
-            # ── Controls bar ─────────────────────────────────────────────────
-            html.Div(
-                [
-                    html.Div([
-                        html.P("Chart period",
-                               style={"fontSize": "12px", "color": "var(--t-sec)",
-                                      "margin": "0 0 4px"}),
-                        dcc.Dropdown(
-                            id="period-picker",
-                            options=[
-                                {"label": "Since purchase", "value": "max"},
-                                {"label": "1 month",        "value": "1mo"},
-                                {"label": "3 months",       "value": "3mo"},
-                                {"label": "6 months",       "value": "6mo"},
-                                {"label": "1 year",         "value": "1y"},
-                                {"label": "2 years",        "value": "2y"},
-                            ],
-                            value="3mo", clearable=False,
-                            persistence=True, persistence_type="session",
-                            style={"width": "155px", "fontSize": "13px"},
-                        ),
-                    ]),
-                    html.Div([
-                        html.P("P&L view",
-                               style={"fontSize": "12px", "color": "var(--t-sec)",
-                                      "margin": "0 0 4px"}),
-                        dcc.Dropdown(
-                            id="pnl-mode",
-                            options=[
-                                {"label": "Dollar ($)",     "value": "dollar"},
-                                {"label": "Percentage (%)", "value": "pct"},
-                            ],
-                            value="dollar", clearable=False,
-                            persistence=True, persistence_type="session",
-                            style={"width": "155px", "fontSize": "13px"},
-                        ),
-                    ]),
-                    html.Button(
-                        "Refresh now", id="refresh-btn", n_clicks=0,
-                        style={"fontWeight": "500", "alignSelf": "flex-end"},
-                    ),
-                    html.Button(
-                        "⬇ Download PDF", id="pdf-btn", n_clicks=0,
-                        style={"fontWeight": "500", "alignSelf": "flex-end"},
-                    ),
-                ],
-                style={
-                    "display": "flex", "gap": "16px", "alignItems": "flex-end",
-                    "padding": "14px 24px",
-                    "borderBottom": "0.5px solid var(--border)",
-                    "flexWrap": "wrap",
                 },
             ),
 
@@ -209,112 +180,103 @@ def create_layout(initial_history: list[dict] | None = None) -> html.Div:
             html.Div(id="alerts-banner"),
 
             # ── Transaction panel ─────────────────────────────────────────────
-            html.Div(
-                [
-                    html.P("Add transaction",
-                           style={"fontSize": "13px", "fontWeight": "500",
-                                  "margin": "0 0 4px", "color": "var(--t-pri)"}),
-                    html.P(
-                        f"Saved to: {CSV_PATH}",
-                        style={"fontSize": "11px", "color": "var(--t-sec)",
-                               "margin": "0 0 12px", "fontFamily": "monospace"},
-                    ),
-                    html.Div(
-                        [
-                            html.Div([
-                                html.P("Type", style={"fontSize": "11px",
-                                                       "color": "var(--t-sec)",
-                                                       "margin": "0 0 4px"}),
-                                dcc.Dropdown(
-                                    id="txn-type",
-                                    options=[{"label": "Buy",  "value": "buy"},
-                                             {"label": "Sell", "value": "sell"}],
-                                    value="buy", clearable=False,
-                                    style={"width": "100px", "fontSize": "13px"},
-                                ),
-                            ]),
-                            html.Div([
-                                html.P("Ticker", style={"fontSize": "11px",
-                                                         "color": "var(--t-sec)",
-                                                         "margin": "0 0 4px"}),
-                                dcc.Input(
-                                    id="txn-ticker", type="text",
-                                    placeholder="e.g. VHY",
-                                    style={"width": "90px", "fontSize": "13px",
-                                           "padding": "6px 8px",
-                                           "border": "0.5px solid var(--border)",
-                                           "borderRadius": "6px"},
-                                ),
-                            ]),
-                            html.Div([
-                                html.P("Shares", style={"fontSize": "11px",
-                                                         "color": "var(--t-sec)",
-                                                         "margin": "0 0 4px"}),
-                                dcc.Input(
-                                    id="txn-shares", type="number", placeholder="0",
-                                    style={"width": "90px", "fontSize": "13px",
-                                           "padding": "6px 8px",
-                                           "border": "0.5px solid var(--border)",
-                                           "borderRadius": "6px"},
-                                ),
-                            ]),
-                            html.Div([
-                                html.P("Price ($)", style={"fontSize": "11px",
-                                                            "color": "var(--t-sec)",
-                                                            "margin": "0 0 4px"}),
-                                dcc.Input(
-                                    id="txn-price", type="number", placeholder="0.00",
-                                    style={"width": "100px", "fontSize": "13px",
-                                           "padding": "6px 8px",
-                                           "border": "0.5px solid var(--border)",
-                                           "borderRadius": "6px"},
-                                ),
-                            ]),
-                            html.Div([
-                                html.P("Date (YYYY-MM-DD)",
-                                       style={"fontSize": "11px",
-                                              "color": "var(--t-sec)",
-                                              "margin": "0 0 4px"}),
-                                dcc.Input(
-                                    id="txn-date", type="text",
-                                    value=datetime.now().strftime("%Y-%m-%d"),
-                                    style={"width": "130px", "fontSize": "13px",
-                                           "padding": "6px 8px",
-                                           "border": "0.5px solid var(--border)",
-                                           "borderRadius": "6px"},
-                                ),
-                            ]),
-                            html.Div([
-                                html.P("\u00a0", style={"fontSize": "11px",
-                                                         "margin": "0 0 4px"}),
-                                html.Button(
-                                    "Add transaction", id="txn-submit", n_clicks=0,
-                                    style={"fontWeight": "500", "fontSize": "13px",
-                                           "padding": "7px 16px"},
-                                ),
-                            ]),
-                        ],
-                        style={"display": "flex", "gap": "12px",
-                               "flexWrap": "wrap", "alignItems": "flex-end"},
-                    ),
-                    html.P(id="txn-msg",
-                           style={"fontSize": "12px", "marginTop": "8px",
-                                  "minHeight": "18px", "color": GREEN}),
-                    html.Details([
-                        html.Summary("Transaction history",
-                                     style={"fontSize": "12px",
-                                            "color": "var(--t-sec)",
-                                            "cursor": "pointer",
-                                            "marginTop": "8px"}),
-                        html.Div(id="txn-log",
-                                 style={"marginTop": "10px", "overflowX": "auto"}),
-                    ]),
-                ],
-                style={
-                    "padding":      "16px 24px",
-                    "background":   "var(--surface)",
-                    "borderBottom": "0.5px solid var(--border)",
-                },
+            section(
+                chart_title("Add transaction"),
+                html.Div(
+                    [
+                        html.P(
+                            f"Saved to: {CSV_PATH}",
+                            style={"fontSize": "11px", "color": "var(--t-sec)",
+                                   "margin": "0 0 12px", "fontFamily": "monospace"},
+                        ),
+                        html.Div(
+                            [
+                                html.Div([
+                                    html.P("Type", style={"fontSize": "11px",
+                                                           "color": "var(--t-sec)",
+                                                           "margin": "0 0 4px"}),
+                                    dcc.Dropdown(
+                                        id="txn-type",
+                                        options=[{"label": "Buy",  "value": "buy"},
+                                                 {"label": "Sell", "value": "sell"}],
+                                        value="buy", clearable=False,
+                                        style={"width": "100px", "fontSize": "13px"},
+                                    ),
+                                ]),
+                                html.Div([
+                                    html.P("Ticker", style={"fontSize": "11px",
+                                                             "color": "var(--t-sec)",
+                                                             "margin": "0 0 4px"}),
+                                    dcc.Input(
+                                        id="txn-ticker", type="text",
+                                        placeholder="e.g. VHY",
+                                        style={"width": "90px", "fontSize": "13px",
+                                               "padding": "6px 8px",
+                                               "borderRadius": "6px"},
+                                    ),
+                                ]),
+                                html.Div([
+                                    html.P("Shares", style={"fontSize": "11px",
+                                                             "color": "var(--t-sec)",
+                                                             "margin": "0 0 4px"}),
+                                    dcc.Input(
+                                        id="txn-shares", type="number", placeholder="0",
+                                        style={"width": "90px", "fontSize": "13px",
+                                               "padding": "6px 8px",
+                                               "borderRadius": "6px"},
+                                    ),
+                                ]),
+                                html.Div([
+                                    html.P("Price ($)", style={"fontSize": "11px",
+                                                                "color": "var(--t-sec)",
+                                                                "margin": "0 0 4px"}),
+                                    dcc.Input(
+                                        id="txn-price", type="number", placeholder="0.00",
+                                        style={"width": "100px", "fontSize": "13px",
+                                               "padding": "6px 8px",
+                                               "borderRadius": "6px"},
+                                    ),
+                                ]),
+                                html.Div([
+                                    html.P("Date (YYYY-MM-DD)",
+                                           style={"fontSize": "11px",
+                                                  "color": "var(--t-sec)",
+                                                  "margin": "0 0 4px"}),
+                                    dcc.Input(
+                                        id="txn-date", type="text",
+                                        value=datetime.now().strftime("%Y-%m-%d"),
+                                        style={"width": "130px", "fontSize": "13px",
+                                               "padding": "6px 8px",
+                                               "borderRadius": "6px"},
+                                    ),
+                                ]),
+                                html.Div([
+                                    html.P("\u00a0", style={"fontSize": "11px",
+                                                             "margin": "0 0 4px"}),
+                                    html.Button(
+                                        "Add transaction", id="txn-submit", n_clicks=0,
+                                        style={"fontWeight": "500", "fontSize": "13px",
+                                               "padding": "7px 16px"},
+                                    ),
+                                ]),
+                            ],
+                            style={"display": "flex", "gap": "12px",
+                                   "flexWrap": "wrap", "alignItems": "flex-end"},
+                        ),
+                        html.P(id="txn-msg",
+                               style={"fontSize": "12px", "marginTop": "8px",
+                                      "minHeight": "18px", "color": GREEN}),
+                        html.Details([
+                            html.Summary("Transaction history",
+                                         style={"fontSize": "12px",
+                                                "color": "var(--t-sec)",
+                                                "cursor": "pointer",
+                                                "marginTop": "8px"}),
+                            html.Div(id="txn-log",
+                                     style={"marginTop": "10px", "overflowX": "auto"}),
+                        ]),
+                    ]
+                )
             ),
 
             # ── Live positions table ──────────────────────────────────────────
@@ -322,8 +284,52 @@ def create_layout(initial_history: list[dict] | None = None) -> html.Div:
 
             # ── P&L history chart ─────────────────────────────────────────────
             section(
-                chart_title("P&L from purchase date", "pnl-history"),
+                chart_title("P&L", "pnl-history"),
                 html.Div([
+                    # Filters bar
+                    html.Div(
+                        [
+                            html.Div([
+                                html.P("Chart period",
+                                       style={"fontSize": "12px", "color": "var(--t-sec)",
+                                              "margin": "0 0 4px"}),
+                                dcc.Dropdown(
+                                    id="period-picker",
+                                    options=[
+                                        {"label": "Since purchase", "value": "max"},
+                                        {"label": "1 month",        "value": "1mo"},
+                                        {"label": "3 months",       "value": "3mo"},
+                                        {"label": "6 months",       "value": "6mo"},
+                                        {"label": "1 year",         "value": "1y"},
+                                        {"label": "2 years",        "value": "2y"},
+                                    ],
+                                    value="max", clearable=False,
+                                    persistence=True, persistence_type="session",
+                                    style={"width": "155px", "fontSize": "13px"},
+                                ),
+                            ]),
+                            html.Div([
+                                html.P("P&L view",
+                                       style={"fontSize": "12px", "color": "var(--t-sec)",
+                                              "margin": "0 0 4px"}),
+                                dcc.Dropdown(
+                                    id="pnl-mode",
+                                    options=[
+                                        {"label": "Dollar ($)",     "value": "dollar"},
+                                        {"label": "Percentage (%)", "value": "pct"},
+                                    ],
+                                    value="dollar", clearable=False,
+                                    persistence=True, persistence_type="session",
+                                    style={"width": "155px", "fontSize": "13px"},
+                                ),
+                            ]),
+                        ],
+                        style={
+                            "display": "flex", "gap": "16px", "alignItems": "flex-end",
+                            "marginBottom": "16px", "flexWrap": "wrap",
+                        },
+                    ),
+                    # Ticker view toggles
                     html.Div(
                         [
                             html.P("View:", style={"fontSize": "12px",

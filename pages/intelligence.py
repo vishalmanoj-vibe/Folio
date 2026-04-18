@@ -35,112 +35,9 @@ from dash import dcc, html, register_page
 from config.constants import (
     COLORS, BORDER, GREEN, RED, T_PRI, T_SEC
 )
+from components.ui_helpers import section, chart_title
 
 register_page(__name__, path="/intelligence", title="Portfolio Intelligence")
-
-# ─────────────────────────────────────────────────────────────────────────────
-# Style constants — all use CSS vars for theme compatibility
-# ─────────────────────────────────────────────────────────────────────────────
-
-# Every page section: equal padding + bottom border (matches portfolio page)
-_SEC = {
-    "padding":      "20px 24px",
-    "borderBottom": "0.5px solid var(--border)",
-}
-
-# Stat card
-_CARD = {
-    "background":   "var(--surface)",
-    "borderRadius": "10px",
-    "padding":      "16px 20px",
-    "flex":         "1",
-    "minWidth":     "150px",
-}
-
-# Alert level styling
-_LEVEL_COLOR = {"danger": "#E24B4A", "warning": "#EF9F27", "info":  "#378ADD"}
-_LEVEL_BG    = {
-    "danger":  "rgba(226,75,74,0.08)",
-    "warning": "rgba(239,159,39,0.08)",
-    "info":    "rgba(55,138,221,0.08)",
-}
-
-# ─────────────────────────────────────────────────────────────────────────────
-# Reusable UI helpers
-# ─────────────────────────────────────────────────────────────────────────────
-
-def _metric_card(label: str, value: str, sub: str | None = None,
-                 color: str = "var(--t-pri)") -> html.Div:
-    return html.Div([
-        html.P(label, style={"fontSize": "11px", "color": "var(--t-sec)",
-                              "margin": "0 0 4px"}),
-        html.P(value, style={"fontSize": "22px", "fontWeight": "600",
-                              "margin": "0", "color": color,
-                              "letterSpacing": "-0.02em"}),
-        html.P(sub, style={"fontSize": "11px", "color": "var(--t-sec)",
-                            "margin": "3px 0 0"}) if sub else None,
-    ], style=_CARD)
-
-
-def _section_title(text: str, tooltip: str = "") -> html.Div:
-    children = [
-        html.Span(text, style={"fontSize": "13px", "fontWeight": "500",
-                                "color": "var(--t-pri)"}),
-    ]
-    if tooltip:
-        children.append(html.Span(
-            "i", title=tooltip,
-            style={
-                "display":        "inline-flex",
-                "alignItems":     "center",
-                "justifyContent": "center",
-                "width":          "16px",
-                "height":         "16px",
-                "borderRadius":   "50%",
-                "background":     "var(--surface)",
-                "border":         "1px solid var(--border)",
-                "fontSize":       "10px",
-                "color":          "var(--t-sec)",
-                "cursor":         "help",
-                "marginLeft":     "6px",
-            },
-        ))
-    return html.Div(
-        children,
-        style={"display": "inline-flex", "alignItems": "center",
-               "marginBottom": "12px"},
-    )
-
-
-def _alert_card(alert: dict) -> html.Div:
-    level = alert.get("level", "info")
-    color = _LEVEL_COLOR.get(level, COLORS[0])
-    bg    = _LEVEL_BG.get(level, "rgba(55,138,221,0.08)")
-    return html.Div(
-        html.Div([
-            html.Span(
-                alert.get("icon", "ℹ"),
-                style={"fontSize": "18px", "marginRight": "10px",
-                       "lineHeight": "1", "flexShrink": "0"},
-            ),
-            html.Div([
-                html.Span(
-                    alert.get("title", ""),
-                    style={"fontSize": "13px", "fontWeight": "500", "color": color},
-                ),
-                html.Span(
-                    "  —  " + alert.get("detail", ""),
-                    style={"fontSize": "12px", "color": "var(--t-sec)"},
-                ),
-            ]),
-        ], style={"display": "flex", "alignItems": "flex-start"}),
-        style={
-            "background":   bg,
-            "border":       f"0.5px solid {color}",
-            "borderRadius": "8px",
-            "padding":      "12px 16px",
-        },
-    )
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -194,55 +91,46 @@ def layout() -> html.Div:
             ),
 
             # ── A. Risk scorecard ─────────────────────────────────────────────
-            html.Div(
-                [
-                    _section_title(
-                        "Risk metrics",
-                        "Computed from the price history window loaded on the "
-                        "main dashboard. Widen the period to extend the window.",
-                    ),
-                    html.Div(
-                        id="intel-risk-cards",
-                        style={"display": "flex", "gap": "10px",
-                               "flexWrap": "wrap"},
-                    ),
-                ],
-                style=_SEC,
+            section(
+                chart_title(
+                    "Risk metrics",
+                    "Computed from the price history window loaded on the "
+                    "main dashboard. Widen the period to extend the window.",
+                ),
+                html.Div(
+                    id="intel-risk-cards",
+                    style={"display": "flex", "gap": "10px",
+                           "flexWrap": "wrap"},
+                ),
             ),
 
             # ── B. Equity curve ───────────────────────────────────────────────
-            html.Div(
-                [
-                    _section_title(
-                        "Cumulative return",
-                        "Value-weighted portfolio return compounded daily. "
-                        "Starts at 0% on the first date all ETFs have overlapping data.",
-                    ),
-                    dcc.Loading(
-                        dcc.Graph(id="intel-equity-chart",
-                                  config={"displayModeBar": False}),
-                        type="circle", color=COLORS[0],
-                    ),
-                ],
-                style=_SEC,
+            section(
+                chart_title(
+                    "Cumulative return",
+                    "Value-weighted portfolio return compounded daily. "
+                    "Starts at 0% on the first date all ETFs have overlapping data.",
+                ),
+                dcc.Loading(
+                    dcc.Graph(id="intel-equity-chart",
+                              config={"displayModeBar": False}),
+                    type="circle", color=COLORS[0],
+                ),
             ),
 
             # ── C. Drawdown curve ─────────────────────────────────────────────
-            html.Div(
-                [
-                    _section_title(
-                        "Drawdown",
-                        "Rolling % decline from the portfolio's rolling peak. "
-                        "The worst point is annotated. Current drawdown is in "
-                        "the Risk metrics scorecard above.",
-                    ),
-                    dcc.Loading(
-                        dcc.Graph(id="intel-drawdown-chart",
-                                  config={"displayModeBar": False}),
-                        type="circle", color=RED,
-                    ),
-                ],
-                style=_SEC,
+            section(
+                chart_title(
+                    "Drawdown",
+                    "Rolling % decline from the portfolio's rolling peak. "
+                    "The worst point is annotated. Current drawdown is in "
+                    "the Risk metrics scorecard above.",
+                ),
+                dcc.Loading(
+                    dcc.Graph(id="intel-drawdown-chart",
+                              config={"displayModeBar": False}),
+                    type="circle", color=RED,
+                ),
             ),
 
             # ── D · E · F  three-column bar charts ───────────────────────────
@@ -251,7 +139,7 @@ def layout() -> html.Div:
                     # D — Volatility per ETF
                     html.Div(
                         [
-                            _section_title(
+                            chart_title(
                                 "Volatility by ETF",
                                 "Annualised std of daily returns per ETF over "
                                 "the loaded history window. "
@@ -270,7 +158,7 @@ def layout() -> html.Div:
                     # E — Sector exposure
                     html.Div(
                         [
-                            _section_title(
+                            chart_title(
                                 "Sector exposure",
                                 "Portfolio-weighted sector blend fetched live "
                                 "from Yahoo Finance funds_data. Cached 24 h. "
@@ -288,7 +176,7 @@ def layout() -> html.Div:
                     # F — Geographic exposure
                     html.Div(
                         [
-                            _section_title(
+                            chart_title(
                                 "Geographic exposure",
                                 "Region inferred from each top-holding's "
                                 "exchange suffix (e.g. .HK → Hong Kong, "
@@ -307,14 +195,15 @@ def layout() -> html.Div:
                     "display":  "flex",
                     "gap":      "14px",
                     "flexWrap": "wrap",
-                    **_SEC,           # same padding + border as all other sections
+                    "padding": "20px 24px",
+                    "borderBottom": "0.5px solid var(--border)",
                 },
             ),
 
             # ── G. Smart alerts ───────────────────────────────────────────────
             html.Div(
                 [
-                    _section_title(
+                    chart_title(
                         "Smart alerts",
                         "Rule-based insights from holdings, allocation weights, "
                         "and risk metrics.",
@@ -325,7 +214,7 @@ def layout() -> html.Div:
                                "gap": "8px"},
                     ),
                 ],
-                style={**_SEC, "borderBottom": "none"},
+                style={"padding": "20px 24px"},
             ),
         ],
         style={

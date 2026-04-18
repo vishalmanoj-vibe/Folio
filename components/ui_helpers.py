@@ -8,7 +8,15 @@ Refined UI helpers. Keeps the original clean aesthetic you prefer, with small po
 """
 
 from dash import html
-from config.constants import GREEN, RED, CHART_INFO
+from config.constants import GREEN, RED, COLORS, CHART_INFO
+
+# Alert level styling
+_LEVEL_COLOR = {"danger": "#E24B4A", "warning": "#EF9F27", "info":  "#378ADD"}
+_LEVEL_BG    = {
+    "danger":  "rgba(226,75,74,0.08)",
+    "warning": "rgba(239,159,39,0.08)",
+    "info":    "rgba(55,138,221,0.08)",
+}
 
 
 def stat_card(
@@ -62,7 +70,10 @@ def stat_card(
 
 def chart_title(label: str, info_key: str = "") -> html.Div:
     """Clean chart title with improved info icon"""
-    tip = CHART_INFO.get(info_key, ("", ""))[1] if info_key else ""
+    if info_key and info_key in CHART_INFO:
+        tip = CHART_INFO[info_key][1]
+    else:
+        tip = info_key
     
     children = [
         html.Span(
@@ -106,6 +117,37 @@ def section(title_node: html.Div, children) -> html.Div:
         style={
             "padding": "20px 24px",
             "borderBottom": "0.5px solid var(--border)"
+        },
+    )
+
+
+def alert_card(alert: dict) -> html.Div:
+    level = alert.get("level", "info")
+    color = _LEVEL_COLOR.get(level, COLORS[0])
+    bg    = _LEVEL_BG.get(level, "rgba(55,138,221,0.08)")
+    return html.Div(
+        html.Div([
+            html.Span(
+                alert.get("icon", "ℹ"),
+                style={"fontSize": "18px", "marginRight": "10px",
+                       "lineHeight": "1", "flexShrink": "0"},
+            ),
+            html.Div([
+                html.Span(
+                    alert.get("title", ""),
+                    style={"fontSize": "13px", "fontWeight": "500", "color": color},
+                ),
+                html.Span(
+                    "  —  " + alert.get("detail", ""),
+                    style={"fontSize": "12px", "color": "var(--t-sec)"},
+                ),
+            ]),
+        ], style={"display": "flex", "alignItems": "flex-start"}),
+        style={
+            "background":   bg,
+            "border":       f"0.5px solid {color}",
+            "borderRadius": "8px",
+            "padding":      "12px 16px",
         },
     )
 

@@ -38,10 +38,24 @@ body {
 /* ── Form elements inherit theme ── */
 input,
 select,
-button {
+button,
+.dash-input {
   background: var(--surface) !important;
   color: var(--t-pri) !important;
   border: 1px solid var(--border) !important;
+  outline: none !important;
+  box-shadow: none !important;
+  border-radius: 6px;
+}
+input:focus,
+select:focus,
+button:focus,
+.dash-input:focus,
+input:focus-visible,
+.dash-input:focus-visible {
+  outline: none !important;
+  box-shadow: none !important;
+  border-color: var(--t-sec) !important;
 }
 input::placeholder {
   color: var(--t-sec) !important;

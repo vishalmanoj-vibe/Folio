@@ -33,16 +33,16 @@ def register_callbacks(app) -> None:
         Input("portfolio-store",       "data"),
     )
     def update_intelligence(port_data):
-        from pages.intelligence import _metric_card, _alert_card
+        from components.ui_helpers import stat_card, alert_card
 
         # ── Empty / loading state ─────────────────────────────────────────────
         empty_bar = create_empty_fig(height=_BAR_MIN_H, bar=True)
         no_data = (
-            [_metric_card("—", "—")],
+            [stat_card("—", "—")],
             create_empty_fig(height=300),
             create_empty_fig(height=260),
             empty_bar, empty_bar, empty_bar,
-            [_alert_card({
+            [alert_card({
                 "level": "info", "icon": "⏳",
                 "title": "Waiting for data",
                 "detail": "Portfolio data is loading — please wait.",
@@ -84,22 +84,22 @@ def register_callbacks(app) -> None:
                   else COLORS[2] if not _nan(cur_dd) and cur_dd < -5 else GREEN)
 
         risk_cards = [
-            _metric_card(
+            stat_card(
                 "Annualised volatility",
                 f"{vol:.1f}%" if not _nan(vol) else "N/A",
                 f"over {n_days} trading days", vol_c,
             ),
-            _metric_card(
+            stat_card(
                 "Sharpe ratio",
                 f"{sharpe:.2f}" if not _nan(sharpe) else "N/A",
                 f"Rf = 4.35 %  ·  {n_days} d window", shr_c,
             ),
-            _metric_card(
+            stat_card(
                 "Max drawdown",
                 f"{max_dd:.1f}%" if not _nan(max_dd) else "N/A",
                 "peak-to-trough", dd_c,
             ),
-            _metric_card(
+            stat_card(
                 "Current drawdown",
                 f"{cur_dd:.1f}%" if not _nan(cur_dd) else "N/A",
                 "from recent high", cdd_c,
@@ -130,7 +130,7 @@ def register_callbacks(app) -> None:
         geo_fig = build_intel_geo_chart(geo_data)
 
         # ── G. Smart alerts ───────────────────────────────────────────────────
-        alert_cards = [_alert_card(a)
+        alert_cards = [alert_card(a)
                        for a in compute_smart_alerts(metrics, port_data)]
 
         return (

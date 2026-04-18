@@ -6,13 +6,15 @@ Builds a heatmap showing the price return correlation between holdings.
 
 import pandas as pd
 import plotly.graph_objects as go
+from components.charts.helpers import _period_cutoff
 
-def build_corr_figure(histories: dict, theme_tokens: dict) -> go.Figure:
+def build_corr_figure(histories: dict, period: str, theme_tokens: dict) -> go.Figure:
     """
     Build a Plotly heatmap of daily return correlations.
 
     Args:
         histories: Dictionary mapping tickers to their historical price DataFrames.
+        period: Time period string (e.g., "1mo", "max").
         theme_tokens: Dictionary of UI theme colors and base layouts.
 
     Returns:
@@ -24,6 +26,8 @@ def build_corr_figure(histories: dict, theme_tokens: dict) -> go.Figure:
     fig = go.Figure()
     fig.update_layout(**PLOTLY_BASE)
     
+    cutoff = _period_cutoff(period)
+    
     if not histories or len(histories) < 2:
         fig.add_annotation(text="Need 2+ holdings with history",
                            showarrow=False, font=dict(color=T_SEC, size=13))
@@ -31,7 +35,15 @@ def build_corr_figure(histories: dict, theme_tokens: dict) -> go.Figure:
         
     dfs = {}
     for t, r in histories.items():
-        s = pd.DataFrame(r).set_index("Date")["Close"].pct_change().dropna()
+        df = pd.DataFrame(r)
+        if "Date" in df.columns:
+            df["Date"] = pd.to_datetime(df["Date"])
+            df = df.set_index("Date").sort_index()
+            
+        if cutoff is not None:
+            df = df[df.index >= cutoff]
+            
+        s = df["Close"].pct_change().dropna()
         if len(s) >= 10:
             dfs[t] = s
             

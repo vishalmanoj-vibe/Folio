@@ -86,7 +86,17 @@ def build_pnl_history_figure(
         all_cost = pd.concat(cost_all, axis=1).sort_index().ffill().fillna(0)
         cpnl     = all_pnl.sum(axis=1)
         ccost    = all_cost.sum(axis=1)
-        y        = (cpnl / ccost * 100).round(2) if mode == "pct" else cpnl.round(2)
+
+        if mode == "pct":
+            # For pct mode we show % return from the start of the selected window.
+            # When a cutoff is active, cpnl at the cutoff date is already some
+            # non-zero $ value (since the underlying buy dates precede the cutoff).
+            # Re-zero it so the portfolio line and benchmark both start at 0%.
+            pnl_at_start = float(cpnl.iloc[0]) if len(cpnl) else 0.0
+            y = ((cpnl - pnl_at_start) / ccost * 100).round(2)
+        else:
+            y = cpnl.round(2)
+        fig.update_xaxes(range=[cpnl.index.min(), cpnl.index.max()])
         lv       = float(y.iloc[-1]) if len(y) else 0
 
         fig.add_trace(go.Scatter(
@@ -161,7 +171,11 @@ def build_pnl_history_figure(
             pnl_all.append(pnl_s)
             cost_all.append(cost_s)
 
-            tr_y = (pnl_s / cost_s * 100).round(2) if mode == "pct" else pnl_s.round(2)
+            if mode == "pct":
+                pnl_at_start = float(pnl_s.iloc[0]) if len(pnl_s) else 0.0
+                tr_y = ((pnl_s - pnl_at_start) / cost_s * 100).round(2)
+            else:
+                tr_y = pnl_s.round(2)
             fig.add_trace(go.Scatter(
                 x=pnl_s.index, y=tr_y,
                 name=f"{tr['buy_date']} ({tr['shares']:g} sh)",
@@ -200,7 +214,13 @@ def build_pnl_history_figure(
             all_cost = pd.concat(cost_all, axis=1).sort_index().ffill().fillna(0)
             cpnl     = all_pnl.sum(axis=1)
             ccost    = all_cost.sum(axis=1)
-            y        = (cpnl / ccost * 100).round(2) if mode == "pct" else cpnl.round(2)
+
+            if mode == "pct":
+                pnl_at_start = float(cpnl.iloc[0]) if len(cpnl) else 0.0
+                y = ((cpnl - pnl_at_start) / ccost * 100).round(2)
+            else:
+                y = cpnl.round(2)
+            fig.update_xaxes(range=[cpnl.index.min(), cpnl.index.max()])
 
             fig.add_trace(go.Scatter(
                 x=cpnl.index, y=y,
