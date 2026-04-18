@@ -1,8 +1,24 @@
+"""
+Price History Chart Component.
+
+Builds a line chart showing historical prices normalized to 100.
+"""
+
 import pandas as pd
 import plotly.graph_objects as go
 from config.constants import COLORS
 
 def build_price_chart_figure(histories: dict, theme_tokens: dict) -> go.Figure:
+    """
+    Build a Plotly line chart of normalized price histories.
+
+    Args:
+        histories: Dictionary mapping tickers to their historical price DataFrames.
+        theme_tokens: Dictionary of UI theme colors and base layouts.
+
+    Returns:
+        A Plotly go.Figure object.
+    """
     BORDER      = theme_tokens["BORDER"]
     PLOTLY_BASE = theme_tokens["PLOTLY_BASE"]
     

@@ -47,3 +47,9 @@ python app.py
 
 The file `stock_portfolio_transactions.csv` holds all your transactions.
 Do not include `.AX` — the app adds it automatically.
+
+## Architecture & Documentation
+
+This project has been heavily refactored for maintainability and scalability. All core modules are thoroughly commented with Google-style docstrings. 
+
+If you plan to contribute or want to understand the data flow, please read the [Developer Guide](docs/guides/DEVELOPER_GUIDE.md) for a complete breakdown of the UI, Services, Data, and Core layers.

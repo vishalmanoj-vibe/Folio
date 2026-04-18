@@ -18,6 +18,15 @@ from components.ui_helpers import stat_card
 
 
 def register_callbacks(app) -> None:
+    """
+    Register core dashboard callbacks with the Dash application.
+
+    Handles top-level UI components like the market status badge, stat cards,
+    and the live positions data table. Orchestrates data flow without business logic.
+
+    Args:
+        app: The Dash application instance.
+    """
 
     # ── Market status badge ───────────────────────────────────────────────────
     @app.callback(

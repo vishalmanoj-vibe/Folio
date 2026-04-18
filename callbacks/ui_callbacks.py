@@ -1,7 +1,19 @@
+"""
+UI Callbacks for Portfolio Dashboard.
+
+Handles general UI interactions such as theme toggling and printing.
+"""
+
 from dash import Input, Output, State
 
 
 def register_callbacks(app) -> None:
+    """
+    Register UI-related callbacks with the Dash application.
+
+    Args:
+        app: The Dash application instance.
+    """
 
     # ── Dark / light theme toggle ─────────────────────────────────────────────
     app.clientside_callback(

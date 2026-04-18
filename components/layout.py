@@ -80,6 +80,15 @@ details summary { color: var(--t-sec); }
 
 
 def create_layout(initial_history: list[dict] | None = None) -> html.Div:
+    """
+    Construct the main dashboard layout.
+
+    Args:
+        initial_history: Pre-fetched transaction history to inject into stores on load.
+
+    Returns:
+        A Dash html.Div containing the full layout and dcc.Stores.
+    """
     return html.Div(
         [
             # ── Header ────────────────────────────────────────────────────────

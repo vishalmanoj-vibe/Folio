@@ -1,3 +1,10 @@
+"""
+Data layer for CSV interactions.
+
+Handles loading, validating, and saving portfolio transactions to a local CSV file
+with automatic backup features.
+"""
+
 import logging
 import os
 import shutil

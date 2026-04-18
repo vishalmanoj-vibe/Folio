@@ -1,3 +1,9 @@
+"""
+Charts Component Package.
+
+Exports pure functions for generating Plotly figures from portfolio data.
+"""
+
 from .pnl_history import build_pnl_history_figure
 from .price_history import build_price_chart_figure
 from .allocation import build_allocation_figure

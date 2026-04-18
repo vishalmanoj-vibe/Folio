@@ -1,7 +1,23 @@
+"""
+Portfolio Allocation Chart Component.
+
+Builds a donut chart visualizing the portfolio's market value allocation.
+"""
+
 import plotly.graph_objects as go
 from config.constants import COLORS
 
 def build_allocation_figure(holdings: list[dict], theme_tokens: dict) -> go.Figure:
+    """
+    Build a Plotly donut chart showing allocation by market value.
+
+    Args:
+        holdings: List of enriched holding dictionaries.
+        theme_tokens: Dictionary of UI theme colors and base layouts.
+
+    Returns:
+        A Plotly go.Figure object.
+    """
     BG          = theme_tokens["BG"]
     PLOTLY_BASE = theme_tokens["PLOTLY_BASE"]
     

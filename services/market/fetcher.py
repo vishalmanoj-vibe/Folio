@@ -44,6 +44,15 @@ _BENCHMARK_CACHE_TTL = 3600
 
 
 def get_etf_name(ticker: str) -> str:
+    """
+    Retrieve the long name for an ETF from a dictionary of known names.
+
+    Args:
+        ticker: The ETF ticker symbol.
+
+    Returns:
+        The ETF name or a default string if not found.
+    """
     from config.constants import NAMES
     ticker_upper = ticker.strip().upper()
     cache_key = f"name_{ticker_upper}"
@@ -75,11 +84,20 @@ def get_etf_name(ticker: str) -> str:
 
 
 def _download_with_retry(
-    tickers: str,
-    period: str,
-    max_retries: int = API_MAX_RETRIES,
-    backoff_base: float = API_RETRY_BACKOFF_BASE,
+    tickers: list[str], period: str, max_retries: int = API_MAX_RETRIES, backoff_base: float = API_RETRY_BACKOFF_BASE
 ) -> pd.DataFrame:
+    """
+    Download market data using yfinance with retry logic.
+
+    Args:
+        tickers: List of ticker symbols to fetch.
+        period: Time period to fetch (e.g., '1mo', 'max').
+        max_retries: Number of times to retry on failure.
+        backoff_base: Base for exponential backoff.
+
+    Returns:
+        A pandas DataFrame of the fetched data.
+    """
     for attempt in range(max_retries):
         try:
             df = yf.download(
@@ -96,6 +114,16 @@ def _download_with_retry(
 
 
 def _extract_close(bulk_df: pd.DataFrame, ticker_yf: str) -> pd.Series:
+    """
+    Extract the adjusted close price for a specific ticker from the bulk DataFrame.
+
+    Args:
+        bulk_df: The DataFrame returned by yfinance download.
+        ticker_yf: The ticker symbol to extract.
+
+    Returns:
+        A pandas Series of the adjusted close prices, sorted by date.
+    """
     if bulk_df is None or bulk_df.empty:
         return pd.Series(dtype=float)
     cols = bulk_df.columns

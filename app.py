@@ -111,6 +111,18 @@ app.layout = html.Div(
     prevent_initial_call=True,   # ← don't fire on load; stores are pre-seeded above
 )
 def refresh_portfolio_data(n):
+    """
+    Periodic callback to refresh market data.
+
+    Fires on the 'live-interval' timer, re-loads CSV history, builds holdings,
+    and fetches live market prices.
+
+    Args:
+        n: The interval count.
+
+    Returns:
+        Updated portfolio dictionary for the dcc.Store.
+    """
     try:
         history  = load_csv()
         holdings = build_holdings(history)

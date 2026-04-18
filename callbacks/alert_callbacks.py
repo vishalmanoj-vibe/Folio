@@ -1,9 +1,21 @@
+"""
+Alert Callbacks for Portfolio Dashboard.
+
+Handles the rendering of the alert banner based on portfolio logic.
+"""
+
 from dash import Input, Output, html
 from config.constants import RED
 from services.alerts import check_alerts
 
 
 def register_callbacks(app) -> None:
+    """
+    Register alert-related callbacks with the Dash application.
+
+    Args:
+        app: The Dash application instance.
+    """
 
     @app.callback(
         Output("alerts-banner", "children"),

@@ -1,7 +1,23 @@
+"""
+Dividend Income Chart Component.
+
+Builds a bar chart showing the annual dividend income per holding.
+"""
+
 import plotly.graph_objects as go
 from config.constants import COLORS
 
 def build_dividend_figure(holdings: list[dict], theme_tokens: dict) -> go.Figure:
+    """
+    Build a Plotly bar chart for annual dividend income.
+
+    Args:
+        holdings: List of enriched holding dictionaries.
+        theme_tokens: Dictionary of UI theme colors and base layouts.
+
+    Returns:
+        A Plotly go.Figure object.
+    """
     T_SEC       = theme_tokens["T_SEC"]
     BORDER      = theme_tokens["BORDER"]
     PLOTLY_BASE = theme_tokens["PLOTLY_BASE"]

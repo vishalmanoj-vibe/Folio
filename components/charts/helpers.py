@@ -1,3 +1,10 @@
+"""
+Chart Helpers Component.
+
+Provides shared utilities for chart generation, such as period cutoff calculation
+and benchmark trace rendering.
+"""
+
 import logging
 from datetime import timedelta
 import pandas as pd
@@ -11,6 +18,15 @@ _BENCH_STYLES = {
 }
 
 def _period_cutoff(period: str) -> "pd.Timestamp | None":
+    """
+    Calculate the start date based on a given time period string.
+
+    Args:
+        period: Time period string (e.g., "1M", "6M", "YTD", "1Y", "5Y", "max").
+
+    Returns:
+        A pandas Timestamp representing the cutoff date, or None if "max".
+    """
     now = pd.Timestamp.now()
     mapping = {
         "1mo": now - timedelta(days=30),

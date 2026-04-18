@@ -1,7 +1,23 @@
+"""
+Correlation Heatmap Component.
+
+Builds a heatmap showing the price return correlation between holdings.
+"""
+
 import pandas as pd
 import plotly.graph_objects as go
 
 def build_corr_figure(histories: dict, theme_tokens: dict) -> go.Figure:
+    """
+    Build a Plotly heatmap of daily return correlations.
+
+    Args:
+        histories: Dictionary mapping tickers to their historical price DataFrames.
+        theme_tokens: Dictionary of UI theme colors and base layouts.
+
+    Returns:
+        A Plotly go.Figure object.
+    """
     T_SEC       = theme_tokens["T_SEC"]
     PLOTLY_BASE = theme_tokens["PLOTLY_BASE"]
     

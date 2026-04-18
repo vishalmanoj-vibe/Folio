@@ -1,3 +1,10 @@
+"""
+P&L History Chart Component.
+
+Builds a line chart showing the portfolio's unrealised P&L over time,
+with optional benchmark overlays.
+"""
+
 import pandas as pd
 import plotly.graph_objects as go
 from config.constants import GREEN, RED, COLORS
@@ -10,6 +17,19 @@ def build_pnl_history_figure(
     theme_tokens: dict,
     selected: str = "Portfolio",
 ) -> go.Figure:
+    """
+    Build a Plotly line chart for P&L history over a given period.
+
+    Args:
+        holdings: List of enriched holding dictionaries.
+        mode: Display mode, either "abs" (absolute $) or "pct" (percentage).
+        period: Time period to display (e.g., "1M", "YTD", "max").
+        theme_tokens: Dictionary of UI theme colors and base layouts.
+        selected: The ticker to highlight, or "Portfolio" for the aggregate.
+
+    Returns:
+        A Plotly go.Figure object.
+    """
     BORDER      = theme_tokens["BORDER"]
     T_SEC       = theme_tokens["T_SEC"]
     PLOTLY_BASE = theme_tokens["PLOTLY_BASE"]

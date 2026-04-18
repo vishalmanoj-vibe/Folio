@@ -22,6 +22,15 @@ from components.charts import (
 logger = logging.getLogger(__name__)
 
 def register_callbacks(app) -> None:
+    """
+    Register chart-related callbacks with the Dash application.
+
+    Handles building and updating all Plotly charts based on user interactions
+    and portfolio state changes.
+
+    Args:
+        app: The Dash application instance.
+    """
 
     # ── Ticker toggle buttons ─────────────────────────────────────────────────
     @app.callback(

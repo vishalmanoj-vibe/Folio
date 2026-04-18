@@ -17,6 +17,15 @@ logger = logging.getLogger(__name__)
 
 
 def register_callbacks(app):
+    """
+    Register transaction-related callbacks with the Dash application.
+
+    Handles adding new transactions, updating the transaction log table,
+    and auto-clearing transaction status messages.
+
+    Args:
+        app: The Dash application instance.
+    """
 
     # Add new transaction
     @app.callback(

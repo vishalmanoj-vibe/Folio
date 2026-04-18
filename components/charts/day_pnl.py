@@ -1,7 +1,23 @@
+"""
+Today's P&L Chart Component.
+
+Builds a bar chart showing the day's absolute P&L per holding.
+"""
+
 import plotly.graph_objects as go
 from config.constants import GREEN, RED
 
 def build_day_pnl_figure(holdings: list[dict], theme_tokens: dict) -> go.Figure:
+    """
+    Build a Plotly bar chart for today's P&L.
+
+    Args:
+        holdings: List of enriched holding dictionaries.
+        theme_tokens: Dictionary of UI theme colors and base layouts.
+
+    Returns:
+        A Plotly go.Figure object.
+    """
     BORDER      = theme_tokens["BORDER"]
     PLOTLY_BASE = theme_tokens["PLOTLY_BASE"]
     
