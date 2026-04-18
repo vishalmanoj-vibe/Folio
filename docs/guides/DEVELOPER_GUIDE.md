@@ -13,11 +13,11 @@ This document outlines the architecture, layer model, and folder structure of th
 ┌─────────────────────────┴────────────────────────────────────┐
 │                   APPLICATION LOGIC                          │
 │             (services/ - Business Logic Layer)              │
-│  ┌──────────────────┐  ┌──────────────────┐  ┌─────────┐  │
-│  │  services/alerts │  │ services/market  │  │ alerts  │  │
-│  │                  │  │  ├─ fetcher.py   │  │         │  │
-│  │  └─ alerts.py    │  │  └─ status.py    │  └─────────┘  │
-│  └──────────────────┘  └──────────────────┘               │
+│  ┌──────────────────┐  ┌───────────────────────┐  ┌───────────────┐  │
+│  │ services/alerts  │  │   services/market     │  │ alert_service │  │
+│  │                  │  │  ├─ data_fetcher.py   │  │               │  │
+│  │  └─ alert_service.py │  └─ market_status.py │  └───────────────┘  │
+│  └──────────────────┘  └───────────────────────┘                     │
 └─────────────────────────┬────────────────────────────────────┘
                           │
 ┌─────────────────────────┴────────────────────────────────────┐
@@ -88,23 +88,25 @@ portfolio_dashboard/
 │
 ├── services/                       # Business logic
 │   ├── __init__.py                 # Exports services
-│   ├── alerts.py                   # Alert detection
+│   ├── alert_service.py            # Alert detection
+│   ├── intelligence_service.py     # Risk & Allocation logic
 │   └── market/                     # Market operations
 │       ├── __init__.py
-│       ├── fetcher.py              # API calls
-│       └── status.py               # Market status
+│       ├── data_fetcher.py         # API calls
+│       └── market_status.py        # Market status
 │
 ├── components/                     # UI components
 │   ├── charts/                     # Chart generation functions
 │   │   └── intel_*.py              # Intelligence page charts
-│   ├── layout.py                   # Main layout container
+│   ├── portfolio_layout.py         # Main layout container
 │   └── ui_helpers.py               # Common UI components
 │
 ├── callbacks/                      # Dash callbacks
 │   ├── alert_callbacks.py
 │   ├── chart_callbacks.py          # Dashboard interactions
-│   ├── core_callbacks.py           # State management
+│   ├── portfolio_callbacks.py      # State management
 │   ├── intelligence_callbacks.py   # Intelligence page callbacks
+│   ├── etf_detail_callbacks.py     # ETF drill-down callbacks
 │   ├── transaction_callbacks.py
 │   └── ui_callbacks.py
 │
@@ -134,7 +136,7 @@ portfolio_dashboard/
                 │          Logic      pages/
                 │       ┌────┴────┐    (UI)
                 │       │         │
-            core/    market/   alerts.py
+            core/    market/   alert_service.py
          (Utils)   (Market)
                       │
                     data/
@@ -164,7 +166,7 @@ from core.exceptions import ValidationError, DataHandlerError
 ```python
 from services import fetch_live, is_market_open, market_badge, check_alerts
 from services.market import fetch_live, is_market_open, market_badge
-from services.alerts import check_alerts
+from services.alert_service import check_alerts
 ```
 
 ### Data Models
