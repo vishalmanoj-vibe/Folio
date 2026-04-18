@@ -39,6 +39,7 @@ import callbacks.transaction_callbacks  as txn
 import callbacks.chart_callbacks        as charts
 import callbacks.alert_callbacks        as alerts
 import callbacks.ui_callbacks           as ui
+import callbacks.intelligence_callbacks as intell_cb
 
 # ── Initial data load ─────────────────────────────────────────────────────────
 # This runs once at startup. The results seed the stores so the first render
@@ -142,7 +143,7 @@ charts.register_callbacks(app)
 alerts.register_callbacks(app)
 ui.register_callbacks(app)
 etf_detail.register_callbacks(app)
-intelligence.register_callbacks(app)
+intell_cb.register_callbacks(app)
 
 # ── Run ───────────────────────────────────────────────────────────────────────
 if __name__ == "__main__":

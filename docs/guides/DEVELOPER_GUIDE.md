@@ -96,6 +96,7 @@ portfolio_dashboard/
 │
 ├── components/                     # UI components
 │   ├── charts/                     # Chart generation functions
+│   │   └── intel_*.py              # Intelligence page charts
 │   ├── layout.py                   # Main layout container
 │   └── ui_helpers.py               # Common UI components
 │
@@ -103,6 +104,7 @@ portfolio_dashboard/
 │   ├── alert_callbacks.py
 │   ├── chart_callbacks.py          # Dashboard interactions
 │   ├── core_callbacks.py           # State management
+│   ├── intelligence_callbacks.py   # Intelligence page callbacks
 │   ├── transaction_callbacks.py
 │   └── ui_callbacks.py
 │
