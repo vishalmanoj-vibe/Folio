@@ -64,61 +64,21 @@ def layout(ticker: str = "") -> html.Div:
             html.Div(
                 [
                     html.Div([
-                        html.A(
-                            "← Portfolio",
-                            href="/",
-                            style={
-                                "fontSize": "12px",
-                                "color": "var(--t-sec)",
-                                "textDecoration": "none",
-                                "display": "inline-block",
-                                "marginBottom": "8px",
-                                "letterSpacing": "0.02em",
-                            },
-                        ),
+                        html.A("← Portfolio", href="/", className="back-link", style={"display": "inline-block", "marginBottom": "8px"}),
                         html.Div(
                             [
-                                html.Span(
-                                    ticker,
-                                    style={
-                                        "fontSize":      "22px",
-                                        "fontWeight":    "600",
-                                        "background":    "var(--surface)",
-                                        "border":        "1px solid var(--border)",
-                                        "borderRadius":  "6px",
-                                        "padding":       "2px 10px",
-                                        "marginRight":   "12px",
-                                        "letterSpacing": "0.04em",
-                                        "color":         "var(--t-pri)",
-                                    },
-                                ),
-                                html.Span(
-                                    name,
-                                    style={
-                                        "fontSize":   "18px",
-                                        "fontWeight": "400",
-                                        "color":      "var(--t-sec)",
-                                    },
-                                ),
+                                html.Span(ticker, className="ticker-badge"),
+                                html.Span(name, className="ticker-name"),
                             ],
-                            style={"display": "flex", "alignItems": "center",
-                                   "flexWrap": "wrap", "gap": "4px"},
+                            className="flex-row-center", style={"flexWrap": "wrap", "gap": "4px"}
                         ),
                     ]),
                     html.Div([
-                        html.Div(id="etf-market-status", style={"marginBottom": "8px", "textAlign": "right"}),
-                        html.Button(
-                            "Refresh now", id="refresh-btn", n_clicks=0,
-                            style={"fontWeight": "500", "fontSize": "12px", "padding": "4px 10px", "float": "right"},
-                        ),
+                        html.Div(id="etf-market-status", className="status-text", style={"marginBottom": "8px"}),
+                        html.Button("Refresh now", id="refresh-btn", n_clicks=0, className="btn-sm btn-right"),
                     ]),
                 ],
-                style={
-                    "display": "flex", "justifyContent": "space-between",
-                    "alignItems": "flex-start",
-                    "padding": "18px 24px 14px",
-                    "borderBottom": "0.5px solid var(--border)",
-                },
+                className="page-header-row",
             ),
 
             # ── B. Price chart ────────────────────────────────────────────────
@@ -130,15 +90,10 @@ def layout(ticker: str = "") -> html.Div:
                         html.Div(
                             id="etf-period-btns",
                             children=_period_buttons(DEFAULT_PERIOD),
-                            style={"display": "flex", "gap": "6px",
-                                   "flexWrap": "wrap"},
+                            className="flex-row-center", style={"gap": "6px", "flexWrap": "wrap"}
                         ),
                     ],
-                    style={
-                        "display": "flex", "justifyContent": "space-between",
-                        "alignItems": "center", "marginBottom": "10px",
-                        "flexWrap": "wrap", "gap": "10px",
-                    },
+                    className="chart-header-row",
                 ),
                 dcc.Loading(
                     dcc.Graph(id="etf-price-chart",
@@ -151,24 +106,20 @@ def layout(ticker: str = "") -> html.Div:
             # ── C. Position summary ───────────────────────────────────────────
             section(
                 chart_title("Position summary"),
-                html.Div(id="etf-position-cards",
-                         style={"display": "flex", "gap": "10px",
-                                "flexWrap": "wrap"}),
+                html.Div(id="etf-position-cards", className="metrics-row"),
             ),
 
             # ── D. Transaction table ──────────────────────────────────────────
             section(
                 chart_title("Transactions"),
-                html.Div(id="etf-txn-table", style={"overflowX": "auto"}),
+                html.Div(id="etf-txn-table", className="overflow-table"),
             ),
 
             # ── E. Dividend section ───────────────────────────────────────────
             html.Div(
                 [
                     chart_title("Dividends"),
-                    html.Div(id="etf-dividend-cards",
-                             style={"display": "flex", "gap": "10px",
-                                    "flexWrap": "wrap", "marginBottom": "16px"}),
+                    html.Div(id="etf-dividend-cards", className="flex-row-gap-10", style={"marginBottom": "16px"}),
                     dcc.Loading(
                         dcc.Graph(id="etf-dividend-chart",
                                   config={"displayModeBar": False},
@@ -177,15 +128,11 @@ def layout(ticker: str = "") -> html.Div:
                         color=COLORS[1],
                     ),
                 ],
-                style={"padding": "20px 24px"},
+                className="section-container",
             ),
         ],
         # Use CSS vars for the outer wrapper too
-        style={
-            "backgroundColor": "var(--bg)",
-            "color":           "var(--t-pri)",
-            "minHeight":       "100vh",
-        },
+        className="page-root",
     )
 
 
@@ -199,18 +146,7 @@ def _period_buttons(active: str) -> list:
                 opt["label"],
                 id={"type": "etf-period-btn", "index": opt["value"]},
                 n_clicks=0,
-                style={
-                    "fontSize":       "12px",
-                    "padding":        "3px 12px",
-                    "borderRadius":   "20px",
-                    "cursor":         "pointer",
-                    "fontWeight":     "500",
-                    # Active button gets a solid accent border; inactive is muted
-                    "background":     COLORS[0] if is_active else "var(--surface)",
-                    "border":         f"1px solid {COLORS[0]}" if is_active
-                                      else "1px solid var(--border)",
-                    "color":          "#ffffff" if is_active else "var(--t-pri)",
-                },
+                className=f"period-btn {'period-btn-active' if is_active else ''}".strip(),
             )
         )
     return buttons

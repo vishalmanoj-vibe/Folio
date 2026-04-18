@@ -116,7 +116,7 @@ def build_pnl_history_figure(
 
         # ── Benchmark overlays — % mode only ─────────────────────────────
         if mode == "pct":
-            for trace in build_benchmark_traces(period):
+            for trace in build_benchmark_traces(period, portfolio_start=cpnl.index.min()):
                 fig.add_trace(trace)
             fig.add_annotation(
                 text="Benchmarks normalised to period start",
@@ -237,7 +237,7 @@ def build_pnl_history_figure(
             ))
 
             if mode == "pct":
-                for trace in build_benchmark_traces(period):
+                for trace in build_benchmark_traces(period, portfolio_start=cpnl.index.min()):
                     fig.add_trace(trace)
                 fig.add_annotation(
                     text="Benchmarks normalised to period start",

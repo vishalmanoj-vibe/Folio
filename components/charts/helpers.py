@@ -38,10 +38,10 @@ def _period_cutoff(period: str) -> "pd.Timestamp | None":
     }
     return mapping.get(period, None)
 
-def build_benchmark_traces(period: str) -> list:
+def build_benchmark_traces(period: str, portfolio_start: pd.Timestamp | None = None) -> list:
     """
     Return Plotly Scatter traces for S&P 500 and ASX 200 normalised to
-    % return from the start of the selected period window.
+    % return from the start of the selected period window or portfolio start.
     Only called when mode == 'pct'.
     """
     try:
@@ -63,7 +63,14 @@ def build_benchmark_traces(period: str) -> list:
             df = df.set_index("Date").sort_index()
 
             if cutoff is not None:
-                df = df[df.index >= cutoff]
+                start_dt = cutoff
+            elif portfolio_start is not None:
+                start_dt = portfolio_start
+            else:
+                start_dt = None
+
+            if start_dt is not None:
+                df = df[df.index >= start_dt]
 
             if df.empty or len(df) < 2:
                 continue

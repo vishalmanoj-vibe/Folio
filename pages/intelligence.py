@@ -50,57 +50,30 @@ def layout() -> html.Div:
             # ── Nav header ────────────────────────────────────────────────────
             html.Div(
                 [
-                    html.A("← Portfolio", href="/", style={
-                        "fontSize":      "12px",
-                        "color":         "var(--t-sec)",
-                        "textDecoration":"none",
-                        "letterSpacing": "0.02em",
-                    }),
-                    html.Span(
-                        "Portfolio Intelligence",
-                        style={"fontSize": "20px", "fontWeight": "500",
-                               "color": "var(--t-pri)", "marginLeft": "16px"},
-                    ),
-                    html.Span(
-                        "Risk · Allocation · Smart alerts",
-                        style={"fontSize": "12px", "color": "var(--t-sec)",
-                               "marginLeft": "10px", "flex": "1"},
-                    ),
-                    html.Button(
-                        "Refresh now", id="refresh-btn", n_clicks=0,
-                        style={"fontWeight": "500", "fontSize": "12px", "padding": "4px 10px"},
-                    ),
+                    html.A("← Portfolio", href="/", className="back-link"),
+                    html.Span("Portfolio Intelligence", className="page-title", style={"marginLeft": "16px"}),
+                    html.Span("Risk · Allocation · Smart alerts", className="page-subtitle", style={"marginLeft": "10px", "flex": "1"}),
+                    html.Button("Refresh now", id="refresh-btn", n_clicks=0, className="btn-sm"),
                 ],
-                style={
-                    "display": "flex", "alignItems": "center",
-                    "padding": "18px 24px 14px",
-                    "borderBottom": "0.5px solid var(--border)",
-                },
+                className="page-header-row",
             ),
 
             # ── Data source note ──────────────────────────────────────────────
             html.Div(
                 id="intel-data-note",
-                style={
-                    "padding":       "8px 24px",
-                    "borderBottom":  "0.5px solid var(--border)",
-                    "fontSize":      "12px",
-                    "color":         "var(--t-sec)",
-                    "minHeight":     "32px",
-                },
+                className="intel-data-note",
             ),
 
-            # ── A. Risk scorecard ─────────────────────────────────────────────
+            # ── A. Risk scorecard ─────────────────────────────────────────────────────
             section(
                 chart_title(
                     "Risk metrics",
-                    "Computed from the price history window loaded on the "
-                    "main dashboard. Widen the period to extend the window.",
+                    "Key risk stats calculated from the price history window. "
+                    "Hover each card for an explanation of what the number means.",
                 ),
                 html.Div(
                     id="intel-risk-cards",
-                    style={"display": "flex", "gap": "10px",
-                           "flexWrap": "wrap"},
+                    className="metrics-row",
                 ),
             ),
 
@@ -108,8 +81,9 @@ def layout() -> html.Div:
             section(
                 chart_title(
                     "Cumulative return",
-                    "Value-weighted portfolio return compounded daily. "
-                    "Starts at 0% on the first date all ETFs have overlapping data.",
+                    "Shows how $1 invested across your portfolio has grown over time. "
+                    "Each ETF is weighted by its share of your total holdings. "
+                    "The line starts at 0% on the first day all holdings have data.",
                 ),
                 dcc.Loading(
                     dcc.Graph(id="intel-equity-chart",
@@ -122,9 +96,9 @@ def layout() -> html.Div:
             section(
                 chart_title(
                     "Drawdown",
-                    "Rolling % decline from the portfolio's rolling peak. "
-                    "The worst point is annotated. Current drawdown is in "
-                    "the Risk metrics scorecard above.",
+                    "How far your portfolio has fallen from its peak at any point in time. "
+                    "A reading of -10% means you are 10% below the highest value reached. "
+                    "The lowest point (max drawdown) is marked on the chart.",
                 ),
                 dcc.Loading(
                     dcc.Graph(id="intel-drawdown-chart",
@@ -141,9 +115,8 @@ def layout() -> html.Div:
                         [
                             chart_title(
                                 "Volatility by ETF",
-                                "Annualised std of daily returns per ETF over "
-                                "the loaded history window. "
-                                "Green < 12 % · Amber 12–20 % · Red > 20 %.",
+                                "Annualised price volatility for each ETF over the loaded period. "
+                                "Lower is steadier. Green = below 12%, amber = 12–20%, red = above 20%.",
                             ),
                             dcc.Loading(
                                 # No style= height — Plotly controls canvas size
@@ -152,7 +125,7 @@ def layout() -> html.Div:
                                 type="circle", color=COLORS[2],
                             ),
                         ],
-                        style={"flex": "1", "minWidth": "260px"},
+                        className="chart-col-min-260",
                     ),
 
                     # E — Sector exposure
@@ -160,9 +133,9 @@ def layout() -> html.Div:
                         [
                             chart_title(
                                 "Sector exposure",
-                                "Portfolio-weighted sector blend fetched live "
-                                "from Yahoo Finance funds_data. Cached 24 h. "
-                                "Red ≥ 40 % · Amber ≥ 25 % · Blue below.",
+                                "Your portfolio's blend across market sectors, weighted by holding value. "
+                                "A single sector above 40% signals concentration risk. "
+                                "Data is sourced from Yahoo Finance and cached for 24 hours.",
                             ),
                             dcc.Loading(
                                 dcc.Graph(id="intel-sector-chart",
@@ -170,7 +143,7 @@ def layout() -> html.Div:
                                 type="circle", color=COLORS[3],
                             ),
                         ],
-                        style={"flex": "1", "minWidth": "260px"},
+                        className="chart-col-min-260",
                     ),
 
                     # F — Geographic exposure
@@ -178,9 +151,9 @@ def layout() -> html.Div:
                         [
                             chart_title(
                                 "Geographic exposure",
-                                "Region inferred from each top-holding's "
-                                "exchange suffix (e.g. .HK → Hong Kong, "
-                                "no suffix → USA). Cached 24 h.",
+                                "Where your money is invested in the world, weighted by holding value. "
+                                "Region is inferred from each ETF's top holdings by their stock exchange. "
+                                "Data is cached for 24 hours.",
                             ),
                             dcc.Loading(
                                 dcc.Graph(id="intel-geo-chart",
@@ -188,16 +161,11 @@ def layout() -> html.Div:
                                 type="circle", color=COLORS[4],
                             ),
                         ],
-                        style={"flex": "1", "minWidth": "260px"},
+                        className="chart-col-min-260",
                     ),
                 ],
-                style={
-                    "display":  "flex",
-                    "gap":      "14px",
-                    "flexWrap": "wrap",
-                    "padding": "20px 24px",
-                    "borderBottom": "0.5px solid var(--border)",
-                },
+                className="section-container three-col-layout",
+                style={"padding": "20px 24px"},
             ),
 
             # ── G. Smart alerts ───────────────────────────────────────────────
@@ -210,18 +178,12 @@ def layout() -> html.Div:
                     ),
                     html.Div(
                         id="intel-alerts",
-                        style={"display": "flex", "flexDirection": "column",
-                               "gap": "8px"},
+                        className="flex-col-container",
                     ),
                 ],
-                style={"padding": "20px 24px"},
             ),
         ],
-        style={
-            "backgroundColor": "var(--bg)",
-            "color":           "var(--t-pri)",
-            "minHeight":       "100vh",
-        },
+        className="page-root",
     )
 
 # Callbacks are now located in callbacks/intelligence_callbacks.py

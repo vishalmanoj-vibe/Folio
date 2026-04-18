@@ -62,17 +62,23 @@ def register_callbacks(app) -> None:
         dc = GREEN if s["total_day"] >= 0 else RED
 
         return [
-            stat_card("Total value",      f"${s['total_val']:,.2f}"),
-            stat_card("Cost basis",       f"${s['total_cost']:,.2f}"),
+            stat_card("Total value",      f"${s['total_val']:,.2f}",
+                      tip="Current market value of all holdings combined."),
+            stat_card("Cost basis",       f"${s['total_cost']:,.2f}",
+                      tip="Total amount spent buying all current holdings, excluding brokerage."),
             stat_card("Unrealised P&L",   f"{ps}${s['total_pnl']:,.2f}",
-                      f"{ps}{s['pnl_pct']:.2f}% all time", pc, pc),
+                      f"{ps}{s['pnl_pct']:.2f}% all time", pc, pc,
+                      tip="Paper profit or loss since purchase. Not realised until you sell."),
             stat_card("Today's P&L",      f"{ds}${s['total_day']:,.2f}",
-                      "across all positions", dc, dc),
+                      "across all positions", dc, dc,
+                      tip="Estimated change in portfolio value since yesterday's close."),
             stat_card("Annual dividends", f"${s['annual_div']:,.2f}",
                       f"{s['port_yield']:.2f}% yield",
                       GREEN if s["port_yield"] > 0 else "var(--t-pri)",
-                      "var(--t-sec)"),
-            stat_card("Holdings", str(len(data["holdings"]))),
+                      "var(--t-sec)",
+                      tip="Projected annual dividend income based on each ETF's trailing 12-month distributions."),
+            stat_card("Holdings", str(len(data["holdings"])),
+                      tip="Number of distinct ETFs currently held in the portfolio."),
         ]
 
     # ── Live positions table ──────────────────────────────────────────────────

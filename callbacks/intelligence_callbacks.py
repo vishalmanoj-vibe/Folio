@@ -88,21 +88,25 @@ def register_callbacks(app) -> None:
                 "Annualised volatility",
                 f"{vol:.1f}%" if not _nan(vol) else "N/A",
                 f"over {n_days} trading days", vol_c,
+                tip="Standard deviation of daily returns, scaled to a year. Below 12% is low risk, 12–20% moderate, above 20% high.",
             ),
             stat_card(
                 "Sharpe ratio",
                 f"{sharpe:.2f}" if not _nan(sharpe) else "N/A",
                 f"Rf = 4.35 %  ·  {n_days} d window", shr_c,
+                tip="Return earned per unit of risk taken, above the RBA cash rate (4.35%). Above 1.0 is excellent, above 0.5 is acceptable.",
             ),
             stat_card(
                 "Max drawdown",
                 f"{max_dd:.1f}%" if not _nan(max_dd) else "N/A",
                 "peak-to-trough", dd_c,
+                tip="Worst loss from a portfolio peak to its lowest point in the loaded history window. The bigger the number, the deeper the fall.",
             ),
             stat_card(
                 "Current drawdown",
                 f"{cur_dd:.1f}%" if not _nan(cur_dd) else "N/A",
                 "from recent high", cdd_c,
+                tip="How far the portfolio is below its most recent all-time high right now. 0% means you are at a new peak.",
             ),
         ]
 

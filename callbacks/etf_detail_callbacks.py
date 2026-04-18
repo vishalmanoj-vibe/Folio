@@ -163,18 +163,24 @@ def register_callbacks(app) -> None:
         day_pnl = h["day_pnl"]; dsgn = "+" if day_pnl >= 0 else ""; dc = GREEN if day_pnl >= 0 else RED
 
         return [
-            stat_card("Total invested",  f"${h['total_cost']:,.2f}"),
+            stat_card("Total invested",  f"${h['total_cost']:,.2f}",
+                      tip="Total capital deployed into this ETF across all buy transactions."),
             stat_card("Current value",   f"${h['mkt_value']:,.2f}",
-                  f"{h['total_shares']} shares @ ${h['last_price']:,.3f}"),
+                  f"{h['total_shares']} shares @ ${h['last_price']:,.3f}",
+                  tip="Today's market value based on the latest available price."),
             stat_card("Unrealised P&L",
                   f"{psgn}${pnl:,.2f}",
-                  f"{psgn}{h['pnl_pct']:.2f}%  all time", pc, pc),
+                  f"{psgn}{h['pnl_pct']:.2f}%  all time", pc, pc,
+                  tip="Paper gain or loss on this position since your first purchase. Not locked in until sold."),
             stat_card("Today's P&L",
                   f"{dsgn}${day_pnl:,.2f}",
-                  f"{dsgn}{h['day_chg_pct']:.2f}%  today", dc, dc),
-            stat_card("Avg cost",    f"${h['avg_cost']:,.4f}"),
+                  f"{dsgn}{h['day_chg_pct']:.2f}%  today", dc, dc,
+                  tip="Estimated value change since yesterday's closing price, based on units held."),
+            stat_card("Avg cost",    f"${h['avg_cost']:,.4f}",
+                  tip="Average price paid per share across all buy transactions (VWAP)."),
             stat_card("Last price",  f"${h['last_price']:,.3f}",
-                  f"H ${h['day_high']:,.3f}  /  L ${h['day_low']:,.3f}"),
+                  f"H ${h['day_high']:,.3f}  /  L ${h['day_low']:,.3f}",
+                  tip="Most recent trade price. During ASX off-hours this is the previous session's close."),
         ]
 
     # ── Transaction table ─────────────────────────────────────────────────────

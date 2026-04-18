@@ -28,7 +28,7 @@ if not is_valid:
 ---
 
 ### 2. **API Failure & Retry Logic** ✅
-**Files Modified:** `services/market_data.py`, `config.py`
+**Files Modified:** `services/market/data_fetcher.py`, `config/settings.py`
 
 **What Was Added:**
 - New `_download_with_retry()` helper function with exponential backoff
@@ -52,7 +52,7 @@ API_RETRY_BACKOFF_BASE=2.0     # Exponential backoff multiplier (default 2.0)
 ---
 
 ### 3. **Configuration Management with Environment Variables** ✅
-**Files Modified:** `config.py`, `services/cache.py`, `services/alert_service.py`
+**Files Modified:** `config/settings.py`, `core/cache.py`, `services/alert_service.py`
 
 **What Was Added:**
 - All hardcoded values now support environment variable overrides
@@ -82,7 +82,7 @@ LOG_FILE_ENABLED                       # Enable file logging (default true)
 ---
 
 ### 4. **Market Hours Configuration** ✅
-**Files Modified:** `services/market_status.py`, `config.py`
+**Files Modified:** `services/market/market_status.py`, `config/settings.py`
 
 **What Was Added:**
 - Market check now uses configurable timezone, weekdays, and hours from config
@@ -110,7 +110,7 @@ MARKET_TIMEZONE=America/New_York
 ---
 
 ### 5. **Dividend Refetching Optimization** ✅
-**Files Modified:** `services/market_data.py`
+**Files Modified:** `services/market/data_fetcher.py`
 
 **What Was Added:**
 - Refactored to use configurable cache TTL from config
@@ -133,7 +133,7 @@ MARKET_TIMEZONE=America/New_York
 ---
 
 ### 6. **Logging Configuration** ✅
-**Files Modified:** `app.py`, `logging_config.py` (new)
+**Files Modified:** `app.py`, `config/logging.py` (new)
 
 **What Was Added:**
 - Centralized logging configuration in new `logging_config.py`
@@ -172,7 +172,7 @@ LOG_FILE_ENABLED=true       # Enable file logging (default true)
 ---
 
 ### 7. **Alert Customization** ✅
-**Files Modified:** `services/alert_service.py`, `config.py`
+**Files Modified:** `services/alert_service.py`, `config/settings.py`
 
 **What Was Added:**
 - Alert service now accepts optional `thresholds` parameter
@@ -277,6 +277,24 @@ pytest --cov=. --cov-report=html          # Generate coverage report
 - Updated docstrings in modified functions
 
 ---
+ 
+### 11. **Project Refactoring & Cohesion** ✅
+**Files Modified:** Project-wide (20+ files)
+ 
+**What Was Added:**
+- Standardized naming convention across all layers (Callbacks, Components, Services)
+- Renamed legacy files for better discovery (e.g., `core_callbacks.py` -> `portfolio_callbacks.py`)
+- Unified service naming (e.g., `alerts.py` -> `alert_service.py`)
+- Standardized directory structure for market services (`services/market/`)
+- Comprehensive docstring audit and import cleanup
+ 
+**Benefits:**
+- Drastically improved developer onboarding
+- Clearer mental model of where logic lives
+- Prevents import name collisions
+- Consistent with modern Python repository patterns
+ 
+---
 
 ## Quick Start with New Features
 
@@ -368,23 +386,23 @@ All changes are **fully backwards compatible**:
 
 ```
 Modified:
-  app.py                          ← Logging setup added
-  config.py                       ← Env vars, new config options
+  app.py                          ← Logging setup & routing updated
+  config/settings.py              ← Env vars, new config options
   data/csv_handler.py             ← CSV backup/recovery
   data/portfolio_builder.py        ← Transaction validation
   services/alert_service.py        ← Configurable thresholds
-  services/cache.py               ← Config-based TTL
-  services/market_data.py          ← API retry logic
-  services/market_status.py        ← Configurable market hours
+  services/intelligence_service.py ← Fixed geo-inference logic
+  services/market/data_fetcher.py  ← API retry logic
+  services/market/market_status.py ← Configurable market hours
   requirements.txt                ← Test dependencies added
-
+ 
 Created:
   .env.example                    ← Environment config template
-  logging_config.py               ← Centralized logging config
+  config/logging.py               ← Centralized logging config
   conftest.py                     ← Pytest configuration
   pytest.ini                      ← Pytest settings
-  TESTING.md                      ← Testing guide
-  IMPROVEMENTS.md                 ← This file
+  docs/improvements/TESTING.md    ← Testing guide
+  docs/improvements/IMPROVEMENTS.md ← This file
   test/__init__.py                ← Test package
   test/test_portfolio_builder.py  ← 20 unit tests
   test/test_alert_service.py      ← 11 unit tests

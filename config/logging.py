@@ -46,7 +46,7 @@ CONFIG = {
             "class": "logging.FileHandler",
             "filename": LOG_FILE,
             "formatter": "standard",
-            "mode": "a",
+            "mode": "w",
         },
     },
     "loggers": {

@@ -96,13 +96,7 @@ app.layout = html.Div(
 
         dash.page_container,
     ],
-    style={
-        "fontFamily":      "system-ui,-apple-system,sans-serif",
-        "color":           "var(--t-pri)",
-        "maxWidth":        "1300px",
-        "margin":          "0 auto",
-        "backgroundColor": "var(--bg)",
-    },
+    className="app-container",
 )
 
 # ── Refresh callback — keeps stores fresh every interval tick ─────────────────
