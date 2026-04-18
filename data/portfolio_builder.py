@@ -1,147 +1,17 @@
 """
 data/portfolio_builder.py
 =========================
-Portfolio aggregation logic.
+Thin shim — all portfolio computation has moved to core/engine/portfolio_engine.py.
 
-Builds consolidated holdings from raw buy/sell transactions.
-Now uses automatic name resolution via get_etf_name() so any ETF
-(CLNE, XMET, new tickers, etc.) shows its full proper name without
-hardcoding.
+This file is kept so that all existing import paths continue to work unchanged:
+    from data.portfolio_builder import build_holdings, validate_transaction
 
-Preserves original architecture and naming conventions.
+The name-resolution improvement (get_etf_name) lives in services/market/fetcher.py
+and is still applied at enrich-time in fetch_live(), not here, to keep this
+module free of network calls.
 """
 
-import logging
-import pandas as pd
+from core.engine.portfolio_engine import build_holdings  # noqa: F401  (re-export)
+from core.validators import validate_transaction          # noqa: F401  (re-export)
 
-from config.constants import NAMES   # lightweight fallback only
-from services.market.fetcher import get_etf_name   # ← Automatic name fetching
-
-logger = logging.getLogger(__name__)
-
-
-def validate_transaction(txn: dict) -> tuple[bool, str]:
-    """
-    Validate transaction structure before aggregation.
-    
-    Returns:
-        (is_valid, error_message)
-    """
-    required_keys = ["type", "ticker", "shares", "price", "date"]
-    missing = [k for k in required_keys if k not in txn]
-    if missing:
-        return False, f"Transaction missing keys: {missing}"
-    
-    # Validate types
-    try:
-        shares = float(txn["shares"])
-        price = float(txn["price"])
-    except (TypeError, ValueError):
-        return False, "Shares and price must be numeric"
-    
-    if shares <= 0 or price <= 0:
-        return False, "Shares and price must be positive"
-    
-    txn_type = str(txn.get("type", "buy")).lower().strip()
-    if txn_type not in ["buy", "sell"]:
-        return False, f"Type must be 'buy' or 'sell', got '{txn_type}'"
-    
-    # Validate date format
-    try:
-        pd.to_datetime(str(txn["date"]), format="%Y-%m-%d")
-    except (ValueError, TypeError):
-        return False, f"Date must be YYYY-MM-DD, got '{txn['date']}'"
-    
-    return True, ""
-
-
-def build_holdings(history: list[dict]) -> list[dict]:
-    """
-    Aggregate buy/sell transactions into one consolidated row per ticker.
-
-    Returns a list of dicts, one per held ticker, with:
-      - ticker, ticker_yf, name (auto-fetched), market
-      - total_shares (net after sells)
-      - total_cost, avg_cost
-      - first_purchase, buy_tranches (for P&L history chart)
-    """
-    if not history:
-        return []
-
-    # Validate all transactions before processing
-    invalid_txns = []
-    for i, txn in enumerate(history):
-        is_valid, error_msg = validate_transaction(txn)
-        if not is_valid:
-            invalid_txns.append((i, error_msg))
-            logger.warning("Invalid transaction at index %d: %s", i, error_msg)
-    
-    if invalid_txns:
-        logger.error("Found %d invalid transactions — skipping them", len(invalid_txns))
-
-    # Filter out invalid transactions
-    valid_history = [
-        txn for i, txn in enumerate(history)
-        if not any(idx == i for idx, _ in invalid_txns)
-    ]
-
-    if not valid_history:
-        logger.warning("No valid transactions after validation")
-        return []
-
-    df = pd.DataFrame(valid_history)
-    results = []
-
-    for ticker, grp in df.groupby("ticker"):
-        buys  = grp[grp["type"] == "buy"].copy()
-        sells = (
-            grp[grp["type"] == "sell"].copy()
-            if "sell" in grp["type"].values
-            else pd.DataFrame()
-        )
-
-        if buys.empty:
-            continue
-
-        total_bought = float(buys["shares"].sum())
-        total_cost   = float((buys["shares"] * buys["price"]).sum())
-        total_sold   = float(sells["shares"].sum()) if not sells.empty else 0.0
-        net_shares   = total_bought - total_sold
-
-        if net_shares <= 0:
-            continue   # fully sold out — exclude from holdings
-
-        avg_cost       = round(total_cost / total_bought, 4)
-        # Proportional cost: preserves correct cost basis when shares are sold
-        remaining_cost = round(total_cost * (net_shares / total_bought), 2)
-
-        # Per-buy-tranche list — used by the P&L history chart
-        buy_tranches = [
-            {
-                "ticker":    ticker,
-                "shares":    float(r["shares"]),
-                "price":     float(r["price"]),
-                "date":      str(r["date"]),
-                "buy_price": float(r["price"]),
-                "buy_date":  str(r["date"]),
-            }
-            for _, r in buys.iterrows()
-        ]
-
-        # ── Automatic name fetching (this is the key improvement) ─────────────
-        full_name = get_etf_name(ticker)
-
-        results.append({
-            "ticker":         ticker,
-            "ticker_yf":      ticker + ".AX",
-            "name":           full_name,                    # ← Now automatic!
-            "market":         "ETF/ASX",
-            "total_shares":   net_shares,
-            "total_cost":     remaining_cost,
-            "avg_cost":       avg_cost,
-            "first_purchase": buys["date"].min(),
-            "buy_tranches":   buy_tranches,
-        })
-
-    logger.info("Built %d holdings from %d transactions", len(results), len(history))
-    return results
+__all__ = ["build_holdings", "validate_transaction"]

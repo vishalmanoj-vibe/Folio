@@ -8,11 +8,12 @@ Pages
 -----
   /               → pages/portfolio.py
   /etf/<ticker>   → pages/etf_detail.py
-  /intelligence   → pages/intelligence.py   ← Now fixed
+  /intelligence   → pages/intelligence.py
 
 Fixes Applied:
 - txn-store and portfolio-store now refresh reliably on page navigation + interval
 - Intelligence page (and main dashboard) will now show live/updated data
+- selected-ticker-store added so P&L chart ticker selection survives refreshes
 """
 
 # Setup logging first
@@ -81,6 +82,7 @@ app.layout = html.Div(
         dcc.Store(id="portfolio-store"),
         dcc.Store(id="alerts-store"),
         dcc.Store(id="theme-store", data="dark"),
+        dcc.Store(id="selected-ticker-store", data="Portfolio"),  # persists P&L chart selection
         dcc.Interval(id="live-interval", interval=REFRESH_INTERVAL, n_intervals=0),
 
         dash.page_container,
@@ -112,7 +114,7 @@ def refresh_portfolio_data(n):
         holdings = build_holdings(history)
 
         if holdings:
-            portfolio_data = fetch_live(holdings, "1Y")   # or "3mo" / "max" as preferred
+            portfolio_data = fetch_live(holdings, "1Y")
         else:
             portfolio_data = {"holdings": [], "histories": {}}
 
@@ -140,5 +142,5 @@ if __name__ == "__main__":
     print(f"  CSV:          {CSV_PATH}")
     print(f"  Main:         http://127.0.0.1:8050/")
     print(f"  Intelligence: http://127.0.0.1:8050/intelligence\n")
-    
+
     app.run(debug=False, port=8050)
