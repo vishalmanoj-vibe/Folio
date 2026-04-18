@@ -21,6 +21,10 @@ env/
 # Logs
 *.log
 
-#Gemini Agents
-.agent/
+# Gemini Agents
+.agents/
 GEMINI.md
+
+# Project scripts & screenshots
+dump_project.sh
+screenshot.png
