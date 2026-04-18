@@ -10,10 +10,13 @@ Pages
   /etf/<ticker>   → pages/etf_detail.py
   /intelligence   → pages/intelligence.py
 
-Fixes Applied:
-- txn-store and portfolio-store now refresh reliably on page navigation + interval
-- Intelligence page (and main dashboard) will now show live/updated data
-- selected-ticker-store added so P&L chart ticker selection survives refreshes
+Responsiveness fix
+------------------
+portfolio-store and txn-store are seeded with data= at startup using the
+values already computed before the app starts (INITIAL_HISTORY,
+INITIAL_PORTFOLIO_DATA). This means all charts render on the very first
+paint instead of waiting for the interval callback to fire and complete
+a yfinance round-trip.
 """
 
 # Setup logging first
@@ -24,7 +27,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 import dash
-from dash import html, dcc, Input, Output, State
+from dash import html, dcc, Input, Output
 
 from components.layout import INDEX_STRING
 from data.csv_handler import load_csv
@@ -37,7 +40,9 @@ import callbacks.chart_callbacks        as charts
 import callbacks.alert_callbacks        as alerts
 import callbacks.ui_callbacks           as ui
 
-# ── Initial data load (for faster startup) ────────────────────────────────────
+# ── Initial data load ─────────────────────────────────────────────────────────
+# This runs once at startup. The results seed the stores so the first render
+# is instant — callbacks then keep data fresh on subsequent interval ticks.
 try:
     INITIAL_HISTORY: list[dict] = load_csv()
     logger.info(f"Loaded {len(INITIAL_HISTORY)} transactions from CSV")
@@ -50,7 +55,7 @@ from data.portfolio_builder import build_holdings
 from services.market.fetcher import fetch_live
 
 INITIAL_HOLDINGS = build_holdings(INITIAL_HISTORY)
-INITIAL_PORTFOLIO_DATA = {}
+INITIAL_PORTFOLIO_DATA: dict = {}
 
 if INITIAL_HOLDINGS:
     try:
@@ -78,11 +83,13 @@ import pages.intelligence as intelligence  # noqa: E402
 # ── Root Layout ───────────────────────────────────────────────────────────────
 app.layout = html.Div(
     [
-        dcc.Store(id="txn-store"),
-        dcc.Store(id="portfolio-store"),
+        # Seed both stores with startup data so every chart renders on first paint.
+        # The interval callback overwrites these with fresh data every 60 s.
+        dcc.Store(id="txn-store",       data=INITIAL_HISTORY),
+        dcc.Store(id="portfolio-store", data=INITIAL_PORTFOLIO_DATA),
         dcc.Store(id="alerts-store"),
-        dcc.Store(id="theme-store", data="dark"),
-        dcc.Store(id="selected-ticker-store", data="Portfolio"),  # persists P&L chart selection
+        dcc.Store(id="theme-store",          data="dark"),
+        dcc.Store(id="selected-ticker-store", data="Portfolio"),
         dcc.Interval(id="live-interval", interval=REFRESH_INTERVAL, n_intervals=0),
 
         dash.page_container,
@@ -96,31 +103,20 @@ app.layout = html.Div(
     },
 )
 
-# ── REFRESH CALLBACK (Core Fix) ───────────────────────────────────────────────
+# ── Refresh callback — keeps stores fresh every interval tick ─────────────────
 @app.callback(
-    Output("txn-store", "data"),
+    Output("txn-store",       "data"),
     Output("portfolio-store", "data"),
-    Input("live-interval", "n_intervals"),
-    prevent_initial_call=False,
+    Input("live-interval",    "n_intervals"),
+    prevent_initial_call=True,   # ← don't fire on load; stores are pre-seeded above
 )
 def refresh_portfolio_data(n):
-    """
-    This callback runs on initial load AND on every interval tick.
-    It reloads transactions from CSV and rebuilds + fetches live portfolio data.
-    This ensures /intelligence and main page always see fresh data even after navigation.
-    """
     try:
-        history = load_csv()
+        history  = load_csv()
         holdings = build_holdings(history)
-
-        if holdings:
-            portfolio_data = fetch_live(holdings, "1Y")
-        else:
-            portfolio_data = {"holdings": [], "histories": {}}
-
+        portfolio_data = fetch_live(holdings, "1Y") if holdings else {"holdings": [], "histories": {}}
         logger.debug(f"Refreshed portfolio: {len(holdings)} holdings")
         return history, portfolio_data
-
     except Exception as e:
         logger.error(f"Portfolio refresh failed: {e}")
         return [], {"holdings": [], "histories": {}}
