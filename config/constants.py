@@ -25,6 +25,7 @@ PLOTLY_BASE = dict(
     font=dict(family="system-ui,sans-serif", color=T_PRI, size=13),
     margin=dict(l=16, r=16, t=40, b=16),
     legend=dict(bgcolor="rgba(0,0,0,0)", borderwidth=0),
+    uirevision=True,
 )
 
 # ── Theme-aware style resolver ────────────────────────────────────────────────
@@ -58,6 +59,7 @@ def get_theme(theme: str) -> dict:
             font=dict(family="system-ui,sans-serif", color=t_pri, size=13),
             margin=dict(l=16, r=16, t=40, b=16),
             legend=dict(bgcolor="rgba(0,0,0,0)", borderwidth=0),
+            uirevision=True,
         ),
     }
 

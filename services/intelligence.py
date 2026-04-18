@@ -27,8 +27,11 @@ from __future__ import annotations
 import math
 import time
 import logging
+import csv
+import os
 import pandas as pd
 import yfinance as yf
+from config.settings import METADATA_CSV_PATH
 
 logger = logging.getLogger(__name__)
 
@@ -136,6 +139,40 @@ def _cache_set(key: str, value, ttl: int) -> None:
     _INTEL_CACHE[key] = (value, time.time() + ttl)
 
 
+# ── CSV Persistent Cache ──────────────────────────────────────────────────────
+_CSV_CACHE_STORE: dict[str, dict] = {}
+_CSV_LOADED = False
+
+def _load_metadata_csv():
+    global _CSV_LOADED, _CSV_CACHE_STORE
+    if _CSV_LOADED:
+        return
+    _CSV_LOADED = True
+    if not os.path.exists(METADATA_CSV_PATH):
+        return
+    try:
+        df = pd.read_csv(METADATA_CSV_PATH)
+        for (ticker, meta_type), group in df.groupby(["ticker", "type"]):
+            key = f"{meta_type}_{ticker}"
+            _CSV_CACHE_STORE[key] = dict(zip(group["category"], group["weight"]))
+        logger.info(f"Loaded ETF metadata cache from {METADATA_CSV_PATH}")
+    except Exception as exc:
+        logger.error(f"Failed to load metadata CSV: {exc}")
+
+def _append_metadata_csv(ticker: str, meta_type: str, data: dict):
+    file_exists = os.path.exists(METADATA_CSV_PATH)
+    try:
+        os.makedirs(os.path.dirname(METADATA_CSV_PATH), exist_ok=True)
+        with open(METADATA_CSV_PATH, "a", newline="") as f:
+            writer = csv.writer(f)
+            if not file_exists:
+                writer.writerow(["ticker", "type", "category", "weight"])
+            for k, v in data.items():
+                writer.writerow([ticker, meta_type, k, v])
+    except Exception as exc:
+        logger.error(f"Failed to append to metadata CSV: {exc}")
+
+
 # ─────────────────────────────────────────────────────────────────────────────
 # Live ETF metadata
 # ─────────────────────────────────────────────────────────────────────────────
@@ -151,6 +188,12 @@ def fetch_etf_sector_weights(ticker_yf: str) -> dict[str, float]:
     cached = _cache_get(key)
     if cached is not None:
         return cached
+
+    _load_metadata_csv()
+    if key in _CSV_CACHE_STORE:
+        result = _CSV_CACHE_STORE[key]
+        _cache_set(key, result, _SECTOR_TTL)
+        return result
 
     try:
         sw = yf.Ticker(ticker_yf).funds_data.sector_weightings  # {yf_key: 0-1 float}
@@ -173,6 +216,8 @@ def fetch_etf_sector_weights(ticker_yf: str) -> dict[str, float]:
                      if total > 0 else {"Unclassified": 100.0}
 
         _cache_set(key, result, _SECTOR_TTL)
+        _CSV_CACHE_STORE[key] = result
+        _append_metadata_csv(ticker_yf, "sector", result)
         logger.debug("Sector %s: %s", ticker_yf, result)
         return result
 
@@ -202,6 +247,12 @@ def fetch_etf_geo_weights(ticker_yf: str) -> dict[str, float]:
     cached = _cache_get(key)
     if cached is not None:
         return cached
+
+    _load_metadata_csv()
+    if key in _CSV_CACHE_STORE:
+        result = _CSV_CACHE_STORE[key]
+        _cache_set(key, result, _GEO_TTL)
+        return result
 
     try:
         fd = yf.Ticker(ticker_yf).funds_data
@@ -234,6 +285,8 @@ def fetch_etf_geo_weights(ticker_yf: str) -> dict[str, float]:
         result = dict(sorted(result.items(), key=lambda x: x[1], reverse=True))
 
         _cache_set(key, result, _GEO_TTL)
+        _CSV_CACHE_STORE[key] = result
+        _append_metadata_csv(ticker_yf, "geo", result)
         logger.debug("Geo %s: %s", ticker_yf, result)
         return result
 
@@ -380,7 +433,21 @@ def sector_exposure(port_data: dict) -> dict[str, float]:
     total = sum(blended.values())
     if total > 0:
         blended = {k: round(v / total * 100, 1) for k, v in blended.items()}
-    return dict(sorted(blended.items(), key=lambda x: x[1], reverse=True))
+        
+    sorted_blended = sorted(blended.items(), key=lambda x: x[1], reverse=True)
+    if len(sorted_blended) > 7:
+        top_6 = sorted_blended[:6]
+        other_sum = sum(v for k, v in sorted_blended[6:])
+        
+        # If 'Other' already existed in top_6, combine them, otherwise just append
+        existing_other = next((i for i, (k, _) in enumerate(top_6) if k == "Other"), None)
+        if existing_other is not None:
+            top_6[existing_other] = ("Other", round(top_6[existing_other][1] + other_sum, 1))
+        else:
+            top_6.append(("Other", round(other_sum, 1)))
+            
+        return dict(top_6)
+    return dict(sorted_blended)
 
 
 def geo_exposure(port_data: dict) -> dict[str, float]:
@@ -400,7 +467,21 @@ def geo_exposure(port_data: dict) -> dict[str, float]:
     total = sum(blended.values())
     if total > 0:
         blended = {k: round(v / total * 100, 1) for k, v in blended.items()}
-    return dict(sorted(blended.items(), key=lambda x: x[1], reverse=True))
+        
+    sorted_blended = sorted(blended.items(), key=lambda x: x[1], reverse=True)
+    if len(sorted_blended) > 7:
+        top_6 = sorted_blended[:6]
+        other_sum = sum(v for k, v in sorted_blended[6:])
+        
+        # If 'Other' already existed in top_6, combine them, otherwise just append
+        existing_other = next((i for i, (k, _) in enumerate(top_6) if k == "Other"), None)
+        if existing_other is not None:
+            top_6[existing_other] = ("Other", round(top_6[existing_other][1] + other_sum, 1))
+        else:
+            top_6.append(("Other", round(other_sum, 1)))
+            
+        return dict(top_6)
+    return dict(sorted_blended)
 
 
 # ─────────────────────────────────────────────────────────────────────────────

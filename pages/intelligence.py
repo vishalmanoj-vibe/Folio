@@ -72,6 +72,7 @@ _LINE_BASE = dict(
     font=dict(family="system-ui,sans-serif", color=T_PRI, size=13),
     margin=dict(l=16, r=24, t=36, b=16),
     legend=dict(bgcolor="rgba(0,0,0,0)", borderwidth=0),
+    uirevision=True,  # Preserve zoom/pan state across auto-refreshes
 )
 
 # Plotly base for horizontal bar charts — wide left margin for y-axis labels
@@ -82,6 +83,7 @@ _BAR_BASE = dict(
     margin=dict(l=110, r=60, t=16, b=16),
     legend=dict(bgcolor="rgba(0,0,0,0)", borderwidth=0),
     showlegend=False,
+    uirevision=True,  # Preserve state across auto-refreshes
 )
 
 # Alert level styling
@@ -216,7 +218,11 @@ def layout() -> html.Div:
                     html.Span(
                         "Risk · Allocation · Smart alerts",
                         style={"fontSize": "12px", "color": "var(--t-sec)",
-                               "marginLeft": "10px"},
+                               "marginLeft": "10px", "flex": "1"},
+                    ),
+                    html.Button(
+                        "Refresh now", id="refresh-btn", n_clicks=0,
+                        style={"fontWeight": "500", "fontSize": "12px", "padding": "4px 10px"},
                     ),
                 ],
                 style={
@@ -397,9 +403,8 @@ def register_callbacks(app) -> None:
         Output("intel-alerts",         "children"),
         Output("intel-data-note",      "children"),
         Input("portfolio-store",       "data"),
-        Input("live-interval",         "n_intervals"),
     )
-    def update_intelligence(port_data, _):
+    def update_intelligence(port_data):
 
         # ── Empty / loading state ─────────────────────────────────────────────
         empty_bar = _empty_fig(height=_BAR_MIN_H, bar=True)
@@ -559,6 +564,10 @@ def register_callbacks(app) -> None:
         # ── E. Sector exposure (horizontal bar) ───────────────────────────────
         sec_exp = sector_exposure(port_data)
         sec_s   = sorted(sec_exp.items(), key=lambda x: x[1])
+        sec_other = next((item for item in sec_s if item[0] == "Other"), None)
+        if sec_other:
+            sec_s.remove(sec_other)
+            sec_s.insert(0, sec_other)
         sec_h   = _bar_height(len(sec_s))
         sec_fig = go.Figure()
         sec_fig.update_layout(
@@ -584,6 +593,10 @@ def register_callbacks(app) -> None:
         # ── F. Geographic exposure (horizontal bar) ───────────────────────────
         geo_data = geo_exposure(port_data)
         geo_s    = sorted(geo_data.items(), key=lambda x: x[1])
+        geo_other = next((item for item in geo_s if item[0] == "Other"), None)
+        if geo_other:
+            geo_s.remove(geo_other)
+            geo_s.insert(0, geo_other)
         geo_h    = _bar_height(len(geo_s))
         geo_fig  = go.Figure()
         geo_fig.update_layout(

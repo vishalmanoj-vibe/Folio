@@ -37,10 +37,14 @@ def register_callbacks(app) -> None:
         Output("ticker-toggle-btns", "children"),
         Input("portfolio-store",     "data"),
         Input("theme-store",         "data"),
+        Input("selected-ticker-store", "data"),
     )
-    def build_toggle_btns(data, theme):
+    def build_toggle_btns(data, theme, selected):
         t_    = get_theme(theme or "dark")
         T_PRI = t_["T_PRI"]
+        BG    = t_["BG"]
+        selected = selected or "Portfolio"
+        
         if not data or "holdings" not in data:
             return []
         tickers = ["Portfolio"] + [h["ticker"] for h in data["holdings"]]
@@ -55,17 +59,41 @@ def register_callbacks(app) -> None:
                     "borderRadius": "20px",
                     "cursor":       "pointer",
                     "fontWeight":   "500",
-                    "background":   "transparent",
+                    "background":   T_PRI if t == selected and t == "Portfolio" else (COLORS[(i - 1) % len(COLORS)] if t == selected else "transparent"),
                     "border": (
                         f"1.5px solid {T_PRI}"
                         if t == "Portfolio"
                         else f"1.5px solid {COLORS[(i - 1) % len(COLORS)]}"
                     ),
-                    "color": T_PRI if t == "Portfolio" else COLORS[(i - 1) % len(COLORS)],
+                    "color": BG if t == selected else (T_PRI if t == "Portfolio" else COLORS[(i - 1) % len(COLORS)]),
                 },
             )
             for i, t in enumerate(tickers)
         ]
+
+    # ── Selected Ticker State ─────────────────────────────────────────────────
+    @app.callback(
+        Output("selected-ticker-store", "data"),
+        Input({"type": "ticker-btn", "index": ALL}, "n_clicks"),
+        State("selected-ticker-store", "data"),
+        prevent_initial_call=True,
+    )
+    def update_selected_ticker(n_clicks_list, current_selected):
+        import dash
+        import json
+        ctx = dash.callback_context
+        if not ctx.triggered:
+            raise dash.exceptions.PreventUpdate
+            
+        # Ignore if the trigger was a recreation of buttons (n_clicks=0 or None)
+        if not ctx.triggered[0]["value"]:
+            raise dash.exceptions.PreventUpdate
+            
+        try:
+            trigger_id = json.loads(ctx.triggered[0]["prop_id"].split(".")[0])
+            return trigger_id["index"]
+        except Exception:
+            return current_selected
 
     # ── P&L history ───────────────────────────────────────────────────────────
     @app.callback(
@@ -74,12 +102,12 @@ def register_callbacks(app) -> None:
         Input("pnl-mode",           "value"),
         Input("period-picker",      "value"),
         Input("theme-store",        "data"),
-        Input({"type": "ticker-btn", "index": ALL}, "n_clicks"),
-        State({"type": "ticker-btn", "index": ALL}, "id"),
+        Input("selected-ticker-store", "data"),
     )
-    def pnl_history_chart(data, mode, period, theme, n_clicks_list, btn_ids):
+    def pnl_history_chart(data, mode, period, theme, selected):
         t_     = get_theme(theme or "dark")
         period = period or "max"
+        selected = selected or "Portfolio"
 
         if not data or "holdings" not in data:
             fig = go.Figure()
@@ -89,11 +117,6 @@ def register_callbacks(app) -> None:
                 **t_["PLOTLY_BASE"]
             )
             return fig
-
-        selected = "Portfolio"
-        if n_clicks_list and any(n and n > 0 for n in n_clicks_list):
-            last_idx = max(range(len(n_clicks_list)), key=lambda i: n_clicks_list[i] or 0)
-            selected = btn_ids[last_idx]["index"]
 
         return build_pnl_history_figure(data["holdings"], mode, period, t_, selected)
 

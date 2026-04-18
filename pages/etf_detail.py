@@ -100,7 +100,7 @@ def layout(ticker: str = "") -> html.Div:
         [
             # Hidden stores
             dcc.Store(id="etf-ticker-store", data=ticker),
-            dcc.Store(id="etf-period-store", data=DEFAULT_PERIOD),
+            dcc.Store(id="etf-period-store", data=DEFAULT_PERIOD, storage_type="session"),
 
             # ── A. Header ─────────────────────────────────────────────────────
             html.Div(
@@ -147,8 +147,13 @@ def layout(ticker: str = "") -> html.Div:
                                    "flexWrap": "wrap", "gap": "4px"},
                         ),
                     ]),
-                    html.Div(id="etf-market-status",
-                             style={"alignSelf": "flex-start"}),
+                    html.Div([
+                        html.Div(id="etf-market-status", style={"marginBottom": "8px", "textAlign": "right"}),
+                        html.Button(
+                            "Refresh now", id="refresh-btn", n_clicks=0,
+                            style={"fontWeight": "500", "fontSize": "12px", "padding": "4px 10px", "float": "right"},
+                        ),
+                    ]),
                 ],
                 style={
                     "display": "flex", "justifyContent": "space-between",
@@ -283,6 +288,7 @@ _CHART_LAYOUT = dict(
     font=dict(family="system-ui,sans-serif", color=T_PRI, size=13),
     margin=dict(l=16, r=16, t=40, b=16),
     legend=dict(bgcolor="rgba(0,0,0,0)", borderwidth=0),
+    uirevision=True,  # Preserve state across auto-refreshes
 )
 
 

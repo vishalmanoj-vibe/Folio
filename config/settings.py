@@ -13,6 +13,10 @@ CSV_PATH = os.getenv(
     "PORTFOLIO_CSV",
     os.path.join(SCRIPT_DIR, "data", "raw", "stock_portfolio_transactions.csv")
 )
+METADATA_CSV_PATH = os.getenv(
+    "METADATA_CSV",
+    os.path.join(SCRIPT_DIR, "data", "raw", "etf_metadata_cache.csv")
+)
 
 # ── Intervals ─────────────────────────────────────────────────────────────────
 REFRESH_INTERVAL = int(os.getenv("REFRESH_INTERVAL_MS", 60_000))  # milliseconds

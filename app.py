@@ -108,9 +108,10 @@ app.layout = html.Div(
     Output("txn-store",       "data"),
     Output("portfolio-store", "data"),
     Input("live-interval",    "n_intervals"),
+    Input("refresh-btn",      "n_clicks"),
     prevent_initial_call=True,   # ← don't fire on load; stores are pre-seeded above
 )
-def refresh_portfolio_data(n):
+def refresh_portfolio_data(n_intervals, n_clicks):
     """
     Periodic callback to refresh market data.
 
