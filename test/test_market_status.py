@@ -15,10 +15,10 @@ import pytz
 class TestIsMarketOpen:
     """Test market open detection."""
 
-    @patch('services.market.status.datetime')
+    @patch('services.market.market_status.datetime')
     def test_market_open_during_trading_hours(self, mock_datetime):
         """Market should be open during trading hours (10:00-16:00 weekdays)."""
-        from services.market.status import is_market_open
+        from services.market.market_status import is_market_open
         
         # Tuesday 11:00 AET
         aet_tz = pytz.timezone('Australia/Sydney')
@@ -29,10 +29,10 @@ class TestIsMarketOpen:
         
         assert is_market_open() is True
 
-    @patch('services.market.status.datetime')
+    @patch('services.market.market_status.datetime')
     def test_market_closed_after_hours(self, mock_datetime):
         """Market should be closed after 16:00."""
-        from services.market.status import is_market_open
+        from services.market.market_status import is_market_open
         
         # Tuesday 17:00 AET
         aet_tz = pytz.timezone('Australia/Sydney')
@@ -43,10 +43,10 @@ class TestIsMarketOpen:
         
         assert is_market_open() is False
 
-    @patch('services.market.status.datetime')
+    @patch('services.market.market_status.datetime')
     def test_market_closed_before_hours(self, mock_datetime):
         """Market should be closed before 10:00."""
-        from services.market.status import is_market_open
+        from services.market.market_status import is_market_open
         
         # Tuesday 09:00 AET
         aet_tz = pytz.timezone('Australia/Sydney')
@@ -57,10 +57,10 @@ class TestIsMarketOpen:
         
         assert is_market_open() is False
 
-    @patch('services.market.status.datetime')
+    @patch('services.market.market_status.datetime')
     def test_market_closed_on_weekend(self, mock_datetime):
         """Market should be closed on weekends."""
-        from services.market.status import is_market_open
+        from services.market.market_status import is_market_open
         
         # Saturday 12:00 AET
         aet_tz = pytz.timezone('Australia/Sydney')
@@ -71,10 +71,10 @@ class TestIsMarketOpen:
         
         assert is_market_open() is False
 
-    @patch('services.market.status.datetime')
+    @patch('services.market.market_status.datetime')
     def test_market_open_at_exact_open_time(self, mock_datetime):
         """Market should be open at exactly 10:00."""
-        from services.market.status import is_market_open
+        from services.market.market_status import is_market_open
         
         # Tuesday 10:00 AET
         aet_tz = pytz.timezone('Australia/Sydney')
@@ -85,10 +85,10 @@ class TestIsMarketOpen:
         
         assert is_market_open() is True
 
-    @patch('services.market.status.datetime')
+    @patch('services.market.market_status.datetime')
     def test_market_closed_at_exact_close_time(self, mock_datetime):
         """Market should be closed at exactly 16:00."""
-        from services.market.status import is_market_open
+        from services.market.market_status import is_market_open
         
         # Tuesday 16:00 AET (at close)
         aet_tz = pytz.timezone('Australia/Sydney')
@@ -106,7 +106,7 @@ class TestMarketBadge:
 
     def test_badge_shows_open_status(self):
         """Badge should show 'ASX open' when market is open."""
-        from services.market.status import market_badge, is_market_open
+        from services.market.market_status import market_badge, is_market_open
         
         # We can't reliably test the visual rendering,
         # but we can verify the function returns valid HTML

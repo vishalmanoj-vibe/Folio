@@ -3,7 +3,7 @@ core/engine/stats_engine.py
 ============================
 Portfolio statistics and formatting logic.
 
-Extracted from callbacks/core_callbacks.py so callbacks contain
+Extracted from callbacks/portfolio_callbacks.py so callbacks contain
 zero business logic.
 
 Exported functions

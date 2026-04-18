@@ -1,6 +1,6 @@
 """
-services/market/fetcher.py
-===========================
+services/market/data_fetcher.py
+================================
 Market data fetching service.
 
 Dividend fix (this version)

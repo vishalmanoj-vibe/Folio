@@ -32,7 +32,7 @@ from dash import ALL, ClientsideFunction, Input, Output, State, dcc, html, regis
 from config.constants import (
     BG, SURFACE, BORDER, GREEN, RED, T_PRI, T_SEC, COLORS, PLOTLY_BASE, NAMES
 )
-from services.market.status import market_badge
+from services.market.market_status import market_badge
 from components.ui_helpers import section, chart_title
 
 # ── Register page ─────────────────────────────────────────────────────────────

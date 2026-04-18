@@ -45,7 +45,7 @@ def build_benchmark_traces(period: str) -> list:
     Only called when mode == 'pct'.
     """
     try:
-        from services.market.fetcher import fetch_benchmarks
+        from services.market.data_fetcher import fetch_benchmarks
         benchmarks = fetch_benchmarks(period="max")
     except Exception as exc:
         logger.warning("Could not load benchmarks: %s", exc)

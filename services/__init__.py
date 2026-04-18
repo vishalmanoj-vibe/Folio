@@ -5,7 +5,7 @@ Business logic for market data, alerts, and portfolio operations.
 """
 
 from services.market import fetch_live, is_market_open, market_badge
-from services.alerts import check_alerts
+from services.alert_service import check_alerts
 
 __all__ = [
     "fetch_live",

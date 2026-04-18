@@ -6,7 +6,7 @@ Handles the rendering of the alert banner based on portfolio logic.
 
 from dash import Input, Output, html
 from config.constants import RED
-from services.alerts import check_alerts
+from services.alert_service import check_alerts
 
 
 def register_callbacks(app) -> None:

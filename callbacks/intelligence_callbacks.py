@@ -6,7 +6,7 @@ Callbacks for the Portfolio Intelligence page.
 import math
 from dash import Input, Output
 from config.constants import COLORS, GREEN, RED
-from services.intelligence import (
+from services.intelligence_service import (
     compute_risk_metrics,
     sector_exposure,
     geo_exposure,

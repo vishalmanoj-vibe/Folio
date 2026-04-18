@@ -1,6 +1,6 @@
 """
-services/intelligence.py
-=========================
+services/intelligence_service.py
+=================================
 Pure-Python risk & allocation analytics.
 
 Geographic exposure fix

@@ -4,12 +4,12 @@ pages/portfolio.py
 Dash Pages wrapper for the existing portfolio dashboard.
 Route: /
 
-Layout is delegated entirely to components/layout.py — nothing new here.
+Layout is delegated entirely to components/portfolio_layout.py — nothing new here.
 Stores, Interval, and all callbacks are registered in app.py.
 """
 
 import dash
-from components.layout import create_layout
+from components.portfolio_layout import create_layout
 
 dash.register_page(__name__, path="/", title="Portfolio — Live P&L")
 

@@ -29,18 +29,18 @@ logger = logging.getLogger(__name__)
 import dash
 from dash import html, dcc, Input, Output
 
-from components.layout import INDEX_STRING
+from components.portfolio_layout import INDEX_STRING
 from data.csv_handler import load_csv
 from config.settings import REFRESH_INTERVAL
 
 # Callback modules
-import callbacks.core_callbacks         as core
-import callbacks.transaction_callbacks  as txn
-import callbacks.chart_callbacks        as charts
-import callbacks.alert_callbacks        as alerts
-import callbacks.ui_callbacks           as ui
-import callbacks.intelligence_callbacks as intell_cb
-import callbacks.etf_callbacks          as etf_cb
+import callbacks.portfolio_callbacks      as portfolio
+import callbacks.transaction_callbacks    as txn
+import callbacks.chart_callbacks          as charts
+import callbacks.alert_callbacks          as alerts
+import callbacks.ui_callbacks             as ui
+import callbacks.intelligence_callbacks   as intell_cb
+import callbacks.etf_detail_callbacks     as etf_detail_cb
 
 # ── Initial data load ─────────────────────────────────────────────────────────
 # This runs once at startup. The results seed the stores so the first render
@@ -54,7 +54,7 @@ except Exception as e:
     print(f"\nERROR loading CSV:\n{e}\n")
 
 from data.portfolio_builder import build_holdings
-from services.market.fetcher import fetch_live
+from services.market.data_fetcher import fetch_live
 
 INITIAL_HOLDINGS = build_holdings(INITIAL_HISTORY)
 INITIAL_PORTFOLIO_DATA: dict = {}
@@ -138,12 +138,12 @@ def refresh_portfolio_data(n_intervals, n_clicks):
 
 
 # ── Register Callbacks ────────────────────────────────────────────────────────
-core.register_callbacks(app)
+portfolio.register_callbacks(app)
 txn.register_callbacks(app)
 charts.register_callbacks(app)
 alerts.register_callbacks(app)
 ui.register_callbacks(app)
-etf_cb.register_callbacks(app)
+etf_detail_cb.register_callbacks(app)
 intell_cb.register_callbacks(app)
 
 # ── Run ───────────────────────────────────────────────────────────────────────

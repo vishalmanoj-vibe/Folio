@@ -7,7 +7,7 @@ Route: /intelligence
 UI fixes in this version
 ------------------------
 1. Geo chart — now uses symbol-suffix region inference (fixed in
-   services/intelligence.py); no change needed in page itself but
+   services/intelligence_service.py); no change needed in page itself but
    layout is rebuilt to match the corrected data.
 
 2. Bar chart label clipping — horizontal bar charts (vol, sector, geo)

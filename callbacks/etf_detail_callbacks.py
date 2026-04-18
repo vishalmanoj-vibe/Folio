@@ -1,6 +1,6 @@
 """
-callbacks/etf_callbacks.py
-==========================
+callbacks/etf_detail_callbacks.py
+==================================
 Callbacks for the ETF detail page.
 """
 
@@ -10,7 +10,7 @@ from dash import Input, Output, State, ALL, html
 from config.constants import (
     COLORS, BORDER, GREEN, RED, T_PRI, T_SEC, BG, SURFACE
 )
-from services.market.status import market_badge
+from services.market.market_status import market_badge
 from components.ui_helpers import stat_card
 
 # ── Plotly layout base using CSS-var-aware colours ────────────────────────────

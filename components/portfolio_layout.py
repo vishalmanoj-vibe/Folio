@@ -1,6 +1,6 @@
 """
-components/layout.py
-====================
+components/portfolio_layout.py
+==============================
 Portfolio page layout.
 
 Changes from previous version

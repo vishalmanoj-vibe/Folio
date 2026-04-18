@@ -1,19 +1,19 @@
 """
-callbacks/core_callbacks.py
-============================
+callbacks/portfolio_callbacks.py
+================================
 Thin orchestration layer — no business logic, no math, no pandas.
 
 Every non-trivial computation is delegated:
   stats + table rows  →  core/engine/stats_engine.py
   html rendering      →  components/ui_helpers.py
-  market badge        →  services/market/status.py
+  market badge        →  services/market/market_status.py
 """
 
 from dash import Input, Output, html
 
 from config.constants import GREEN, RED
 from core.engine.stats_engine import compute_portfolio_stats, build_live_table_rows
-from services.market.status import market_badge
+from services.market.market_status import market_badge
 from components.ui_helpers import stat_card
 
 

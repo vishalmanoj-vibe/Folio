@@ -7,7 +7,7 @@ Tests alert condition detection with configurable thresholds.
 """
 
 import pytest
-from services.alerts import check_alerts
+from services.alert_service import check_alerts
 
 
 class TestCheckAlerts:
