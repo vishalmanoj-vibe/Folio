@@ -3,15 +3,18 @@ components/charts/intel_drawdown.py
 """
 import plotly.graph_objects as go
 from config.constants import BORDER, RED
-from components.charts.intel_helpers import _LINE_BASE
+from components.charts.intel_helpers import _LINE_MARGIN
 
-def build_intel_drawdown_chart(dd_dates: list, dd_values: list) -> go.Figure:
+def build_intel_drawdown_chart(dd_dates: list, dd_values: list, theme_tokens: dict) -> go.Figure:
     fig = go.Figure()
+    base = theme_tokens["PLOTLY_BASE"].copy()
+    base["margin"] = _LINE_MARGIN
+
     fig.update_layout(
-        **_LINE_BASE, height=260,
+        **base, height=260,
         xaxis=dict(showgrid=False),
-        yaxis=dict(gridcolor=BORDER, ticksuffix="%",
-                   zeroline=True, zerolinecolor=BORDER, zerolinewidth=1),
+        yaxis=dict(gridcolor=theme_tokens["BORDER"], ticksuffix="%",
+                   zeroline=True, zerolinecolor=theme_tokens["BORDER"], zerolinewidth=1),
         hovermode="x unified",
     )
     if dd_dates and dd_values:
@@ -22,7 +25,7 @@ def build_intel_drawdown_chart(dd_dates: list, dd_values: list) -> go.Figure:
             line=dict(color=RED, width=1.5),
             hovertemplate="%{y:.2f}%<extra></extra>",
         ))
-        fig.add_hline(y=0, line_color=BORDER, line_width=0.8)
+        fig.add_hline(y=0, line_color=theme_tokens["BORDER"], line_width=0.8)
         # Annotate max drawdown point
         min_v   = min(dd_values)
         min_idx = dd_values.index(min_v)

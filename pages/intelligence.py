@@ -29,6 +29,11 @@ def layout() -> html.Div:
                     html.A("← Portfolio", href="/", className="back-link"),
                     html.Span("Portfolio Intelligence", className="page-title", style={"marginLeft": "16px"}),
                     html.Span("Risk · Allocation · Smart alerts", className="page-subtitle", style={"marginLeft": "10px", "flex": "1"}),
+                    html.Button(
+                        "☀ / ☾", id="theme-toggle", n_clicks=0,
+                        className="btn-sm",
+                        style={"marginRight": "8px"},
+                    ),
                     html.Button("Refresh now", id="refresh-btn", n_clicks=0, className="btn-sm"),
                 ],
                 className="page-header-row",
@@ -55,11 +60,31 @@ def layout() -> html.Div:
 
             # ── B. Equity curve ───────────────────────────────────────────────
             section(
-                chart_title(
-                    "Cumulative return",
-                    "Shows how $1 invested across your portfolio has grown over time. "
-                    "Each ETF is weighted by its share of your total holdings. "
-                    "The line starts at 0% on the first day all holdings have data.",
+                html.Div(
+                    [
+                        chart_title(
+                            "Cumulative return",
+                            "Shows how $1 invested across your portfolio has grown over time. "
+                            "Each ETF is weighted by its share of your total holdings. "
+                            "The line starts at 0% on the first day all holdings have data.",
+                        ),
+                        dcc.Dropdown(
+                            id="intel-period-picker",
+                            options=[
+                                {"label": "Since purchase", "value": "max"},
+                                {"label": "1 month",        "value": "1mo"},
+                                {"label": "3 months",       "value": "3mo"},
+                                {"label": "6 months",       "value": "6mo"},
+                                {"label": "1 year",         "value": "1y"},
+                                {"label": "2 years",        "value": "2y"},
+                            ],
+                            value="3mo",
+                            clearable=False, searchable=False,
+                            persistence=True, persistence_type="session",
+                            style={"width": "140px", "fontSize": "13px", "marginLeft": "auto"},
+                        ),
+                    ],
+                    style={"display": "flex", "alignItems": "center", "marginBottom": "12px"}
                 ),
                 dcc.Loading(
                     dcc.Graph(id="intel-equity-chart",
@@ -162,7 +187,7 @@ def layout() -> html.Div:
             # ── H. Detail Modal ───────────────────────────────────────────────
             dbc.Modal(
                 [
-                    dbc.ModalHeader(dbc.ModalTitle(id="intel-modal-title")),
+                    dbc.ModalHeader(dbc.ModalTitle(id="intel-modal-title"), close_button=False),
                     dbc.ModalBody(
                         dcc.Loading(
                             dcc.Graph(id="intel-modal-graph", config={"displayModeBar": False}),

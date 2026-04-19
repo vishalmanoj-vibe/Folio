@@ -118,6 +118,23 @@ def _symbol_to_region(symbol: str) -> str:
     return _SUFFIX_REGION.get(suffix, "Other")
 
 
+def _get_period_cutoff(period: str) -> pd.Timestamp | None:
+    """
+    Calculate the start date based on a given time period string.
+    """
+    from datetime import timedelta
+    now = pd.Timestamp.now()
+    mapping = {
+        "1mo": now - timedelta(days=30),
+        "3mo": now - timedelta(days=91),
+        "6mo": now - timedelta(days=182),
+        "1y":  now - timedelta(days=365),
+        "2y":  now - timedelta(days=730),
+        "max": None,
+    }
+    return mapping.get(period, None)
+
+
 # ── In-process TTL cache ──────────────────────────────────────────────────────
 _INTEL_CACHE: dict[str, tuple] = {}
 _SECTOR_TTL = 86_400   # 24 h — sector weights barely change
@@ -374,7 +391,7 @@ def per_ticker_volatility(histories: dict) -> dict[str, float]:
     }
 
 
-def compute_risk_metrics(port_data: dict) -> dict:
+def compute_risk_metrics(port_data: dict, period: str = "max") -> dict:
     empty = {
         "vol": None, "sharpe": None, "max_dd": None, "current_dd": None,
         "ticker_vols": {}, "dd_dates": [], "dd_values": [],
@@ -392,17 +409,38 @@ def compute_risk_metrics(port_data: dict) -> dict:
     if port_ret.empty:
         return empty
 
-    dd_s    = drawdown_series(port_ret)
-    cum_ret = ((1 + port_ret).cumprod() - 1) * 100
+    # ── Cards: use full history ──────────────────────────────────────────────
+    vol     = annualised_volatility(port_ret)
+    sharpe  = sharpe_ratio(port_ret)
+    max_dd  = max_drawdown(port_ret)
+    cur_dd  = round(float(drawdown_series(port_ret).iloc[-1]), 2) if not port_ret.empty else None
+
+    # ── Charts: apply period filter ──────────────────────────────────────────
+    chart_ret = port_ret
+    cutoff = _get_period_cutoff(period)
+    if cutoff is not None:
+        chart_ret = port_ret[port_ret.index >= cutoff]
+
+    if chart_ret.empty:
+        # If filtered period is empty, return empty charts but keep cards
+        return {
+            "vol": vol, "sharpe": sharpe, "max_dd": max_dd, "current_dd": cur_dd,
+            "ticker_vols": per_ticker_volatility(histories),
+            "dd_dates": [], "dd_values": [],
+            "ret_dates": [], "ret_values": [], "n_days": len(port_ret),
+        }
+
+    dd_s    = drawdown_series(chart_ret)
+    cum_ret = ((1 + chart_ret).cumprod() - 1) * 100
 
     def _fmt(idx):
         return [d.strftime("%Y-%m-%d") if hasattr(d, "strftime") else str(d) for d in idx]
 
     return {
-        "vol":         annualised_volatility(port_ret),
-        "sharpe":      sharpe_ratio(port_ret),
-        "max_dd":      max_drawdown(port_ret),
-        "current_dd":  round(float(dd_s.iloc[-1]), 2) if not dd_s.empty else None,
+        "vol":         vol,
+        "sharpe":      sharpe,
+        "max_dd":      max_dd,
+        "current_dd":  cur_dd,
         "ticker_vols": per_ticker_volatility(histories),
         "dd_dates":    _fmt(dd_s.index),
         "dd_values":   dd_s.tolist(),

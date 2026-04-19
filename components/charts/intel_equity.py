@@ -3,15 +3,19 @@ components/charts/intel_equity.py
 """
 import plotly.graph_objects as go
 from config.constants import BORDER, GREEN, RED
-from components.charts.intel_helpers import _LINE_BASE
+from components.charts.intel_helpers import _LINE_MARGIN
 
-def build_intel_equity_chart(ret_dates: list, ret_values: list) -> go.Figure:
+def build_intel_equity_chart(ret_dates: list, ret_values: list, theme_tokens: dict) -> go.Figure:
     fig = go.Figure()
+    
+    base = theme_tokens["PLOTLY_BASE"].copy()
+    base["margin"] = _LINE_MARGIN
+    
     fig.update_layout(
-        **_LINE_BASE, height=300,
+        **base, height=300,
         xaxis=dict(showgrid=False),
-        yaxis=dict(gridcolor=BORDER, ticksuffix="%",
-                   zeroline=True, zerolinecolor=BORDER, zerolinewidth=1),
+        yaxis=dict(gridcolor=theme_tokens["BORDER"], ticksuffix="%",
+                   zeroline=True, zerolinecolor=theme_tokens["BORDER"], zerolinewidth=1),
         hovermode="x unified",
     )
     if ret_dates and ret_values:
@@ -24,5 +28,5 @@ def build_intel_equity_chart(ret_dates: list, ret_values: list) -> go.Figure:
             line=dict(color=GREEN if lv >= 0 else RED, width=2),
             hovertemplate="%{y:.2f}%<extra></extra>",
         ))
-        fig.add_hline(y=0, line_color=BORDER, line_width=0.8)
+        fig.add_hline(y=0, line_color=theme_tokens["BORDER"], line_width=0.8)
     return fig

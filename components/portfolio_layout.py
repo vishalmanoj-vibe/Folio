@@ -120,10 +120,6 @@ def create_layout(initial_history: list[dict] | None = None) -> html.Div:
                             style={"margin": "3px 0 0", "fontSize": "12px",
                                    "color": "var(--t-sec)"},
                         ),
-                        html.Button(
-                            "☀ / ☾", id="theme-toggle", n_clicks=0,
-                            style={"fontSize": "12px", "padding": "4px 10px"},
-                        ),
                     ]),
                     html.Div(
                         [
@@ -133,6 +129,10 @@ def create_layout(initial_history: list[dict] | None = None) -> html.Div:
                                              "color": "var(--t-sec)"}),
                             html.Div(
                                 [
+                                    html.Button(
+                                        "☀ / ☾", id="theme-toggle", n_clicks=0,
+                                        style={"fontSize": "12px", "padding": "4px 10px", "fontWeight": "500"},
+                                    ),
                                     html.Button(
                                         "Refresh now", id="refresh-btn", n_clicks=0,
                                         style={"fontSize": "12px", "padding": "4px 10px", "fontWeight": "500"},

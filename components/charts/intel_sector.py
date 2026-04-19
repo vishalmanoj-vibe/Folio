@@ -3,9 +3,9 @@ components/charts/intel_sector.py
 """
 import plotly.graph_objects as go
 from config.constants import BORDER, RED, COLORS
-from components.charts.intel_helpers import _BAR_BASE, get_bar_height
+from components.charts.intel_helpers import _BAR_MARGIN, get_bar_height
 
-def build_intel_sector_chart(sec_exp: dict) -> go.Figure:
+def build_intel_sector_chart(sec_exp: dict, theme_tokens: dict) -> go.Figure:
     sec_s   = sorted(sec_exp.items(), key=lambda x: x[1])
     sec_other = next((item for item in sec_s if item[0] == "Other"), None)
     if sec_other:
@@ -13,9 +13,14 @@ def build_intel_sector_chart(sec_exp: dict) -> go.Figure:
         sec_s.insert(0, sec_other)
     sec_h   = get_bar_height(len(sec_s))
     fig = go.Figure()
+    
+    base = theme_tokens["PLOTLY_BASE"].copy()
+    base["margin"] = _BAR_MARGIN
+    base["showlegend"] = False
+
     fig.update_layout(
-        **_BAR_BASE, height=sec_h,
-        xaxis=dict(gridcolor=BORDER, ticksuffix="%", range=[0, 115]),
+        **base, height=sec_h,
+        xaxis=dict(gridcolor=theme_tokens["BORDER"], ticksuffix="%", range=[0, 115]),
         yaxis=dict(showgrid=False),
     )
     if sec_s:

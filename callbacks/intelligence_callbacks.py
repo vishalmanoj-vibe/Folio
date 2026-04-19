@@ -31,16 +31,22 @@ def register_callbacks(app) -> None:
         Output("intel-alerts",         "children"),
         Output("intel-data-note",      "children"),
         Input("portfolio-store",       "data"),
+        Input("intel-period-picker",   "value"),
+        Input("theme-store",           "data"),
     )
-    def update_intelligence(port_data):
+    def update_intelligence(port_data, period, theme):
         from components.ui_helpers import stat_card, alert_card
+        from config.constants import get_theme
+        
+        t_ = get_theme(theme or "dark")
+        period = period or "3mo"
 
         # ── Empty / loading state ─────────────────────────────────────────────
-        empty_bar = create_empty_fig(height=_BAR_MIN_H, bar=True)
+        empty_bar = create_empty_fig(height=_BAR_MIN_H, bar=True, theme_tokens=t_)
         no_data = (
             [stat_card("—", "—")],
-            create_empty_fig(height=300),
-            create_empty_fig(height=260),
+            create_empty_fig(height=300, theme_tokens=t_),
+            create_empty_fig(height=260, theme_tokens=t_),
             empty_bar, empty_bar, empty_bar,
             [alert_card({
                 "level": "info", "icon": "⏳",
@@ -64,7 +70,7 @@ def register_callbacks(app) -> None:
         )
 
         # ── A. Risk metrics ───────────────────────────────────────────────────
-        metrics = compute_risk_metrics(port_data)
+        metrics = compute_risk_metrics(port_data, period=period)
         vol     = metrics["vol"]
         sharpe  = metrics["sharpe"]
         max_dd  = metrics["max_dd"]
@@ -113,25 +119,27 @@ def register_callbacks(app) -> None:
         # ── B. Equity curve ───────────────────────────────────────────────────
         eq_fig = build_intel_equity_chart(
             metrics.get("ret_dates", []),
-            metrics.get("ret_values", [])
+            metrics.get("ret_values", []),
+            t_
         )
 
         # ── C. Drawdown curve ─────────────────────────────────────────────────
         dd_fig = build_intel_drawdown_chart(
             metrics.get("dd_dates", []),
-            metrics.get("dd_values", [])
+            metrics.get("dd_values", []),
+            t_
         )
 
         # ── D. Per-ticker volatility (horizontal bar) ─────────────────────────
-        vol_fig = build_intel_volatility_chart(metrics.get("ticker_vols", {}))
+        vol_fig = build_intel_volatility_chart(metrics.get("ticker_vols", {}), t_)
 
         # ── E. Sector exposure (horizontal bar) ───────────────────────────────
         sec_exp = sector_exposure(port_data)
-        sec_fig = build_intel_sector_chart(sec_exp)
+        sec_fig = build_intel_sector_chart(sec_exp, t_)
 
         # ── F. Geographic exposure (horizontal bar) ───────────────────────────
         geo_data = geo_exposure(port_data)
-        geo_fig = build_intel_geo_chart(geo_data)
+        geo_fig = build_intel_geo_chart(geo_data, t_)
 
         # ── G. Smart alerts ───────────────────────────────────────────────────
         alert_cards = [alert_card(a)
@@ -151,9 +159,10 @@ def register_callbacks(app) -> None:
         Input("intel-sector-chart",  "clickData"),
         Input("intel-geo-chart",     "clickData"),
         Input("portfolio-store",     "data"),
+        Input("theme-store",         "data"),
         prevent_initial_call=True
     )
-    def open_allocation_modal(sec_click, geo_click, port_data):
+    def open_allocation_modal(sec_click, geo_click, port_data, theme):
         import dash
         import plotly.graph_objects as go
         from services.intelligence_service import get_exposure_detail
@@ -236,12 +245,12 @@ def register_callbacks(app) -> None:
             marker=dict(colors=COLORS * 3),
         ))
         
-        theme = get_theme("dark")
+        t_ = get_theme(theme or "dark")
         fig.update_layout(
             margin=dict(t=20, l=20, r=20, b=20),
             paper_bgcolor="rgba(0,0,0,0)",
             plot_bgcolor="rgba(0,0,0,0)",
-            font=dict(color=theme["T_PRI"], size=12),
+            font=dict(color=t_["T_PRI"], size=12),
             height=500,
             uirevision=True, # Preserve zoom/pan/drill-down state across auto-refreshes
         )
