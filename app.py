@@ -88,6 +88,7 @@ import pages.intelligence as intelligence  # noqa: E402
 # ── Root Layout ───────────────────────────────────────────────────────────────
 app.layout = html.Div(
     [
+        dcc.Location(id="url", refresh=False),
         # Seed both stores with startup data so every chart renders on first paint.
         # The interval callback overwrites these with fresh data every 60 s.
         dcc.Store(id="txn-store",       data=INITIAL_HISTORY),

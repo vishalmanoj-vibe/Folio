@@ -11,7 +11,7 @@ from dash import html
 from config.constants import GREEN, RED, COLORS, CHART_INFO
 
 # Alert level styling
-_LEVEL_COLOR = {"danger": "#E24B4A", "warning": "#EF9F27", "info":  "#378ADD"}
+_LEVEL_COLOR = {"danger": "var(--danger)", "warning": "var(--warning)", "info":  "var(--info)"}
 _LEVEL_BG    = {
     "danger":  "rgba(226,75,74,0.08)",
     "warning": "rgba(239,159,39,0.08)",
@@ -100,7 +100,7 @@ def txn_table(history: list[dict]) -> html.Element:
             html.Td(
                 t["type"].upper(),
                 className="table-td",
-                style={"color": GREEN if t["type"] == "buy" else RED, "fontWeight": "600"}
+                style={"color": "var(--green)" if t["type"] == "buy" else "var(--red)", "fontWeight": "600"}
             ),
             html.Td(f"{float(t['shares']):,.2f}", className="table-td"),
             html.Td(f"${float(t['price']):,.4f}", className="table-td"),

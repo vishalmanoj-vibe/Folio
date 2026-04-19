@@ -8,7 +8,8 @@ with optional benchmark overlays.
 import pandas as pd
 import plotly.graph_objects as go
 from config.constants import GREEN, RED, COLORS
-from components.charts.helpers import _period_cutoff, build_benchmark_traces
+from core.engine.utils import get_period_cutoff
+from components.charts.helpers import build_benchmark_traces
 
 def build_pnl_history_figure(
     holdings: list[dict],
@@ -50,7 +51,7 @@ def build_pnl_history_figure(
     )
 
     color_map = {h["ticker"]: COLORS[i % len(COLORS)] for i, h in enumerate(holdings)}
-    cutoff    = _period_cutoff(period)
+    cutoff    = get_period_cutoff(period)
 
     def build_series(tr):
         idx        = pd.to_datetime(tr["dates"])
@@ -116,7 +117,7 @@ def build_pnl_history_figure(
 
         # ── Benchmark overlays — % mode only ─────────────────────────────
         if mode == "pct":
-            for trace in build_benchmark_traces(period, portfolio_start=cpnl.index.min()):
+            for trace in build_benchmark_traces(period, theme_tokens=theme_tokens, portfolio_start=cpnl.index.min()):
                 fig.add_trace(trace)
             fig.add_annotation(
                 text="Benchmarks normalised to period start",
@@ -150,8 +151,8 @@ def build_pnl_history_figure(
             )
             fig.add_trace(go.Scatter(
                 x=[buy_dt], y=[marker_y], mode="markers",
-                marker=dict(size=10, color="#EF9F27", symbol="diamond",
-                            line=dict(width=1.5, color="white")),
+                marker=dict(size=10, color=theme_tokens.get("WARNING", "#EF9F27"), symbol="diamond",
+                            line=dict(width=1.5, color=theme_tokens["BG"])),
                 hovertemplate=tip, showlegend=False,
             ))
 
@@ -197,8 +198,8 @@ def build_pnl_history_figure(
             cost_val = tr["shares"] * tr["buy_price"]
             fig.add_trace(go.Scatter(
                 x=[buy_dt], y=[marker_y], mode="markers",
-                marker=dict(size=10, color="#EF9F27", symbol="diamond",
-                            line=dict(width=1.5, color="white")),
+                marker=dict(size=10, color=theme_tokens.get("WARNING", "#EF9F27"), symbol="diamond",
+                            line=dict(width=1.5, color=theme_tokens["BG"])),
                 hovertemplate=(
                     f"<b>{selected}</b> — Buy<br>"
                     f"Date: {tr['buy_date']}<br>"
@@ -227,7 +228,7 @@ def build_pnl_history_figure(
                 name=f"{selected} (combined)",
                 mode="lines",
                 fill="tozeroy",
-                fillcolor="rgba(55,138,221,0.10)",
+                fillcolor=f"{theme_tokens.get('INFO', '#378ADD')}1A", # ~10% opacity
                 line=dict(color=bc, width=2.5),
                 hovertemplate=(
                     "%{y:.2f}%<extra>" + selected + " combined</extra>"
@@ -237,7 +238,7 @@ def build_pnl_history_figure(
             ))
 
             if mode == "pct":
-                for trace in build_benchmark_traces(period, portfolio_start=cpnl.index.min()):
+                for trace in build_benchmark_traces(period, theme_tokens=theme_tokens, portfolio_start=cpnl.index.min()):
                     fig.add_trace(trace)
                 fig.add_annotation(
                     text="Benchmarks normalised to period start",

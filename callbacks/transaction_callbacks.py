@@ -37,7 +37,7 @@ def register_callbacks(app):
         State("txn-ticker", "value"),
         State("txn-shares", "value"),
         State("txn-price", "value"),
-        State("txn-date", "date"),
+        State("txn-date", "value"),  # plain dcc.Input uses "value", not "date"
         State("txn-store", "data"),
         prevent_initial_call=True,
     )

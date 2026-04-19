@@ -13,30 +13,18 @@ from config.constants import (
 )
 from components.ui_helpers import section, chart_title
 
+from components.header import create_header
+
 register_page(__name__, path="/intelligence", title="Portfolio Intelligence")
-
-
-# ─────────────────────────────────────────────────────────────────────────────
-# Layout
-# ─────────────────────────────────────────────────────────────────────────────
 
 def layout() -> html.Div:
     return html.Div(
         [
             # ── Nav header ────────────────────────────────────────────────────
-            html.Div(
-                [
-                    html.A("← Portfolio", href="/", className="back-link"),
-                    html.Span("Portfolio Intelligence", className="page-title", style={"marginLeft": "16px"}),
-                    html.Span("Risk · Allocation · Smart alerts", className="page-subtitle", style={"marginLeft": "10px", "flex": "1"}),
-                    html.Button(
-                        "☀ / ☾", id="theme-toggle", n_clicks=0,
-                        className="btn-sm",
-                        style={"marginRight": "8px"},
-                    ),
-                    html.Button("Refresh now", id="refresh-btn", n_clicks=0, className="btn-sm"),
-                ],
-                className="page-header-row",
+            create_header(
+                title="Portfolio Intelligence",
+                subtitle="Risk · Allocation · Smart alerts",
+                back_link={"label": "← Portfolio", "href": "/"}
             ),
 
             # ── Data source note ──────────────────────────────────────────────

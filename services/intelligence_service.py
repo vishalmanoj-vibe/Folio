@@ -23,7 +23,6 @@ Both are cached 24 h in-process.
 """
 
 from __future__ import annotations
-
 import math
 import time
 import logging
@@ -31,7 +30,10 @@ import csv
 import os
 import pandas as pd
 import yfinance as yf
+
 from config.settings import METADATA_CSV_PATH
+from core.engine.utils import get_period_cutoff, normalise_tz, fmt_date_index
+from services.market.data_fetcher import get_ticker_cached
 
 logger = logging.getLogger(__name__)
 
@@ -118,21 +120,7 @@ def _symbol_to_region(symbol: str) -> str:
     return _SUFFIX_REGION.get(suffix, "Other")
 
 
-def _get_period_cutoff(period: str) -> pd.Timestamp | None:
-    """
-    Calculate the start date based on a given time period string.
-    """
-    from datetime import timedelta
-    now = pd.Timestamp.now()
-    mapping = {
-        "1mo": now - timedelta(days=30),
-        "3mo": now - timedelta(days=91),
-        "6mo": now - timedelta(days=182),
-        "1y":  now - timedelta(days=365),
-        "2y":  now - timedelta(days=730),
-        "max": None,
-    }
-    return mapping.get(period, None)
+# No-longer needed local _get_period_cutoff
 
 
 # ── In-process TTL cache ──────────────────────────────────────────────────────
@@ -213,7 +201,8 @@ def fetch_etf_sector_weights(ticker_yf: str) -> dict[str, float]:
         return result
 
     try:
-        sw = yf.Ticker(ticker_yf).funds_data.sector_weightings  # {yf_key: 0-1 float}
+        tk = get_ticker_cached(ticker_yf)
+        sw = tk.funds_data.sector_weightings  # {yf_key: 0-1 float}
 
         if not sw:
             result = {"Unclassified": 100.0}
@@ -272,7 +261,8 @@ def fetch_etf_geo_weights(ticker_yf: str) -> dict[str, float]:
         return result
 
     try:
-        fd = yf.Ticker(ticker_yf).funds_data
+        tk = get_ticker_cached(ticker_yf)
+        fd = tk.funds_data
         df = fd.top_holdings   # index=Symbol, col="Holding Percent" (0–1)
 
         if df is None or df.empty:
@@ -417,7 +407,7 @@ def compute_risk_metrics(port_data: dict, period: str = "max") -> dict:
 
     # ── Charts: apply period filter ──────────────────────────────────────────
     chart_ret = port_ret
-    cutoff = _get_period_cutoff(period)
+    cutoff = get_period_cutoff(period)
     if cutoff is not None:
         chart_ret = port_ret[port_ret.index >= cutoff]
 
@@ -433,18 +423,15 @@ def compute_risk_metrics(port_data: dict, period: str = "max") -> dict:
     dd_s    = drawdown_series(chart_ret)
     cum_ret = ((1 + chart_ret).cumprod() - 1) * 100
 
-    def _fmt(idx):
-        return [d.strftime("%Y-%m-%d") if hasattr(d, "strftime") else str(d) for d in idx]
-
     return {
         "vol":         vol,
         "sharpe":      sharpe,
         "max_dd":      max_dd,
         "current_dd":  cur_dd,
         "ticker_vols": per_ticker_volatility(histories),
-        "dd_dates":    _fmt(dd_s.index),
+        "dd_dates":    fmt_date_index(dd_s.index),
         "dd_values":   dd_s.tolist(),
-        "ret_dates":   _fmt(cum_ret.index),
+        "ret_dates":   fmt_date_index(cum_ret.index),
         "ret_values":  cum_ret.round(2).tolist(),
         "n_days":      len(port_ret),
     }

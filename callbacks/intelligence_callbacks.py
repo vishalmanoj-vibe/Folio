@@ -4,8 +4,12 @@ callbacks/intelligence_callbacks.py
 Callbacks for the Portfolio Intelligence page.
 """
 import math
+import logging
 from dash import Input, Output
 from config.constants import COLORS, GREEN, RED
+
+logger = logging.getLogger(__name__)
+
 from services.intelligence_service import (
     compute_risk_metrics,
     sector_exposure,
@@ -172,91 +176,106 @@ def register_callbacks(app) -> None:
         if not ctx.triggered or not port_data:
             return dash.no_update, dash.no_update, dash.no_update
 
-        trigger_id = ctx.triggered[0]["prop_id"].split(".")[0]
-        
-        # If triggered by portfolio-store refresh, don't close the modal or change content
-        if trigger_id == "portfolio-store":
-            return dash.no_update, dash.no_update, dash.no_update
-
-        # Determine which chart was clicked
-        if trigger_id == "intel-sector-chart":
-            click_data = sec_click
-            exp_type = "sector"
-        elif trigger_id == "intel-geo-chart":
-            click_data = geo_click
-            exp_type = "geo"
-        else:
-            # Fallback for unexpected triggers
-            return dash.no_update, dash.no_update, dash.no_update
-
-        if not click_data:
-            return dash.no_update, dash.no_update, dash.no_update
+        try:
+            trigger_id = ctx.triggered[0]["prop_id"].split(".")[0]
+            logger.debug(f"Allocation modal triggered by: {trigger_id}")
             
-        category = click_data["points"][0]["label"]
-        detail = get_exposure_detail(port_data, exp_type, category)
-        
-        if not detail:
-            # Only close if we explicitly have no data for a click
-            return False, dash.no_update, go.Figure()
+            # If triggered by portfolio-store refresh, don't close the modal or change content
+            if trigger_id == "portfolio-store":
+                return dash.no_update, dash.no_update, dash.no_update
 
-        # Build Sunburst Figure
-        # Using branchvalues="remainder" is safer for precision: 
-        # parents have value 0, leaves have the weights.
-        ids = [category]
-        labels = [category]
-        parents = [""]
-        values = [0] 
-        
-        if category == "Other":
-            # Hierarchical: Other -> SubCategory -> Ticker
-            sub_cats = sorted(list({d["sub_category"] for d in detail}))
-            for sc in sub_cats:
-                sc_weight = sum(d["weight"] for d in detail if d["sub_category"] == sc)
-                if sc_weight < 0.05: continue # Filter out dust
+            # Determine which chart was clicked
+            if trigger_id == "intel-sector-chart":
+                click_data = sec_click
+                exp_type = "sector"
+            elif trigger_id == "intel-geo-chart":
+                click_data = geo_click
+                exp_type = "geo"
+            else:
+                return dash.no_update, dash.no_update, dash.no_update
+
+            logger.debug(f"Allocation modal click data: {click_data}")
+
+            if not click_data or "points" not in click_data or not click_data["points"]:
+                logger.debug("Allocation modal: click data empty or malformed, ignoring.")
+                return dash.no_update, dash.no_update, dash.no_update
                 
-                ids.append(f"other_{sc}")
-                labels.append(sc)
-                parents.append(category)
-                values.append(0) # Let children define the weight
-                
+            point = click_data["points"][0]
+            category = point.get("label") or point.get("y") or point.get("x") or point.get("customdata")
+            
+            logger.debug(f"Allocation modal category: {category}")
+
+            if not category or not isinstance(category, str):
+                logger.debug("Allocation modal: category missing or not a string, ignoring.")
+                return dash.no_update, dash.no_update, dash.no_update
+
+            category = category.strip()
+            logger.info(f"Allocation modal requested: type={exp_type}, cat='{category}'")
+
+            detail = get_exposure_detail(port_data, exp_type, category)
+            
+            if not detail:
+                logger.info(f"No exposure detail found for {exp_type}='{category}'")
+                return False, dash.no_update, go.Figure()
+
+            # Build Sunburst Figure
+            detail = [d for d in detail if d["weight"] >= 0.01]
+            if not detail:
+                return False, dash.no_update, go.Figure()
+
+            ids = [category]
+            labels = [category]
+            parents = [""]
+            
+            root_value = sum(d["weight"] for d in detail)
+            values = [root_value] 
+            
+            if category == "Other":
+                sub_cats = sorted(list({d["sub_category"] for d in detail}))
+                for sc in sub_cats:
+                    sc_weight = sum(d["weight"] for d in detail if d["sub_category"] == sc)
+                    ids.append(f"other_{sc}")
+                    labels.append(sc)
+                    parents.append(category)
+                    values.append(sc_weight) 
+                    for d in detail:
+                        if d["sub_category"] == sc:
+                            ids.append(f"other_{sc}_{d['ticker']}")
+                            labels.append(d["ticker"])
+                            parents.append(f"other_{sc}")
+                            values.append(d["weight"])
+            else:
                 for d in detail:
-                    if d["sub_category"] == sc:
-                        if d["weight"] < 0.05: continue
-                        ids.append(f"other_{sc}_{d['ticker']}")
-                        labels.append(d["ticker"])
-                        parents.append(f"other_{sc}")
-                        values.append(d["weight"])
-        else:
-            # Simple: Category -> Tickers
-            for d in detail:
-                if d["weight"] < 0.05: continue
-                ids.append(f"cat_{d['ticker']}")
-                labels.append(d["ticker"])
-                parents.append(category)
-                values.append(d["weight"])
+                    ids.append(f"cat_{d['ticker']}")
+                    labels.append(d["ticker"])
+                    parents.append(category)
+                    values.append(d["weight"])
 
-        fig = go.Figure(go.Sunburst(
-            ids=ids,
-            labels=labels,
-            parents=parents,
-            values=values,
-            branchvalues="remainder",
-            hovertemplate="<b>%{label}</b><br>Portfolio Weight: %{value:.2f}%<extra></extra>",
-            marker=dict(colors=COLORS * 3),
-        ))
-        
-        t_ = get_theme(theme or "dark")
-        fig.update_layout(
-            margin=dict(t=20, l=20, r=20, b=20),
-            paper_bgcolor="rgba(0,0,0,0)",
-            plot_bgcolor="rgba(0,0,0,0)",
-            font=dict(color=t_["T_PRI"], size=12),
-            height=500,
-            uirevision=True, # Preserve zoom/pan/drill-down state across auto-refreshes
-        )
-        
-        title = f"{'Sector' if exp_type == 'sector' else 'Geographic'} Breakdown: {category}"
-        return True, title, fig
+            values = [round(v, 6) for v in values]
+
+            fig = go.Figure(go.Sunburst(
+                ids=ids, labels=labels, parents=parents, values=values,
+                branchvalues="total",
+                hovertemplate="<b>%{label}</b><br>Portfolio Weight: %{value:.2f}%<extra></extra>",
+                marker=dict(colors=COLORS * 3),
+            ))
+            
+            t_ = get_theme(theme or "dark")
+            layout_override = t_["PLOTLY_BASE"].copy()
+            layout_override.update(dict(
+                paper_bgcolor="rgba(0,0,0,0)",
+                margin=dict(t=20, l=20, r=20, b=20),
+                height=500,
+                uirevision=True,
+            ))
+            fig.update_layout(layout_override)
+            
+            title = f"{'Sector' if exp_type == 'sector' else 'Geographic'} Breakdown: {category}"
+            return True, title, fig
+
+        except Exception as e:
+            logger.error(f"Allocation modal error: {e}", exc_info=True)
+            return dash.no_update, dash.no_update, dash.no_update
 
     @app.callback(
         Output("intel-detail-modal", "is_open", allow_duplicate=True),

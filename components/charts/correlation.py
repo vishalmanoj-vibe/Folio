@@ -6,7 +6,7 @@ Builds a heatmap showing the price return correlation between holdings.
 
 import pandas as pd
 import plotly.graph_objects as go
-from components.charts.helpers import _period_cutoff
+from core.engine.utils import get_period_cutoff
 
 def build_corr_figure(histories: dict, period: str, theme_tokens: dict) -> go.Figure:
     """
@@ -26,7 +26,7 @@ def build_corr_figure(histories: dict, period: str, theme_tokens: dict) -> go.Fi
     fig = go.Figure()
     fig.update_layout(**PLOTLY_BASE)
     
-    cutoff = _period_cutoff(period)
+    cutoff = get_period_cutoff(period)
     
     if not histories or len(histories) < 2:
         fig.add_annotation(text="Need 2+ holdings with history",

@@ -8,7 +8,7 @@ starting from each ticker's first purchase date (or a period cutoff).
 import pandas as pd
 import plotly.graph_objects as go
 from config.constants import COLORS
-from components.charts.helpers import _period_cutoff
+from core.engine.utils import get_period_cutoff
 
 
 def build_price_chart_figure(
@@ -53,7 +53,7 @@ def build_price_chart_figure(
                 purchase_map[ticker] = pd.to_datetime(fp)
 
     # For non-max periods, use a single calendar cutoff for all tickers
-    calendar_cutoff = _period_cutoff(period)  # None when period == "max"
+    calendar_cutoff = get_period_cutoff(period)  # None when period == "max"
 
     for i, (t, recs) in enumerate(histories.items()):
         df = pd.DataFrame(recs)

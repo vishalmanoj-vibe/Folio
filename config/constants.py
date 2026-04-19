@@ -40,12 +40,24 @@ def get_theme(theme: str) -> dict:
         border  = "rgba(0,0,0,0.09)"
         t_pri   = "#1a1a1a"
         t_sec   = "#6b6b67"
+        # Light mode specific accents
+        bench_1 = "#4A90E2" 
+        bench_2 = "#D0021B"
+        danger  = "#E24B4A"
+        warning = "#EF9F27"
+        info    = "#378ADD"
     else:  # dark (default)
         bg      = "#111110"
         surface = "#1c1c1a"
         border  = "rgba(255,255,255,0.08)"
         t_pri   = "#f0ede8"
         t_sec   = "#8a8880"
+        # Dark mode specific accents
+        bench_1 = "#6B8FCC"
+        bench_2 = "#CC8F6B"
+        danger  = "#E24B4A"
+        warning = "#EF9F27"
+        info    = "#378ADD"
 
     return {
         "BG":      bg,
@@ -53,6 +65,11 @@ def get_theme(theme: str) -> dict:
         "BORDER":  border,
         "T_PRI":   t_pri,
         "T_SEC":   t_sec,
+        "DANGER":  danger,
+        "WARNING": warning,
+        "INFO":    info,
+        "BENCH_1": bench_1,
+        "BENCH_2": bench_2,
         "PLOTLY_BASE": dict(
             paper_bgcolor=bg,
             plot_bgcolor=surface,

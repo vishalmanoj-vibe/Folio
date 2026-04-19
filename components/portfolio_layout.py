@@ -25,11 +25,15 @@ INDEX_STRING = '''
 body[data-theme="dark"] {
   --bg: #111110; --surface: #1c1c1a; --border: rgba(255,255,255,0.08);
   --t-pri: #f0ede8; --t-sec: #8a8880;
+  --green: #1D9E75; --red: #E24B4A;
+  --danger: #E24B4A; --warning: #EF9F27; --info: #378ADD;
   color-scheme: dark;
 }
 body[data-theme="light"] {
   --bg: #ffffff; --surface: #f8f8f6; --border: rgba(0,0,0,0.09);
   --t-pri: #1a1a1a; --t-sec: #6b6b67;
+  --green: #1D9E75; --red: #E24B4A;
+  --danger: #E24B4A; --warning: #EF9F27; --info: #378ADD;
   color-scheme: light;
 }
 body {
@@ -81,79 +85,21 @@ details summary { color: var(--t-sec); }
 '''
 
 
+from components.header import create_header
+
 def create_layout(initial_history: list[dict] | None = None) -> html.Div:
     """
     Construct the main dashboard layout.
-
-    Args:
-        initial_history: Pre-fetched transaction history to inject into stores on load.
-
-    Returns:
-        A Dash html.Div containing the full layout and dcc.Stores.
     """
     return html.Div(
         [
             # ── Header ────────────────────────────────────────────────────────
-            html.Div(
-                [
-                    html.Div([
-                        # Title row with nav link
-                        html.Div(
-                            [
-                                html.H1(
-                                    "Portfolio — Live P&L",
-                                    style={"margin": "0", "fontSize": "20px",
-                                           "fontWeight": "500",
-                                           "color": "var(--t-pri)"},
-                                ),
-                                html.A(
-                                    "Intelligence →",
-                                    href="/intelligence",
-                                    className="nav-link",
-                                ),
-                            ],
-                            style={"display": "flex", "alignItems": "center",
-                                   "gap": "12px", "flexWrap": "wrap"},
-                        ),
-                        html.P(
-                            "Auto-refreshes every 60 s · Yahoo Finance · ASX ETFs",
-                            style={"margin": "3px 0 0", "fontSize": "12px",
-                                   "color": "var(--t-sec)"},
-                        ),
-                    ]),
-                    html.Div(
-                        [
-                            html.Div(id="market-status"),
-                            html.Span(id="last-updated",
-                                      style={"fontSize": "12px",
-                                             "color": "var(--t-sec)"}),
-                            html.Div(
-                                [
-                                    html.Button(
-                                        "☀ / ☾", id="theme-toggle", n_clicks=0,
-                                        style={"fontSize": "12px", "padding": "4px 10px", "fontWeight": "500"},
-                                    ),
-                                    html.Button(
-                                        "Refresh now", id="refresh-btn", n_clicks=0,
-                                        style={"fontSize": "12px", "padding": "4px 10px", "fontWeight": "500"},
-                                    ),
-                                    html.Button(
-                                        "⬇ PDF", id="pdf-btn", n_clicks=0,
-                                        style={"fontSize": "12px", "padding": "4px 10px", "fontWeight": "500"},
-                                    ),
-                                ],
-                                style={"display": "flex", "gap": "8px", "marginTop": "8px"}
-                            ),
-                        ],
-                        style={"display": "flex", "flexDirection": "column",
-                               "alignItems": "flex-end", "gap": "6px"},
-                    ),
-                ],
-                style={
-                    "display": "flex", "justifyContent": "space-between",
-                    "alignItems": "flex-start", "padding": "18px 24px 12px",
-                    "borderBottom": "0.5px solid var(--border)",
-                },
+            create_header(
+                title="Portfolio — Live P&L",
+                subtitle="Auto-refreshes every 60 s · Yahoo Finance · ASX ETFs",
+                nav_links=[{"label": "Intelligence →", "href": "/intelligence"}],
+                show_pdf=True,
+                market_status=html.Div(id="market-status")
             ),
 
             # ── Stat cards ────────────────────────────────────────────────────
@@ -228,11 +174,13 @@ def create_layout(initial_history: list[dict] | None = None) -> html.Div:
                                            style={"fontSize": "11px",
                                                   "color": "var(--t-sec)",
                                                   "margin": "0 0 4px"}),
-                                    dcc.DatePickerSingle(
+                                    dcc.Input(
                                         id="txn-date",
-                                        date=datetime.now().date(),
-                                        display_format="YYYY-MM-DD",
-                                        className="txn-datepicker",
+                                        type="text",
+                                        placeholder=datetime.now().strftime("%Y-%m-%d"),
+                                        value=datetime.now().strftime("%Y-%m-%d"),
+                                        debounce=True,
+                                        style={"width": "120px", "fontSize": "13px"},
                                     ),
                                 ]),
                                 html.Div([
