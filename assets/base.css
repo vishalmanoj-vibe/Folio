@@ -1,0 +1,48 @@
+/* ── Reset ── */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+/* ── Dark / light theme vars ── */
+body[data-theme="dark"] {
+  --bg: #111110;
+  --surface: #1c1c1a;
+  --border: rgba(255, 255, 255, 0.08);
+  --t-pri: #f0ede8;
+  --t-sec: #8a8880;
+}
+
+body[data-theme="light"] {
+  --bg: #ffffff;
+  --surface: #f8f8f6;
+  --border: rgba(0, 0, 0, 0.09);
+  --t-pri: #1a1a1a;
+  --t-sec: #6b6b67;
+}
+
+/* ── Full page background ── */
+html {
+  background-color: #111110;
+}
+
+body {
+  margin: 0;
+  background-color: var(--bg) !important;
+  color: var(--t-pri);
+  transition: background-color 0.2s ease, color 0.2s ease;
+  font-family: system-ui, -apple-system, sans-serif;
+}
+
+/* ── React root fills full viewport ── */
+#react-entry-point,
+._dash-loading {
+  min-height: 100vh;
+  background-color: var(--bg);
+}
+
+/* Smooth page feel */
+body {
+  transition: background-color 0.3s ease;
+}

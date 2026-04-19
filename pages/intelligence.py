@@ -3,33 +3,9 @@ pages/intelligence.py
 ======================
 Portfolio Intelligence page.
 Route: /intelligence
-
-UI fixes in this version
-------------------------
-1. Geo chart — now uses symbol-suffix region inference (fixed in
-   services/intelligence_service.py); no change needed in page itself but
-   layout is rebuilt to match the corrected data.
-
-2. Bar chart label clipping — horizontal bar charts (vol, sector, geo)
-   now use _BAR_BASE with l=110 left margin so labels like
-   "Consumer Staples" or "South Korea" are fully visible.
-
-3. CSS height conflict removed — dcc.Graph wrappers no longer have
-   style={"height": "Xpx"}. Plotly's figure.layout.height controls
-   canvas size exclusively; CSS height clips the canvas.
-
-4. Uniform section structure — every section uses the same _SEC token
-   (padding 20px 24px + bottom border). The three-column row (D/E/F)
-   is wrapped in its own _SEC div, and each column has no extra padding
-   so spacing is consistent with sections A–C and G.
-
-5. Consistent chart heights — line charts (B, C) use fixed 300/260 px.
-   Bar charts (D, E, F) scale to row count with a shared 36px-per-row
-   formula and a 280 px minimum, all using autosize=False so Plotly
-   respects the height value.
 """
 
-from __future__ import annotations
+import dash_bootstrap_components as dbc
 from dash import dcc, html, register_page
 
 from config.constants import (
@@ -87,7 +63,7 @@ def layout() -> html.Div:
                 ),
                 dcc.Loading(
                     dcc.Graph(id="intel-equity-chart",
-                              config={"displayModeBar": False}),
+                               config={"displayModeBar": False}),
                     type="circle", color=COLORS[0],
                 ),
             ),
@@ -102,7 +78,7 @@ def layout() -> html.Div:
                 ),
                 dcc.Loading(
                     dcc.Graph(id="intel-drawdown-chart",
-                              config={"displayModeBar": False}),
+                               config={"displayModeBar": False}),
                     type="circle", color=RED,
                 ),
             ),
@@ -182,8 +158,26 @@ def layout() -> html.Div:
                     ),
                 ],
             ),
+
+            # ── H. Detail Modal ───────────────────────────────────────────────
+            dbc.Modal(
+                [
+                    dbc.ModalHeader(dbc.ModalTitle(id="intel-modal-title")),
+                    dbc.ModalBody(
+                        dcc.Loading(
+                            dcc.Graph(id="intel-modal-graph", config={"displayModeBar": False}),
+                            type="circle", color=COLORS[0],
+                        )
+                    ),
+                    dbc.ModalFooter(
+                        html.Button("Close", id="intel-modal-close-btn", className="btn-md", n_clicks=0)
+                    ),
+                ],
+                id="intel-detail-modal",
+                is_open=False,
+                size="lg",
+                centered=True,
+            ),
         ],
         className="page-root",
     )
-
-# Callbacks are now located in callbacks/intelligence_callbacks.py

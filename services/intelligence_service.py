@@ -416,8 +416,7 @@ def compute_risk_metrics(port_data: dict) -> dict:
 # Allocation insights
 # ─────────────────────────────────────────────────────────────────────────────
 
-def sector_exposure(port_data: dict) -> dict[str, float]:
-    """Portfolio-weighted sector blend from live yfinance funds_data."""
+def _get_full_exposure(port_data: dict, fetch_fn) -> dict[str, float]:
     holdings = port_data.get("holdings", [])
     weights  = _portfolio_weights(holdings)
     blended: dict[str, float] = {}
@@ -427,14 +426,16 @@ def sector_exposure(port_data: dict) -> dict[str, float]:
         port_w    = weights.get(h["ticker"], 0)
         if port_w <= 0:
             continue
-        for sector, pct in fetch_etf_sector_weights(ticker_yf).items():
-            blended[sector] = blended.get(sector, 0) + port_w * pct
+        for category, pct in fetch_fn(ticker_yf).items():
+            blended[category] = blended.get(category, 0) + port_w * pct
 
     total = sum(blended.values())
     if total > 0:
-        blended = {k: round(v / total * 100, 1) for k, v in blended.items()}
-        
-    sorted_blended = sorted(blended.items(), key=lambda x: x[1], reverse=True)
+        return {k: round(v / total * 100, 1) for k, v in blended.items()}
+    return {}
+
+def _group_exposure(full_exp: dict[str, float]) -> dict[str, float]:
+    sorted_blended = sorted(full_exp.items(), key=lambda x: x[1], reverse=True)
     if len(sorted_blended) > 7:
         top_6 = sorted_blended[:6]
         other_sum = sum(v for k, v in sorted_blended[6:])
@@ -445,43 +446,69 @@ def sector_exposure(port_data: dict) -> dict[str, float]:
             top_6[existing_other] = ("Other", round(top_6[existing_other][1] + other_sum, 1))
         else:
             top_6.append(("Other", round(other_sum, 1)))
-            
         return dict(top_6)
     return dict(sorted_blended)
 
+def sector_exposure(port_data: dict) -> dict[str, float]:
+    """Portfolio-weighted sector blend from live yfinance funds_data."""
+    full = _get_full_exposure(port_data, fetch_etf_sector_weights)
+    return _group_exposure(full)
 
 def geo_exposure(port_data: dict) -> dict[str, float]:
     """Portfolio-weighted geographic blend inferred from top-holdings symbols."""
+    full = _get_full_exposure(port_data, fetch_etf_geo_weights)
+    return _group_exposure(full)
+
+def get_exposure_detail(port_data: dict, exposure_type: str, category_name: str) -> list[dict]:
+    """
+    Returns breakdown of which tickers contribute to a specific sector/region.
+    Handles 'Other' by finding all minor categories grouped into it.
+    """
     holdings = port_data.get("holdings", [])
     weights  = _portfolio_weights(holdings)
-    blended: dict[str, float] = {}
+    
+    if exposure_type == "sector":
+        full_exp = _get_full_exposure(port_data, fetch_etf_sector_weights)
+        fetch_fn = fetch_etf_sector_weights
+    else:
+        full_exp = _get_full_exposure(port_data, fetch_etf_geo_weights)
+        fetch_fn = fetch_etf_geo_weights
+        
+    sorted_exp = sorted(full_exp.items(), key=lambda x: x[1], reverse=True)
+    top_categories = {k for k, v in sorted_exp[:6]} if len(sorted_exp) > 7 else {k for k, v in sorted_exp}
+    
+    is_other_request = (category_name == "Other")
+    detail = []
 
     for h in holdings:
-        ticker_yf = h.get("ticker_yf", h["ticker"] + ".AX")
-        port_w    = weights.get(h["ticker"], 0)
+        ticker = h["ticker"]
+        ticker_yf = h.get("ticker_yf", ticker + ".AX")
+        port_w = weights.get(ticker, 0)
         if port_w <= 0:
             continue
-        for region, pct in fetch_etf_geo_weights(ticker_yf).items():
-            blended[region] = blended.get(region, 0) + port_w * pct
-
-    total = sum(blended.values())
-    if total > 0:
-        blended = {k: round(v / total * 100, 1) for k, v in blended.items()}
-        
-    sorted_blended = sorted(blended.items(), key=lambda x: x[1], reverse=True)
-    if len(sorted_blended) > 7:
-        top_6 = sorted_blended[:6]
-        other_sum = sum(v for k, v in sorted_blended[6:])
-        
-        # If 'Other' already existed in top_6, combine them, otherwise just append
-        existing_other = next((i for i, (k, _) in enumerate(top_6) if k == "Other"), None)
-        if existing_other is not None:
-            top_6[existing_other] = ("Other", round(top_6[existing_other][1] + other_sum, 1))
-        else:
-            top_6.append(("Other", round(other_sum, 1)))
             
-        return dict(top_6)
-    return dict(sorted_blended)
+        ticker_data = fetch_fn(ticker_yf)
+        for cat, pct in ticker_data.items():
+            contribution = port_w * pct
+            if contribution <= 0:
+                continue
+                
+            match = False
+            if is_other_request:
+                # 'Other' catches anything not in top 6, plus anything explicitly named 'Other'
+                if cat not in top_categories or cat == "Other":
+                    match = True
+            elif cat == category_name:
+                match = True
+                
+            if match:
+                detail.append({
+                    "ticker": ticker,
+                    "weight": contribution, # Removed rounding to prevent Sunburst hierarchy sum errors
+                    "sub_category": cat
+                })
+    
+    return sorted(detail, key=lambda x: x["weight"], reverse=True)
 
 
 # ─────────────────────────────────────────────────────────────────────────────

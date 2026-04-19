@@ -1,0 +1,224 @@
+/* ── Dash 2.16+ Radix-based dropdown ── */
+.dash-dropdown-wrapper,
+.dash-dropdown {
+  background-color: var(--surface) !important;
+  color: var(--t-pri) !important;
+  border: 1px solid var(--border) !important;
+  border-radius: 6px !important;
+}
+.dash-dropdown {
+  min-height: 34px !important;
+  cursor: pointer !important;
+}
+.dash-dropdown-arrow {
+  color: var(--t-sec) !important;
+  fill: var(--t-sec) !important;
+}
+.dash-dropdown-value,
+.dash-dropdown-placeholder {
+  color: var(--t-pri) !important;
+}
+.dash-dropdown-content {
+  background-color: var(--surface) !important;
+  border: 1px solid var(--border) !important;
+  border-radius: 8px !important;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.55) !important;
+  z-index: 1000 !important;
+  overflow: auto !important;
+  max-height: 250px !important;
+}
+
+.dash-options-list {
+  max-height: 240px !important;
+  overflow-y: auto !important;
+}
+
+.dash-dropdown-search,
+.dash-dropdown-content input,
+.dash-dropdown-content input[type="text"],
+.dash-dropdown-content input[type="search"] {
+  background-color: var(--bg) !important;
+  color: var(--t-pri) !important;
+  border: 1px solid var(--border) !important;
+  border-radius: 4px !important;
+  outline: none !important;
+  box-shadow: none !important;
+  -webkit-appearance: none !important;
+  appearance: none !important;
+}
+.dash-dropdown-search::placeholder,
+.dash-dropdown-content input::placeholder {
+  color: var(--t-sec) !important;
+}
+.dash-options-list-option,
+.dash-dropdown-option {
+  background-color: var(--surface) !important;
+  color: var(--t-pri) !important;
+  cursor: pointer !important;
+}
+.dash-options-list-option:hover,
+.dash-dropdown-option:hover {
+  background-color: var(--bg) !important;
+  color: var(--t-pri) !important;
+}
+.dash-options-list-option.selected,
+.dash-dropdown-option.selected {
+  background-color: rgba(255, 255, 255, 0.07) !important;
+  color: var(--t-pri) !important;
+  font-weight: 500 !important;
+}
+
+/* ── Dash dropdown (Select) — legacy React-Select ── */
+.Select {
+  border: none !important;
+  box-shadow: none !important;
+}
+.Select-control {
+  background-color: var(--surface) !important;
+  color: var(--t-pri) !important;
+  border: 0.5px solid var(--border) !important;
+  border-radius: 6px !important;
+  height: 34px !important;
+  display: flex !important;
+  align-items: center !important;
+  box-shadow: none !important;
+}
+.Select-menu,
+.Select-menu-outer {
+  background-color: var(--surface) !important;
+  color: var(--t-pri) !important;
+  border-color: var(--border) !important;
+  border-radius: 6px !important;
+  max-height: 250px !important;
+  overflow-y: auto !important;
+}
+.Select-option,
+.VirtualizedSelectOption,
+.VirtualizedSelectFocusedOption {
+  background-color: var(--surface) !important;
+  color: var(--t-pri) !important;
+}
+.Select-value, .Select-value-label, .Select-placeholder { color: var(--t-pri) !important; }
+.Select-arrow { border-top-color: var(--t-sec) !important; }
+.Select-arrow-zone { border-left: none !important; }
+.Select-menu-outer { 
+  box-shadow: 0 4px 12px rgba(0,0,0,0.5) !important; 
+  z-index: 9999 !important;
+}
+.Select-arrow-zone:hover > .Select-arrow { border-top-color: var(--t-pri) !important; }
+.Select-clear-zone { color: var(--t-sec) !important; }
+.Select-clear-zone:hover { color: var(--t-pri) !important; }
+
+
+/* ── DatePickerSingle Input Fix ── */
+.SingleDatePickerInput,
+.SingleDatePickerInput__with-border {
+  background-color: var(--surface) !important;
+  border: 0.5px solid var(--border) !important;
+  border-style: solid !important;
+  border-radius: 6px !important;
+  display: flex !important;
+  align-items: center !important;
+  height: 34px !important;
+  box-sizing: border-box !important;
+  overflow: hidden !important;
+}
+
+.DateInput,
+.DateInput_input {
+  background-color: transparent !important;
+  color: var(--t-pri) !important;
+  font-size: 13px !important;
+  border: none !important;
+  outline: none !important;
+  box-shadow: none !important;
+  height: 100% !important;
+  display: flex !important;
+  align-items: center !important;
+}
+
+.DateInput_input {
+  padding: 0 10px !important;
+  line-height: 34px !important;
+}
+
+
+/* ── react-dates (Dash DatePickerSingle) Dark Theme ── */
+.SingleDatePicker_picker,
+.SingleDatePicker_picker_1 {
+  background-color: var(--surface) !important;
+  border: 1px solid var(--border) !important;
+  border-radius: 8px !important;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4) !important;
+  z-index: 9999 !important;
+}
+
+/* Ensure the input container is also dark */
+.SingleDatePickerInput,
+.SingleDatePickerInput_1,
+.SingleDatePickerInput__with-border {
+  background-color: var(--surface) !important;
+  border: 0.5px solid var(--border) !important;
+}
+
+.DayPicker,
+.DayPicker_1 {
+  background-color: var(--surface) !important;
+  color: var(--t-pri) !important;
+}
+.DayPicker_transitionContainer,
+.DayPicker_transitionContainer_1 {
+  background-color: var(--surface) !important;
+  border-radius: 8px !important;
+}
+.CalendarMonth,
+.CalendarMonth_1,
+.CalendarMonthGrid,
+.CalendarMonthGrid_1 {
+  background-color: var(--surface) !important;
+  color: var(--t-pri) !important;
+}
+.CalendarMonth_caption {
+  color: var(--t-pri) !important;
+  font-size: 14px !important;
+  padding-bottom: 40px !important;
+}
+.DayPicker_weekHeader,
+.DayPicker_weekHeader_1 {
+  top: 55px !important;
+  color: var(--t-sec) !important;
+}
+.DayPicker_weekHeader_li {
+  color: var(--t-sec) !important;
+}
+.CalendarDay__default {
+  background-color: var(--surface) !important;
+  color: var(--t-pri) !important;
+  border: 1px solid var(--border) !important;
+}
+.CalendarDay__default:hover {
+  background-color: var(--bg) !important;
+  color: var(--t-pri) !important;
+}
+.CalendarDay__outside {
+  color: var(--t-sec) !important;
+}
+.CalendarDay__selected,
+.CalendarDay__selected:hover {
+  background-color: #1D9E75 !important;
+  color: #ffffff !important;
+  font-weight: 600 !important;
+  border-color: #1D9E75 !important;
+}
+.DayPickerNavigation_button__default {
+  background-color: var(--surface) !important;
+  border: 1px solid var(--border) !important;
+  border-radius: 4px !important;
+}
+.DayPickerNavigation_button__default:hover {
+  background-color: var(--bg) !important;
+}
+.DayPickerNavigation_svg__default {
+  fill: var(--t-pri) !important;
+}
+

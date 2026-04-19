@@ -14,7 +14,8 @@ Built with Dash, Plotly, and yfinance.
 - Annual dividend income and yield
 - Portfolio allocation donut chart
 - Return correlation heatmap
-- Add buy/sell transactions from the UI — saves to CSV
+- Add buy/sell transactions from the UI — saves to CSV (now with calendar-based entry)
+- Modular CSS architecture for maintainability
 - Dark/light theme toggle
 - PDF export
 

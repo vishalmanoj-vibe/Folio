@@ -67,11 +67,14 @@ if INITIAL_HOLDINGS:
         logger.warning(f"Initial market fetch failed: {e}")
         INITIAL_PORTFOLIO_DATA = {"holdings": INITIAL_HOLDINGS, "histories": {}}
 
+import dash_bootstrap_components as dbc
+
 # ── Dash App ──────────────────────────────────────────────────────────────────
 app = dash.Dash(
     __name__,
     use_pages=True,
     pages_folder="pages",
+    external_stylesheets=[dbc.themes.BOOTSTRAP],
     suppress_callback_exceptions=True,
 )
 

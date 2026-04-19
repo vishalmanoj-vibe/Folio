@@ -1,0 +1,107 @@
+/* ── Form elements inherit theme ── */
+input,
+select,
+.dash-input {
+  background: var(--surface) !important;
+  color: var(--t-pri) !important;
+  border: 0.5px solid var(--border) !important;
+  outline: none !important;
+  box-shadow: none !important;
+  border-radius: 6px !important;
+  height: 34px !important;
+  box-sizing: border-box !important;
+  padding: 0 10px !important;
+  line-height: 32px !important;
+  font-size: 13px !important;
+}
+
+button {
+  background: var(--surface) !important;
+  color: var(--t-pri) !important;
+  border: 0.5px solid var(--border) !important;
+  outline: none !important;
+  box-shadow: none !important;
+  border-radius: 6px !important;
+  box-sizing: border-box !important;
+  height: 34px !important;
+}
+
+input:focus,
+select:focus,
+.dash-input:focus,
+input:focus-visible,
+.dash-input:focus-visible {
+  outline: none !important;
+  box-shadow: none !important;
+  border-color: var(--t-sec) !important;
+}
+
+input::placeholder {
+  color: var(--t-sec) !important;
+}
+
+/* ── Hide number input spin arrows ── */
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button {
+  -webkit-appearance: none !important;
+  margin: 0 !important;
+}
+
+input[type="number"] {
+  -moz-appearance: textfield !important;
+}
+
+/* ── Button effects ── */
+button {
+  cursor: pointer;
+  transition: transform 0.1s, opacity 0.1s;
+}
+
+button:hover {
+  transform: translateY(-1px);
+  opacity: 0.9;
+}
+
+button:active {
+  transform: scale(0.97);
+}
+
+/* Button variants */
+.btn-sm {
+  font-weight: 500;
+  font-size: 12px;
+  padding: 4px 10px;
+}
+
+.btn-md {
+  font-weight: 500;
+  font-size: 13px;
+  padding: 7px 16px;
+}
+
+.btn-toggle {
+  font-size: 12px;
+  padding: 4px 10px;
+}
+
+.btn-right {
+  float: right;
+  margin-top: 8px;
+}
+
+/* Transaction input widths */
+.txn-input-text {
+  width: 110px;
+}
+
+.txn-input-num {
+  width: 90px;
+}
+
+.txn-datepicker {
+  width: 140px;
+}
+
+.txn-dropdown {
+  width: 100px;
+}

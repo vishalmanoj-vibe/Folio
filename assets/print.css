@@ -1,0 +1,50 @@
+/* ── Print / PDF — A4 landscape ── */
+@media print {
+  #controls-bar,
+  #txn-panel,
+  #toggle-area,
+  button,
+  .Select,
+  [id$="-btn"],
+  .dash-loading-callback,
+  .nav-link,
+  .back-link,
+  .btn-toggle,
+  .btn-sm,
+  .btn-md,
+  #theme-toggle {
+    display: none !important;
+  }
+
+  html,
+  body {
+    background: white !important;
+    color: black !important;
+    margin: 0 !important;
+  }
+
+  body > div,
+  #react-entry-point > div,
+  #react-entry-point > div > div {
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  .js-plotly-plot {
+    break-inside: avoid;
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+
+  .js-plotly-plot .plotly,
+  .js-plotly-plot .plotly svg {
+    width: 100% !important;
+    height: auto !important;
+  }
+
+  @page {
+    size: A4 landscape;
+    margin: 1cm 1.5cm;
+  }
+}

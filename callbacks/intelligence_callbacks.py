@@ -144,3 +144,117 @@ def register_callbacks(app) -> None:
             alert_cards,
             data_note,
         )
+    @app.callback(
+        Output("intel-detail-modal", "is_open"),
+        Output("intel-modal-title",  "children"),
+        Output("intel-modal-graph",  "figure"),
+        Input("intel-sector-chart",  "clickData"),
+        Input("intel-geo-chart",     "clickData"),
+        Input("portfolio-store",     "data"),
+        prevent_initial_call=True
+    )
+    def open_allocation_modal(sec_click, geo_click, port_data):
+        import dash
+        import plotly.graph_objects as go
+        from services.intelligence_service import get_exposure_detail
+        from config.constants import get_theme
+        
+        ctx = dash.callback_context
+        if not ctx.triggered or not port_data:
+            return dash.no_update, dash.no_update, dash.no_update
+
+        trigger_id = ctx.triggered[0]["prop_id"].split(".")[0]
+        
+        # If triggered by portfolio-store refresh, don't close the modal or change content
+        if trigger_id == "portfolio-store":
+            return dash.no_update, dash.no_update, dash.no_update
+
+        # Determine which chart was clicked
+        if trigger_id == "intel-sector-chart":
+            click_data = sec_click
+            exp_type = "sector"
+        elif trigger_id == "intel-geo-chart":
+            click_data = geo_click
+            exp_type = "geo"
+        else:
+            # Fallback for unexpected triggers
+            return dash.no_update, dash.no_update, dash.no_update
+
+        if not click_data:
+            return dash.no_update, dash.no_update, dash.no_update
+            
+        category = click_data["points"][0]["label"]
+        detail = get_exposure_detail(port_data, exp_type, category)
+        
+        if not detail:
+            # Only close if we explicitly have no data for a click
+            return False, dash.no_update, go.Figure()
+
+        # Build Sunburst Figure
+        # Using branchvalues="remainder" is safer for precision: 
+        # parents have value 0, leaves have the weights.
+        ids = [category]
+        labels = [category]
+        parents = [""]
+        values = [0] 
+        
+        if category == "Other":
+            # Hierarchical: Other -> SubCategory -> Ticker
+            sub_cats = sorted(list({d["sub_category"] for d in detail}))
+            for sc in sub_cats:
+                sc_weight = sum(d["weight"] for d in detail if d["sub_category"] == sc)
+                if sc_weight < 0.05: continue # Filter out dust
+                
+                ids.append(f"other_{sc}")
+                labels.append(sc)
+                parents.append(category)
+                values.append(0) # Let children define the weight
+                
+                for d in detail:
+                    if d["sub_category"] == sc:
+                        if d["weight"] < 0.05: continue
+                        ids.append(f"other_{sc}_{d['ticker']}")
+                        labels.append(d["ticker"])
+                        parents.append(f"other_{sc}")
+                        values.append(d["weight"])
+        else:
+            # Simple: Category -> Tickers
+            for d in detail:
+                if d["weight"] < 0.05: continue
+                ids.append(f"cat_{d['ticker']}")
+                labels.append(d["ticker"])
+                parents.append(category)
+                values.append(d["weight"])
+
+        fig = go.Figure(go.Sunburst(
+            ids=ids,
+            labels=labels,
+            parents=parents,
+            values=values,
+            branchvalues="remainder",
+            hovertemplate="<b>%{label}</b><br>Portfolio Weight: %{value:.2f}%<extra></extra>",
+            marker=dict(colors=COLORS * 3),
+        ))
+        
+        theme = get_theme("dark")
+        fig.update_layout(
+            margin=dict(t=20, l=20, r=20, b=20),
+            paper_bgcolor="rgba(0,0,0,0)",
+            plot_bgcolor="rgba(0,0,0,0)",
+            font=dict(color=theme["T_PRI"], size=12),
+            height=500,
+            uirevision=True, # Preserve zoom/pan/drill-down state across auto-refreshes
+        )
+        
+        title = f"{'Sector' if exp_type == 'sector' else 'Geographic'} Breakdown: {category}"
+        return True, title, fig
+
+    @app.callback(
+        Output("intel-detail-modal", "is_open", allow_duplicate=True),
+        Input("intel-modal-close-btn", "n_clicks"),
+        prevent_initial_call=True
+    )
+    def close_modal(n):
+        if n:
+            return False
+        return dash.no_update
