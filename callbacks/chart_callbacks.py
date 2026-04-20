@@ -48,28 +48,33 @@ def register_callbacks(app) -> None:
         if not data or "holdings" not in data:
             return []
         tickers = ["Portfolio"] + [h["ticker"] for h in data["holdings"]]
-        return [
-            html.Button(
+        btns = []
+        for i, t in enumerate(tickers):
+            is_sel = (t == selected)
+            is_port = (t == "Portfolio")
+            
+            # Base color for the button
+            c = T_PRI if is_port else COLORS[(i - 1) % len(COLORS)]
+            
+            style = {
+                "fontSize":     "12px",
+                "padding":      "4px 12px",
+                "borderRadius": "20px",
+                "cursor":       "pointer",
+                "fontWeight":   "500",
+                "transition":   "all 0.15s ease",
+                "background":   c if is_sel else "transparent",
+                "color":        BG if is_sel else c,
+                "border":       f"1.5px solid {c}",
+            }
+            
+            btns.append(html.Button(
                 t,
                 id={"type": "ticker-btn", "index": t},
                 n_clicks=0,
-                style={
-                    "fontSize":     "12px",
-                    "padding":      "4px 12px",
-                    "borderRadius": "20px",
-                    "cursor":       "pointer",
-                    "fontWeight":   "500",
-                    "background":   T_PRI if t == selected and t == "Portfolio" else (COLORS[(i - 1) % len(COLORS)] if t == selected else "transparent"),
-                    "border": (
-                        f"1.5px solid {T_PRI}"
-                        if t == "Portfolio"
-                        else f"1.5px solid {COLORS[(i - 1) % len(COLORS)]}"
-                    ),
-                    "color": BG if t == selected else (T_PRI if t == "Portfolio" else COLORS[(i - 1) % len(COLORS)]),
-                },
-            )
-            for i, t in enumerate(tickers)
-        ]
+                style=style
+            ))
+        return btns
 
     # ── Selected Ticker State ─────────────────────────────────────────────────
     @app.callback(

@@ -14,20 +14,22 @@ logger = logging.getLogger(__name__)
 _NAME_CACHE: dict = {}
 _NAME_CACHE_TTL = 86400
 
-# ── Global Ticker Cache (shared with Intelligence Service) ──────────────────
-_TICKER_OBJECT_CACHE: dict[str, yf.Ticker] = {}
-
-def get_ticker_cached(symbol: str) -> yf.Ticker:
-    """Returns a cached yf.Ticker object to avoid redundant instantiations."""
-    if symbol not in _TICKER_OBJECT_CACHE:
-        _TICKER_OBJECT_CACHE[symbol] = yf.Ticker(symbol)
-    return _TICKER_OBJECT_CACHE[symbol]
-
 BENCHMARK_TICKERS = {
     "^GSPC": "S&P 500",
     "^AXJO": "ASX 200",
 }
 _BENCHMARK_CACHE_TTL = 3600
+
+
+def get_ticker_cached(ticker_yf: str) -> yf.Ticker:
+    """
+    Returns a yfinance Ticker object.
+    
+    The intelligence_service uses this to fetch funds_data (sector/geo).
+    While we avoid per-ticker price calls, funds_data is only available 
+    via the Ticker object. Results are cached in intelligence_service.
+    """
+    return yf.Ticker(ticker_yf)
 
 
 def get_etf_name(ticker: str) -> str:
@@ -65,10 +67,10 @@ def get_etf_name(ticker: str) -> str:
 
 
 def _download_with_retry(
-    tickers: list[str], 
-    period: str, 
+    tickers: list[str],
+    period: str,
     actions: bool = False,
-    max_retries: int = API_MAX_RETRIES, 
+    max_retries: int = API_MAX_RETRIES,
     backoff_base: float = API_RETRY_BACKOFF_BASE
 ) -> pd.DataFrame:
     """
@@ -90,13 +92,13 @@ def _download_with_retry(
 
 
 def _extract_col(bulk_df: pd.DataFrame, ticker_yf: str, col_name: str) -> pd.Series:
-    """Extract a column (Close, Dividends, etc.) for a specific ticker from bulk download."""
+    """Extract a column (Close, High, Low, Dividends, etc.) for a specific ticker from bulk download."""
     if bulk_df is None or bulk_df.empty:
         return pd.Series(dtype=float)
     cols = bulk_df.columns
     if not isinstance(cols, pd.MultiIndex):
         return bulk_df[col_name].dropna() if col_name in cols else pd.Series(dtype=float)
-    
+
     # Try multiple combinations of MultiIndex keys
     candidates = [
         (ticker_yf, col_name),
@@ -107,8 +109,19 @@ def _extract_col(bulk_df: pd.DataFrame, ticker_yf: str, col_name: str) -> pd.Ser
     for cand in candidates:
         if cand in cols:
             return bulk_df[cand].dropna()
-            
+
     return pd.Series(dtype=float)
+
+
+def _extract_scalar(bulk_df: pd.DataFrame, ticker_yf: str, col_name: str) -> float:
+    """
+    Extract the last scalar value of a column for a ticker from a bulk download.
+    Returns 0.0 if not found.
+    """
+    s = _extract_col(bulk_df, ticker_yf, col_name)
+    if s.empty:
+        return 0.0
+    return float(s.iloc[-1])
 
 
 def _compute_dividends_bulk(
@@ -121,14 +134,14 @@ def _compute_dividends_bulk(
     """
     if div_s.empty:
         return 0.0, 0.0, 0.0
-        
+
     div_s = div_s[div_s > 0]
     if div_s.empty:
         return 0.0, 0.0, 0.0
 
     div_s.index = normalise_tz(div_s.index)
     cutoff = pd.Timestamp.now() - pd.Timedelta(days=365)
-    
+
     annual_per_share = float(div_s[div_s.index >= cutoff].sum())
     total_per_share  = float(div_s.sum())
 
@@ -141,7 +154,7 @@ def _compute_dividends_bulk(
 
 def fetch_benchmarks(period: str = "max") -> dict[str, list[dict]]:
     """
-    Fetch S&P 500 (^GSPC) and ASX 200 (^AXJO) close series.
+    Fetch S&P 500 (^GSPC) and ASX 200 (^AXJO) close series using bulk download.
     """
     cache_key = f"benchmarks_{period}"
     cached = get_cache(cache_key)
@@ -149,50 +162,71 @@ def fetch_benchmarks(period: str = "max") -> dict[str, list[dict]]:
         return cached
 
     result: dict[str, list[dict]] = {}
+    symbols = list(BENCHMARK_TICKERS.keys())
 
-    for symbol, label in BENCHMARK_TICKERS.items():
-        try:
-            df = yf.download(symbol, period=period, auto_adjust=True, progress=False)
-            if df.empty: continue
+    try:
+        bulk_df = _download_with_retry(symbols, period=period)
+        if bulk_df.empty:
+            return {}
 
-            if isinstance(df.columns, pd.MultiIndex):
-                df.columns = df.columns.get_level_values(0)
+        for symbol, label in BENCHMARK_TICKERS.items():
+            close = _extract_col(bulk_df, symbol, "Close")
+            if close.empty:
+                continue
 
-            if "Close" not in df.columns: continue
-
-            close = df["Close"].dropna()
             close.index = normalise_tz(pd.to_datetime(close.index))
-
             result[label] = [
                 {"Date": d.strftime("%Y-%m-%d"), "Close": round(float(v), 4)}
                 for d, v in close.items()
             ]
-        except Exception as exc:
-            logger.warning("Benchmark fetch failed for %s: %s", symbol, exc)
+    except Exception as exc:
+        logger.warning("Bulk benchmark fetch failed: %s", exc)
 
-    set_cache(cache_key, result, ttl=_BENCHMARK_CACHE_TTL)
+    if result:
+        set_cache(cache_key, result, ttl=_BENCHMARK_CACHE_TTL)
     return result
 
 
 def fetch_live(holdings: list[dict], hist_period: str = "3mo") -> dict:
     """
     Fetch live prices, history, dividends and per-tranche P&L for all holdings.
+
+    Live price strategy (no fast_info):
+    ─────────────────────────────────────
+    fast_info.last_price internally calls tk.history(period="1y") making it
+    slow and unreliable. Instead we do a single bulk yf.download(period="1d")
+    for all tickers which returns today's Open/High/Low/Close and yesterday's
+    Close (as the previous row) — cheap, accurate, and one network call.
     """
     if not holdings:
         return {}
 
-    cache_key = f"market_data_{hist_period}"
+    tickers_yf  = [h["ticker_yf"] for h in holdings]
+    tickers_str = " ".join(sorted(tickers_yf))
+
+    # Outer cache key includes tickers so adding/removing a holding busts it
+    cache_key = f"market_data_{hist_period}_{tickers_str.replace(' ', '_')}"
     cached = get_cache(cache_key)
     if cached:
         return cached
 
-    tickers_yf  = [h["ticker_yf"] for h in holdings]
-    tickers_str = " ".join(tickers_yf)
-    logger.info("Fetching %s in bulk (period=%s)", tickers_yf, hist_period)
+    # ── A. Live quotes: single bulk 5-day download (gives today + prev close) ──
+    # period="5d" gives us a few rows so iloc[-1]=today, iloc[-2]=prev session.
+    # auto_adjust=True means Close == Adj Close (splits/divs adjusted).
+    logger.info("Fetching live quotes (5d) for %d tickers", len(tickers_yf))
+    multi_live = _download_with_retry(tickers_yf, period="5d")
 
-    # BULK FETCH: actions=True gives us Dividends without per-ticker history() calls
-    multi_period = _download_with_retry(tickers_str, period=hist_period)
-    multi_full   = _download_with_retry(tickers_str, period="max", actions=True)
+    # ── B. Full history: cached 1 hour — used for dividends + tranche P&L ────
+    full_cache_key = f"bulk_full_{tickers_str.replace(' ', '_')}"
+    multi_full = get_cache(full_cache_key)
+    if multi_full is None:
+        logger.info("Fetching full history (max) for %d tickers", len(tickers_yf))
+        multi_full = _download_with_retry(tickers_yf, period="max", actions=True)
+        if not multi_full.empty:
+            set_cache(full_cache_key, multi_full, ttl=3600)
+
+    # ── C. Chart history: the user-selected period ────────────────────────────
+    multi_period = _download_with_retry(tickers_yf, period=hist_period)
 
     enriched:  list[dict] = []
     histories: dict       = {}
@@ -201,40 +235,45 @@ def fetch_live(holdings: list[dict], hist_period: str = "3mo") -> dict:
         ticker    = h["ticker"]
         ticker_yf = h["ticker_yf"]
         try:
+            # Chart history for P&L history chart
             close_p = _extract_col(multi_period, ticker_yf, "Close")
-            close_f = _extract_col(multi_full,   ticker_yf, "Close")
-            div_f   = _extract_col(multi_full,   ticker_yf, "Dividends")
-
             if not close_p.empty:
                 close_p.index = normalise_tz(pd.to_datetime(close_p.index))
                 df_p = close_p.reset_index()
                 df_p.columns = ["Date", "Close"]
                 histories[ticker] = df_p.to_dict("records")
-            
+
+            # Full history for dividends + tranche P&L
+            close_f = _extract_col(multi_full, ticker_yf, "Close")
+            div_f   = _extract_col(multi_full, ticker_yf, "Dividends")
             if not close_f.empty:
                 close_f.index = normalise_tz(pd.to_datetime(close_f.index))
 
-            # Live price data from fast_info
-            tk = get_ticker_cached(ticker_yf)
-            fi = tk.fast_info
+            # ── Live OHLC from 5-day bulk download ────────────────────────────
+            # iloc[-1] = today (or last trading session)
+            # iloc[-2] = previous session (= prev_close)
+            live_close = _extract_col(multi_live, ticker_yf, "Close")
+            live_high  = _extract_col(multi_live, ticker_yf, "High")
+            live_low   = _extract_col(multi_live, ticker_yf, "Low")
 
-            fi_last = fi.get("last_price") or 0.0
-            fi_prev = fi.get("previous_close") or 0.0
-            fi_high = fi.get("day_high") or 0.0
-            fi_low  = fi.get("day_low")  or 0.0
+            if len(live_close) >= 2:
+                last_price = float(live_close.iloc[-1])
+                prev_close = float(live_close.iloc[-2])
+            elif len(live_close) == 1:
+                last_price = float(live_close.iloc[-1])
+                # Fall back to full history prev close if only one row
+                prev_close = float(close_f.iloc[-2]) if len(close_f) >= 2 else last_price
+            else:
+                # No live data — use full history
+                last_price = float(close_f.iloc[-1]) if len(close_f) >= 1 else h["avg_cost"]
+                prev_close = float(close_f.iloc[-2]) if len(close_f) >= 2 else last_price
 
-            hist_last = float(close_f.iloc[-1]) if len(close_f) >= 1 else None
-            hist_prev = float(close_f.iloc[-2]) if len(close_f) >= 2 else None
+            day_high = float(live_high.iloc[-1]) if not live_high.empty else last_price
+            day_low  = float(live_low.iloc[-1])  if not live_low.empty  else last_price
 
-            last_price = float(fi_last if fi_last > 0 else (hist_last or h["avg_cost"]))
-            prev_close = float(fi_prev if fi_prev > 0 else (hist_prev or last_price))
-            day_high   = float(fi_high if fi_high > 0 else last_price)
-            day_low    = float(fi_low  if fi_low  > 0 else last_price)
+            _pnl      = compute_holding_pnl(h, last_price, prev_close)
+            mkt_value = _pnl["mkt_value"]
 
-            _pnl        = compute_holding_pnl(h, last_price, prev_close)
-            mkt_value   = _pnl["mkt_value"]
-
-            # Compute dividends from bulk data
             annual_div, total_div, div_yield = _compute_dividends_bulk(
                 div_f, h["total_shares"], mkt_value
             )

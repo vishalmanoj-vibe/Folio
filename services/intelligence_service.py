@@ -32,6 +32,7 @@ import pandas as pd
 import yfinance as yf
 
 from config.settings import METADATA_CSV_PATH
+from core import get_cache, set_cache
 from core.engine.utils import get_period_cutoff, normalise_tz, fmt_date_index
 from services.market.data_fetcher import get_ticker_cached
 
@@ -123,25 +124,9 @@ def _symbol_to_region(symbol: str) -> str:
 # No-longer needed local _get_period_cutoff
 
 
-# ── In-process TTL cache ──────────────────────────────────────────────────────
-_INTEL_CACHE: dict[str, tuple] = {}
+# ── TTL settings ──────────────────────────────────────────────────────────────
 _SECTOR_TTL = 86_400   # 24 h — sector weights barely change
 _GEO_TTL    = 86_400
-
-
-def _cache_get(key: str):
-    entry = _INTEL_CACHE.get(key)
-    if not entry:
-        return None
-    value, expiry = entry
-    if time.time() > expiry:
-        del _INTEL_CACHE[key]
-        return None
-    return value
-
-
-def _cache_set(key: str, value, ttl: int) -> None:
-    _INTEL_CACHE[key] = (value, time.time() + ttl)
 
 
 # ── CSV Persistent Cache ──────────────────────────────────────────────────────
@@ -190,14 +175,14 @@ def fetch_etf_sector_weights(ticker_yf: str) -> dict[str, float]:
     Cached 24 h. Returns {"Unclassified": 100.0} on failure.
     """
     key = f"sector_{ticker_yf}"
-    cached = _cache_get(key)
+    cached = get_cache(key)
     if cached is not None:
         return cached
 
     _load_metadata_csv()
     if key in _CSV_CACHE_STORE:
         result = _CSV_CACHE_STORE[key]
-        _cache_set(key, result, _SECTOR_TTL)
+        set_cache(key, result, _SECTOR_TTL)
         return result
 
     try:
@@ -221,7 +206,7 @@ def fetch_etf_sector_weights(ticker_yf: str) -> dict[str, float]:
             result = {k: round(v / total * 100, 2) for k, v in labelled.items()} \
                      if total > 0 else {"Unclassified": 100.0}
 
-        _cache_set(key, result, _SECTOR_TTL)
+        set_cache(key, result, _SECTOR_TTL)
         _CSV_CACHE_STORE[key] = result
         _append_metadata_csv(ticker_yf, "sector", result)
         logger.debug("Sector %s: %s", ticker_yf, result)
@@ -230,7 +215,7 @@ def fetch_etf_sector_weights(ticker_yf: str) -> dict[str, float]:
     except Exception as exc:
         logger.warning("Sector fetch failed %s: %s", ticker_yf, exc)
         result = {"Unclassified": 100.0}
-        _cache_set(key, result, 300)   # short TTL → retry sooner
+        set_cache(key, result, 300)   # short TTL → retry sooner
         return result
 
 
@@ -250,14 +235,14 @@ def fetch_etf_geo_weights(ticker_yf: str) -> dict[str, float]:
     Cached 24 h.
     """
     key = f"geo_{ticker_yf}"
-    cached = _cache_get(key)
+    cached = get_cache(key)
     if cached is not None:
         return cached
 
     _load_metadata_csv()
     if key in _CSV_CACHE_STORE:
         result = _CSV_CACHE_STORE[key]
-        _cache_set(key, result, _GEO_TTL)
+        set_cache(key, result, _GEO_TTL)
         return result
 
     try:
@@ -267,7 +252,7 @@ def fetch_etf_geo_weights(ticker_yf: str) -> dict[str, float]:
 
         if df is None or df.empty:
             result = {"Unclassified": 100.0}
-            _cache_set(key, result, 300)
+            set_cache(key, result, 300)
             return result
 
         region_weights: dict[str, float] = {}
@@ -291,7 +276,7 @@ def fetch_etf_geo_weights(ticker_yf: str) -> dict[str, float]:
                  if total > 0 else {"Unclassified": 100.0}
         result = dict(sorted(result.items(), key=lambda x: x[1], reverse=True))
 
-        _cache_set(key, result, _GEO_TTL)
+        set_cache(key, result, _GEO_TTL)
         _CSV_CACHE_STORE[key] = result
         _append_metadata_csv(ticker_yf, "geo", result)
         logger.debug("Geo %s: %s", ticker_yf, result)
@@ -300,7 +285,7 @@ def fetch_etf_geo_weights(ticker_yf: str) -> dict[str, float]:
     except Exception as exc:
         logger.warning("Geo fetch failed %s: %s", ticker_yf, exc)
         result = {"Unclassified": 100.0}
-        _cache_set(key, result, 300)
+        set_cache(key, result, 300)
         return result
 
 
@@ -635,7 +620,7 @@ def compute_smart_alerts(metrics: dict, port_data: dict) -> list[dict]:
     unclassified = sec_exp.get("Unclassified", 0)
     if unclassified > 5:
         unknown = [h["ticker"] for h in holdings
-                   if _cache_get(f"sector_{h.get('ticker_yf', h['ticker']+'.AX')}")
+                   if get_cache(f"sector_{h.get('ticker_yf', h['ticker']+'.AX')}")
                    == {"Unclassified": 100.0}]
         if unknown:
             alerts.append({

@@ -32,12 +32,11 @@ def register_callbacks(app) -> None:
         return html.Div(
             [html.Div(a["message"]) for a in alerts],
             style={
-                "background":    "#2a0f0f",
-                "color":         RED,
+                "background":    "rgba(226, 75, 74, 0.1)", # Subtle red background
+                "color":         "var(--red, #E24B4A)",
                 "padding":       "10px 24px",
                 "borderRadius":  "0",
-                "marginBottom":  "0",
                 "fontSize":      "13px",
-                "borderBottom":  f"0.5px solid {RED}",
+                "borderBottom":  "0.5px solid var(--red, #E24B4A)",
             },
         )

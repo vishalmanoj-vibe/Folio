@@ -24,6 +24,12 @@ from components.charts.intel_volatility import build_intel_volatility_chart
 from components.charts.intel_sector import build_intel_sector_chart
 from components.charts.intel_geo import build_intel_geo_chart
 
+import dash
+import plotly.graph_objects as go
+from services.intelligence_service import get_exposure_detail
+from components.ui_helpers import stat_card, alert_card
+from config.constants import get_theme
+
 def register_callbacks(app) -> None:
     @app.callback(
         Output("intel-risk-cards",     "children"),
@@ -39,9 +45,6 @@ def register_callbacks(app) -> None:
         Input("theme-store",           "data"),
     )
     def update_intelligence(port_data, period, theme):
-        from components.ui_helpers import stat_card, alert_card
-        from config.constants import get_theme
-        
         t_ = get_theme(theme or "dark")
         period = period or "3mo"
 
@@ -167,11 +170,6 @@ def register_callbacks(app) -> None:
         prevent_initial_call=True
     )
     def open_allocation_modal(sec_click, geo_click, port_data, theme):
-        import dash
-        import plotly.graph_objects as go
-        from services.intelligence_service import get_exposure_detail
-        from config.constants import get_theme
-        
         ctx = dash.callback_context
         if not ctx.triggered or not port_data:
             return dash.no_update, dash.no_update, dash.no_update
