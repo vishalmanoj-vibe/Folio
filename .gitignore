@@ -4,6 +4,9 @@ __pycache__/
 *.pyo
 .eggs/
 *.egg-info/
+.pytest_cache/
+.coverage
+htmlcov/
 
 # Virtual environment
 portfolio-env/
@@ -18,8 +21,18 @@ env/
 .vscode/
 .idea/
 
-# Logs
+# Logs & Temporary
 *.log
+app_output.txt
+scratch/
+*.bak
+
+# Archives
+*.zip
+*.tar.gz
+
+# Data Caches (if applicable)
+data/raw/*_cache.csv
 
 # Gemini Agents
 .agents/
