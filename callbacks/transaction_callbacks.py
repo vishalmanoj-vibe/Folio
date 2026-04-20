@@ -37,7 +37,7 @@ def register_callbacks(app):
         State("txn-ticker", "value"),
         State("txn-shares", "value"),
         State("txn-price", "value"),
-        State("txn-date", "date"),  # dcc.DatePickerSingle uses "date", not "value"
+        State("txn-date", "value"),  # plain dcc.Input uses "value"
         State("txn-store", "data"),
         prevent_initial_call=True,
     )
@@ -48,12 +48,18 @@ def register_callbacks(app):
         if not all([txn_type, ticker, shares is not None, price is not None, date_str]):
             return dash.no_update, "❌ Please fill all fields", {"color": "#E24B4A"}
 
+        # Handle both string and date object (DMC may return either)
+        if hasattr(date_str, 'strftime'):
+            formatted_date = date_str.strftime("%Y-%m-%d")
+        else:
+            formatted_date = str(date_str).strip()
+
         new_txn = {
             "type": str(txn_type).strip().lower(),
             "ticker": str(ticker).strip().upper(),
             "shares": float(shares),
             "price": float(price),
-            "date": str(date_str).strip(),
+            "date": formatted_date,
         }
 
         is_valid, error_msg = validate_transaction(new_txn)

@@ -35,9 +35,13 @@ def build_pnl_history_figure(
     T_SEC       = theme_tokens["T_SEC"]
     PLOTLY_BASE = theme_tokens["PLOTLY_BASE"]
 
-    fig = go.Figure()
-    fig.update_layout(
-        xaxis=dict(showgrid=False, type="date"),
+    # Merge theme base with local overrides
+    layout = PLOTLY_BASE.copy()
+    layout.update(dict(
+        xaxis=dict(
+            showgrid=False, type="date",
+            showspikes=True, spikecolor=T_SEC, spikethickness=1, spikedash="dash"
+        ),
         yaxis=dict(
             gridcolor=BORDER,
             ticksuffix="%" if mode == "pct" else "",
@@ -47,8 +51,10 @@ def build_pnl_history_figure(
         ),
         hovermode="x unified",
         height=380,
-        **PLOTLY_BASE,
-    )
+    ))
+    
+    fig = go.Figure()
+    fig.update_layout(layout)
 
     color_map = {h["ticker"]: COLORS[i % len(COLORS)] for i, h in enumerate(holdings)}
     cutoff    = get_period_cutoff(period)

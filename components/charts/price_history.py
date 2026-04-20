@@ -36,12 +36,14 @@ def build_price_chart_figure(
     BORDER      = theme_tokens["BORDER"]
     PLOTLY_BASE = theme_tokens["PLOTLY_BASE"]
 
-    fig = go.Figure()
-    fig.update_layout(
+    layout = PLOTLY_BASE.copy()
+    layout.update(dict(
         xaxis=dict(showgrid=False),
         yaxis=dict(gridcolor=BORDER),
-        **PLOTLY_BASE
-    )
+    ))
+    
+    fig = go.Figure()
+    fig.update_layout(layout)
 
     # Build a lookup of ticker → first_purchase date for "max" (since purchase) mode
     purchase_map: dict[str, pd.Timestamp] = {}

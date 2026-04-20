@@ -6,6 +6,7 @@ Route: /intelligence
 """
 
 import dash_bootstrap_components as dbc
+import dash_mantine_components as dmc
 from dash import dcc, html, register_page
 
 from config.constants import (
@@ -74,9 +75,9 @@ def layout() -> html.Div:
                                     ),
                                 ], style={"display": "flex", "alignItems": "center", "marginRight": "12px"}),
                                 
-                                dcc.Dropdown(
+                                dmc.Select(
                                     id="intel-period-picker",
-                                    options=[
+                                    data=[
                                         {"label": "Since purchase", "value": "max"},
                                         {"label": "1 month",        "value": "1mo"},
                                         {"label": "3 months",       "value": "3mo"},
@@ -86,9 +87,9 @@ def layout() -> html.Div:
                                         {"label": "5 years",        "value": "5y"},
                                     ],
                                     value="3mo",
-                                    clearable=False, searchable=False,
-                                    persistence=True, persistence_type="session",
-                                    style={"width": "140px", "fontSize": "13px"},
+                                    allowDeselect=False,
+                                    persistence=True,
+                                    style={"width": "140px"},
                                 ),
                             ], 
                             style={"display": "flex", "alignItems": "center", "marginLeft": "auto"}
@@ -204,7 +205,7 @@ def layout() -> html.Div:
                         )
                     ),
                     dbc.ModalFooter(
-                        html.Button("Close", id="intel-modal-close-btn", className="btn-md", n_clicks=0)
+                        dmc.Button("Close", id="intel-modal-close-btn", className="btn-md", n_clicks=0)
                     ),
                 ],
                 id="intel-detail-modal",

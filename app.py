@@ -89,19 +89,27 @@ import pages.intelligence as intelligence  # noqa: E402
 import pages.analytics as analytics        # noqa: E402
 import pages.portfolio as portfolio_page    # noqa: E402
 
+import dash_mantine_components as dmc
+
 # ── Root Layout ───────────────────────────────────────────────────────────────
-app.layout = html.Div(
-    [
-        dcc.Location(id="url", refresh=False),
-        dcc.Store(id="txn-store",       data=INITIAL_HISTORY),
-        dcc.Store(id="portfolio-store", data=INITIAL_PORTFOLIO_DATA),
-        dcc.Store(id="alerts-store"),
-        dcc.Store(id="theme-store",          data="dark"),
-        dcc.Store(id="selected-ticker-store", data="Portfolio"),
-        dcc.Interval(id="live-interval", interval=REFRESH_INTERVAL, n_intervals=0),
-        dash.page_container,
-    ],
-    className="app-container",
+app.layout = dmc.MantineProvider(
+    forceColorScheme="dark",
+    theme={
+        "fontFamily": "Inter, sans-serif",
+    },
+    children=html.Div(
+        [
+            dcc.Location(id="url", refresh=False),
+            dcc.Store(id="txn-store",       data=INITIAL_HISTORY),
+            dcc.Store(id="portfolio-store", data=INITIAL_PORTFOLIO_DATA),
+            dcc.Store(id="alerts-store"),
+            dcc.Store(id="theme-store",          data="dark"),
+            dcc.Store(id="selected-ticker-store", data="Portfolio"),
+            dcc.Interval(id="live-interval", interval=REFRESH_INTERVAL, n_intervals=0),
+            dash.page_container,
+        ],
+        className="app-container",
+    )
 )
 
 # ── Refresh callback ─────────────────

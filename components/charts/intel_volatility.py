@@ -19,9 +19,13 @@ def build_intel_volatility_chart(ticker_vols: dict, theme_tokens: dict) -> go.Fi
     base["margin"] = _BAR_MARGIN
     base["showlegend"] = False
     
-    fig.update_layout(**base, height=vol_h,
-                      xaxis=dict(gridcolor=theme_tokens["BORDER"], ticksuffix="%"),
-                      yaxis=dict(showgrid=False))
+    layout = base.copy()
+    layout.update(dict(
+        height=vol_h,
+        xaxis=dict(gridcolor=theme_tokens["BORDER"], ticksuffix="%"),
+        yaxis=dict(showgrid=False),
+    ))
+    fig.update_layout(layout)
     if tv:
         fig.add_trace(go.Bar(
             x=[v for _, v in tv],

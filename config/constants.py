@@ -20,9 +20,9 @@ COLORS = [
 ]
 
 PLOTLY_BASE = dict(
-    paper_bgcolor=BG,
-    plot_bgcolor=SURFACE,
-    font=dict(family="system-ui,sans-serif", color=T_PRI, size=13),
+    paper_bgcolor="rgba(0,0,0,0)",
+    plot_bgcolor="rgba(0,0,0,0)",
+    font=dict(family="Inter, -apple-system, BlinkMacSystemFont, sans-serif", color=T_PRI, size=13),
     margin=dict(l=16, r=16, t=40, b=16),
     legend=dict(bgcolor="rgba(0,0,0,0)", borderwidth=0),
     uirevision=True,
@@ -67,15 +67,24 @@ def get_theme(theme: str) -> dict:
         "T_SEC":   t_sec,
         "DANGER":  danger,
         "WARNING": warning,
+        "GREEN":   "#1D9E75",
+        "RED":     "#E24B4A",
         "INFO":    info,
         "BENCH_1": bench_1,
         "BENCH_2": bench_2,
         "PLOTLY_BASE": dict(
-            paper_bgcolor=bg,
-            plot_bgcolor=surface,
-            font=dict(family="system-ui,sans-serif", color=t_pri, size=13),
+            paper_bgcolor="rgba(0,0,0,0)",
+            plot_bgcolor="rgba(0,0,0,0)",
+            font=dict(family="Inter, -apple-system, BlinkMacSystemFont, sans-serif", color=t_pri, size=12),
             margin=dict(l=16, r=16, t=40, b=16),
-            legend=dict(bgcolor="rgba(0,0,0,0)", borderwidth=0),
+            legend=dict(bgcolor="rgba(0,0,0,0)", borderwidth=0, font=dict(color=t_sec, size=11)),
+            hoverlabel=dict(
+                bgcolor=surface,
+                bordercolor=border,
+                font=dict(color=t_pri, family="Inter", size=12),
+                align="left",
+            ),
+            hovermode="x unified",
             uirevision=True,
         ),
     }

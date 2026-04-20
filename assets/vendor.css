@@ -6,18 +6,22 @@
   border: 1px solid var(--border) !important;
   border-radius: 6px !important;
 }
+
 .dash-dropdown {
   min-height: 34px !important;
   cursor: pointer !important;
 }
+
 .dash-dropdown-arrow {
   color: var(--t-sec) !important;
   fill: var(--t-sec) !important;
 }
+
 .dash-dropdown-value,
 .dash-dropdown-placeholder {
   color: var(--t-pri) !important;
 }
+
 .dash-dropdown-content {
   background-color: var(--surface) !important;
   border: 1px solid var(--border) !important;
@@ -46,21 +50,25 @@
   -webkit-appearance: none !important;
   appearance: none !important;
 }
+
 .dash-dropdown-search::placeholder,
 .dash-dropdown-content input::placeholder {
   color: var(--t-sec) !important;
 }
+
 .dash-options-list-option,
 .dash-dropdown-option {
   background-color: var(--surface) !important;
   color: var(--t-pri) !important;
   cursor: pointer !important;
 }
+
 .dash-options-list-option:hover,
 .dash-dropdown-option:hover {
   background-color: var(--bg) !important;
   color: var(--t-pri) !important;
 }
+
 .dash-options-list-option.selected,
 .dash-dropdown-option.selected {
   background-color: rgba(255, 255, 255, 0.07) !important;
@@ -73,6 +81,7 @@
   border: none !important;
   box-shadow: none !important;
 }
+
 .Select-control {
   background-color: var(--surface) !important;
   color: var(--t-pri) !important;
@@ -83,6 +92,7 @@
   align-items: center !important;
   box-shadow: none !important;
 }
+
 .Select-menu,
 .Select-menu-outer {
   background-color: var(--surface) !important;
@@ -92,142 +102,45 @@
   max-height: 250px !important;
   overflow-y: auto !important;
 }
+
 .Select-option,
 .VirtualizedSelectOption,
 .VirtualizedSelectFocusedOption {
   background-color: var(--surface) !important;
   color: var(--t-pri) !important;
 }
-.Select-value, .Select-value-label, .Select-placeholder { color: var(--t-pri) !important; }
-.Select-arrow { border-top-color: var(--t-sec) !important; }
-.Select-arrow-zone { border-left: none !important; }
-.Select-menu-outer { 
-  box-shadow: 0 4px 12px rgba(0,0,0,0.5) !important; 
-  z-index: 9999 !important;
-}
-.Select-arrow-zone:hover > .Select-arrow { border-top-color: var(--t-pri) !important; }
-.Select-clear-zone { color: var(--t-sec) !important; }
-.Select-clear-zone:hover { color: var(--t-pri) !important; }
 
-
-/* ── DatePickerSingle Input Fix ── */
-.SingleDatePickerInput,
-.SingleDatePickerInput__with-border {
-  background-color: var(--surface) !important;
-  border: 0.5px solid var(--border) !important;
-  border-style: solid !important;
-  border-radius: 6px !important;
-  display: flex !important;
-  align-items: center !important;
-  height: 34px !important;
-  box-sizing: border-box !important;
-  overflow: hidden !important;
-}
-
-.DateInput,
-.DateInput_input {
-  background-color: transparent !important;
+.Select-value,
+.Select-value-label,
+.Select-placeholder {
   color: var(--t-pri) !important;
-  font-size: 13px !important;
-  border: none !important;
-  outline: none !important;
-  box-shadow: none !important;
-  height: 100% !important;
-  display: flex !important;
-  align-items: center !important;
 }
 
-.DateInput_input {
-  padding: 0 10px !important;
-  line-height: 34px !important;
+.Select-arrow {
+  border-top-color: var(--t-sec) !important;
 }
 
-
-/* ── react-dates (Dash DatePickerSingle) Dark Theme ── */
-body[data-theme="dark"] .SingleDatePicker_picker,
-body[data-theme="dark"] .SingleDatePicker_picker_1,
-body[data-theme="dark"] .DayPicker,
-body[data-theme="dark"] .DayPicker_1,
-body[data-theme="dark"] .DayPicker_transitionContainer,
-body[data-theme="dark"] .DayPicker_transitionContainer_1,
-body[data-theme="dark"] .CalendarMonth,
-body[data-theme="dark"] .CalendarMonth_1,
-body[data-theme="dark"] .CalendarMonthGrid,
-body[data-theme="dark"] .CalendarMonthGrid_1,
-body[data-theme="dark"] .CalendarMonthGrid_display,
-body[data-theme="dark"] .CalendarMonthGrid_display_1,
-body[data-theme="dark"] .CalendarMonthGrid_transitionContainer,
-body[data-theme="dark"] .CalendarMonthGrid_transitionContainer_1 {
-  background-color: var(--surface) !important;
-  color: var(--t-pri) !important;
-  border-color: var(--border) !important;
+.Select-arrow-zone {
+  border-left: none !important;
 }
 
-body[data-theme="dark"] .SingleDatePicker_picker,
-body[data-theme="dark"] .SingleDatePicker_picker_1 {
-  border: 1px solid var(--border) !important;
-  border-radius: 8px !important;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4) !important;
+.Select-menu-outer {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5) !important;
   z-index: 9999 !important;
 }
 
-body[data-theme="dark"] .CalendarMonth_caption {
-  color: var(--t-pri) !important;
-  font-size: 14px !important;
-  padding-bottom: 40px !important;
+.Select-arrow-zone:hover>.Select-arrow {
+  border-top-color: var(--t-pri) !important;
 }
 
-body[data-theme="dark"] .DayPicker_weekHeader,
-body[data-theme="dark"] .DayPicker_weekHeader_1 {
-  top: 55px !important;
+.Select-clear-zone {
   color: var(--t-sec) !important;
 }
 
-body[data-theme="dark"] .DayPicker_weekHeader_li {
-  color: var(--t-sec) !important;
-}
-
-body[data-theme="dark"] .CalendarDay,
-body[data-theme="dark"] .CalendarDay__default {
-  background-color: var(--surface) !important;
-  color: var(--t-pri) !important;
-  border: 0.5px solid var(--border) !important;
-}
-
-body[data-theme="dark"] .CalendarDay:hover,
-body[data-theme="dark"] .CalendarDay__default:hover {
-  background-color: var(--bg) !important;
+.Select-clear-zone:hover {
   color: var(--t-pri) !important;
 }
 
-body[data-theme="dark"] .CalendarDay__outside {
-  color: var(--t-sec) !important;
-  background-color: var(--surface) !important;
-}
-
-body[data-theme="dark"] .CalendarDay__selected,
-body[data-theme="dark"] .CalendarDay__selected:hover,
-body[data-theme="dark"] .CalendarDay__selected_span,
-body[data-theme="dark"] .CalendarDay__selected_span:hover {
-  background-color: var(--green) !important;
-  color: #ffffff !important;
-  font-weight: 600 !important;
-  border-color: var(--green) !important;
-}
-
-body[data-theme="dark"] .DayPickerNavigation_button__default {
-  background-color: var(--surface) !important;
-  border: 1px solid var(--border) !important;
-  border-radius: 4px !important;
-}
-
-body[data-theme="dark"] .DayPickerNavigation_button__default:hover {
-  background-color: var(--bg) !important;
-}
-
-body[data-theme="dark"] .DayPickerNavigation_svg__default {
-  fill: var(--t-pri) !important;
-}
 
 /* ── Bootstrap Modal Overrides ── */
 .modal-content {
@@ -236,22 +149,27 @@ body[data-theme="dark"] .DayPickerNavigation_svg__default {
   border: 1px solid var(--border) !important;
   border-radius: 12px !important;
 }
+
 .modal-header {
   border-bottom: 0.5px solid var(--border) !important;
   padding: 16px 20px !important;
 }
+
 .modal-footer {
   border-top: 0.5px solid var(--border) !important;
   padding: 12px 20px !important;
 }
+
 .modal-title {
   font-size: 18px !important;
   font-weight: 500 !important;
   color: var(--t-pri) !important;
 }
+
 .modal-body {
   padding: 20px !important;
 }
+
 /* For the header X button if it was enabled */
 body[data-theme="dark"] .btn-close {
   filter: invert(1) grayscale(100%) brightness(200%);

@@ -10,13 +10,15 @@ def build_intel_drawdown_chart(dd_dates: list, dd_values: list, theme_tokens: di
     base = theme_tokens["PLOTLY_BASE"].copy()
     base["margin"] = _LINE_MARGIN
 
-    fig.update_layout(
-        **base, height=260,
+    layout = base.copy()
+    layout.update(dict(
+        height=260,
         xaxis=dict(showgrid=False),
         yaxis=dict(gridcolor=theme_tokens["BORDER"], ticksuffix="%",
                    zeroline=True, zerolinecolor=theme_tokens["BORDER"], zerolinewidth=1),
         hovermode="x unified",
-    )
+    ))
+    fig.update_layout(layout)
     if dd_dates and dd_values:
         fig.add_trace(go.Scatter(
             x=dd_dates, y=dd_values,

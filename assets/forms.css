@@ -15,6 +15,59 @@ select,
   font-size: 13px !important;
 }
 
+/* ── Mantine DateInput Styling ── */
+.mantine-DateInput-input,
+.mantine-DatePickerInput-input {
+  background-color: var(--surface) !important;
+  color: var(--t-pri) !important;
+  border: 0.5px solid var(--border) !important;
+  border-radius: 6px !important;
+  height: 34px !important;
+  font-size: 13px !important;
+  padding: 0 10px !important;
+}
+
+.mantine-DateInput-input:focus,
+.mantine-DatePickerInput-input:focus,
+.mantine-Select-input:focus,
+.mantine-TextInput-input:focus,
+.mantine-NumberInput-input:focus {
+  border-color: var(--t-sec) !important;
+}
+
+/* ── Mantine Input Fields ── */
+.mantine-Select-input,
+.mantine-TextInput-input,
+.mantine-NumberInput-input {
+  background-color: var(--surface) !important;
+  color: var(--t-pri) !important;
+  border: 0.5px solid var(--border) !important;
+  border-radius: 6px !important;
+  height: 34px !important;
+  font-size: 13px !important;
+  padding: 0 10px !important;
+}
+
+/* ── Mantine Button ── */
+.mantine-Button-root {
+  background-color: var(--surface) !important;
+  color: var(--t-pri) !important;
+  border: 0.5px solid var(--border) !important;
+  border-radius: 6px !important;
+  height: 34px !important;
+  font-weight: 500 !important;
+  transition: transform 0.1s, opacity 0.1s !important;
+}
+
+.mantine-Button-root:hover {
+  transform: translateY(-1px) !important;
+  opacity: 0.9 !important;
+}
+
+.mantine-Button-root:active {
+  transform: scale(0.97) !important;
+}
+
 button {
   background: var(--surface) !important;
   color: var(--t-pri) !important;
@@ -98,8 +151,8 @@ button:active {
   width: 90px;
 }
 
-.txn-datepicker {
-  width: 140px;
+.txn-input-date {
+  width: 145px;
 }
 
 .txn-dropdown {

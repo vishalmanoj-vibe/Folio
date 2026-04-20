@@ -27,6 +27,7 @@ from __future__ import annotations
 import pandas as pd
 import plotly.graph_objects as go
 import yfinance as yf
+import dash_mantine_components as dmc
 from dash import ALL, ClientsideFunction, Input, Output, State, dcc, html, register_page
 
 from config.constants import (
@@ -135,10 +136,11 @@ def _period_buttons(active: str) -> list:
     for opt in PERIOD_OPTIONS:
         is_active = opt["value"] == active
         buttons.append(
-            html.Button(
+            dmc.Button(
                 opt["label"],
                 id={"type": "etf-period-btn", "index": opt["value"]},
                 n_clicks=0,
+                variant="filled" if is_active else "outline",
                 className=f"period-btn {'period-btn-active' if is_active else ''}".strip(),
             )
         )

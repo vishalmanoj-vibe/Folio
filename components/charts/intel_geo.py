@@ -18,11 +18,13 @@ def build_intel_geo_chart(geo_data: dict, theme_tokens: dict) -> go.Figure:
     base["margin"] = _BAR_MARGIN
     base["showlegend"] = False
 
-    fig.update_layout(
-        **base, height=geo_h,
+    layout = base.copy()
+    layout.update(dict(
+        height=geo_h,
         xaxis=dict(gridcolor=theme_tokens["BORDER"], ticksuffix="%", range=[0, 115]),
         yaxis=dict(showgrid=False),
-    )
+    ))
+    fig.update_layout(layout)
     if geo_s:
         fig.add_trace(go.Bar(
             x=[v for _, v in geo_s],

@@ -18,6 +18,12 @@ from components.charts import (
     build_dividend_figure,
     build_corr_figure,
 )
+from components.charts.mantine_charts import (
+    create_pnl_bar_dmc,
+    create_day_pnl_dmc,
+    create_allocation_dmc,
+    create_dividend_dmc
+)
 
 logger = logging.getLogger(__name__)
 
@@ -144,7 +150,7 @@ def register_callbacks(app) -> None:
 
     # ── Allocation donut ──────────────────────────────────────────────────────
     @app.callback(
-        Output("allocation-chart", "figure"),
+        Output("allocation-chart-container", "children"),
         Input("portfolio-store",   "data"),
         Input("analytics-period-picker",     "value"),
         Input("theme-store",       "data"),
@@ -152,15 +158,12 @@ def register_callbacks(app) -> None:
     def allocation_chart(data, period, theme):
         t_ = get_theme(theme or "dark")
         if not data or "holdings" not in data:
-            fig = go.Figure()
-            fig.update_layout(**t_["PLOTLY_BASE"])
-            return fig
-        # Allocation doesn't use period logically, but we receive it to re-trigger
-        return build_allocation_figure(data["holdings"], t_)
+            return html.Div("No data")
+        return create_allocation_dmc(data["holdings"])
 
     # ── Unrealised P&L bar ────────────────────────────────────────────────────
     @app.callback(
-        Output("pnl-bar-chart",  "figure"),
+        Output("pnl-bar-chart-container",  "children"),
         Input("portfolio-store", "data"),
         Input("analytics-pnl-mode",        "value"),
         Input("analytics-period-picker",   "value"),
@@ -169,15 +172,12 @@ def register_callbacks(app) -> None:
     def pnl_bar(data, mode, period, theme):
         t_ = get_theme(theme or "dark")
         if not data or "holdings" not in data:
-            fig = go.Figure()
-            fig.update_layout(xaxis=dict(showgrid=False), yaxis=dict(gridcolor=t_["BORDER"]), **t_["PLOTLY_BASE"])
-            return fig
-        # pnl_bar doesn't currently support period calculation
-        return build_pnl_bar_figure(data["holdings"], mode, t_)
+            return html.Div("No data")
+        return create_pnl_bar_dmc(data["holdings"], mode)
 
     # ── Day P&L bar ───────────────────────────────────────────────────────────
     @app.callback(
-        Output("day-pnl-chart",  "figure"),
+        Output("day-pnl-chart-container",  "children"),
         Input("portfolio-store", "data"),
         Input("analytics-pnl-mode",        "value"),
         Input("analytics-period-picker",   "value"),
@@ -186,14 +186,12 @@ def register_callbacks(app) -> None:
     def day_pnl_chart(data, mode, period, theme):
         t_ = get_theme(theme or "dark")
         if not data or "holdings" not in data:
-            fig = go.Figure()
-            fig.update_layout(xaxis=dict(showgrid=False), yaxis=dict(gridcolor=t_["BORDER"]), **t_["PLOTLY_BASE"])
-            return fig
-        return build_day_pnl_figure(data["holdings"], mode, t_)
+            return html.Div("No data")
+        return create_day_pnl_dmc(data["holdings"], mode)
 
     # ── Annual dividend income ────────────────────────────────────────────────
     @app.callback(
-        Output("dividend-chart", "figure"),
+        Output("dividend-chart-container", "children"),
         Input("portfolio-store", "data"),
         Input("analytics-pnl-mode",        "value"),
         Input("analytics-period-picker",   "value"),
@@ -202,10 +200,8 @@ def register_callbacks(app) -> None:
     def dividend_chart(data, mode, period, theme):
         t_ = get_theme(theme or "dark")
         if not data or "holdings" not in data:
-            fig = go.Figure()
-            fig.update_layout(xaxis=dict(showgrid=False), yaxis=dict(gridcolor=t_["BORDER"]), **t_["PLOTLY_BASE"])
-            return fig
-        return build_dividend_figure(data["holdings"], mode, t_)
+            return html.Div("No data")
+        return create_dividend_dmc(data["holdings"])
 
     # ── Correlation heatmap ───────────────────────────────────────────────────
     @app.callback(

@@ -6,6 +6,7 @@ Portfolio page layout.
 
 from datetime import datetime
 from dash import dcc, html
+import dash_mantine_components as dmc
 from config.settings import CSV_PATH
 from components.ui_helpers import chart_title, section
 from components.header import create_header
@@ -60,50 +61,58 @@ def create_layout(initial_history: list[dict] | None = None) -> html.Div:
                             [
                                 html.Div([
                                     html.P("Type", className="txn-label"),
-                                    dcc.Dropdown(
+                                    dmc.Select(
                                         id="txn-type",
-                                        options=[{"label": "Buy",  "value": "buy"},
-                                                 {"label": "Sell", "value": "sell"}],
-                                        value="buy", clearable=False,
-                                        searchable=False,
+                                        data=[{"label": "Buy",  "value": "buy"},
+                                              {"label": "Sell", "value": "sell"}],
+                                        value="buy",
+                                        allowDeselect=False,
                                         className="txn-dropdown",
                                     ),
                                 ]),
                                 html.Div([
                                     html.P("Ticker", className="txn-label"),
-                                    dcc.Input(
-                                        id="txn-ticker", type="text",
+                                    dmc.TextInput(
+                                        id="txn-ticker",
                                         placeholder="e.g. VHY",
                                         className="txn-input-text",
                                     ),
                                 ]),
                                 html.Div([
                                     html.P("Shares", className="txn-label"),
-                                    dcc.Input(
-                                        id="txn-shares", type="number", placeholder="0",
+                                    dmc.NumberInput(
+                                        id="txn-shares",
+                                        placeholder="0",
+                                        min=0,
                                         className="txn-input-num",
                                     ),
                                 ]),
                                 html.Div([
                                     html.P("Price ($)", className="txn-label"),
-                                    dcc.Input(
-                                        id="txn-price", type="number", placeholder="0.00",
+                                    dmc.NumberInput(
+                                        id="txn-price",
+                                        placeholder="0.00",
+                                        min=0,
+                                        decimalScale=2,
                                         className="txn-input-num",
                                     ),
                                 ]),
                                 html.Div([
                                     html.P("Date (YYYY-MM-DD)", className="txn-label"),
-                                    dcc.DatePickerSingle(
+                                    dmc.DateInput(
                                         id="txn-date",
-                                        date=datetime.now().strftime("%Y-%m-%d"),
-                                        display_format="YYYY-MM-DD",
-                                        className="txn-datepicker",
+                                        value=datetime.now().date(),
+                                        valueFormat="YYYY-MM-DD",
+                                        className="txn-input-date",
+                                        allowDeselect=False,
                                     ),
                                 ]),
                                 html.Div([
                                     html.P("\u00a0", className="txn-label"),
-                                    html.Button(
-                                        "Add transaction", id="txn-submit", n_clicks=0,
+                                    dmc.Button(
+                                        "Add transaction",
+                                        id="txn-submit",
+                                        n_clicks=0,
                                         className="btn-md",
                                     ),
                                 ]),
@@ -127,9 +136,9 @@ def create_layout(initial_history: list[dict] | None = None) -> html.Div:
                     chart_title("P&L from purchase date", "pnl-history"),
                     html.Div(
                         [
-                            dcc.Dropdown(
+                            dmc.Select(
                                 id="period-picker",
-                                options=[
+                                data=[
                                     {"label": "Since purchase", "value": "max"},
                                     {"label": "1 month",        "value": "1mo"},
                                     {"label": "3 months",       "value": "3mo"},
@@ -137,19 +146,21 @@ def create_layout(initial_history: list[dict] | None = None) -> html.Div:
                                     {"label": "1 year",         "value": "1y"},
                                     {"label": "2 years",        "value": "2y"},
                                 ],
-                                value="3mo", clearable=False, searchable=False,
-                                persistence=True, persistence_type="session",
-                                style={"width": "130px", "fontSize": "12px"},
+                                value="3mo",
+                                allowDeselect=False,
+                                persistence=True,
+                                style={"width": "130px"},
                             ),
-                            dcc.Dropdown(
+                            dmc.Select(
                                 id="pnl-mode",
-                                options=[
+                                data=[
                                     {"label": "Dollar ($)",     "value": "dollar"},
                                     {"label": "Percentage (%)", "value": "pct"},
                                 ],
-                                value="dollar", clearable=False, searchable=False,
-                                persistence=True, persistence_type="session",
-                                style={"width": "130px", "fontSize": "12px"},
+                                value="dollar",
+                                allowDeselect=False,
+                                persistence=True,
+                                style={"width": "130px"},
                             ),
                         ],
                         className="pnl-controls-row"

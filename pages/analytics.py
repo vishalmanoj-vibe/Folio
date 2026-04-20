@@ -7,6 +7,7 @@ Route: /analytics
 
 import dash
 from dash import html, dcc
+import dash_mantine_components as dmc
 from components.header import create_header
 from components.ui_helpers import chart_title
 
@@ -32,9 +33,9 @@ def layout():
             [
                 html.Div(
                     [
-                        dcc.Dropdown(
+                        dmc.Select(
                             id="analytics-period-picker",
-                            options=[
+                            data=[
                                 {"label": "Since purchase", "value": "max"},
                                 {"label": "1 month",        "value": "1mo"},
                                 {"label": "3 months",       "value": "3mo"},
@@ -42,19 +43,21 @@ def layout():
                                 {"label": "1 year",         "value": "1y"},
                                 {"label": "2 years",        "value": "2y"},
                             ],
-                            value="3mo", clearable=False, searchable=False,
-                            persistence=True, persistence_type="session",
-                            style={"width": "130px", "fontSize": "12px"},
+                            value="3mo",
+                            allowDeselect=False,
+                            persistence=True,
+                            style={"width": "130px"},
                         ),
-                        dcc.Dropdown(
+                        dmc.Select(
                             id="analytics-pnl-mode",
-                            options=[
+                            data=[
                                 {"label": "Dollar ($)",     "value": "dollar"},
                                 {"label": "Percentage (%)", "value": "pct"},
                             ],
-                            value="dollar", clearable=False, searchable=False,
-                            persistence=True, persistence_type="session",
-                            style={"width": "130px", "fontSize": "12px"},
+                            value="dollar",
+                            allowDeselect=False,
+                            persistence=True,
+                            style={"width": "130px"},
                         ),
                     ],
                     style={"display": "flex", "gap": "12px"}
@@ -80,7 +83,7 @@ def layout():
                             ),
                             html.Div(
                                 [chart_title("Portfolio allocation", "allocation"),
-                                 dcc.Graph(id="allocation-chart", config={"displayModeBar": False})],
+                                 html.Div(id="allocation-chart-container")],
                                  className="grid-item-1",
                             ),
                         ],
@@ -90,12 +93,12 @@ def layout():
                         [
                             html.Div(
                                 [chart_title("Unrealised P&L — all time", "pnl-bar"),
-                                 dcc.Graph(id="pnl-bar-chart", config={"displayModeBar": False})],
+                                 html.Div(id="pnl-bar-chart-container")],
                                  className="grid-item-1-half",
                             ),
                             html.Div(
                                 [chart_title("Today's P&L", "day-pnl"),
-                                 dcc.Graph(id="day-pnl-chart", config={"displayModeBar": False})],
+                                 html.Div(id="day-pnl-chart-container")],
                                  className="grid-item-1-half",
                             ),
                         ],
@@ -105,7 +108,7 @@ def layout():
                         [
                             html.Div(
                                 [chart_title("Annual dividend income", "dividend"),
-                                 dcc.Graph(id="dividend-chart", config={"displayModeBar": False})],
+                                 html.Div(id="dividend-chart-container")],
                                  className="grid-item-1-half",
                             ),
                             html.Div(

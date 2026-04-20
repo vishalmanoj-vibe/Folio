@@ -57,15 +57,17 @@ def build_corr_figure(histories: dict, period: str, theme_tokens: dict) -> go.Fi
     
     fig.add_trace(go.Heatmap(
         z=corr.values.tolist(), x=ticks, y=ticks,
-        colorscale=[[0, "#1D9E75"], [0.5, "#EF9F27"], [1, "#E24B4A"]],
+        colorscale=[[0, theme_tokens["GREEN"]], [0.5, theme_tokens["WARNING"]], [1, theme_tokens["RED"]]],
         zmin=-1, zmax=1,
         text=[[f"{v:.2f}" for v in row] for row in corr.values.tolist()],
         texttemplate="%{text}", textfont=dict(size=11),
-        showscale=True, colorbar=dict(thickness=12, len=0.8),
+        showscale=True, colorbar=dict(thickness=12, len=0.8, tickfont=dict(color=theme_tokens["T_SEC"])),
     ))
     
-    fig.update_layout(
+    layout = PLOTLY_BASE.copy()
+    layout.update(dict(
         xaxis=dict(showgrid=False, tickfont=dict(size=11)),
         yaxis=dict(showgrid=False, tickfont=dict(size=11), autorange="reversed"),
-    )
+    ))
+    fig.update_layout(layout)
     return fig

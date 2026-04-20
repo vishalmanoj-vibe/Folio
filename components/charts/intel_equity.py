@@ -11,13 +11,15 @@ def build_intel_equity_chart(ret_dates: list, ret_values: list, theme_tokens: di
     base = theme_tokens["PLOTLY_BASE"].copy()
     base["margin"] = _LINE_MARGIN
     
-    fig.update_layout(
-        **base, height=300,
+    layout = base.copy()
+    layout.update(dict(
+        height=300,
         xaxis=dict(showgrid=False),
         yaxis=dict(gridcolor=theme_tokens["BORDER"], ticksuffix="%",
                    zeroline=True, zerolinecolor=theme_tokens["BORDER"], zerolinewidth=1),
         hovermode="x unified",
-    )
+    ))
+    fig.update_layout(layout)
     if ret_dates and ret_values:
         lv = ret_values[-1]
         fig.add_trace(go.Scatter(

@@ -9,46 +9,31 @@ The application follows a strictly decoupled layered architecture to ensure sepa
 ```text
 ┌─────────────────────────────────────────────────────────────────────────────┐
 │                             PRESENTATION LAYER                              │
-│  ┌────────────────────────┐  ┌──────────────────────┐  ┌──────────────────┐  │
-│  │     STATIC ASSETS      │  │    DASH COMPONENTS   │  │  DASH CALLBACKS  │  │
-│  │ (assets/*.css modules) │  │ (pages/, components/) │  │   (callbacks/)   │  │
-│  └───────────┬────────────┘  └───────────┬──────────┘  └─────────┬────────┘  │
-└──────────────┼───────────────────────────┼───────────────────────┼──────────┘
-               │                           ▼                       │
-               │               ┌───────────────────────┐           │
-               └──────────────►│    SERVICE LAYER      │◄──────────┘
-                               │ (services/market,     │
-                               │  intelligence, alert) │
-                               └───────────┬───────────┘           
-                                           ▼                       
-                               ┌───────────────────────┐           
-                               │     ENGINE LAYER      │           
-                               │ (core/engine/portfolio)│
-                               └───────────┬───────────┘           
-                                           ▼                       
-                               ┌───────────────────────┐           
-                               │    DATA ACCESS LAYER  │           
-                               │ (data/, csv_handler.py)           
-                               └───────────┬───────────┘           
-                                           ▼                       
-                               ┌───────────────────────┐           
-                               │      DOMAIN LAYER     │           
-                               │ (models/, transaction.py)         
-                               └───────────┬───────────┘           
-                                           ▼                       
-                               ┌───────────────────────┐           
-                               │   FOUNDATION LAYER    │           
-                               │    (core/, config/)   │           
-                               └───────────────────────┘           
+│  (app.py, pages/, callbacks/, components/, assets/)                         │
+└──────────┬───────────────────────────┬───────────────────────┬──────────────┘
+           │                           │                       │
+           ▼                           ▼                       ▼
+┌───────────────────────┐   ┌───────────────────────┐   ┌───────────────────────┐
+│     SERVICE LAYER     │   │      ENGINE LAYER     │   │    DATA ACCESS LAYER  │
+│ (market, intelligence,│   │ (core/engine/         │   │ (data/csv_handler.py) │
+│  alert, prediction)   │   │  portfolio_engine.py) │   │                       │
+└──────────┬────────────┘   └───────────┬───────────┘   └───────────┬───────────┘
+           │                            │                           │
+           └───────────────┬────────────┴───────────────┬───────────┘
+                           ▼                            ▼
+               ┌───────────────────────┐    ┌───────────────────────┐
+               │      DOMAIN LAYER     │    │   FOUNDATION LAYER    │
+               │ (models/transaction.py)    │   (core/, config/)    │
+               └───────────────────────┘    └───────────────────────┘
 ```
 
 ### Layer Responsibilities
 
-1.  **Presentation (UI/Assets)**: Handles the "Shell" (HTML/CSS) and the interactive state. Uses `dcc.Store` for client-side state management. CSS is modularized to ensure theme consistency.
-2.  **Service (Orchestration)**: Coordinates external API calls (yfinance), caching, and complex business workflows like alert detection or hierarchical risk analysis.
-3.  **Engine (Logic)**: Pure Python logic for P&L computation, tranche aggregation, and performance metrics. **Zero dependencies on Dash or Network.**
-4.  **Data (Persistence)**: Handles I/O operations (CSV) and transactional integrity.
-5.  **Domain (Models)**: Typed definitions (Pydantic/TypedDict) that enforce data contracts across layers.
+1.  **Presentation (UI/Assets)**: The entry point and orchestrator. It handles the "Shell" (HTML/CSS), multi-page routing, and interactive state (`dcc.Store`). It coordinates the flow by loading raw transactions from the **Data Layer** and passing them to the **Service Layer** for enrichment.
+2.  **Service (Orchestration)**: Coordinates complex workflows including external API calls (yfinance), tiered caching, and domain-specific logic like alert detection, hierarchical risk analysis, and Prophet forecasting.
+3.  **Engine (Logic)**: The "Mathematical Core". Pure Python logic for P&L computation, tranche aggregation, and performance metrics. It has **zero dependencies on Network, I/O, or Dash.**
+4.  **Data (Persistence)**: Handles direct I/O operations (CSV) and transactional integrity for the portfolio history.
+5.  **Domain (Models)**: Typed definitions (Pydantic/TypedDict) that enforce data contracts across all layers.
 6.  **Foundation (Core/Config)**: System-wide utilities (Validators, TTL Caching, Logging) and environment configuration.
 
 ---
