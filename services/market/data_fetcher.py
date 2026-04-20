@@ -152,6 +152,64 @@ def _compute_dividends_bulk(
     return annual_div, total_div, div_yield
 
 
+def _calculate_realized_dividends(div_s: pd.Series, tranches: list[dict]) -> float:
+    """
+    Calculate actual dividends received based on holding history.
+    Matches Ex-Dividend dates against shares held on those dates.
+    """
+    if div_s.empty or not tranches:
+        return 0.0
+
+    div_s = div_s[div_s > 0]
+    if div_s.empty:
+        return 0.0
+
+    # Ensure tz-naive for comparison
+    div_s.index = normalise_tz(div_s.index)
+    total_received = 0.0
+
+    for ex_date, amount in div_s.items():
+        # Ex-date determines eligibility. Most brokers use Ex-date + 1 business day 
+        # or the settlement date, but for simplicity we check if purchase was BEFORE Ex-date.
+        shares_on_date = sum(
+            t["shares"] for t in tranches
+            if pd.to_datetime(t["date"]).tz_localize(None) < ex_date
+        )
+
+        if shares_on_date > 0:
+            total_received += shares_on_date * amount
+
+    return round(total_received, 2)
+
+
+def _deduce_frequency(div_s: pd.Series) -> str:
+    """
+    Deduce dividend frequency from historical distribution dates.
+    """
+    if div_s.empty:
+        return "Unknown"
+
+    div_s = div_s[div_s > 0]
+    if len(div_s) < 2:
+        # Check if the single distribution looks like an annual one
+        return "Annual" if len(div_s) == 1 else "Unknown"
+
+    dates = pd.to_datetime(div_s.index).sort_values()
+    diffs = dates.to_series().diff().dt.days.dropna()
+    median_diff = diffs.median()
+
+    if 25 <= median_diff <= 35:
+        return "Monthly"
+    elif 80 <= median_diff <= 105:
+        return "Quarterly"
+    elif 170 <= median_diff <= 195:
+        return "Semi-Annual"
+    elif 350 <= median_diff <= 375:
+        return "Annual"
+    else:
+        return "Irregular"
+
+
 def fetch_benchmarks(period: str = "max") -> dict[str, list[dict]]:
     """
     Fetch S&P 500 (^GSPC) and ASX 200 (^AXJO) close series using bulk download.
@@ -278,26 +336,33 @@ def fetch_live(holdings: list[dict], hist_period: str = "3mo") -> dict:
                 div_f, h["total_shares"], mkt_value
             )
 
+            realized_div = _calculate_realized_dividends(div_f, h.get("buy_tranches", []))
+            div_frequency = _deduce_frequency(div_f)
+            last_div_amount = float(div_f.iloc[-1]) if not div_f.empty else 0.0
+
             tranche_data = []
             if not close_f.empty:
                 tranche_data = compute_tranche_pnl(close_f, h.get("buy_tranches", []))
 
             enriched.append({
                 **h,
-                "last_price":  round(last_price, 3),
-                "prev_close":  round(prev_close, 3),
-                "day_high":    round(day_high, 3),
-                "day_low":     round(day_low, 3),
-                "mkt_value":   mkt_value,
-                "pnl":         _pnl["pnl"],
-                "pnl_pct":     _pnl["pnl_pct"],
-                "day_pnl":     _pnl["day_pnl"],
-                "day_chg":     _pnl["day_chg"],
-                "day_chg_pct": _pnl["day_chg_pct"],
-                "total_div":   total_div,
-                "annual_div":  annual_div,
-                "div_yield":   div_yield,
-                "tranches":    tranche_data,
+                "last_price":     round(last_price, 3),
+                "prev_close":     round(prev_close, 3),
+                "day_high":       round(day_high, 3),
+                "day_low":        round(day_low, 3),
+                "mkt_value":      mkt_value,
+                "pnl":            _pnl["pnl"],
+                "pnl_pct":        _pnl["pnl_pct"],
+                "day_pnl":        _pnl["day_pnl"],
+                "day_chg":        _pnl["day_chg"],
+                "day_chg_pct":    _pnl["day_chg_pct"],
+                "total_div":      total_div,
+                "realized_div":   realized_div,
+                "annual_div":     annual_div,
+                "div_yield":      div_yield,
+                "div_frequency":  div_frequency,
+                "last_div_amount": round(last_div_amount, 4),
+                "tranches":       tranche_data,
             })
 
         except Exception as exc:
@@ -317,8 +382,11 @@ def fetch_live(holdings: list[dict], hist_period: str = "3mo") -> dict:
                 "day_chg":     0.0,
                 "day_chg_pct": 0.0,
                 "total_div":   0.0,
+                "realized_div": 0.0,
                 "annual_div":  0.0,
                 "div_yield":   0.0,
+                "div_frequency": "Unknown",
+                "last_div_amount": 0.0,
                 "tranches":    [],
             })
 

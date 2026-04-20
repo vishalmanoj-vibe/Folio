@@ -33,7 +33,7 @@ def compute_portfolio_stats(holdings: list[dict]) -> dict:
     -------
     dict with keys:
         total_val, total_cost, total_pnl, pnl_pct,
-        total_day, annual_div, port_yield
+        total_day, annual_div, port_yield, realized_div
     """
     total_val  = sum(x["mkt_value"]  for x in holdings)
     total_cost = sum(x["total_cost"] for x in holdings)
@@ -41,16 +41,18 @@ def compute_portfolio_stats(holdings: list[dict]) -> dict:
     pnl_pct    = (total_pnl / total_cost * 100) if total_cost else 0.0
     total_day  = sum(x["day_pnl"]    for x in holdings)
     annual_div = sum(x["annual_div"] for x in holdings)
+    realized_div = sum(x.get("realized_div", 0.0) for x in holdings)
     port_yield = (annual_div / total_val * 100) if total_val else 0.0
 
     return {
-        "total_val":  round(total_val,  2),
-        "total_cost": round(total_cost, 2),
-        "total_pnl":  round(total_pnl,  2),
-        "pnl_pct":    round(pnl_pct,    2),
-        "total_day":  round(total_day,  2),
-        "annual_div": round(annual_div, 2),
-        "port_yield": round(port_yield, 2),
+        "total_val":    round(total_val,  2),
+        "total_cost":   round(total_cost, 2),
+        "total_pnl":    round(total_pnl,  2),
+        "pnl_pct":      round(pnl_pct,    2),
+        "total_day":    round(total_day,  2),
+        "annual_div":   round(annual_div, 2),
+        "realized_div": round(realized_div, 2),
+        "port_yield":   round(port_yield, 2),
     }
 
 
@@ -71,7 +73,7 @@ def build_live_table_rows(holdings: list[dict]) -> list[dict]:
         day_high, day_low, mkt_value, total_cost,
         pnl, pnl_pct, pnl_color, pnl_sign,
         day_pnl, day_pnl_color, day_pnl_sign,
-        div_yield
+        div_yield, realized_div, div_frequency, last_div_amount
     """
     rows = []
     for x in sorted(holdings, key=lambda v: v["mkt_value"], reverse=True):
@@ -100,5 +102,8 @@ def build_live_table_rows(holdings: list[dict]) -> list[dict]:
             "day_pnl_color": GREEN if dpnl_pos else RED,
             "day_pnl_sign":  "+" if dpnl_pos else "",
             "div_yield":     x["div_yield"],
+            "realized_div":  x.get("realized_div", 0.0),
+            "div_frequency": x.get("div_frequency", "Unknown"),
+            "last_div_amount": x.get("last_div_amount", 0.0),
         })
     return rows

@@ -72,13 +72,16 @@ def register_callbacks(app) -> None:
             stat_card("Today's P&L",      f"{ds}${s['total_day']:,.2f}",
                       "across all positions", dc, dc,
                       tip="Estimated change in portfolio value since yesterday's close."),
+            stat_card("Realized dividends", f"${s['realized_div']:,.2f}",
+                      "total cash received",
+                      GREEN if s["realized_div"] > 0 else "var(--t-pri)",
+                      "var(--t-sec)",
+                      tip="Actual cash dividends received based on your holding history and ex-dividend dates."),
             stat_card("Annual dividends", f"${s['annual_div']:,.2f}",
                       f"{s['port_yield']:.2f}% yield",
                       GREEN if s["port_yield"] > 0 else "var(--t-pri)",
                       "var(--t-sec)",
                       tip="Projected annual dividend income based on each ETF's trailing 12-month distributions."),
-            stat_card("Holdings", str(len(data["holdings"])),
-                      tip="Number of distinct ETFs currently held in the portfolio."),
         ]
 
     # ── Live positions table ──────────────────────────────────────────────────
@@ -120,7 +123,10 @@ def register_callbacks(app) -> None:
                     style=td,
                 ),
                 html.Td(x["name"],
-                        style={**td, "color": "var(--t-sec)", "fontSize": "12px"}),
+                        style={**td, "color": "var(--t-sec)", "fontSize": "12px",
+                               "maxWidth": "160px", "overflow": "hidden",
+                               "textOverflow": "ellipsis"},
+                        title=x["name"]),
                 html.Td(str(x["total_shares"]), style=td),
                 html.Td(f"${x['avg_cost']:,.4f}",  style=td),
                 html.Td(f"${x['last_price']:,.3f}", style=td),
@@ -138,6 +144,8 @@ def register_callbacks(app) -> None:
                 pnl_td(x["pnl"],     x["pnl_pct"],    x["pnl_color"],     x["pnl_sign"]),
                 pnl_td(x["day_pnl"], x["day_chg_pct"], x["day_pnl_color"], x["day_pnl_sign"]),
                 html.Td(f"{x['div_yield']:.2f}%", style=td),
+                html.Td(f"${x['realized_div']:,.2f}", style=td),
+                html.Td(x["div_frequency"], style={**td, "fontSize": "11px", "color": "var(--t-sec)"}),
             ]))
 
         return html.Div(
@@ -148,7 +156,7 @@ def register_callbacks(app) -> None:
                             "Ticker", "Name", "Shares", "Avg cost",
                             "Last price", "Day change", "High / Low",
                             "Market value", "Cost basis",
-                            "Unrealised P&L", "Today's P&L", "Div yield",
+                            "Unrealised P&L", "Today's P&L", "Div yield", "Realized div", "Freq",
                         ]
                     ])),
                     html.Tbody(rows),
