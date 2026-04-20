@@ -162,7 +162,7 @@ def compute_tranche_pnl(
         pct_s = (sub - tr["price"]) / tr["price"] * 100
 
         result.append({
-            "dates":     [d.strftime("%Y-%m-%d") for d in sub.index],
+            "dates":     [d.strftime("%Y-%m-%d %H:%M:%S") if d.hour != 0 or d.minute != 0 else d.strftime("%Y-%m-%d") for d in sub.index],
             "pnl":       [round(v, 2) for v in pnl_s.tolist()],
             "pct":       [round(v, 2) for v in pct_s.tolist()],
             "shares":    float(tr["shares"]),

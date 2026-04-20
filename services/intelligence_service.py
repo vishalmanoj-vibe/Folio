@@ -142,7 +142,8 @@ def fetch_etf_sector_weights(ticker_yf: str) -> dict[str, float]:
 
     try:
         tk = get_ticker_cached(ticker_yf)
-        sw = tk.funds_data.sector_weightings
+        fd = getattr(tk, "funds_data", None)
+        sw = fd.sector_weightings if fd is not None else None
         
         if not sw:
             s = tk.info.get("sector")
@@ -184,7 +185,23 @@ def fetch_etf_geo_weights(ticker_yf: str) -> dict[str, float]:
 
     try:
         tk = get_ticker_cached(ticker_yf)
-        fd = tk.funds_data
+        fd = getattr(tk, "funds_data", None)
+        if fd is None:
+            # Fallback to info parsing if funds_data is missing
+            cat = tk.info.get("category", "").lower()
+            if "australia" in cat:
+                result = {"Australia": 100.0}
+            elif "china" in cat:
+                result = {"China": 100.0}
+            elif "japan" in cat:
+                result = {"Japan": 100.0}
+            elif "us" in cat or "america" in cat:
+                result = {"USA": 100.0}
+            else:
+                fallback_region = _symbol_to_region(ticker_yf)
+                result = {fallback_region: 100.0}
+            set_cache(key, result, _GEO_TTL)
+            return result
         
         # ── 1. Check for structured regional exposure (Best source) ──
         # Note: regional_exposure is a dict of {region: weight} in newer yfinance versions
@@ -313,7 +330,7 @@ def per_ticker_volatility(histories: dict) -> dict[str, float]:
         for col in ret_df.columns
     }
 
-def compute_risk_metrics(port_data: dict, period: str = "max") -> dict:
+def compute_risk_metrics(port_data: dict, period: str = "max", returns: pd.Series | None = None) -> dict:
     empty = {
         "vol": None, "sharpe": None, "max_dd": None, "current_dd": None,
         "ticker_vols": {}, "dd_dates": [], "dd_values": [],
@@ -323,7 +340,8 @@ def compute_risk_metrics(port_data: dict, period: str = "max") -> dict:
     histories = port_data.get("histories", {})
     holdings  = port_data.get("holdings",  [])
     if not histories or not holdings: return empty
-    port_ret = portfolio_returns(histories, holdings)
+    
+    port_ret = returns if returns is not None else portfolio_returns(histories, holdings)
     if port_ret.empty: return empty
     vol, sharpe, max_dd = annualised_volatility(port_ret), sharpe_ratio(port_ret), max_drawdown(port_ret)
     cur_dd = round(float(drawdown_series(port_ret).iloc[-1]), 2) if not port_ret.empty else None

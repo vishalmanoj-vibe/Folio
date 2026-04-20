@@ -54,10 +54,12 @@ def build_portfolio_treemap(
             colors.append(h["pnl_pct"])
             
             sign = "+" if h["pnl"] >= 0 else ""
-            custom_data_list.append(f"{sign}${h['pnl']:,.2f}")
+            pct_of_parent = (val / parent_sums[s]) * 100
+            custom_data_list.append(f"{pct_of_parent:.1f}%")
             hover_texts.append(
                 f"<b>{t} ({s})</b><br>"
-                f"Allocation: ${val:,.2f}<br>"
+                f"Value in Sector: ${val:,.2f}<br>"
+                f"Weight in Sector: {pct_of_parent:.1f}%<br>"
                 f"P&L: {sign}${h['pnl']:,.2f} ({h['pnl_pct']:+.2f}%)"
             )
 
@@ -92,10 +94,12 @@ def build_portfolio_treemap(
             colors.append(h["pnl_pct"])
             
             sign = "+" if h["pnl"] >= 0 else ""
-            custom_data_list.append(f"{sign}${h['pnl']:,.2f}")
+            pct_of_parent = (val / parent_sums[r]) * 100
+            custom_data_list.append(f"{pct_of_parent:.1f}%")
             hover_texts.append(
                 f"<b>{t} ({r})</b><br>"
-                f"Allocation: ${val:,.2f}<br>"
+                f"Value in Region: ${val:,.2f}<br>"
+                f"Weight in Region: {pct_of_parent:.1f}%<br>"
                 f"P&L: {sign}${h['pnl']:,.2f} ({h['pnl_pct']:+.2f}%)"
             )
 

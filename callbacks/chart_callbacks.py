@@ -32,71 +32,18 @@ def register_callbacks(app) -> None:
     Register chart-related callbacks with the Dash application.
     """
 
-    # ── Ticker toggle buttons ─────────────────────────────────────────────────
+    # ── Ticker selector options ───────────────────────────────────────────────
     @app.callback(
-        Output("ticker-toggle-btns", "children"),
-        Input("portfolio-store",     "data"),
-        Input("theme-store",         "data"),
-        Input("selected-ticker-store", "data"),
+        Output("ticker-selector", "data"),
+        Input("portfolio-store",  "data"),
     )
-    def build_toggle_btns(data, theme, selected):
-        t_    = get_theme(theme or "dark")
-        T_PRI = t_["T_PRI"]
-        BG    = t_["BG"]
-        selected = selected or "Portfolio"
-        
+    def update_ticker_options(data):
         if not data or "holdings" not in data or not data["holdings"]:
-            return []
-        tickers = ["Portfolio"] + [h["ticker"] for h in data["holdings"]]
-        btns = []
-        for i, t in enumerate(tickers):
-            is_sel = (t == selected)
-            is_port = (t == "Portfolio")
-            
-            c = T_PRI if is_port else COLORS[(i - 1) % len(COLORS)]
-            
-            style = {
-                "fontSize":     "12px",
-                "padding":      "4px 12px",
-                "borderRadius": "20px",
-                "cursor":       "pointer",
-                "fontWeight":   "500",
-                "transition":   "all 0.15s ease",
-                "background":   c if is_sel else "transparent",
-                "color":        BG if is_sel else c,
-                "border":       f"1.5px solid {c}",
-            }
-            
-            btns.append(html.Button(
-                t,
-                id={"type": "ticker-btn", "index": t},
-                n_clicks=0,
-                style=style
-            ))
-        return btns
+            return ["Portfolio"]
+        
+        tickers = ["Portfolio"] + sorted([h["ticker"] for h in data["holdings"]])
+        return [{"label": t, "value": t} for t in tickers]
 
-    # ── Selected Ticker State ─────────────────────────────────────────────────
-    @app.callback(
-        Output("selected-ticker-store", "data"),
-        Input({"type": "ticker-btn", "index": ALL}, "n_clicks"),
-        State("selected-ticker-store", "data"),
-        prevent_initial_call=True,
-    )
-    def update_selected_ticker(n_clicks_list, current_selected):
-        import dash
-        import json
-        ctx = dash.callback_context
-        if not ctx.triggered:
-            raise dash.exceptions.PreventUpdate
-            
-        if not ctx.triggered[0]["value"]:
-            raise dash.exceptions.PreventUpdate
-            
-        try:
-            trigger_id = json.loads(ctx.triggered[0]["prop_id"].split(".")[0])
-            return trigger_id["index"]
-        except Exception:
-            return current_selected
 
     # ── P&L history ───────────────────────────────────────────────────────────
     @app.callback(
@@ -105,7 +52,7 @@ def register_callbacks(app) -> None:
         Input("pnl-mode",           "value"),
         Input("period-picker",      "value"),
         Input("theme-store",        "data"),
-        Input("selected-ticker-store", "data"),
+        Input("ticker-selector",    "value"),
     )
     def pnl_history_chart(data, mode, period, theme, selected):
         t_     = get_theme(theme or "dark")

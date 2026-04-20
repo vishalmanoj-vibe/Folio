@@ -13,6 +13,7 @@ logger = logging.getLogger(__name__)
 from services.intelligence_service import (
     compute_risk_metrics,
     compute_smart_alerts,
+    portfolio_returns,
 )
 from services.prediction_service import get_forecast
 
@@ -20,7 +21,6 @@ from components.charts.intel_helpers import create_empty_fig, _BAR_MIN_H
 from components.charts.intel_equity import build_intel_equity_chart
 from components.charts.intel_drawdown import build_intel_drawdown_chart
 
-import dash
 import plotly.graph_objects as go
 from components.ui_helpers import stat_card, alert_card
 from config.constants import get_theme
@@ -68,7 +68,12 @@ def register_callbacks(app) -> None:
         )
 
         # ── A. Risk metrics ───────────────────────────────────────────────────
-        metrics = compute_risk_metrics(port_data, period=period)
+        # Pre-compute full returns once to avoid double processing in B2
+        histories = port_data.get("histories", {})
+        holdings_list = port_data.get("holdings", [])
+        full_returns = portfolio_returns(histories, holdings_list)
+
+        metrics = compute_risk_metrics(port_data, period=period, returns=full_returns)
         vol     = metrics["vol"]
         sharpe  = metrics["sharpe"]
         max_dd  = metrics["max_dd"]
@@ -123,7 +128,7 @@ def register_callbacks(app) -> None:
 
         # ── B2. Prediction Trace (Optional) ───────────────────────────────────
         if pred_on:
-            full_metrics = compute_risk_metrics(port_data, period="max")
+            full_metrics = compute_risk_metrics(port_data, period="max", returns=full_returns)
             pred_data = get_forecast(
                 full_metrics.get("ret_dates", []),
                 full_metrics.get("ret_values", []),

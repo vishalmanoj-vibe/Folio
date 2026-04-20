@@ -188,6 +188,7 @@ def create_layout(initial_history: list[dict] | None = None) -> html.Div:
                             dmc.Select(
                                 id="period-picker",
                                 data=[
+                                    {"label": "Today",          "value": "1d"},
                                     {"label": "Since purchase", "value": "max"},
                                     {"label": "1 month",        "value": "1mo"},
                                     {"label": "3 months",       "value": "3mo"},
@@ -195,9 +196,9 @@ def create_layout(initial_history: list[dict] | None = None) -> html.Div:
                                     {"label": "1 year",         "value": "1y"},
                                     {"label": "2 years",        "value": "2y"},
                                 ],
-                                value="3mo",
+                                value="max",
                                 allowDeselect=False,
-                                persistence=True,
+                                persistence=False,
                                 style={"width": "130px"},
                             ),
                             dmc.Select(
@@ -219,7 +220,18 @@ def create_layout(initial_history: list[dict] | None = None) -> html.Div:
                     html.Div(
                         [
                             html.P("View:", className="view-label"),
-                            html.Div(id="ticker-toggle-btns", className="ticker-btns-row"),
+                            html.Div([
+                                dmc.Select(
+                                    id="ticker-selector",
+                                    data=["Portfolio"],
+                                    value="Portfolio",
+                                    searchable=True,
+                                    allowDeselect=False,
+                                    size="xs",
+                                    className="ticker-selector-dropdown",
+                                    style={"width": "160px"}
+                                ),
+                            ], id="ticker-selector-container"),
                         ],
                         className="ticker-toggle-row",
                     ),

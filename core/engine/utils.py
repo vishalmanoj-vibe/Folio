@@ -13,6 +13,7 @@ def get_period_cutoff(period: str) -> pd.Timestamp | None:
     """
     now = pd.Timestamp.now()
     mapping = {
+        "1d":  now.replace(hour=10, minute=0, second=0, microsecond=0),
         "1mo": now - timedelta(days=30),
         "3mo": now - timedelta(days=91),
         "6mo": now - timedelta(days=182),

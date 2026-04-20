@@ -4,7 +4,8 @@ UI Callbacks for Portfolio Dashboard.
 Handles general UI interactions such as theme toggling and printing.
 """
 
-from dash import Input, Output, State, ALL, ctx
+from dash import Input, Output, State, ALL, ctx, html
+import dash
 
 
 def register_callbacks(app) -> None:
@@ -52,8 +53,6 @@ def register_callbacks(app) -> None:
         prevent_initial_call=False
     )
     def toggle_compact_mode(n, is_compact):
-        import dash
-        from dash import html
         
         # On first load (n=None/0), use the stored state
         new_state = not is_compact if n else is_compact

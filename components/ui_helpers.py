@@ -8,6 +8,7 @@ Refined UI helpers. Keeps the original clean aesthetic you prefer, with small po
 """
 
 from dash import html
+import dash_mantine_components as dmc
 from config.constants import GREEN, RED, COLORS, CHART_INFO
 
 # Alert level styling
@@ -120,7 +121,6 @@ def txn_table(history: list[dict]) -> html.Element:
 
 def stat_card_skeleton() -> html.Div:
     """Pulsing placeholder for a stat card"""
-    import dash_mantine_components as dmc
     return html.Div(
         [
             html.Div(dmc.Skeleton(height=14, width="40%", radius="sm"), className="stat-card-label-row"),
@@ -133,7 +133,6 @@ def stat_card_skeleton() -> html.Div:
 
 def table_skeleton(rows: int = 5, cols: int = 6) -> html.Div:
     """Pulsing placeholder for a table"""
-    import dash_mantine_components as dmc
     return html.Div(
         [
             html.Div(
@@ -147,5 +146,4 @@ def table_skeleton(rows: int = 5, cols: int = 6) -> html.Div:
 
 def chart_skeleton(height: int = 300) -> dmc.Skeleton:
     """Pulsing placeholder for a chart"""
-    import dash_mantine_components as dmc
     return dmc.Skeleton(height=height, radius="sm", style={"width": "100%"})

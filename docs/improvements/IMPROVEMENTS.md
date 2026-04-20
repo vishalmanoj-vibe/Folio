@@ -382,6 +382,81 @@ All changes are **fully backwards compatible**:
 
 ---
 
+### 12. **Intelligence Dashboard & Risk Engine** ✅
+**Files Modified:** `pages/intelligence.py`, `services/intelligence_service.py`
+
+**What Was Added:**
+- Unified risk engine calculating Annualized Volatility, Sharpe Ratio, and Max Drawdown.
+- Sunburst allocation charts (Sector/Geography) with modal drill-downs for ticker exposure.
+- Hierarchical risk analysis logic with automated "Others" category aggregation.
+- Rule-based "Smart Alerts" system for portfolio concentration and risk monitoring.
+
+---
+
+### 13. **Portfolio Forecasting (Prophet Integration)** ✅
+**Files Modified:** `services/prediction_service.py`, `data/cache/`
+
+**What Was Added:**
+- Facebook Prophet integration for forward-looking portfolio projections.
+- Automated confidence interval (80%) generation.
+- Persistent disk-caching (`predictions.json`) to ensure UI responsiveness.
+- Seamless baseline normalization to align historical curves with future forecasts.
+
+---
+
+### 14. **Deep-dive Analytics & Correlation Matrix** ✅
+**Files Modified:** `pages/analytics.py`, `components/charts/correlation.py`
+
+**What Was Added:**
+- Tabbed interface for high-density metrics (Allocation, Performance, Income).
+- Normalized Price History chart for multi-ticker comparison.
+- Dynamic Correlation Matrix heatmap for diversification analysis.
+- Multi-period filtering (1mo to max) integrated into deep-dive views.
+
+---
+
+### 15. **Realized Dividend Tracking** ✅
+**Files Modified:** `services/market/data_fetcher.py`
+
+**What Was Added:**
+- Historical ex-dividend date matching against user tranches.
+- Programmatic calculation of dividend income based on exact holding windows.
+- Unified dividend stats integrated into the stat card layer.
+
+---
+
+### 16. **Technical Optimizations & Theme Stability** ✅
+**Files Modified:** `callbacks/intelligence_callbacks.py`, `services/intelligence_service.py`, `pages/intelligence.py`
+
+**What Was Added:**
+- **Risk Metrics Optimization**: Pre-computation of returns once per cycle, eliminating redundant processing in prediction mode.
+- **Metadata Robustness**: Improved safety checks for `funds_data` with tiered fallbacks (Category search -> Region inference).
+- **Theme Awareness Fixes**: Replaced Python-side hex constants with CSS variables (`var(--t-pri)`, etc.) in layout code to ensure consistent theme switching without page reloads.
+
+---
+
+### 17. **Modular CSS Architecture** ✅
+**Files Modified:** `assets/`
+
+**What Was Added:**
+- Migrated from monolithic `styles.css` to a modular system.
+- Alphabetical loading priority: `base.css` (variables) -> `components.css` -> `vendor.css` (overrides).
+- High-specificity CSS selectors for overriding Radix-based Dash components.
+
+---
+
+### Summary of Recent Milestones
+| Milestone | Status | Impact |
+|-----------|--------|--------|
+| Intelligence Page | ✅ Done | High (New feature) |
+| Prophet Forecasting | ✅ Done | High (New feature) |
+| Analytics Deep-dive | ✅ Done | Medium (UX improvement) |
+| Realized Dividends | ✅ Done | Medium (Data accuracy) |
+| CSS Modularization | ✅ Done | Low (Maintainability) |
+| Risk Engine Optimization | ✅ Done | Low (Performance) |
+
+---
+
 ## Summary of Files Changed
 
 ```

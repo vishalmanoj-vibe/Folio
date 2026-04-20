@@ -8,6 +8,7 @@ from core import get_cache, set_cache
 from core.engine.portfolio_engine import compute_tranche_pnl, compute_holding_pnl
 from core.engine.utils import normalise_tz
 from config.settings import API_MAX_RETRIES, API_RETRY_BACKOFF_BASE, CACHE_TTL_SECONDS
+from services.market.session_cache import record_snapshot, get_session_history, clear_old_caches
 
 logger = logging.getLogger(__name__)
 
@@ -69,6 +70,7 @@ def get_etf_name(ticker: str) -> str:
 def _download_with_retry(
     tickers: list[str],
     period: str,
+    interval: str | None = None,
     actions: bool = False,
     max_retries: int = API_MAX_RETRIES,
     backoff_base: float = API_RETRY_BACKOFF_BASE
@@ -78,10 +80,13 @@ def _download_with_retry(
     """
     for attempt in range(max_retries):
         try:
-            df = yf.download(
-                tickers, period=period, group_by="ticker",
+            kwargs = dict(
+                period=period, group_by="ticker",
                 auto_adjust=True, progress=False, actions=actions
             )
+            if interval:
+                kwargs["interval"] = interval
+            df = yf.download(tickers, **kwargs)
             return df
         except Exception as e:
             if attempt == max_retries - 1:
@@ -291,7 +296,12 @@ def fetch_live(holdings: list[dict], hist_period: str = "3mo") -> dict:
             set_cache(full_cache_key, multi_full, ttl=3600)
 
     # ── C. Chart history: the user-selected period ────────────────────────────
-    multi_period = _download_with_retry(tickers_yf, period=hist_period)
+    if hist_period == "1d":
+        # For 'Today', we fetch 2d to ensure we capture the start of today's session
+        # even if period="1d" is finicky, then slice for today.
+        multi_period = _download_with_retry(tickers_yf, period="2d", interval="5m")
+    else:
+        multi_period = _download_with_retry(tickers_yf, period=hist_period)
 
     enriched:  list[dict] = []
     histories: dict       = {}
@@ -302,6 +312,20 @@ def fetch_live(holdings: list[dict], hist_period: str = "3mo") -> dict:
         try:
             # Chart history for P&L history chart
             close_p = _extract_col(multi_period, ticker_yf, "Close")
+            
+            # Slice for today if period is 1d
+            if hist_period == "1d" and not close_p.empty:
+                today = datetime.now().date()
+                close_p = close_p[close_p.index.date == today]
+
+            # ── Session Cache Integration ─────────────────────────────────────
+            if hist_period == "1d":
+                session_s = get_session_history(ticker)
+                if not session_s.empty:
+                    # Combine yfinance + our manual session log
+                    close_p = pd.concat([close_p, session_s]).sort_index()
+                    close_p = close_p[~close_p.index.duplicated(keep="last")]
+
             if not close_p.empty:
                 close_p.index = normalise_tz(pd.to_datetime(close_p.index))
                 df_p = close_p.reset_index()
@@ -348,7 +372,9 @@ def fetch_live(holdings: list[dict], hist_period: str = "3mo") -> dict:
             last_div_amount = float(div_f.iloc[-1]) if not div_f.empty else 0.0
 
             tranche_data = []
-            if not close_f.empty:
+            if not close_p.empty:
+                tranche_data = compute_tranche_pnl(close_p, h.get("buy_tranches", []))
+            elif not close_f.empty:
                 tranche_data = compute_tranche_pnl(close_f, h.get("buy_tranches", []))
 
             enriched.append({
@@ -402,6 +428,12 @@ def fetch_live(holdings: list[dict], hist_period: str = "3mo") -> dict:
         "histories":  histories,
         "fetched_at": datetime.now().strftime("%H:%M:%S"),
     }
-    set_cache(cache_key, result, ttl=CACHE_TTL_SECONDS)
+    
+    # ── Record snapshots for 'Today' chart persistence ───────────────────────
+    record_snapshot(enriched)
+    clear_old_caches()
+
+    ttl = 5 if hist_period == "1d" else CACHE_TTL_SECONDS
+    set_cache(cache_key, result, ttl=ttl)
     logger.info("Done — %d enriched, %d with history", len(enriched), len(histories))
     return result

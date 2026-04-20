@@ -11,7 +11,7 @@ import dash_mantine_components as dmc
 import dash_bootstrap_components as dbc
 from components.header import create_header
 from components.ui_helpers import chart_title, section
-from config.constants import COLORS, T_SEC
+from config.constants import COLORS
 
 dash.register_page(__name__, path="/analytics", title="Portfolio — Analytics")
 
@@ -58,7 +58,7 @@ def layout():
                                         {"label": "By Sector", "value": "sector"},
                                         {"label": "By Region", "value": "geo"},
                                     ],
-                                    value="sector",
+                                    value="flat",
                                     size="xs",
                                     radius="xl"
                                 ),

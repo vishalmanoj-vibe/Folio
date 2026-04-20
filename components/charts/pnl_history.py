@@ -40,7 +40,9 @@ def build_pnl_history_figure(
     layout.update(dict(
         xaxis=dict(
             showgrid=False, type="date",
-            showspikes=True, spikecolor=T_SEC, spikethickness=1, spikedash="dash"
+            showspikes=True, spikecolor=T_SEC, spikethickness=1, spikedash="dash",
+            tickfont=dict(size=10, color=T_SEC),
+            automargin=True,
         ),
         yaxis=dict(
             gridcolor=BORDER,
@@ -48,14 +50,29 @@ def build_pnl_history_figure(
             tickprefix="" if mode == "pct" else "$",
             zeroline=True,
             zerolinecolor=BORDER,
+            tickfont=dict(size=11, color=T_SEC),
+            automargin=True,
         ),
         hovermode="x unified",
         height=380,
         showlegend=False,
-        margin=dict(t=30, b=30, l=40, r=20),
+        margin=dict(t=30, b=30, l=60, r=20),
     ))
     
     fig = go.Figure()
+    
+    # ── Intraday vs Historical Axis Tuning ────────────────────────────────────
+    if period == "1d":
+        layout["xaxis"].update(dict(
+            tickformat="%H:%M",
+            nticks=6,
+        ))
+    else:
+        # For historical periods, let Plotly auto-format dates
+        layout["xaxis"].update(dict(
+            tickformat=None,
+        ))
+
     fig.update_layout(layout)
 
     color_map = {h["ticker"]: COLORS[i % len(COLORS)] for i, h in enumerate(holdings)}

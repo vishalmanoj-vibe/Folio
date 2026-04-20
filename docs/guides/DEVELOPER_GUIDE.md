@@ -160,10 +160,10 @@ Modern Dash components (like `dcc.Dropdown` and `dcc.DatePickerSingle`) use Radi
 - **High Specificity**: Many Radix components use inline styles. Aggressive use of `!important` within the `vendor.css` layer is sanctioned for these specific overrides to ensure theme consistency.
 
 ### Transaction Flow Migration
-The transaction entry system was migrated from a standard `dcc.Input` to a `dcc.DatePickerSingle`.
+The transaction entry system was migrated from a standard `dcc.Input` to a Mantine `dmc.DateInput` for a more polished UI.
 
-- **Component**: `dcc.DatePickerSingle` in `components/portfolio_layout.py`.
-- **State Change**: In `callbacks/transaction_callbacks.py`, the callback now listens to the `date` property (ISO YYYY-MM-DD string) instead of the `value` property.
+- **Component**: `dmc.DateInput` in `components/portfolio_layout.py`.
+- **State Change**: In `callbacks/transaction_callbacks.py`, the callback now listens to the `value` property (ISO YYYY-MM-DD string).
 - **Validation**: The `validate_transaction` service remains compatible as it expects the same ISO format.
 
 ---
@@ -172,7 +172,9 @@ The transaction entry system was migrated from a standard `dcc.Input` to a `dcc.
 
 ### 1. Intelligence & Risk Analysis
 The **Intelligence Page** provides a deep dive into portfolio risk.
-- **Metrics**: Annualized Volatility, Sharpe Ratio, and Max Drawdown are calculated using pure Python in `intelligence_service.py`.
+- **Metrics**: Annualized Volatility, Sharpe Ratio, and Max Drawdown are calculated using pure Python in `intelligence_service.py`. 
+- **Optimization**: To avoid double-calculating heavy return series (e.g. when forecasting is enabled), returns are pre-computed once and passed into the metrics engine.
+- **Robustness**: Safety checks ensure that missing ETF metadata (`funds_data`) doesn't crash the engine; it falls back to parsing the `info` category or symbol-based inference.
 - **Sunburst Charts**: Hierarchical allocation (Sector/Geography) is rendered using `Plotly Sunburst` traces.
 - **Drill-down**: Clicking a sector/region in the Sunburst triggers a modal displaying the exact ticker-level contribution.
 - **Smart Alerts**: A rule-based engine evaluates the portfolio against `THRESHOLDS` (e.g., >40% in one sector) to generate actionable insights.

@@ -9,9 +9,7 @@ import dash_bootstrap_components as dbc
 import dash_mantine_components as dmc
 from dash import dcc, html, register_page
 
-from config.constants import (
-    COLORS, BORDER, GREEN, RED, T_PRI, T_SEC
-)
+from config.constants import COLORS, RED
 from components.ui_helpers import section, chart_title
 
 from components.header import create_header
@@ -66,7 +64,7 @@ def layout() -> html.Div:
                             [
                                 # Prediction Controls
                                 html.Div([
-                                    html.Span("Show Prediction", style={"marginRight": "10px", "fontSize": "13px", "color": T_SEC}),
+                                    html.Span("Show Prediction", style={"marginRight": "10px", "fontSize": "13px", "color": "var(--t-sec)"}),
                                     dbc.Switch(
                                         id="intel-pred-toggle",
                                         value=False,
