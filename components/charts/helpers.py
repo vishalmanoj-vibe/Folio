@@ -5,6 +5,25 @@ from core.engine.utils import get_period_cutoff
 
 logger = logging.getLogger(__name__)
 
+def hex_to_rgba(hex_color: str, alpha: float) -> str:
+    """
+    Convert a hex color string (e.g. #378ADD) to an rgba string.
+    
+    Args:
+        hex_color: The hex color string (with or without #).
+        alpha: The opacity (0.0 to 1.0).
+    """
+    hex_color = hex_color.lstrip('#')
+    if len(hex_color) == 3:
+        hex_color = ''.join([c*2 for c in hex_color])
+    try:
+        r = int(hex_color[0:2], 16)
+        g = int(hex_color[2:4], 16)
+        b = int(hex_color[4:6], 16)
+        return f"rgba({r}, {g}, {b}, {alpha})"
+    except Exception:
+        return f"rgba(128, 128, 128, {alpha})"
+
 def build_benchmark_traces(period: str, theme_tokens: dict | None = None, portfolio_start: pd.Timestamp | None = None) -> list:
     """
     Return Plotly Scatter traces for S&P 500 and ASX 200 normalised to

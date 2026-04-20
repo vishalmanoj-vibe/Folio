@@ -43,14 +43,16 @@ RISK_FREE_ANNUAL = 0.0435
 RISK_FREE_DAILY  = RISK_FREE_ANNUAL / 252
 
 # ── Alert thresholds ──────────────────────────────────────────────────────────
+# These constants define the boundaries for the "Smart Alerts" system.
+# If a metric crosses these values, an alert is automatically generated.
 THRESHOLDS = {
-    "sector_overweight":   40.0,
-    "geo_overweight":      60.0,
-    "high_vol_annualised": 20.0,
-    "low_sharpe":           0.5,
-    "bad_drawdown":        -15.0,
-    "single_etf_weight":   40.0,
-    "tech_overweight":     35.0,
+    "sector_overweight":   40.0,  # Warning if any sector > 40% of portfolio
+    "geo_overweight":      60.0,  # Warning if any country > 60% of portfolio
+    "high_vol_annualised": 20.0,  # Alert if portfolio vol > 20% p.a.
+    "low_sharpe":           0.5,  # Alert if Sharpe < 0.5 (poor risk-reward)
+    "bad_drawdown":        -15.0, # Danger alert if drawdown > 15%
+    "single_etf_weight":   40.0,  # Warning if one ETF > 40% of total value
+    "tech_overweight":     35.0,  # Tighter threshold for volatile Tech sector
 }
 
 # ── Yahoo Finance sector key → display label ──────────────────────────────────
@@ -503,6 +505,10 @@ def get_exposure_detail(port_data: dict, exposure_type: str, category_name: str)
             if contribution <= 0:
                 continue
                 
+            # Logic for matching categories
+            # If the user requested 'Other', we must find all categories that were
+            # previously grouped into 'Other' by _group_exposure().
+            # This ensures the Sunburst drill-down matches the parent chart's total.
             match = False
             if is_other_request:
                 # 'Other' catches anything not in top 6, plus anything explicitly named 'Other'
@@ -514,7 +520,7 @@ def get_exposure_detail(port_data: dict, exposure_type: str, category_name: str)
             if match:
                 detail.append({
                     "ticker": ticker,
-                    "weight": contribution, # Removed rounding to prevent Sunburst hierarchy sum errors
+                    "weight": contribution, # Not rounded here to maintain hierarchy sum precision
                     "sub_category": cat
                 })
     

@@ -83,13 +83,16 @@ def get_forecast(dates: list, values: list, horizon_str: str) -> dict:
         })
 
         # Initialize and fit model
-        # Using free parameters: AU holidays, yearly/weekly seasonality
+        # Using free parameters: AU holidays, yearly/weekly seasonality.
+        # Confidence interval is set to 80% (interval_width=0.80) to provide a 
+        # balanced view of potential outcomes without being overly pessimistic.
         model = Prophet(
             daily_seasonality=False,
             weekly_seasonality=True,
             yearly_seasonality=True,
-            interval_width=0.80 # 80% confidence interval for a "premium" look
+            interval_width=0.80 
         )
+        # Adding AU holidays helps the model ignore non-trading day anomalies in historical data.
         model.add_country_holidays(country_name="AU")
         model.fit(df)
 
@@ -122,7 +125,9 @@ def get_forecast(dates: list, values: list, horizon_str: str) -> dict:
                 with open(PREDICTIONS_CACHE_FILE, "r") as f:
                     cache = json.load(f)
             
-            # Limit cache size to 10 entries to avoid bloat
+            # Limit cache size to 10 entries to avoid bloat.
+            # This ensures the predictions.json file doesn't grow indefinitely 
+            # while still covering the most recent ticker combinations.
             if len(cache) > 10:
                 # Remove oldest entry
                 oldest_key = list(cache.keys())[0]

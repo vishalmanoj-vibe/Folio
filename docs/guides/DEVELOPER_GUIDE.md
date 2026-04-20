@@ -76,7 +76,7 @@ Once running, the `dcc.Interval` (default 60s) triggers the `refresh_portfolio_d
 
 ```
 portfolio_dashboard/
-├── app.py                          # Entry point (Seeds stores + defines refresh loop)
+├── app.py                          # Entry point (Seeds stores + defines refresh loop + Browser Mgmt)
 │
 ├── config/                         # Configuration layer
 │   ├── settings.py                 # Settings + env vars (Refresh rates, CSV paths)
@@ -95,17 +95,23 @@ portfolio_dashboard/
 │
 ├── services/                       # Orchestration layer
 │   ├── market/                     # Network calls (yfinance)
-│   │   ├── data_fetcher.py         # Enrichment logic
+│   │   ├── data_fetcher.py         # Enrichment logic (Realized Dividends, Bulk Fetch)
 │   │   └── market_status.py        # ASX timezone/status logic
 │   ├── alert_service.py            # Price/Target monitoring
-│   └── intelligence_service.py     # Hierarchical risk/allocation logic
+│   ├── intelligence_service.py     # Hierarchical risk/allocation logic
+│   └── prediction_service.py       # Prophet-based forecasting with disk-caching
 │
 ├── data/                           # Persistence layer
 │   ├── csv_handler.py              # CSV I/O with backup management
-│   └── portfolio_builder.py        # Legacy shim for engine imports
+│   ├── portfolio_builder.py        # Legacy shim for engine imports
+│   └── cache/                      # Persistent disk cache (e.g., predictions.json)
 │
 ├── components/                     # UI components
 │   ├── charts/                     # go.Figure factories (Pure UI functions)
+│   │   ├── dividend.py             # Dividend bar charts
+│   │   ├── intelligence.py         # Sunburst & Risk charts
+│   │   └── ...
+│   ├── header.py                   # Shared navigation header
 │   └── portfolio_layout.py         # Main HTML structure
 │
 ├── callbacks/                      # Dash interactivity
@@ -114,9 +120,10 @@ portfolio_dashboard/
 │   └── intelligence_callbacks.py   # Modal & Drill-down logic
 │
 ├── pages/                          # Multi-page routing
-│   ├── portfolio.py                # Main Dashboard
-│   ├── intelligence.py             # Risk Analysis
-│   └── etf_detail.py               # Ticker deep-dive
+│   ├── portfolio.py                # Main Dashboard (/)
+│   ├── analytics.py                # Secondary Metrics (/analytics)
+│   ├── intelligence.py             # Risk Analysis (/intelligence)
+│   └── etf_detail.py               # Ticker deep-dive (/etf/<ticker>)
 │
 └── assets/                         # Static assets (Modular CSS)
     ├── base.css                    # Resets & CSS Variables (Loads 1st)
@@ -173,3 +180,23 @@ The transaction entry system was migrated from a standard `dcc.Input` to a `dcc.
 - **Component**: `dcc.DatePickerSingle` in `components/portfolio_layout.py`.
 - **State Change**: In `callbacks/transaction_callbacks.py`, the callback now listens to the `date` property (ISO YYYY-MM-DD string) instead of the `value` property.
 - **Validation**: The `validate_transaction` service remains compatible as it expects the same ISO format.
+
+---
+
+## Specialized Features
+
+### 1. Intelligence & Risk Analysis
+The **Intelligence Page** provides a deep dive into portfolio risk.
+- **Metrics**: Annualized Volatility, Sharpe Ratio, and Max Drawdown are calculated using pure Python in `intelligence_service.py`.
+- **Sunburst Charts**: Hierarchical allocation (Sector/Geography) is rendered using `Plotly Sunburst` traces.
+- **Drill-down**: Clicking a sector/region in the Sunburst triggers a modal displaying the exact ticker-level contribution.
+- **Smart Alerts**: A rule-based engine evaluates the portfolio against `THRESHOLDS` (e.g., >40% in one sector) to generate actionable insights.
+
+### 2. Portfolio Forecasting (Prophet)
+Forward-looking projections are handled by `prediction_service.py`.
+- **Model**: Uses Facebook Prophet with Australian holiday awareness.
+- **Tiered Caching**: To ensure UI responsiveness, forecasts are computed once and stored in `data/cache/predictions.json` (disk cache) and also held in the `dcc.Store` (client cache).
+- **Confidence Intervals**: Displays an 80% uncertainty band to highlight potential market volatility.
+
+### 3. Realized Dividend Tracking
+Unlike standard yield calculations, the app computes **Realized Dividends** by matching historical Ex-Dividend dates against the user's specific holding tranches. This ensures that dividends are only counted if the user actually held the shares on the relevant date.

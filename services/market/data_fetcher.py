@@ -155,7 +155,11 @@ def _compute_dividends_bulk(
 def _calculate_realized_dividends(div_s: pd.Series, tranches: list[dict]) -> float:
     """
     Calculate actual dividends received based on holding history.
-    Matches Ex-Dividend dates against shares held on those dates.
+    
+    Logic:
+      - Matches historical Ex-Dividend dates against shares held on those dates.
+      - A tranche is eligible if the purchase date is strictly BEFORE the Ex-date.
+      - This provides a "realized" figure rather than a generic annual yield.
     """
     if div_s.empty or not tranches:
         return 0.0
@@ -268,9 +272,12 @@ def fetch_live(holdings: list[dict], hist_period: str = "3mo") -> dict:
     if cached:
         return cached
 
-    # ── A. Live quotes: single bulk 5-day download (gives today + prev close) ──
-    # period="5d" gives us a few rows so iloc[-1]=today, iloc[-2]=prev session.
-    # auto_adjust=True means Close == Adj Close (splits/divs adjusted).
+    # ── A. Live quotes: single bulk 5-day download ────────────────────────────
+    # Strategy:
+    # Instead of slow per-ticker calls, we download the last 5 days for ALL tickers.
+    # - iloc[-1] = Today's current price (or most recent close).
+    # - iloc[-2] = Yesterday's close (prev_session).
+    # This ensures accuracy even during ASX off-hours.
     logger.info("Fetching live quotes (5d) for %d tickers", len(tickers_yf))
     multi_live = _download_with_retry(tickers_yf, period="5d")
 

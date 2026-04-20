@@ -10,13 +10,12 @@ Pages
   /etf/<ticker>   → pages/etf_detail.py
   /intelligence   → pages/intelligence.py
 
-Responsiveness fix
-------------------
-portfolio-store and txn-store are seeded with data= at startup using the
-values already computed before the app starts (INITIAL_HISTORY,
-INITIAL_PORTFOLIO_DATA). This means all charts render on the very first
-paint instead of waiting for the interval callback to fire and complete
-a yfinance round-trip.
+Responsiveness fix (Pre-seeded Stores)
+----------------------------------
+To avoid "layout shifts" or empty charts on first load, the `portfolio-store` and `txn-store` 
+are seeded with `data=` at startup. The server performs a blocking market fetch BEFORE 
+the app becomes available. This ensures the first paint contains live data without 
+waiting for the first `dcc.Interval` cycle.
 """
 
 # Setup logging first
@@ -136,26 +135,30 @@ intell_cb.register_callbacks(app)
 
 # ── Browser Management ────────────────────────────────────────────────────────
 def open_browser():
-    """Opens the dashboard in Safari."""
-    try:
-        # Specifically target Safari as requested
-        webbrowser.get('safari').open_new("http://127.0.0.1:8050/")
-    except Exception:
-        # Fallback to default browser if Safari cannot be explicitly invoked
+    """
+    Automatically opens the dashboard in the default browser.
+    On macOS (darwin), it forces the use of Safari to ensure consistent 
+    rendering of premium CSS effects (like glassmorphism and backdrop-filters) 
+    which are highly optimized in WebKit.
+    """
+    if sys.platform == "darwin":
+        # Guaranteed to use Safari on macOS
+        os.system("open -a Safari http://127.0.0.1:8050/")
+    else:
         webbrowser.open_new("http://127.0.0.1:8050/")
 
 
 def close_browser():
     """
-    Attempts to close the dashboard tab on Mac.
-    Targets Chrome and Safari specifically.
+    Attempts to close the dashboard tab on shutdown.
+    Uses AppleScript (osascript) to find and close any Safari tabs 
+    pointing to the local dashboard URL. This prevents tab bloat 
+    during development.
     """
     if sys.platform == "darwin":
         print("\n  Shutting down... closing browser tabs.")
-        # Target both 127.0.0.1 and localhost, and both Chrome and Safari
-        cmd_chrome = "osascript -e 'tell application \"Google Chrome\" to close (every tab of every window whose URL contains \"127.0.0.1:8050\" or URL contains \"localhost:8050\")' 2>/dev/null"
+        # Target both 127.0.0.1 and localhost in Safari
         cmd_safari = "osascript -e 'tell application \"Safari\" to close (every tab of every window whose URL contains \"127.0.0.1:8050\" or URL contains \"localhost:8050\")' 2>/dev/null"
-        os.system(cmd_chrome)
         os.system(cmd_safari)
 
 

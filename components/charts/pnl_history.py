@@ -9,7 +9,7 @@ import pandas as pd
 import plotly.graph_objects as go
 from config.constants import GREEN, RED, COLORS
 from core.engine.utils import get_period_cutoff
-from components.charts.helpers import build_benchmark_traces
+from components.charts.helpers import build_benchmark_traces, hex_to_rgba
 
 def build_pnl_history_figure(
     holdings: list[dict],
@@ -228,7 +228,7 @@ def build_pnl_history_figure(
                 name=f"{selected} (combined)",
                 mode="lines",
                 fill="tozeroy",
-                fillcolor=f"{theme_tokens.get('INFO', '#378ADD')}1A", # ~10% opacity
+                fillcolor=hex_to_rgba(theme_tokens.get("INFO", "#378ADD"), 0.1), # ~10% opacity
                 line=dict(color=bc, width=2.5),
                 hovertemplate=(
                     "%{y:.2f}%<extra>" + selected + " combined</extra>"
