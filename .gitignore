@@ -41,3 +41,6 @@ GEMINI.md
 # Project scripts & screenshots
 dump_project.sh
 screenshot.png
+test_pnl.py
+test_*.py
+!test/  # Keep the actual test directory tracked

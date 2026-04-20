@@ -64,6 +64,7 @@ def create_layout(initial_history: list[dict] | None = None) -> html.Div:
                                         options=[{"label": "Buy",  "value": "buy"},
                                                  {"label": "Sell", "value": "sell"}],
                                         value="buy", clearable=False,
+                                        searchable=False,
                                         className="txn-dropdown",
                                     ),
                                 ]),
@@ -91,13 +92,11 @@ def create_layout(initial_history: list[dict] | None = None) -> html.Div:
                                 ]),
                                 html.Div([
                                     html.P("Date (YYYY-MM-DD)", className="txn-label"),
-                                    dcc.Input(
+                                    dcc.DatePickerSingle(
                                         id="txn-date",
-                                        type="text",
-                                        placeholder=datetime.now().strftime("%Y-%m-%d"),
-                                        value=datetime.now().strftime("%Y-%m-%d"),
-                                        debounce=True,
-                                        className="txn-input-text",
+                                        date=datetime.now().strftime("%Y-%m-%d"),
+                                        display_format="YYYY-MM-DD",
+                                        className="txn-datepicker",
                                     ),
                                 ]),
                                 html.Div([

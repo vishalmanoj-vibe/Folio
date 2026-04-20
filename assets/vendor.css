@@ -144,81 +144,88 @@
 
 
 /* ── react-dates (Dash DatePickerSingle) Dark Theme ── */
-.SingleDatePicker_picker,
-.SingleDatePicker_picker_1 {
+body[data-theme="dark"] .SingleDatePicker_picker,
+body[data-theme="dark"] .SingleDatePicker_picker_1,
+body[data-theme="dark"] .DayPicker,
+body[data-theme="dark"] .DayPicker_1,
+body[data-theme="dark"] .DayPicker_transitionContainer,
+body[data-theme="dark"] .DayPicker_transitionContainer_1,
+body[data-theme="dark"] .CalendarMonth,
+body[data-theme="dark"] .CalendarMonth_1,
+body[data-theme="dark"] .CalendarMonthGrid,
+body[data-theme="dark"] .CalendarMonthGrid_1,
+body[data-theme="dark"] .CalendarMonthGrid_display,
+body[data-theme="dark"] .CalendarMonthGrid_display_1,
+body[data-theme="dark"] .CalendarMonthGrid_transitionContainer,
+body[data-theme="dark"] .CalendarMonthGrid_transitionContainer_1 {
   background-color: var(--surface) !important;
+  color: var(--t-pri) !important;
+  border-color: var(--border) !important;
+}
+
+body[data-theme="dark"] .SingleDatePicker_picker,
+body[data-theme="dark"] .SingleDatePicker_picker_1 {
   border: 1px solid var(--border) !important;
   border-radius: 8px !important;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4) !important;
   z-index: 9999 !important;
 }
 
-/* Ensure the input container is also dark */
-.SingleDatePickerInput,
-.SingleDatePickerInput_1,
-.SingleDatePickerInput__with-border {
-  background-color: var(--surface) !important;
-  border: 0.5px solid var(--border) !important;
-}
-
-.DayPicker,
-.DayPicker_1 {
-  background-color: var(--surface) !important;
-  color: var(--t-pri) !important;
-}
-.DayPicker_transitionContainer,
-.DayPicker_transitionContainer_1 {
-  background-color: var(--surface) !important;
-  border-radius: 8px !important;
-}
-.CalendarMonth,
-.CalendarMonth_1,
-.CalendarMonthGrid,
-.CalendarMonthGrid_1 {
-  background-color: var(--surface) !important;
-  color: var(--t-pri) !important;
-}
-.CalendarMonth_caption {
+body[data-theme="dark"] .CalendarMonth_caption {
   color: var(--t-pri) !important;
   font-size: 14px !important;
   padding-bottom: 40px !important;
 }
-.DayPicker_weekHeader,
-.DayPicker_weekHeader_1 {
+
+body[data-theme="dark"] .DayPicker_weekHeader,
+body[data-theme="dark"] .DayPicker_weekHeader_1 {
   top: 55px !important;
   color: var(--t-sec) !important;
 }
-.DayPicker_weekHeader_li {
+
+body[data-theme="dark"] .DayPicker_weekHeader_li {
   color: var(--t-sec) !important;
 }
-.CalendarDay__default {
+
+body[data-theme="dark"] .CalendarDay,
+body[data-theme="dark"] .CalendarDay__default {
   background-color: var(--surface) !important;
   color: var(--t-pri) !important;
-  border: 1px solid var(--border) !important;
+  border: 0.5px solid var(--border) !important;
 }
-.CalendarDay__default:hover {
+
+body[data-theme="dark"] .CalendarDay:hover,
+body[data-theme="dark"] .CalendarDay__default:hover {
   background-color: var(--bg) !important;
   color: var(--t-pri) !important;
 }
-.CalendarDay__outside {
+
+body[data-theme="dark"] .CalendarDay__outside {
   color: var(--t-sec) !important;
+  background-color: var(--surface) !important;
 }
-.CalendarDay__selected,
-.CalendarDay__selected:hover {
-  background-color: #1D9E75 !important;
+
+body[data-theme="dark"] .CalendarDay__selected,
+body[data-theme="dark"] .CalendarDay__selected:hover,
+body[data-theme="dark"] .CalendarDay__selected_span,
+body[data-theme="dark"] .CalendarDay__selected_span:hover {
+  background-color: var(--green) !important;
   color: #ffffff !important;
   font-weight: 600 !important;
-  border-color: #1D9E75 !important;
+  border-color: var(--green) !important;
 }
-.DayPickerNavigation_button__default {
+
+body[data-theme="dark"] .DayPickerNavigation_button__default {
   background-color: var(--surface) !important;
   border: 1px solid var(--border) !important;
   border-radius: 4px !important;
 }
-.DayPickerNavigation_button__default:hover {
+
+body[data-theme="dark"] .DayPickerNavigation_button__default:hover {
   background-color: var(--bg) !important;
 }
-.DayPickerNavigation_svg__default {
+
+body[data-theme="dark"] .DayPickerNavigation_svg__default {
   fill: var(--t-pri) !important;
 }
 
