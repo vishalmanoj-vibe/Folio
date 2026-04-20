@@ -28,6 +28,11 @@ logger = logging.getLogger(__name__)
 
 import dash
 from dash import html, dcc, Input, Output
+import webbrowser
+import threading
+import os
+import sys
+import signal
 
 from components.portfolio_layout import INDEX_STRING
 from data.csv_handler import load_csv
@@ -43,8 +48,6 @@ import callbacks.intelligence_callbacks   as intell_cb
 import callbacks.etf_detail_callbacks     as etf_detail_cb
 
 # ── Initial data load ─────────────────────────────────────────────────────────
-# This runs once at startup. The results seed the stores so the first render
-# is instant — callbacks then keep data fresh on subsequent interval ticks.
 try:
     INITIAL_HISTORY: list[dict] = load_csv()
     logger.info(f"Loaded {len(INITIAL_HISTORY)} transactions from CSV")
@@ -85,51 +88,36 @@ app.index_string = INDEX_STRING
 import pages.etf_detail as etf_detail      # noqa: E402
 import pages.intelligence as intelligence  # noqa: E402
 import pages.analytics as analytics        # noqa: E402
+import pages.portfolio as portfolio_page    # noqa: E402
 
 # ── Root Layout ───────────────────────────────────────────────────────────────
 app.layout = html.Div(
     [
         dcc.Location(id="url", refresh=False),
-        # Seed both stores with startup data so every chart renders on first paint.
-        # The interval callback overwrites these with fresh data every 60 s.
         dcc.Store(id="txn-store",       data=INITIAL_HISTORY),
         dcc.Store(id="portfolio-store", data=INITIAL_PORTFOLIO_DATA),
         dcc.Store(id="alerts-store"),
         dcc.Store(id="theme-store",          data="dark"),
         dcc.Store(id="selected-ticker-store", data="Portfolio"),
         dcc.Interval(id="live-interval", interval=REFRESH_INTERVAL, n_intervals=0),
-
         dash.page_container,
     ],
     className="app-container",
 )
 
-# ── Refresh callback — keeps stores fresh every interval tick ─────────────────
+# ── Refresh callback ─────────────────
 @app.callback(
     Output("txn-store",       "data"),
     Output("portfolio-store", "data"),
     Input("live-interval",    "n_intervals"),
     Input("refresh-btn",      "n_clicks"),
-    prevent_initial_call=True,   # ← don't fire on load; stores are pre-seeded above
+    prevent_initial_call=True,
 )
 def refresh_portfolio_data(n_intervals, n_clicks):
-    """
-    Periodic callback to refresh market data.
-
-    Fires on the 'live-interval' timer, re-loads CSV history, builds holdings,
-    and fetches live market prices.
-
-    Args:
-        n: The interval count.
-
-    Returns:
-        Updated portfolio dictionary for the dcc.Store.
-    """
     try:
         history  = load_csv()
         holdings = build_holdings(history)
         portfolio_data = fetch_live(holdings, "1Y") if holdings else {"holdings": [], "histories": {}}
-        logger.debug(f"Refreshed portfolio: {len(holdings)} holdings")
         return history, portfolio_data
     except Exception as e:
         logger.error(f"Portfolio refresh failed: {e}")
@@ -145,12 +133,59 @@ ui.register_callbacks(app)
 etf_detail_cb.register_callbacks(app)
 intell_cb.register_callbacks(app)
 
+
+# ── Browser Management ────────────────────────────────────────────────────────
+def open_browser():
+    """Opens the dashboard in Safari."""
+    try:
+        # Specifically target Safari as requested
+        webbrowser.get('safari').open_new("http://127.0.0.1:8050/")
+    except Exception:
+        # Fallback to default browser if Safari cannot be explicitly invoked
+        webbrowser.open_new("http://127.0.0.1:8050/")
+
+
+def close_browser():
+    """
+    Attempts to close the dashboard tab on Mac.
+    Targets Chrome and Safari specifically.
+    """
+    if sys.platform == "darwin":
+        print("\n  Shutting down... closing browser tabs.")
+        # Target both 127.0.0.1 and localhost, and both Chrome and Safari
+        cmd_chrome = "osascript -e 'tell application \"Google Chrome\" to close (every tab of every window whose URL contains \"127.0.0.1:8050\" or URL contains \"localhost:8050\")' 2>/dev/null"
+        cmd_safari = "osascript -e 'tell application \"Safari\" to close (every tab of every window whose URL contains \"127.0.0.1:8050\" or URL contains \"localhost:8050\")' 2>/dev/null"
+        os.system(cmd_chrome)
+        os.system(cmd_safari)
+
+
+def handle_exit(sig, frame):
+    """Signal handler for graceful shutdown."""
+    close_browser()
+    sys.exit(0)
+
+
 # ── Run ───────────────────────────────────────────────────────────────────────
 if __name__ == "__main__":
     from config.settings import CSV_PATH
     print(f"\n  Portfolio Dashboard — Live P&L (multi-page)")
     print(f"  CSV:          {CSV_PATH}")
     print(f"  Main:         http://127.0.0.1:8050/")
+    print(f"  Analytics:    http://127.0.0.1:8050/analytics")
     print(f"  Intelligence: http://127.0.0.1:8050/intelligence\n")
 
-    app.run(debug=False, port=8050)
+    # Register signals
+    signal.signal(signal.SIGINT, handle_exit)
+    signal.signal(signal.SIGTERM, handle_exit)
+
+    # Start browser after a short delay
+    threading.Timer(1.5, open_browser).start()
+
+    try:
+        app.run(debug=False, port=8050)
+    except SystemExit:
+        # handle_exit calls sys.exit(0), which raises SystemExit
+        pass
+    except Exception as e:
+        logger.error(f"App error: {e}")
+        close_browser()

@@ -34,6 +34,7 @@ from config.constants import (
 )
 from services.market.market_status import market_badge
 from components.ui_helpers import section, chart_title
+from components.header import create_header
 
 # ── Register page ─────────────────────────────────────────────────────────────
 register_page(__name__, path_template="/etf/<ticker>", title="ETF Detail")
