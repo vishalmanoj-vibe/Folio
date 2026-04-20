@@ -60,3 +60,14 @@
 .txn-history-summary { font-size: 12px; color: var(--t-sec); cursor: pointer; margin-top: 8px; }
 .txn-history-log { margin-top: 10px; overflow-x: auto; }
 
+
+/* ── Custom Switches ── */
+.custom-switch .form-check-input:checked {
+    background-color: var(--warning) !important;
+    border-color: var(--warning) !important;
+}
+.custom-switch .form-check-input {
+    background-color: var(--surface);
+    border-color: var(--border);
+    cursor: pointer;
+}

@@ -16,6 +16,7 @@ from services.intelligence_service import (
     geo_exposure,
     compute_smart_alerts,
 )
+from services.prediction_service import get_forecast
 
 from components.charts.intel_helpers import create_empty_fig, _BAR_MIN_H
 from components.charts.intel_equity import build_intel_equity_chart
@@ -43,8 +44,9 @@ def register_callbacks(app) -> None:
         Input("portfolio-store",       "data"),
         Input("intel-period-picker",   "value"),
         Input("theme-store",           "data"),
+        Input("intel-pred-toggle",     "value"),
     )
-    def update_intelligence(port_data, period, theme):
+    def update_intelligence(port_data, period, theme, pred_on):
         t_ = get_theme(theme or "dark")
         period = period or "3mo"
 
@@ -129,6 +131,53 @@ def register_callbacks(app) -> None:
             metrics.get("ret_values", []),
             t_
         )
+
+        # ── B2. Prediction Trace (Optional) ───────────────────────────────────
+        if pred_on:
+            full_metrics = compute_risk_metrics(port_data, period="max")
+            pred_data = get_forecast(
+                full_metrics.get("ret_dates", []),
+                full_metrics.get("ret_values", []),
+                period or "3mo"
+            )
+            if pred_data:
+                p_dates = pred_data["dates"]
+                yhat = pred_data["yhat"]
+                yhat_l = pred_data["yhat_lower"]
+                yhat_u = pred_data["yhat_upper"]
+                
+                # ── B3. Normalisation Fix ────────────────────────────────────
+                # If the chart is in a filtered period (e.g. 3mo), but the model 
+                # trained on 'max', there is a baseline offset.
+                chart_last_v = metrics.get("ret_values", [])[-1] if metrics.get("ret_values") else 0
+                full_last_v = full_metrics.get("ret_values", [])[-1] if full_metrics.get("ret_values") else 0
+                offset = chart_last_v - full_last_v
+                
+                yhat = [v + offset for v in yhat]
+                yhat_l = [v + offset for v in yhat_l]
+                yhat_u = [v + offset for v in yhat_u]
+                
+                # Shaded Confidence Interval
+                ci_color = "rgba(55, 138, 221, 0.12)"
+                eq_fig.add_trace(go.Scatter(
+                    x=p_dates + p_dates[::-1],
+                    y=yhat_u + yhat_l[::-1],
+                    fill='toself', fillcolor=ci_color,
+                    line=dict(color='rgba(255,255,255,0)'),
+                    hoverinfo="skip", showlegend=True, name="Confidence Interval"
+                ))
+                
+                # Forecast Line
+                last_d = metrics.get("ret_dates", [])[-1] if metrics.get("ret_dates") else None
+                
+                eq_fig.add_trace(go.Scatter(
+                    x=[last_d] + p_dates if last_d else p_dates,
+                    y=[chart_last_v] + yhat,
+                    mode="lines", name="Forecast",
+                    line=dict(color=COLORS[0], width=2, dash="dash"),
+                    hovertemplate="Predicted: %{y:.2f}%<extra></extra>",
+                ))
+                eq_fig.update_layout(xaxis=dict(autorange=True))
 
         # ── C. Drawdown curve ─────────────────────────────────────────────────
         dd_fig = build_intel_drawdown_chart(

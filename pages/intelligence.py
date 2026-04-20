@@ -56,27 +56,43 @@ def layout() -> html.Div:
                             "Each ETF is weighted by its share of your total holdings. "
                             "The line starts at 0% on the first day all holdings have data.",
                         ),
-                        dcc.Dropdown(
-                            id="intel-period-picker",
-                            options=[
-                                {"label": "Since purchase", "value": "max"},
-                                {"label": "1 month",        "value": "1mo"},
-                                {"label": "3 months",       "value": "3mo"},
-                                {"label": "6 months",       "value": "6mo"},
-                                {"label": "1 year",         "value": "1y"},
-                                {"label": "2 years",        "value": "2y"},
-                            ],
-                            value="3mo",
-                            clearable=False, searchable=False,
-                            persistence=True, persistence_type="session",
-                            style={"width": "140px", "fontSize": "13px", "marginLeft": "auto"},
+                        html.Div(
+                            [
+                                # Prediction Controls
+                                html.Div([
+                                    html.Span("Show Prediction", style={"marginRight": "10px", "fontSize": "13px", "color": T_SEC}),
+                                    dbc.Switch(
+                                        id="intel-pred-toggle",
+                                        value=False,
+                                        className="custom-switch",
+                                        style={"display": "inline-block", "marginRight": "16px"}
+                                    ),
+                                ], style={"display": "flex", "alignItems": "center", "marginRight": "12px"}),
+                                
+                                dcc.Dropdown(
+                                    id="intel-period-picker",
+                                    options=[
+                                        {"label": "Since purchase", "value": "max"},
+                                        {"label": "1 month",        "value": "1mo"},
+                                        {"label": "3 months",       "value": "3mo"},
+                                        {"label": "6 months",       "value": "6mo"},
+                                        {"label": "1 year",         "value": "1y"},
+                                        {"label": "2 years",        "value": "2y"},
+                                        {"label": "5 years",        "value": "5y"},
+                                    ],
+                                    value="3mo",
+                                    clearable=False, searchable=False,
+                                    persistence=True, persistence_type="session",
+                                    style={"width": "140px", "fontSize": "13px"},
+                                ),
+                            ], 
+                            style={"display": "flex", "alignItems": "center", "marginLeft": "auto"}
                         ),
                     ],
                     style={"display": "flex", "alignItems": "center", "marginBottom": "12px"}
                 ),
                 dcc.Loading(
-                    dcc.Graph(id="intel-equity-chart",
-                               config={"displayModeBar": False}),
+                    dcc.Graph(id="intel-equity-chart", config={"displayModeBar": False}),
                     type="circle", color=COLORS[0],
                 ),
             ),
