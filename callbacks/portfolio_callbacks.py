@@ -14,18 +14,12 @@ from dash import Input, Output, html
 from config.constants import GREEN, RED
 from core.engine.stats_engine import compute_portfolio_stats, build_live_table_rows
 from services.market.market_status import market_badge
-from components.ui_helpers import stat_card
+from components.ui_helpers import stat_card, stat_card_skeleton, table_skeleton
 
 
 def register_callbacks(app) -> None:
     """
     Register core dashboard callbacks with the Dash application.
-
-    Handles top-level UI components like the market status badge, stat cards,
-    and the live positions data table. Orchestrates data flow without business logic.
-
-    Args:
-        app: The Dash application instance.
     """
 
     # ── Market status badge ───────────────────────────────────────────────────
@@ -52,8 +46,8 @@ def register_callbacks(app) -> None:
         Input("portfolio-store", "data"),
     )
     def update_stats(data):
-        if not data or "holdings" not in data:
-            return []
+        if not data or "holdings" not in data or not data["holdings"]:
+            return [stat_card_skeleton() for _ in range(6)]
 
         s  = compute_portfolio_stats(data["holdings"])
         ps = "+" if s["total_pnl"] >= 0 else ""
@@ -86,22 +80,38 @@ def register_callbacks(app) -> None:
 
     # ── Live positions table ──────────────────────────────────────────────────
     @app.callback(
-        Output("live-table",     "children"),
-        Input("portfolio-store", "data"),
+        Output("live-table",        "children"),
+        Input("portfolio-store",    "data"),
+        Input("table-filter",       "value"),
+        Input("table-state-store",  "data"),
     )
-    def update_live_table(data):
-        if not data or "holdings" not in data:
-            return html.P("Loading...",
-                          style={"color": "var(--t-sec)", "fontSize": "13px"})
+    def update_live_table(data, filter_query, table_state):
+        if not data or "holdings" not in data or not data["holdings"]:
+            return table_skeleton(rows=5)
 
-        th = {
-            "fontSize": "11px", "color": "var(--t-sec)", "fontWeight": "500",
-            "padding": "7px 12px", "textAlign": "left",
+        # ── Filtering ─────────────────────────────────────────────────────────
+        holdings = data["holdings"]
+        if filter_query:
+            q = filter_query.lower()
+            holdings = [
+                h for h in holdings 
+                if q in h["ticker"].lower() or q in h.get("name", "").lower()
+            ]
+
+        # ── Sorting ───────────────────────────────────────────────────────────
+        sort_col = table_state.get("sort_col", "mkt_value")
+        sort_dir = table_state.get("sort_dir", "desc")
+        
+        rows_data = build_live_table_rows(holdings, sort_col, sort_dir)
+
+        th_style = {
+            "fontSize": "11px", "color": "var(--t-sec)", "fontWeight": "600",
+            "padding": "10px 12px", "textAlign": "left",
             "borderBottom": "1px solid var(--border)",
             "backgroundColor": "var(--surface)", "whiteSpace": "nowrap",
         }
-        td = {
-            "fontSize": "13px", "padding": "8px 12px",
+        td_style = {
+            "fontSize": "13px", "padding": "10px 12px",
             "borderBottom": "0.5px solid var(--border)",
             "whiteSpace": "nowrap", "color": "var(--t-pri)",
         }
@@ -112,53 +122,69 @@ def register_callbacks(app) -> None:
                          style={"color": color, "fontWeight": "500", "fontSize": "13px"}),
                 html.Div(f"{sign}{pct:.2f}%",
                          style={"color": color, "fontSize": "11px"}),
-            ], style=td)
+            ], style=td_style)
+
+        # Helper to render sortable header
+        def sortable_th(label, col_id):
+            is_active = sort_col == col_id
+            icon = " ↓" if sort_dir == "desc" else " ↑"
+            return html.Th(
+                [
+                    html.Span(label),
+                    html.Span(icon if is_active else "", className="sort-icon")
+                ],
+                id={"type": "table-th", "index": col_id},
+                style=th_style,
+                className="table-th-sortable"
+            )
 
         rows = []
-        for x in build_live_table_rows(data["holdings"]):
+        for x in rows_data:
             rows.append(html.Tr([
                 html.Td(
                     html.A(x["ticker"], href=f"/etf/{x['ticker']}",
                            className="ticker-link"),
-                    style=td,
+                    style=td_style,
                 ),
                 html.Td(x["name"],
-                        style={**td, "color": "var(--t-sec)", "fontSize": "12px",
+                        style={**td_style, "color": "var(--t-sec)", "fontSize": "12px",
                                "maxWidth": "160px", "overflow": "hidden",
                                "textOverflow": "ellipsis"},
                         title=x["name"]),
-                html.Td(str(x["total_shares"]), style=td),
-                html.Td(f"${x['avg_cost']:,.4f}",  style=td),
-                html.Td(f"${x['last_price']:,.3f}", style=td),
+                html.Td(str(x["total_shares"]), style=td_style),
+                html.Td(f"${x['avg_cost']:,.4f}",  style=td_style),
+                html.Td(f"${x['last_price']:,.3f}", style=td_style),
                 html.Td([
                     html.Div(f"{x['day_chg_sign']}${x['day_chg']:,.3f}",
                              style={"color": x["day_chg_color"], "fontWeight": "500",
                                     "fontSize": "13px"}),
                     html.Div(f"{x['day_chg_sign']}{x['day_chg_pct']:.2f}%",
                              style={"color": x["day_chg_color"], "fontSize": "11px"}),
-                ], style=td),
+                ], style=td_style),
                 html.Td(f"${x['day_high']:,.3f} / ${x['day_low']:,.3f}",
-                        style={**td, "fontSize": "12px", "color": "var(--t-sec)"}),
-                html.Td(f"${x['mkt_value']:,.2f}",  style=td),
-                html.Td(f"${x['total_cost']:,.2f}", style=td),
+                        style={**td_style, "fontSize": "12px", "color": "var(--t-sec)"}),
+                html.Td(f"${x['mkt_value']:,.2f}",  style=td_style),
+                html.Td(f"${x['total_cost']:,.2f}", style=td_style),
                 pnl_td(x["pnl"],     x["pnl_pct"],    x["pnl_color"],     x["pnl_sign"]),
                 pnl_td(x["day_pnl"], x["day_chg_pct"], x["day_pnl_color"], x["day_pnl_sign"]),
-                html.Td(f"{x['div_yield']:.2f}%", style=td),
-                html.Td(f"${x['realized_div']:,.2f}", style=td),
-                html.Td(x["div_frequency"], style={**td, "fontSize": "11px", "color": "var(--t-sec)"}),
+                html.Td(f"{x['div_yield']:.2f}%", style=td_style),
+                html.Td(f"${x['realized_div']:,.2f}", style=td_style),
+                html.Td(x["div_frequency"], style={**td_style, "fontSize": "11px", "color": "var(--t-sec)"}),
             ]))
+
+        headers = [
+            ("Ticker", "ticker"), ("Name", "name"), ("Shares", "total_shares"), 
+            ("Avg cost", "avg_cost"), ("Last price", "last_price"), 
+            ("Day change", "day_chg"), ("High / Low", "day_high"), 
+            ("Market value", "mkt_value"), ("Cost basis", "total_cost"),
+            ("Unrealised P&L", "pnl"), ("Today's P&L", "day_pnl"), 
+            ("Div yield", "div_yield"), ("Realized div", "realized_div"), ("Freq", "div_frequency")
+        ]
 
         return html.Div(
             html.Table(
                 [
-                    html.Thead(html.Tr([
-                        html.Th(c, style=th) for c in [
-                            "Ticker", "Name", "Shares", "Avg cost",
-                            "Last price", "Day change", "High / Low",
-                            "Market value", "Cost basis",
-                            "Unrealised P&L", "Today's P&L", "Div yield", "Realized div", "Freq",
-                        ]
-                    ])),
+                    html.Thead(html.Tr([sortable_th(label, col_id) for label, col_id in headers])),
                     html.Tbody(rows),
                 ],
                 style={"width": "100%", "borderCollapse": "collapse"},

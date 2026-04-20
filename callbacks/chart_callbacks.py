@@ -7,8 +7,10 @@ Chart callbacks.
 import logging
 import plotly.graph_objects as go
 from dash import Input, Output, State, ALL, html
+import dash_mantine_components as dmc
 
 from config.constants import COLORS, get_theme
+from components.ui_helpers import chart_skeleton
 from components.charts import (
     build_pnl_history_figure,
     build_price_chart_figure,
@@ -51,7 +53,7 @@ def register_callbacks(app) -> None:
         BG    = t_["BG"]
         selected = selected or "Portfolio"
         
-        if not data or "holdings" not in data:
+        if not data or "holdings" not in data or not data["holdings"]:
             return []
         tickers = ["Portfolio"] + [h["ticker"] for h in data["holdings"]]
         btns = []
@@ -120,7 +122,9 @@ def register_callbacks(app) -> None:
         period = period or "max"
         selected = selected or "Portfolio"
 
-        if not data or "holdings" not in data:
+        if not data or "holdings" not in data or not data["holdings"]:
+            # We return an empty figure with a hidden skeleton (handled via dcc.Loading or similar)
+            # But here we just return a blank figure to avoid errors
             fig = go.Figure()
             fig.update_layout(
                 xaxis=dict(showgrid=False, type="date"),
@@ -156,9 +160,8 @@ def register_callbacks(app) -> None:
         Input("theme-store",       "data"),
     )
     def allocation_chart(data, period, theme):
-        t_ = get_theme(theme or "dark")
-        if not data or "holdings" not in data:
-            return html.Div("No data")
+        if not data or "holdings" not in data or not data["holdings"]:
+            return chart_skeleton(height=280)
         return create_allocation_dmc(data["holdings"])
 
     # ── Unrealised P&L bar ────────────────────────────────────────────────────
@@ -170,9 +173,8 @@ def register_callbacks(app) -> None:
         Input("theme-store",     "data"),
     )
     def pnl_bar(data, mode, period, theme):
-        t_ = get_theme(theme or "dark")
-        if not data or "holdings" not in data:
-            return html.Div("No data")
+        if not data or "holdings" not in data or not data["holdings"]:
+            return chart_skeleton(height=280)
         return create_pnl_bar_dmc(data["holdings"], mode)
 
     # ── Day P&L bar ───────────────────────────────────────────────────────────
@@ -184,9 +186,8 @@ def register_callbacks(app) -> None:
         Input("theme-store",     "data"),
     )
     def day_pnl_chart(data, mode, period, theme):
-        t_ = get_theme(theme or "dark")
-        if not data or "holdings" not in data:
-            return html.Div("No data")
+        if not data or "holdings" not in data or not data["holdings"]:
+            return chart_skeleton(height=280)
         return create_day_pnl_dmc(data["holdings"], mode)
 
     # ── Annual dividend income ────────────────────────────────────────────────
@@ -198,9 +199,8 @@ def register_callbacks(app) -> None:
         Input("theme-store",     "data"),
     )
     def dividend_chart(data, mode, period, theme):
-        t_ = get_theme(theme or "dark")
-        if not data or "holdings" not in data:
-            return html.Div("No data")
+        if not data or "holdings" not in data or not data["holdings"]:
+            return chart_skeleton(height=280)
         return create_dividend_dmc(data["holdings"])
 
     # ── Correlation heatmap ───────────────────────────────────────────────────

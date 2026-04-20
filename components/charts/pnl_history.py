@@ -51,6 +51,8 @@ def build_pnl_history_figure(
         ),
         hovermode="x unified",
         height=380,
+        showlegend=False,
+        margin=dict(t=30, b=30, l=40, r=20),
     ))
     
     fig = go.Figure()

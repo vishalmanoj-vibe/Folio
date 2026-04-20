@@ -56,27 +56,36 @@ def compute_portfolio_stats(holdings: list[dict]) -> dict:
     }
 
 
-def build_live_table_rows(holdings: list[dict]) -> list[dict]:
+def build_live_table_rows(holdings: list[dict], sort_col: str = "mkt_value", sort_dir: str = "desc") -> list[dict]:
     """
-    Sort holdings by market value and attach pre-computed display fields
-    (sign strings, colours) so the callback renders rows with no math.
+    Sort holdings by any column and attach pre-computed display fields.
 
     Parameters
     ----------
     holdings : list of enriched holding dicts
+    sort_col : str, the key to sort by (e.g. 'ticker', 'mkt_value', 'pnl_pct')
+    sort_dir : str, 'asc' or 'desc'
 
     Returns
     -------
-    list of row dicts, each containing every field the table cell needs:
-        ticker, name, total_shares, avg_cost, last_price,
-        day_chg, day_chg_pct, day_chg_color, day_chg_sign,
-        day_high, day_low, mkt_value, total_cost,
-        pnl, pnl_pct, pnl_color, pnl_sign,
-        day_pnl, day_pnl_color, day_pnl_sign,
-        div_yield, realized_div, div_frequency, last_div_amount
+    list of pre-formatted row dicts.
     """
+    # ── Sorting logic ─────────────────────────────────────────────────────────
+    # Handle cases where the sort_col might be missing or None
+    def get_sort_val(x):
+        val = x.get(sort_col, 0)
+        if val is None: return 0
+        if isinstance(val, str): return val.lower()
+        return val
+
+    sorted_holdings = sorted(
+        holdings, 
+        key=get_sort_val, 
+        reverse=(sort_dir == "desc")
+    )
+
     rows = []
-    for x in sorted(holdings, key=lambda v: v["mkt_value"], reverse=True):
+    for x in sorted_holdings:
         day_pos = x["day_chg"] >= 0
         pnl_pos = x["pnl"] >= 0
         dpnl_pos = x["day_pnl"] >= 0

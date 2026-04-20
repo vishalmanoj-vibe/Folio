@@ -116,3 +116,36 @@ def txn_table(history: list[dict]) -> html.Element:
         ],
         className="table-container",
     )
+
+
+def stat_card_skeleton() -> html.Div:
+    """Pulsing placeholder for a stat card"""
+    import dash_mantine_components as dmc
+    return html.Div(
+        [
+            html.Div(dmc.Skeleton(height=14, width="40%", radius="sm"), className="stat-card-label-row"),
+            dmc.Skeleton(height=28, width="80%", radius="sm", style={"marginTop": "8px"}),
+            dmc.Skeleton(height=14, width="60%", radius="sm", style={"marginTop": "10px"}),
+        ],
+        className="stat-card stat-card-container",
+    )
+
+
+def table_skeleton(rows: int = 5, cols: int = 6) -> html.Div:
+    """Pulsing placeholder for a table"""
+    import dash_mantine_components as dmc
+    return html.Div(
+        [
+            html.Div(
+                [dmc.Skeleton(height=35, radius="sm", style={"marginBottom": "8px"}) for _ in range(rows + 1)],
+                style={"padding": "12px"}
+            )
+        ],
+        style={"overflowX": "auto", "borderRadius": "8px", "border": "0.5px solid var(--border)", "background": "var(--surface)"},
+    )
+
+
+def chart_skeleton(height: int = 300) -> dmc.Skeleton:
+    """Pulsing placeholder for a chart"""
+    import dash_mantine_components as dmc
+    return dmc.Skeleton(height=height, radius="sm", style={"width": "100%"})
