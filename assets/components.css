@@ -56,7 +56,7 @@
 
 /* ── Chart Helpers ── */
 .chart-title-text { font-size: 13.5px; font-weight: 600; color: var(--t-pri); }
-.chart-title-container { display: inline-flex; align-items: center; margin-bottom: 9px; }
+.chart-title-container { display: inline-flex; align-items: center; margin-bottom: 0px; }
 .chart-info-icon { display: inline-flex; align-items: center; justify-content: center; width: 17px; height: 17px; border-radius: 50%; background: var(--surface); border: 1px solid var(--border); font-size: 10.5px; color: var(--t-sec); cursor: help; margin-left: 7px; }
 .section-container { padding: 18px 24px; border-bottom: 0.5px solid var(--border); }
 
@@ -91,7 +91,6 @@
 .txn-panel-inner-content { padding-top: 16px; }
 
 /* ── Table Controls ── */
-.table-controls-row { display: flex; gap: 12px; align-items: center; }
 .table-filter-input .mantine-TextInput-input {
     background-color: var(--surface);
     border: 1px solid var(--border);
@@ -105,8 +104,6 @@
 .sort-icon { font-size: 10px; margin-left: 6px; color: var(--t-sec); }
 .table-th-sortable { cursor: pointer; transition: background 0.2s; }
 .table-th-sortable:hover { background: var(--border); }
-
-
 
 /* ── Custom Switches ── */
 .custom-switch .form-check-input:checked {
@@ -217,4 +214,72 @@
 }
 .header-left .back-link {
     margin-top: 5px; /* Align with large title text */
+}
+
+/* ── Analytics Tabs ── */
+.analytics-tabs {
+    background: transparent;
+}
+.analytics-tabs .mantine-Tabs-list,
+.tabs-list-custom {
+    border-bottom: 1px solid var(--border) !important;
+    padding: 0 24px !important;
+    gap: 24px !important; /* Wider spacing for a premium feel */
+    background: transparent !important;
+    display: flex !important;
+    align-items: flex-end !important;
+}
+.analytics-tabs .mantine-Tabs-tab {
+    height: 44px !important;
+    background: transparent !important;
+    border: none !important;
+    border-bottom: 1.5px solid transparent !important; /* Consistent with other UI lines */
+    color: var(--t-sec) !important;
+    font-weight: 500;
+    font-size: 13px;
+    padding: 0 4px !important;
+    margin-bottom: -1px !important; /* Overlap exactly with the 1px list border */
+    transition: all 0.2s ease;
+    border-radius: 0 !important;
+    cursor: pointer !important;
+}
+.analytics-tabs .mantine-Tabs-tab:hover {
+    color: var(--t-pri) !important;
+    background: transparent !important;
+    border-bottom-color: var(--border) !important;
+}
+.analytics-tabs .mantine-Tabs-tab[data-active] {
+    color: var(--t-pri) !important;
+    border-bottom-color: var(--t-pri) !important;
+    background: transparent !important;
+}
+/* Completely disable Mantine's built-in thick active indicator */
+.analytics-tabs .mantine-Tabs-tab::before {
+    display: none !important;
+}
+.analytics-tabs .mantine-Tabs-panel {
+    animation: fadeIn 0.3s ease-out;
+}
+
+/* ── Segmented Control Styling ── */
+.mantine-SegmentedControl-root {
+    background-color: var(--surface) !important;
+    border: 1px solid var(--border) !important;
+    padding: 4px !important;
+}
+.mantine-SegmentedControl-indicator {
+    background-color: var(--border) !important;
+}
+.mantine-SegmentedControl-label {
+    color: var(--t-sec) !important;
+    font-size: 11px !important;
+    font-weight: 500 !important;
+}
+.mantine-SegmentedControl-label[data-active] {
+    color: var(--t-pri) !important;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(4px); }
+    to { opacity: 1; transform: translateY(0); }
 }

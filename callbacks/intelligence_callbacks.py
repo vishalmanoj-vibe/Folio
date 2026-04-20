@@ -12,8 +12,6 @@ logger = logging.getLogger(__name__)
 
 from services.intelligence_service import (
     compute_risk_metrics,
-    sector_exposure,
-    geo_exposure,
     compute_smart_alerts,
 )
 from services.prediction_service import get_forecast
@@ -21,13 +19,9 @@ from services.prediction_service import get_forecast
 from components.charts.intel_helpers import create_empty_fig, _BAR_MIN_H
 from components.charts.intel_equity import build_intel_equity_chart
 from components.charts.intel_drawdown import build_intel_drawdown_chart
-from components.charts.intel_volatility import build_intel_volatility_chart
-from components.charts.intel_sector import build_intel_sector_chart
-from components.charts.intel_geo import build_intel_geo_chart
 
 import dash
 import plotly.graph_objects as go
-from services.intelligence_service import get_exposure_detail
 from components.ui_helpers import stat_card, alert_card
 from config.constants import get_theme
 
@@ -36,9 +30,6 @@ def register_callbacks(app) -> None:
         Output("intel-risk-cards",     "children"),
         Output("intel-equity-chart",   "figure"),
         Output("intel-drawdown-chart", "figure"),
-        Output("intel-vol-chart",      "figure"),
-        Output("intel-sector-chart",   "figure"),
-        Output("intel-geo-chart",      "figure"),
         Output("intel-alerts",         "children"),
         Output("intel-data-note",      "children"),
         Input("portfolio-store",       "data"),
@@ -51,12 +42,10 @@ def register_callbacks(app) -> None:
         period = period or "3mo"
 
         # ── Empty / loading state ─────────────────────────────────────────────
-        empty_bar = create_empty_fig(height=_BAR_MIN_H, bar=True, theme_tokens=t_)
         no_data = (
             [stat_card("—", "—")],
             create_empty_fig(height=300, theme_tokens=t_),
-            create_empty_fig(height=260, theme_tokens=t_),
-            empty_bar, empty_bar, empty_bar,
+            create_empty_fig(height=300, theme_tokens=t_),
             [alert_card({
                 "level": "info", "icon": "⏳",
                 "title": "Waiting for data",
@@ -146,9 +135,6 @@ def register_callbacks(app) -> None:
                 yhat_l = pred_data["yhat_lower"]
                 yhat_u = pred_data["yhat_upper"]
                 
-                # ── B3. Normalisation Fix ────────────────────────────────────
-                # If the chart is in a filtered period (e.g. 3mo), but the model 
-                # trained on 'max', there is a baseline offset.
                 chart_last_v = metrics.get("ret_values", [])[-1] if metrics.get("ret_values") else 0
                 full_last_v = full_metrics.get("ret_values", [])[-1] if full_metrics.get("ret_values") else 0
                 offset = chart_last_v - full_last_v
@@ -157,7 +143,6 @@ def register_callbacks(app) -> None:
                 yhat_l = [v + offset for v in yhat_l]
                 yhat_u = [v + offset for v in yhat_u]
                 
-                # Shaded Confidence Interval
                 ci_color = "rgba(55, 138, 221, 0.12)"
                 eq_fig.add_trace(go.Scatter(
                     x=p_dates + p_dates[::-1],
@@ -167,9 +152,7 @@ def register_callbacks(app) -> None:
                     hoverinfo="skip", showlegend=True, name="Confidence Interval"
                 ))
                 
-                # Forecast Line
                 last_d = metrics.get("ret_dates", [])[-1] if metrics.get("ret_dates") else None
-                
                 eq_fig.add_trace(go.Scatter(
                     x=[last_d] + p_dates if last_d else p_dates,
                     y=[chart_last_v] + yhat,
@@ -186,17 +169,6 @@ def register_callbacks(app) -> None:
             t_
         )
 
-        # ── D. Per-ticker volatility (horizontal bar) ─────────────────────────
-        vol_fig = build_intel_volatility_chart(metrics.get("ticker_vols", {}), t_)
-
-        # ── E. Sector exposure (horizontal bar) ───────────────────────────────
-        sec_exp = sector_exposure(port_data)
-        sec_fig = build_intel_sector_chart(sec_exp, t_)
-
-        # ── F. Geographic exposure (horizontal bar) ───────────────────────────
-        geo_data = geo_exposure(port_data)
-        geo_fig = build_intel_geo_chart(geo_data, t_)
-
         # ── G. Smart alerts ───────────────────────────────────────────────────
         alert_cards = [alert_card(a)
                        for a in compute_smart_alerts(metrics, port_data)]
@@ -204,132 +176,6 @@ def register_callbacks(app) -> None:
         return (
             risk_cards,
             eq_fig, dd_fig,
-            vol_fig, sec_fig, geo_fig,
             alert_cards,
             data_note,
         )
-    @app.callback(
-        Output("intel-detail-modal", "is_open"),
-        Output("intel-modal-title",  "children"),
-        Output("intel-modal-graph",  "figure"),
-        Input("intel-sector-chart",  "clickData"),
-        Input("intel-geo-chart",     "clickData"),
-        Input("portfolio-store",     "data"),
-        Input("theme-store",         "data"),
-        prevent_initial_call=True
-    )
-    def open_allocation_modal(sec_click, geo_click, port_data, theme):
-        ctx = dash.callback_context
-        if not ctx.triggered or not port_data:
-            return dash.no_update, dash.no_update, dash.no_update
-
-        try:
-            trigger_id = ctx.triggered[0]["prop_id"].split(".")[0]
-            logger.debug(f"Allocation modal triggered by: {trigger_id}")
-            
-            # If triggered by portfolio-store refresh, don't close the modal or change content
-            if trigger_id == "portfolio-store":
-                return dash.no_update, dash.no_update, dash.no_update
-
-            # Determine which chart was clicked
-            if trigger_id == "intel-sector-chart":
-                click_data = sec_click
-                exp_type = "sector"
-            elif trigger_id == "intel-geo-chart":
-                click_data = geo_click
-                exp_type = "geo"
-            else:
-                return dash.no_update, dash.no_update, dash.no_update
-
-            logger.debug(f"Allocation modal click data: {click_data}")
-
-            if not click_data or "points" not in click_data or not click_data["points"]:
-                logger.debug("Allocation modal: click data empty or malformed, ignoring.")
-                return dash.no_update, dash.no_update, dash.no_update
-                
-            point = click_data["points"][0]
-            category = point.get("label") or point.get("y") or point.get("x") or point.get("customdata")
-            
-            logger.debug(f"Allocation modal category: {category}")
-
-            if not category or not isinstance(category, str):
-                logger.debug("Allocation modal: category missing or not a string, ignoring.")
-                return dash.no_update, dash.no_update, dash.no_update
-
-            category = category.strip()
-            logger.info(f"Allocation modal requested: type={exp_type}, cat='{category}'")
-
-            detail = get_exposure_detail(port_data, exp_type, category)
-            
-            if not detail:
-                logger.info(f"No exposure detail found for {exp_type}='{category}'")
-                return False, dash.no_update, go.Figure()
-
-            # Build Sunburst Figure
-            detail = [d for d in detail if d["weight"] >= 0.01]
-            if not detail:
-                return False, dash.no_update, go.Figure()
-
-            ids = [category]
-            labels = [category]
-            parents = [""]
-            
-            root_value = sum(d["weight"] for d in detail)
-            values = [root_value] 
-            
-            if category == "Other":
-                sub_cats = sorted(list({d["sub_category"] for d in detail}))
-                for sc in sub_cats:
-                    sc_weight = sum(d["weight"] for d in detail if d["sub_category"] == sc)
-                    ids.append(f"other_{sc}")
-                    labels.append(sc)
-                    parents.append(category)
-                    values.append(sc_weight) 
-                    for d in detail:
-                        if d["sub_category"] == sc:
-                            ids.append(f"other_{sc}_{d['ticker']}")
-                            labels.append(d["ticker"])
-                            parents.append(f"other_{sc}")
-                            values.append(d["weight"])
-            else:
-                for d in detail:
-                    ids.append(f"cat_{d['ticker']}")
-                    labels.append(d["ticker"])
-                    parents.append(category)
-                    values.append(d["weight"])
-
-            values = [round(v, 6) for v in values]
-
-            fig = go.Figure(go.Sunburst(
-                ids=ids, labels=labels, parents=parents, values=values,
-                branchvalues="total",
-                hovertemplate="<b>%{label}</b><br>Portfolio Weight: %{value:.2f}%<extra></extra>",
-                marker=dict(colors=COLORS * 3),
-            ))
-            
-            t_ = get_theme(theme or "dark")
-            layout_override = t_["PLOTLY_BASE"].copy()
-            layout_override.update(dict(
-                paper_bgcolor="rgba(0,0,0,0)",
-                margin=dict(t=20, l=20, r=20, b=20),
-                height=500,
-                uirevision=True,
-            ))
-            fig.update_layout(layout_override)
-            
-            title = f"{'Sector' if exp_type == 'sector' else 'Geographic'} Breakdown: {category}"
-            return True, title, fig
-
-        except Exception as e:
-            logger.error(f"Allocation modal error: {e}", exc_info=True)
-            return dash.no_update, dash.no_update, dash.no_update
-
-    @app.callback(
-        Output("intel-detail-modal", "is_open", allow_duplicate=True),
-        Input("intel-modal-close-btn", "n_clicks"),
-        prevent_initial_call=True
-    )
-    def close_modal(n):
-        if n:
-            return False
-        return dash.no_update

@@ -65,8 +65,8 @@ def build_corr_figure(histories: dict, period: str, theme_tokens: dict) -> go.Fi
     ))
     
     fig.update_layout(
-        paper_bgcolor="#111110",
-        plot_bgcolor="#111110",
+        paper_bgcolor=theme_tokens["BG"],
+        plot_bgcolor=theme_tokens["BG"],
         margin=dict(t=20, b=20, l=20, r=20),
         height=400,
         xaxis=dict(showgrid=False, tickfont=dict(size=9, color=theme_tokens["T_SEC"])),

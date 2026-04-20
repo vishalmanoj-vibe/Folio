@@ -16,6 +16,19 @@ INDEX_STRING = '''
 <!DOCTYPE html>
 <html>
 <head>{%metas%}<title>{%title%}</title>{%favicon%}{%css%}
+    <script>
+        (function() {
+            try {
+                const stored = localStorage.getItem('theme-store');
+                if (stored) {
+                    const theme = JSON.parse(stored);
+                    document.documentElement.setAttribute('data-theme', theme);
+                    document.body.setAttribute('data-theme', theme);
+                    document.documentElement.style.backgroundColor = theme === 'dark' ? '#111110' : '#ffffff';
+                }
+            } catch (e) {}
+        })();
+    </script>
 </head>
 <body data-theme="dark">{%app_entry%}{%config%}{%scripts%}{%renderer%}</body>
 </html>

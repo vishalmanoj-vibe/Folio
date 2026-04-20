@@ -103,7 +103,7 @@ app.layout = dmc.MantineProvider(
             dcc.Store(id="txn-store",       data=INITIAL_HISTORY),
             dcc.Store(id="portfolio-store", data=INITIAL_PORTFOLIO_DATA),
             dcc.Store(id="alerts-store"),
-            dcc.Store(id="theme-store",          data="dark"),
+            dcc.Store(id="theme-store",          data="dark", storage_type='local'),
             dcc.Store(id="compact-mode-store",   data=True, storage_type='local'),
             dcc.Store(id="table-state-store",     data={"search": "", "sort_col": "mkt_value", "sort_dir": "desc"}, storage_type='local'),
             dcc.Store(id="selected-ticker-store", data="Portfolio"),

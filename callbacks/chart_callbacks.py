@@ -15,21 +15,21 @@ from components.charts import (
     build_pnl_history_figure,
     build_price_chart_figure,
     build_corr_figure,
+    build_portfolio_treemap,
+    build_performance_lollipops,
+    build_intel_volatility_chart,
 )
-from components.charts.treemap import build_portfolio_treemap
-from components.charts.performance_bars import build_performance_lollipops
+from services.intelligence_service import (
+    compute_risk_metrics,
+    fetch_etf_sector_weights,
+    fetch_etf_geo_weights,
+)
 
 logger = logging.getLogger(__name__)
 
 def register_callbacks(app) -> None:
     """
     Register chart-related callbacks with the Dash application.
-
-    Handles building and updating all Plotly charts based on user interactions
-    and portfolio state changes.
-
-    Args:
-        app: The Dash application instance.
     """
 
     # ── Ticker toggle buttons ─────────────────────────────────────────────────
@@ -53,7 +53,6 @@ def register_callbacks(app) -> None:
             is_sel = (t == selected)
             is_port = (t == "Portfolio")
             
-            # Base color for the button
             c = T_PRI if is_port else COLORS[(i - 1) % len(COLORS)]
             
             style = {
@@ -90,7 +89,6 @@ def register_callbacks(app) -> None:
         if not ctx.triggered:
             raise dash.exceptions.PreventUpdate
             
-        # Ignore if the trigger was a recreation of buttons (n_clicks=0 or None)
         if not ctx.triggered[0]["value"]:
             raise dash.exceptions.PreventUpdate
             
@@ -115,8 +113,6 @@ def register_callbacks(app) -> None:
         selected = selected or "Portfolio"
 
         if not data or "holdings" not in data or not data["holdings"]:
-            # We return an empty figure with a hidden skeleton (handled via dcc.Loading or similar)
-            # But here we just return a blank figure to avoid errors
             fig = go.Figure()
             fig.update_layout(
                 xaxis=dict(showgrid=False, type="date"),
@@ -149,15 +145,34 @@ def register_callbacks(app) -> None:
         Output("portfolio-treemap", "figure"),
         Input("portfolio-store",    "data"),
         Input("theme-store",        "data"),
+        Input("treemap-mode",       "value"),
     )
-    def portfolio_treemap(data, theme):
+    def portfolio_treemap(data, theme, mode):
         t_ = get_theme(theme or "dark")
         if not data or "holdings" not in data or not data["holdings"]:
             fig = go.Figure()
             fig.update_layout(**t_["PLOTLY_BASE"])
             return fig
+        
+        mode = mode or "sector"
+        sector_map = {}
+        geo_map = {}
+        
+        if mode == "sector":
+            for h in data["holdings"]:
+                ticker_yf = h.get("ticker_yf", h["ticker"] + ".AX")
+                sector_map[h["ticker"]] = fetch_etf_sector_weights(ticker_yf)
+        elif mode == "geo":
+            for h in data["holdings"]:
+                ticker_yf = h.get("ticker_yf", h["ticker"] + ".AX")
+                geo_map[h["ticker"]] = fetch_etf_geo_weights(ticker_yf)
             
-        return build_portfolio_treemap(data["holdings"], t_)
+        return build_portfolio_treemap(
+            data["holdings"], t_, 
+            mode=mode, 
+            sector_data=sector_map, 
+            geo_data=geo_map
+        )
 
     # ── Dividend Lollipops ─────────────────────────────────────────────────────
     @app.callback(
@@ -172,14 +187,29 @@ def register_callbacks(app) -> None:
             fig.update_layout(**t_["PLOTLY_BASE"])
             return fig
             
-        # Prepare data for lollipops (Annual Dividends)
         plot_data = []
         for h in data["holdings"]:
             val = h.get("annual_div", 0)
-            if val > 0: # Only show income-producing assets
+            if val > 0:
                 plot_data.append({"ticker": h["ticker"], "value": val})
             
         return build_performance_lollipops(plot_data, t_, "dollar")
+
+    # ── Analytics Risk ────────────────────────────────────────────────────────
+    @app.callback(
+        Output("analytics-vol-chart",    "figure"),
+        Input("portfolio-store",         "data"),
+        Input("analytics-period-picker", "value"),
+        Input("theme-store",             "data"),
+    )
+    def update_analytics_volatility(data, period, theme):
+        t_ = get_theme(theme or "dark")
+        if not data or "holdings" not in data or not data["holdings"]:
+            from components.charts.intel_helpers import create_empty_fig, _BAR_MIN_H
+            return create_empty_fig(height=_BAR_MIN_H, bar=True, theme_tokens=t_)
+
+        metrics = compute_risk_metrics(data, period=(period or "max"))
+        return build_intel_volatility_chart(metrics.get("ticker_vols", {}), t_)
 
     # ── Correlation heatmap ───────────────────────────────────────────────────
     @app.callback(
@@ -188,7 +218,7 @@ def register_callbacks(app) -> None:
         Input("analytics-period-picker",   "value"),
         Input("theme-store",     "data"),
     )
-    def corr_chart(data, period, theme):
+    def update_corr_chart(data, period, theme):
         t_ = get_theme(theme or "dark")
         period = period or "max"
         if not data or "histories" not in data:

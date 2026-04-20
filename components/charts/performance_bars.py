@@ -23,9 +23,9 @@ def build_performance_lollipops(
     
     # Base Layout (Standard for both empty and populated states)
     base_layout = dict(
-        paper_bgcolor="#111110",
-        plot_bgcolor="#111110",
-        font=dict(color="#f0ede8", family="Inter, sans-serif"),
+        paper_bgcolor=theme_tokens["BG"],
+        plot_bgcolor=theme_tokens["BG"],
+        font=dict(color=theme_tokens["T_PRI"], family="Inter, sans-serif"),
         margin=dict(t=10, b=10, l=40, r=20),
         uirevision=True,
     )
@@ -52,7 +52,7 @@ def build_performance_lollipops(
             x=[0, d["value"]],
             y=[i, i],
             mode="lines",
-            line=dict(color="#333333", width=2),
+            line=dict(color=theme_tokens["BORDER"], width=2),
             hoverinfo="skip"
         ))
 
@@ -64,7 +64,7 @@ def build_performance_lollipops(
         marker=dict(
             color=colors,
             size=10,
-            line=dict(color="#111110", width=1.5)
+            line=dict(color=theme_tokens["BG"], width=1.5)
         ),
         text=tickers,
         customdata=values,
@@ -77,17 +77,18 @@ def build_performance_lollipops(
         showlegend=False,
         xaxis=dict(
             title=dict(text="Amount ($)", font=dict(size=10, color="#8a8880")),
-            tickfont=dict(color="#8a8880", size=10),
-            gridcolor="rgba(255,255,255,0.05)",
-            zerolinecolor="rgba(255,255,255,0.2)",
+            tickfont=dict(color=theme_tokens["T_SEC"], size=10),
+            gridcolor=theme_tokens["BORDER"],
+            zerolinecolor=theme_tokens["BORDER"],
         ),
         yaxis=dict(
             tickmode="array",
             tickvals=list(range(len(data))),
             ticktext=tickers,
-            tickfont=dict(color="#f0ede8", size=11, weight=600),
+            tickfont=dict(color=theme_tokens["T_PRI"], size=11, weight=600),
             autorange="reversed",
-            showgrid=False
+            showgrid=False,
+            zeroline=False
         ),
         height=max(400, len(data) * 35)
     )

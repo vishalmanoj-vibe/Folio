@@ -118,67 +118,6 @@ def layout() -> html.Div:
                 ),
             ),
 
-            # ── D · E · F  three-column bar charts ───────────────────────────
-            html.Div(
-                [
-                    # D — Volatility per ETF
-                    html.Div(
-                        [
-                            chart_title(
-                                "Volatility by ETF",
-                                "Annualised price volatility for each ETF over the loaded period. "
-                                "Lower is steadier. Green = below 12%, amber = 12–20%, red = above 20%.",
-                            ),
-                            dcc.Loading(
-                                # No style= height — Plotly controls canvas size
-                                dcc.Graph(id="intel-vol-chart",
-                                          config={"displayModeBar": False}),
-                                type="circle", color=COLORS[2],
-                            ),
-                        ],
-                        className="chart-col-min-260",
-                    ),
-
-                    # E — Sector exposure
-                    html.Div(
-                        [
-                            chart_title(
-                                "Sector exposure",
-                                "Your portfolio's blend across market sectors, weighted by holding value. "
-                                "A single sector above 40% signals concentration risk. "
-                                "Data is sourced from Yahoo Finance and cached for 24 hours.",
-                            ),
-                            dcc.Loading(
-                                dcc.Graph(id="intel-sector-chart",
-                                          config={"displayModeBar": False}),
-                                type="circle", color=COLORS[3],
-                            ),
-                        ],
-                        className="chart-col-min-260",
-                    ),
-
-                    # F — Geographic exposure
-                    html.Div(
-                        [
-                            chart_title(
-                                "Geographic exposure",
-                                "Where your money is invested in the world, weighted by holding value. "
-                                "Region is inferred from each ETF's top holdings by their stock exchange. "
-                                "Data is cached for 24 hours.",
-                            ),
-                            dcc.Loading(
-                                dcc.Graph(id="intel-geo-chart",
-                                          config={"displayModeBar": False}),
-                                type="circle", color=COLORS[4],
-                            ),
-                        ],
-                        className="chart-col-min-260",
-                    ),
-                ],
-                className="section-container three-col-layout",
-                style={"padding": "20px 24px"},
-            ),
-
             # ── G. Smart alerts ───────────────────────────────────────────────
             html.Div(
                 [
@@ -192,26 +131,6 @@ def layout() -> html.Div:
                         className="flex-col-container",
                     ),
                 ],
-            ),
-
-            # ── H. Detail Modal ───────────────────────────────────────────────
-            dbc.Modal(
-                [
-                    dbc.ModalHeader(dbc.ModalTitle(id="intel-modal-title"), close_button=False),
-                    dbc.ModalBody(
-                        dcc.Loading(
-                            dcc.Graph(id="intel-modal-graph", config={"displayModeBar": False}),
-                            type="circle", color=COLORS[0],
-                        )
-                    ),
-                    dbc.ModalFooter(
-                        dmc.Button("Close", id="intel-modal-close-btn", className="btn-md", n_clicks=0)
-                    ),
-                ],
-                id="intel-detail-modal",
-                is_open=False,
-                size="lg",
-                centered=True,
             ),
         ],
         className="page-root",

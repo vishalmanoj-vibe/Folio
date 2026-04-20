@@ -12,7 +12,9 @@ def build_intel_drawdown_chart(dd_dates: list, dd_values: list, theme_tokens: di
 
     layout = base.copy()
     layout.update(dict(
-        height=260,
+        height=300,
+        showlegend=False,
+        margin=dict(l=16, r=16, t=36, b=16),
         xaxis=dict(showgrid=False),
         yaxis=dict(gridcolor=theme_tokens["BORDER"], ticksuffix="%",
                    zeroline=True, zerolinecolor=theme_tokens["BORDER"], zerolinewidth=1),
