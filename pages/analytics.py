@@ -28,93 +28,77 @@ def layout():
             show_pdf=True,
             market_status=html.Div(id="market-status")
         ),
-        # ── Filters Row ───────────────────────────────────────────────────
-        html.Div(
-            [
-                html.Div(
-                    [
-                        dmc.Select(
-                            id="analytics-period-picker",
-                            data=[
-                                {"label": "Since purchase", "value": "max"},
-                                {"label": "1 month",        "value": "1mo"},
-                                {"label": "3 months",       "value": "3mo"},
-                                {"label": "6 months",       "value": "6mo"},
-                                {"label": "1 year",         "value": "1y"},
-                                {"label": "2 years",        "value": "2y"},
-                            ],
-                            value="3mo",
-                            allowDeselect=False,
-                            persistence=True,
-                            style={"width": "130px"},
-                        ),
-                        dmc.Select(
-                            id="analytics-pnl-mode",
-                            data=[
-                                {"label": "Dollar ($)",     "value": "dollar"},
-                                {"label": "Percentage (%)", "value": "pct"},
-                            ],
-                            value="dollar",
-                            allowDeselect=False,
-                            persistence=True,
-                            style={"width": "130px"},
-                        ),
-                    ],
-                    style={"display": "flex", "gap": "12px"}
-                ),
-            ],
-            style={
-                "display": "flex", "alignItems": "center", "justifyContent": "flex-end",
-                "padding": "12px 24px", "gap": "12px",
-                "borderBottom": "0.5px solid var(--border)"
-            }
-        ),
 
         # ── Charts Grid ───────────────────────────────────────────────────
         html.Div([
             html.Div(
                 [
+                    # Top Row: Unified Portfolio Performance (Scalable Treemap)
                     html.Div(
                         [
                             html.Div(
-                                [chart_title("Price history — normalised to 100", "price-chart"),
-                                 dcc.Graph(id="price-chart", config={"displayModeBar": False})],
-                                 className="grid-item-2",
+                                [chart_title("Portfolio Performance & Allocation", "portfolio-performance"),
+                                 dcc.Graph(id="portfolio-treemap", config={"displayModeBar": False})],
+                                 className="grid-full-width",
+                            ),
+                        ],
+                        className="charts-grid-row",
+                    ),
+                    
+                    # Middle Row: Detailed Performance (Lollipops) & Correlation Matrix
+                    html.Div(
+                        [
+                            html.Div(
+                                [chart_title("Dividend Income Detail", "dividend"),
+                                 html.Div(
+                                     dcc.Graph(id="dividend-lollipops", config={"displayModeBar": False}),
+                                     style={"height": "400px", "overflowY": "auto", "borderRadius": "8px", "background": "#111110"}
+                                 )],
+                                 className="grid-item-1", 
                             ),
                             html.Div(
-                                [chart_title("Portfolio allocation", "allocation"),
-                                 html.Div(id="allocation-chart-container")],
+                                [chart_title("Return Correlation Matrix", "correlation"),
+                                 dcc.Graph(id="corr-chart", config={"displayModeBar": False})],
                                  className="grid-item-1",
                             ),
                         ],
                         className="charts-grid-row",
                     ),
+
+                    # Bottom Row: Price History (Full Width)
                     html.Div(
                         [
                             html.Div(
-                                [chart_title("Unrealised P&L — all time", "pnl-bar"),
-                                 html.Div(id="pnl-bar-chart-container")],
-                                 className="grid-item-1-half",
-                            ),
-                            html.Div(
-                                [chart_title("Today's P&L", "day-pnl"),
-                                 html.Div(id="day-pnl-chart-container")],
-                                 className="grid-item-1-half",
-                            ),
-                        ],
-                        className="charts-grid-row",
-                    ),
-                    html.Div(
-                        [
-                            html.Div(
-                                [chart_title("Annual dividend income", "dividend"),
-                                 html.Div(id="dividend-chart-container")],
-                                 className="grid-item-1-half",
-                            ),
-                            html.Div(
-                                [chart_title("Return correlation matrix", "correlation"),
-                                 dcc.Graph(id="corr-chart", config={"displayModeBar": False})],
-                                 className="grid-item-1-half",
+                                [
+                                    html.Div(
+                                        [
+                                            chart_title("Price history — normalised to 100", "price-chart"),
+                                            dmc.Select(
+                                                id="analytics-period-picker",
+                                                data=[
+                                                    {"label": "Since purchase", "value": "max"},
+                                                    {"label": "1 month",        "value": "1mo"},
+                                                    {"label": "3 months",       "value": "3mo"},
+                                                    {"label": "6 months",       "value": "6mo"},
+                                                    {"label": "1 year",         "value": "1y"},
+                                                    {"label": "2 years",        "value": "2y"},
+                                                ],
+                                                value="max",
+                                                variant="unstyled",
+                                                allowDeselect=False,
+                                                persistence=True,
+                                                style={"width": "120px", "marginLeft": "auto", "fontSize": "12px", "color": "var(--t-sec)"},
+                                            ),
+                                        ],
+                                        style={"display": "flex", "alignItems": "center", "marginBottom": "10px"}
+                                    ),
+                                    dcc.Graph(
+                                        id="price-chart", 
+                                        config={"displayModeBar": False},
+                                        style={"height": "480px"}
+                                    )
+                                ],
+                                className="grid-full-width",
                             ),
                         ],
                         className="charts-grid-row",

@@ -53,3 +53,4 @@
 .grid-item-2 { flex: 2; min-width: 280px; }
 .grid-item-1 { flex: 1; min-width: 220px; }
 .grid-item-1-half { flex: 1; min-width: 260px; }
+.grid-full-width { flex: 1 1 100%; min-width: 100%; }

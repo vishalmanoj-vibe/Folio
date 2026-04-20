@@ -60,14 +60,17 @@ def build_corr_figure(histories: dict, period: str, theme_tokens: dict) -> go.Fi
         colorscale=[[0, theme_tokens["GREEN"]], [0.5, theme_tokens["WARNING"]], [1, theme_tokens["RED"]]],
         zmin=-1, zmax=1,
         text=[[f"{v:.2f}" for v in row] for row in corr.values.tolist()],
-        texttemplate="%{text}", textfont=dict(size=11),
-        showscale=True, colorbar=dict(thickness=12, len=0.8, tickfont=dict(color=theme_tokens["T_SEC"])),
+        texttemplate="%{text}", textfont=dict(size=9),
+        showscale=True, colorbar=dict(thickness=8, len=0.7, tickfont=dict(color=theme_tokens["T_SEC"], size=9)),
     ))
     
-    layout = PLOTLY_BASE.copy()
-    layout.update(dict(
-        xaxis=dict(showgrid=False, tickfont=dict(size=11)),
-        yaxis=dict(showgrid=False, tickfont=dict(size=11), autorange="reversed"),
-    ))
-    fig.update_layout(layout)
+    fig.update_layout(
+        paper_bgcolor="#111110",
+        plot_bgcolor="#111110",
+        margin=dict(t=20, b=20, l=20, r=20),
+        height=400,
+        xaxis=dict(showgrid=False, tickfont=dict(size=9, color=theme_tokens["T_SEC"])),
+        yaxis=dict(showgrid=False, tickfont=dict(size=9, color=theme_tokens["T_SEC"]), autorange="reversed"),
+        uirevision=True,
+    )
     return fig

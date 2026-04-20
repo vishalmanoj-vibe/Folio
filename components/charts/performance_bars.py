@@ -1,0 +1,95 @@
+"""
+components/charts/performance_bars.py
+=====================================
+High-density horizontal lollipop chart for performance metrics.
+"""
+
+import plotly.graph_objects as go
+
+def build_performance_lollipops(
+    data: list[dict], 
+    theme_tokens: dict,
+    mode: str = "pct"
+) -> go.Figure:
+    """
+    Build a horizontal lollipop chart for portfolio performance.
+    
+    Args:
+        data: List of dicts with {"ticker": str, "value": float}
+        theme_tokens: Dictionary of UI theme colors.
+        mode: "pct" or "dollar"
+    """
+    fig = go.Figure()
+    
+    # Base Layout (Standard for both empty and populated states)
+    base_layout = dict(
+        paper_bgcolor="#111110",
+        plot_bgcolor="#111110",
+        font=dict(color="#f0ede8", family="Inter, sans-serif"),
+        margin=dict(t=10, b=10, l=40, r=20),
+        uirevision=True,
+    )
+    
+    if not data:
+        fig.update_layout(
+            **base_layout,
+            xaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
+            yaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
+            height=300
+        )
+        return fig
+
+    # Sort by value (Best performers at top)
+    data = sorted(data, key=lambda x: x["value"], reverse=True)
+    
+    tickers = [d["ticker"] for d in data]
+    values = [d["value"] for d in data]
+    colors = [theme_tokens["GREEN"] if v >= 0 else theme_tokens["RED"] for v in values]
+
+    # 1. Stems (Line from 0 to value)
+    for i, d in enumerate(data):
+        fig.add_trace(go.Scatter(
+            x=[0, d["value"]],
+            y=[i, i],
+            mode="lines",
+            line=dict(color="#333333", width=2),
+            hoverinfo="skip"
+        ))
+
+    # 2. Lollipops (Dots)
+    fig.add_trace(go.Scatter(
+        x=values,
+        y=list(range(len(data))),
+        mode="markers",
+        marker=dict(
+            color=colors,
+            size=10,
+            line=dict(color="#111110", width=1.5)
+        ),
+        text=tickers,
+        customdata=values,
+        hovertemplate="<b>%{text}</b><br>Amount: $%{customdata:,.2f}<extra></extra>"
+    ))
+
+    # Layout configuration
+    fig.update_layout(
+        **base_layout,
+        showlegend=False,
+        xaxis=dict(
+            title=dict(text="Amount ($)", font=dict(size=10, color="#8a8880")),
+            tickfont=dict(color="#8a8880", size=10),
+            gridcolor="rgba(255,255,255,0.05)",
+            zerolinecolor="rgba(255,255,255,0.2)",
+        ),
+        yaxis=dict(
+            tickmode="array",
+            tickvals=list(range(len(data))),
+            ticktext=tickers,
+            tickfont=dict(color="#f0ede8", size=11, weight=600),
+            autorange="reversed",
+            showgrid=False
+        ),
+        height=max(400, len(data) * 35)
+    )
+
+    return fig

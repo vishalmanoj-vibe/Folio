@@ -117,28 +117,16 @@ CHART_INFO = {
         "side by side regardless of actual price. A line at 120 means that holding "
         "is up 20% over the selected period. The dotted line at 100 is the baseline."
     ),
-    "allocation": (
-        "Portfolio allocation",
-        "Shows what % of your total portfolio value each holding represents today. "
-        "Larger slices = bigger positions. Use this to check if you are "
-        "over-concentrated in any single ETF."
-    ),
-    "pnl-bar": (
-        "Unrealised P&L — all time",
-        "The dollar (or %) gain or loss on each holding since you first bought it, "
-        "based on your weighted average purchase price. Green = profitable, "
-        "Red = at a loss. Unrealised — only becomes real when you sell."
-    ),
-    "day-pnl": (
-        "Today's P&L",
-        "How much each holding gained or lost today vs yesterday's closing price. "
-        "Resets every trading day. Green = up today, red = down today."
+    "portfolio-performance": (
+        "Portfolio P&L Impact",
+        "Each rectangle represents a holding. The size depends on the absolute Profit/Loss "
+        "magnitude (Impact), and the color shows the direction: Green for gains, Red for losses. "
+        "Largest boxes represent your biggest winners or losers."
     ),
     "dividend": (
-        "Annual dividend income",
-        "Estimated annual dividend income from each holding based on dividends paid "
-        "over the last 12 months, scaled to your share count. "
-        "Yield % = annual dividends divided by current market value."
+        "Annual Dividend Detail",
+        "A high-density breakdown of your annual dividend income for every holding. "
+        "Lollipops are sorted with the highest income-producers at the top."
     ),
     "correlation": (
         "Return correlation matrix",

@@ -14,18 +14,10 @@ from components.ui_helpers import chart_skeleton
 from components.charts import (
     build_pnl_history_figure,
     build_price_chart_figure,
-    build_allocation_figure,
-    build_pnl_bar_figure,
-    build_day_pnl_figure,
-    build_dividend_figure,
     build_corr_figure,
 )
-from components.charts.mantine_charts import (
-    create_pnl_bar_dmc,
-    create_day_pnl_dmc,
-    create_allocation_dmc,
-    create_dividend_dmc
-)
+from components.charts.treemap import build_portfolio_treemap
+from components.charts.performance_bars import build_performance_lollipops
 
 logger = logging.getLogger(__name__)
 
@@ -152,56 +144,42 @@ def register_callbacks(app) -> None:
         holdings = data.get("holdings", [])
         return build_price_chart_figure(data["histories"], period, t_, holdings)
 
-    # ── Allocation donut ──────────────────────────────────────────────────────
+    # ── Portfolio Treemap ─────────────────────────────────────────────────────
     @app.callback(
-        Output("allocation-chart-container", "children"),
-        Input("portfolio-store",   "data"),
-        Input("analytics-period-picker",     "value"),
-        Input("theme-store",       "data"),
+        Output("portfolio-treemap", "figure"),
+        Input("portfolio-store",    "data"),
+        Input("theme-store",        "data"),
     )
-    def allocation_chart(data, period, theme):
+    def portfolio_treemap(data, theme):
+        t_ = get_theme(theme or "dark")
         if not data or "holdings" not in data or not data["holdings"]:
-            return chart_skeleton(height=280)
-        return create_allocation_dmc(data["holdings"])
+            fig = go.Figure()
+            fig.update_layout(**t_["PLOTLY_BASE"])
+            return fig
+            
+        return build_portfolio_treemap(data["holdings"], t_)
 
-    # ── Unrealised P&L bar ────────────────────────────────────────────────────
+    # ── Dividend Lollipops ─────────────────────────────────────────────────────
     @app.callback(
-        Output("pnl-bar-chart-container",  "children"),
+        Output("dividend-lollipops", "figure"),
         Input("portfolio-store", "data"),
-        Input("analytics-pnl-mode",        "value"),
-        Input("analytics-period-picker",   "value"),
-        Input("theme-store",     "data"),
+        Input("theme-store", "data"),
     )
-    def pnl_bar(data, mode, period, theme):
+    def dividend_lollipops(data, theme):
+        t_ = get_theme(theme or "dark")
         if not data or "holdings" not in data or not data["holdings"]:
-            return chart_skeleton(height=280)
-        return create_pnl_bar_dmc(data["holdings"], mode)
-
-    # ── Day P&L bar ───────────────────────────────────────────────────────────
-    @app.callback(
-        Output("day-pnl-chart-container",  "children"),
-        Input("portfolio-store", "data"),
-        Input("analytics-pnl-mode",        "value"),
-        Input("analytics-period-picker",   "value"),
-        Input("theme-store",     "data"),
-    )
-    def day_pnl_chart(data, mode, period, theme):
-        if not data or "holdings" not in data or not data["holdings"]:
-            return chart_skeleton(height=280)
-        return create_day_pnl_dmc(data["holdings"], mode)
-
-    # ── Annual dividend income ────────────────────────────────────────────────
-    @app.callback(
-        Output("dividend-chart-container", "children"),
-        Input("portfolio-store", "data"),
-        Input("analytics-pnl-mode",        "value"),
-        Input("analytics-period-picker",   "value"),
-        Input("theme-store",     "data"),
-    )
-    def dividend_chart(data, mode, period, theme):
-        if not data or "holdings" not in data or not data["holdings"]:
-            return chart_skeleton(height=280)
-        return create_dividend_dmc(data["holdings"])
+            fig = go.Figure()
+            fig.update_layout(**t_["PLOTLY_BASE"])
+            return fig
+            
+        # Prepare data for lollipops (Annual Dividends)
+        plot_data = []
+        for h in data["holdings"]:
+            val = h.get("annual_div", 0)
+            if val > 0: # Only show income-producing assets
+                plot_data.append({"ticker": h["ticker"], "value": val})
+            
+        return build_performance_lollipops(plot_data, t_, "dollar")
 
     # ── Correlation heatmap ───────────────────────────────────────────────────
     @app.callback(
