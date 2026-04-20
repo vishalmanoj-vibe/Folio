@@ -31,12 +31,28 @@
 .alert-detail { font-size: 12px; color: var(--t-sec); }
 
 /* ── Links ── */
-.nav-link { color: var(--t-sec); text-decoration: none; font-size: 13px; transition: color 0.15s; }
+.nav-link { 
+    color: var(--t-sec); 
+    text-decoration: none; 
+    font-size: 12px; 
+    transition: color 0.15s;
+    font-weight: 500;
+}
 .nav-link:hover { color: var(--t-pri); }
+
 .ticker-link { color: var(--t-sec); text-decoration: none; }
 .ticker-link:hover { color: var(--t-pri); text-decoration: underline; }
-.back-link { color: var(--t-sec); text-decoration: none; font-size: 13px; display: inline-flex; align-items: center; margin-bottom: 16px; border-bottom: 1px solid transparent; transition: border-color 0.15s, color 0.15s; }
-.back-link:hover { color: var(--t-pri); border-color: var(--t-sec); }
+
+.back-link { 
+    color: var(--t-sec); 
+    text-decoration: none; 
+    font-size: 12px; 
+    display: inline-flex; 
+    align-items: center; 
+    transition: color 0.15s;
+    font-weight: 500;
+}
+.back-link:hover { color: var(--t-pri); }
 
 /* ── Chart Helpers ── */
 .chart-title-text { font-size: 13.5px; font-weight: 600; color: var(--t-pri); }
@@ -50,7 +66,7 @@
 }
 
 /* ── Transaction Panel ── */
-.txn-panel-container { padding: 0 24px 16px 24px; border-bottom: 0.5px solid var(--border); }
+.txn-panel-container { padding: 24px 24px 16px 24px; border-bottom: 0.5px solid var(--border); border-top: 0.5px solid var(--border); margin-top: 10px; }
 .txn-panel-inner { padding: 16px 18px; background: var(--surface); border: 0.5px solid var(--border); border-radius: 10px; }
 .txn-title { font-size: 13px; font-weight: 500; margin: 0 0 4px; color: var(--t-pri); }
 .txn-path { font-size: 11px; color: var(--t-sec); margin: 0 0 12px; font-family: monospace; }
@@ -70,4 +86,104 @@
     background-color: var(--surface);
     border-color: var(--border);
     cursor: pointer;
+}
+/* ── Market Badge ── */
+.market-badge {
+    padding: 3px 10px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    display: inline-flex;
+    align-items: center;
+}
+.market-badge.badge-open {
+    background: rgba(29, 158, 117, 0.12);
+    color: var(--green);
+    border: 1px solid rgba(29, 158, 117, 0.3);
+}
+.market-badge.badge-closed {
+    background: var(--surface);
+    color: var(--t-sec);
+    border: 1px solid var(--border);
+}
+
+/* ── Settings Dropdown ── */
+.settings-details {
+    position: relative;
+    display: inline-block;
+}
+.settings-details summary {
+    list-style: none;
+    cursor: pointer;
+    font-size: 18px;
+    color: var(--t-sec);
+    padding: 4px 8px;
+    border-radius: 6px;
+    transition: all 0.2s;
+}
+.settings-details summary::-webkit-details-marker {
+    display: none;
+}
+.settings-details summary:hover {
+    color: var(--t-pri);
+    background: var(--border);
+}
+.settings-menu {
+    position: absolute;
+    top: 100%;
+    right: 0;
+    z-index: 1000;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px;
+    min-width: 180px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.4);
+    margin-top: 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+.settings-menu .btn-sm:hover {
+    background: var(--border);
+}
+.last-updated {
+    font-size: 11px;
+    color: var(--t-sec);
+    background: var(--surface);
+    padding: 3px 8px;
+    border-radius: 4px;
+    border: 0.5px solid var(--border);
+}
+.settings-summary {
+    list-style: none;
+    cursor: pointer;
+    font-size: 16px;
+    color: var(--t-sec);
+    padding: 6px;
+    border-radius: 6px;
+    transition: all 0.2s;
+    line-height: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.settings-summary:hover {
+    color: var(--t-pri);
+    background: var(--border);
+}
+.settings-summary::-webkit-details-marker {
+    display: none;
+}
+
+/* ── Header Alignment ── */
+.header-left {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+}
+.header-left .back-link {
+    margin-top: 5px; /* Align with large title text */
 }

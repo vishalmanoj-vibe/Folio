@@ -84,6 +84,7 @@ app.index_string = INDEX_STRING
 # Import pages after app creation
 import pages.etf_detail as etf_detail      # noqa: E402
 import pages.intelligence as intelligence  # noqa: E402
+import pages.analytics as analytics        # noqa: E402
 
 # ── Root Layout ───────────────────────────────────────────────────────────────
 app.layout = html.Div(

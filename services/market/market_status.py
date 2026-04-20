@@ -33,6 +33,7 @@ def market_badge() -> html.Span:
     """Render market status badge."""
     open_ = is_market_open()
     return html.Span(
-        "ASX open" if open_ else "ASX closed",
-        className=f"badge {'badge-open' if open_ else 'badge-closed'}",
+        "Open" if open_ else "Closed",
+        id="market-badge",
+        className=f"market-badge {'badge-open' if open_ else 'badge-closed'}",
     )

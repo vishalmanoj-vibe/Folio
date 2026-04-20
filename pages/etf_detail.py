@@ -61,24 +61,16 @@ def layout(ticker: str = "") -> html.Div:
             dcc.Store(id="etf-period-store", data=DEFAULT_PERIOD, storage_type="session"),
 
             # ── A. Header ─────────────────────────────────────────────────────
-            html.Div(
-                [
-                    html.Div([
-                        html.A("← Portfolio", href="/", className="back-link", style={"display": "inline-block", "marginBottom": "8px"}),
-                        html.Div(
-                            [
-                                html.Span(ticker, className="ticker-badge"),
-                                html.Span(name, className="ticker-name"),
-                            ],
-                            className="flex-row-center", style={"flexWrap": "wrap", "gap": "4px"}
-                        ),
-                    ]),
-                    html.Div([
-                        html.Div(id="etf-market-status", className="status-text", style={"marginBottom": "8px"}),
-                        html.Button("Refresh now", id="refresh-btn", n_clicks=0, className="btn-sm btn-right"),
-                    ]),
+            create_header(
+                title=f"{ticker} — {name}",
+                subtitle=f"Detailed view of your {ticker} position",
+                links_before=[
+                    {"label": "Overview", "href": "/"},
+                    {"label": "Analytics", "href": "/analytics"},
+                    {"label": "Intelligence", "href": "/intelligence"}
                 ],
-                className="page-header-row",
+                show_pdf=False,
+                market_status=html.Div(id="market-status")
             ),
 
             # ── B. Price chart ────────────────────────────────────────────────

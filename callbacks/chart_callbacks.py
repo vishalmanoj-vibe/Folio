@@ -129,7 +129,7 @@ def register_callbacks(app) -> None:
     @app.callback(
         Output("price-chart",    "figure"),
         Input("portfolio-store", "data"),
-        Input("period-picker",   "value"),
+        Input("analytics-period-picker",   "value"),
         Input("theme-store",     "data"),
     )
     def price_chart(data, period, theme):
@@ -146,7 +146,7 @@ def register_callbacks(app) -> None:
     @app.callback(
         Output("allocation-chart", "figure"),
         Input("portfolio-store",   "data"),
-        Input("period-picker",     "value"),
+        Input("analytics-period-picker",     "value"),
         Input("theme-store",       "data"),
     )
     def allocation_chart(data, period, theme):
@@ -162,8 +162,8 @@ def register_callbacks(app) -> None:
     @app.callback(
         Output("pnl-bar-chart",  "figure"),
         Input("portfolio-store", "data"),
-        Input("pnl-mode",        "value"),
-        Input("period-picker",   "value"),
+        Input("analytics-pnl-mode",        "value"),
+        Input("analytics-period-picker",   "value"),
         Input("theme-store",     "data"),
     )
     def pnl_bar(data, mode, period, theme):
@@ -179,37 +179,39 @@ def register_callbacks(app) -> None:
     @app.callback(
         Output("day-pnl-chart",  "figure"),
         Input("portfolio-store", "data"),
-        Input("period-picker",   "value"),
+        Input("analytics-pnl-mode",        "value"),
+        Input("analytics-period-picker",   "value"),
         Input("theme-store",     "data"),
     )
-    def day_pnl_chart(data, period, theme):
+    def day_pnl_chart(data, mode, period, theme):
         t_ = get_theme(theme or "dark")
         if not data or "holdings" not in data:
             fig = go.Figure()
             fig.update_layout(xaxis=dict(showgrid=False), yaxis=dict(gridcolor=t_["BORDER"]), **t_["PLOTLY_BASE"])
             return fig
-        return build_day_pnl_figure(data["holdings"], t_)
+        return build_day_pnl_figure(data["holdings"], mode, t_)
 
     # ── Annual dividend income ────────────────────────────────────────────────
     @app.callback(
         Output("dividend-chart", "figure"),
         Input("portfolio-store", "data"),
-        Input("period-picker",   "value"),
+        Input("analytics-pnl-mode",        "value"),
+        Input("analytics-period-picker",   "value"),
         Input("theme-store",     "data"),
     )
-    def dividend_chart(data, period, theme):
+    def dividend_chart(data, mode, period, theme):
         t_ = get_theme(theme or "dark")
         if not data or "holdings" not in data:
             fig = go.Figure()
             fig.update_layout(xaxis=dict(showgrid=False), yaxis=dict(gridcolor=t_["BORDER"]), **t_["PLOTLY_BASE"])
             return fig
-        return build_dividend_figure(data["holdings"], t_)
+        return build_dividend_figure(data["holdings"], mode, t_)
 
     # ── Correlation heatmap ───────────────────────────────────────────────────
     @app.callback(
         Output("corr-chart",     "figure"),
         Input("portfolio-store", "data"),
-        Input("period-picker",   "value"),
+        Input("analytics-period-picker",   "value"),
         Input("theme-store",     "data"),
     )
     def corr_chart(data, period, theme):

@@ -38,13 +38,6 @@ _TD = {
 def register_callbacks(app) -> None:
     from pages.etf_detail import _period_buttons
 
-    # ── Market badge ──────────────────────────────────────────────────────────
-    @app.callback(
-        Output("etf-market-status", "children"),
-        Input("live-interval",      "n_intervals"),
-    )
-    def etf_market_badge(_):
-        return market_badge()
 
     # ── Period store + button highlight ──────────────────────────────────────
     @app.callback(

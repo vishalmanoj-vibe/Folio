@@ -2,11 +2,6 @@
 components/portfolio_layout.py
 ==============================
 Portfolio page layout.
-
-Changes from previous version
-------------------------------
-- Strip redundant CSS from INDEX_STRING (centralized in assets/).
-- Migrate inline styles to CSS classes for modularity.
 """
 
 from datetime import datetime
@@ -33,9 +28,12 @@ def create_layout(initial_history: list[dict] | None = None) -> html.Div:
         [
             # ── Header ────────────────────────────────────────────────────────
             create_header(
-                title="Portfolio — Live P&L",
-                subtitle="Auto-refreshes every 60 s · Yahoo Finance · ASX ETFs",
-                nav_links=[{"label": "Intelligence →", "href": "/intelligence"}],
+                title="Portfolio Overview",
+                subtitle="Live P&L · Yahoo Finance · ASX ETFs",
+                links_after=[
+                    {"label": "Analytics", "href": "/analytics"},
+                    {"label": "Intelligence", "href": "/intelligence"}
+                ],
                 show_pdf=True,
                 market_status=html.Div(id="market-status")
             ),
@@ -48,6 +46,9 @@ def create_layout(initial_history: list[dict] | None = None) -> html.Div:
 
             # ── Alerts banner ─────────────────────────────────────────────────
             html.Div(id="alerts-banner"),
+
+            # ── Live positions table ──────────────────────────────────────────
+            section(chart_title("Live positions"), html.Div(id="live-table")),
 
             # ── Transaction panel ─────────────────────────────────────────────
             html.Div(
@@ -120,9 +121,6 @@ def create_layout(initial_history: list[dict] | None = None) -> html.Div:
                 className="txn-panel-container",
             ),
 
-            # ── Live positions table ──────────────────────────────────────────
-            section(chart_title("Live positions"), html.Div(id="live-table")),
-
             # ── P&L history chart ─────────────────────────────────────────────
             section(
                 html.Div([
@@ -167,58 +165,6 @@ def create_layout(initial_history: list[dict] | None = None) -> html.Div:
                     ),
                     dcc.Graph(id="pnl-history-chart", config={"displayModeBar": False}),
                 ]),
-            ),
-
-            # ── Charts grid ───────────────────────────────────────────────────
-            html.Div(
-                [
-                    html.Div(
-                        [
-                            html.Div(
-                                [chart_title("Price history — normalised to 100", "price-chart"),
-                                 dcc.Graph(id="price-chart", config={"displayModeBar": False})],
-                                 className="grid-item-2",
-                            ),
-                            html.Div(
-                                [chart_title("Portfolio allocation", "allocation"),
-                                 dcc.Graph(id="allocation-chart", config={"displayModeBar": False})],
-                                 className="grid-item-1",
-                            ),
-                        ],
-                        className="charts-grid-row",
-                    ),
-                    html.Div(
-                        [
-                            html.Div(
-                                [chart_title("Unrealised P&L — all time", "pnl-bar"),
-                                 dcc.Graph(id="pnl-bar-chart", config={"displayModeBar": False})],
-                                 className="grid-item-1-half",
-                            ),
-                            html.Div(
-                                [chart_title("Today's P&L", "day-pnl"),
-                                 dcc.Graph(id="day-pnl-chart", config={"displayModeBar": False})],
-                                 className="grid-item-1-half",
-                            ),
-                        ],
-                        className="charts-grid-row",
-                    ),
-                    html.Div(
-                        [
-                            html.Div(
-                                [chart_title("Annual dividend income", "dividend"),
-                                 dcc.Graph(id="dividend-chart", config={"displayModeBar": False})],
-                                 className="grid-item-1-half",
-                            ),
-                            html.Div(
-                                [chart_title("Return correlation matrix", "correlation"),
-                                 dcc.Graph(id="corr-chart", config={"displayModeBar": False})],
-                                 className="grid-item-1-half",
-                            ),
-                        ],
-                        className="charts-grid-row",
-                    ),
-                ],
-                className="charts-grid-container",
             ),
         ],
     )

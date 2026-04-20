@@ -23,8 +23,13 @@ def layout() -> html.Div:
             # ── Nav header ────────────────────────────────────────────────────
             create_header(
                 title="Portfolio Intelligence",
-                subtitle="Risk · Allocation · Smart alerts",
-                back_link={"label": "← Portfolio", "href": "/"}
+                subtitle="Deep insights into your ETF holdings",
+                links_before=[
+                    {"label": "Overview", "href": "/"},
+                    {"label": "Analytics", "href": "/analytics"}
+                ],
+                show_pdf=False,
+                market_status=html.Div(id="market-status")
             ),
 
             # ── Data source note ──────────────────────────────────────────────

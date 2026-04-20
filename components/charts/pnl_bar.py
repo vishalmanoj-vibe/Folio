@@ -39,7 +39,9 @@ def build_pnl_bar_figure(holdings: list[dict], mode: str, theme_tokens: dict) ->
         y=[x[key] for x in h],
         marker_color=[GREEN if x[key] >= 0 else RED for x in h],
         text=[
-            f"{'+' if x[key]>=0 else ''}{'%' if mode=='pct' else '$'}{abs(x[key]):,.2f}"
+            f"{'+' if x[key]>=0 else ''}{x[key]:,.2f}%"
+            if mode == "pct" else
+            f"{'+' if x[key]>=0 else ''}${abs(x[key]):,.2f}"
             for x in h
         ],
         textposition="outside", textfont=dict(size=11),

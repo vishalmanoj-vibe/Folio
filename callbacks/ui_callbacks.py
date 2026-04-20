@@ -19,17 +19,17 @@ def register_callbacks(app) -> None:
     app.clientside_callback(
         """
         function(n, current) {
-            // If this is initial call (n is null/undefined), use current theme
-            // If button was clicked (n > 0), toggle the theme
             const shouldToggle = n > 0;
             const theme = shouldToggle ? (current === 'dark' ? 'light' : 'dark') : current;
             
             document.body.setAttribute('data-theme', theme);
             document.documentElement.style.backgroundColor = theme === 'dark' ? '#111110' : '#ffffff';
-            return theme;
+            
+            // Return theme for store and icon text
+            return [theme, theme === 'dark' ? '☾' : '☀'];
         }
         """,
-        Output("theme-store",    "data"),
+        [Output("theme-store", "data"), Output("settings-icon-text", "children")],
         Input("theme-toggle",    "n_clicks"),
         State("theme-store",     "data"),
     )
