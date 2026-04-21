@@ -334,6 +334,11 @@ def fetch_live(holdings: list[dict], hist_period: str = "max") -> dict:
     for h in holdings:
         ticker    = h["ticker"]
         ticker_yf = h["ticker_yf"]
+        
+        # Ensure name is resolved (especially for newly added tickers)
+        if "name" not in h or h["name"] == ticker:
+            h["name"] = get_etf_name(ticker)
+
         try:
             # Chart history for P&L history chart
             if hist_period == "1d":

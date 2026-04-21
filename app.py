@@ -132,12 +132,33 @@ def _perform_refresh(period):
 )
 def refresh_periodic(n_intervals, n_clicks, p1, p2):
     try:
-        # Use whichever picker is active/available
         period = p1 or p2 or "max"
         return _perform_refresh(period)
     except Exception as e:
         logger.error(f"Periodic refresh failed: {e}")
         return dash.no_update, dash.no_update
+
+# ── Immediate Refresh on Transaction Change ──────────────
+@app.callback(
+    Output("portfolio-store", "data", allow_duplicate=True),
+    Input("txn-store", "data"),
+    State("period-picker", "value"),
+    State("analytics-period-picker", "value"),
+    prevent_initial_call=True,
+)
+def refresh_on_txn(txn_data, p1, p2):
+    """
+    Triggered when a transaction is added via the UI.
+    Forces a portfolio-store refresh so charts/stats update immediately.
+    """
+    try:
+        logger.info("Transaction update detected; triggering portfolio refresh.")
+        period = p1 or p2 or "max"
+        _, data = _perform_refresh(period)
+        return data
+    except Exception as e:
+        logger.error(f"Transaction-triggered refresh failed: {e}")
+        return dash.no_update
 
 # ── Overview Picker Refresh ─────────────────
 @app.callback(

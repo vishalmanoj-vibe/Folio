@@ -120,7 +120,8 @@ def create_layout(initial_history: list[dict] | None = None) -> html.Div:
                                                 placeholder="e.g. VHY",
                                                 className="txn-input-text",
                                             ),
-                                        ]),
+                                            html.Div(id="txn-ticker-hint", className="txn-ticker-hint"),
+                                        ], className="txn-input-container"),
                                         html.Div([
                                             html.P("Shares", className="txn-label"),
                                             dmc.NumberInput(

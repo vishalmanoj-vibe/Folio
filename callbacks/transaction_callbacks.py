@@ -16,16 +16,47 @@ import logging
 logger = logging.getLogger(__name__)
 
 
+from services.market.data_fetcher import get_etf_name, get_ticker_cached
+
 def register_callbacks(app):
     """
     Register transaction-related callbacks with the Dash application.
-
-    Handles adding new transactions, updating the transaction log table,
-    and auto-clearing transaction status messages.
-
-    Args:
-        app: The Dash application instance.
     """
+
+    # ── Ticker Discovery (Name & Price) ─────────────────
+    @app.callback(
+        Output("txn-ticker-hint", "children"),
+        Output("txn-price", "value"),
+        Input("txn-ticker", "value"),
+        prevent_initial_call=True,
+    )
+    def discover_ticker(ticker):
+        if not ticker or len(ticker.strip()) == 0:
+            return "", dash.no_update
+        
+        ticker = ticker.strip().upper()
+        if len(ticker) < 2:
+            return "", dash.no_update
+        
+        try:
+            name = get_etf_name(ticker)
+            # Try to get live price for pre-fill
+            ticker_yf = f"{ticker.upper()}.AX" if "." not in ticker else ticker.upper()
+            tk = get_ticker_cached(ticker_yf)
+            
+            # Use fast_info if possible, else regular info
+            try:
+                price = tk.fast_info.last_price
+                if price == 0 or math.isnan(price):
+                    price = tk.info.get("regularMarketPrice") or tk.info.get("previousClose")
+            except:
+                price = tk.info.get("regularMarketPrice") or tk.info.get("previousClose")
+                
+            return name, round(price, 2) if price else dash.no_update
+        except Exception as e:
+            logger.debug(f"Discovery failed for {ticker}: {e}")
+            return "", dash.no_update
+
 
     # Add new transaction
     @app.callback(
@@ -37,7 +68,7 @@ def register_callbacks(app):
         State("txn-ticker", "value"),
         State("txn-shares", "value"),
         State("txn-price", "value"),
-        State("txn-date", "value"),  # plain dcc.Input uses "value"
+        State("txn-date", "value"),
         State("txn-store", "data"),
         prevent_initial_call=True,
     )
@@ -71,6 +102,7 @@ def register_callbacks(app):
         try:
             save_csv(updated_history)
             success_msg = f"✅ Added {new_txn['type'].upper()} {new_txn['shares']:.2f} {new_txn['ticker']}"
+            # Signal refresh is handled by app.py listening to txn-store change
             return updated_history, success_msg, {"color": "#1D9E75"}
         except Exception as e:
             logger.error(f"Save failed: {e}")

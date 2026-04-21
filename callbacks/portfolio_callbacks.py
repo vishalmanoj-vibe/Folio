@@ -26,16 +26,18 @@ def register_callbacks(app) -> None:
     @app.callback(
         Output("market-status", "children"),
         Input("live-interval",  "n_intervals"),
+        Input("url",            "pathname"),  # Ensure refresh on page change
     )
-    def update_market_status(_):
+    def update_market_status(_, __):
         return market_badge()
 
     # ── Last updated timestamp ────────────────────────────────────────────────
     @app.callback(
         Output("last-updated",   "children"),
         Input("portfolio-store", "data"),
+        Input("url",             "pathname"),  # Ensure refresh on page change
     )
-    def update_last_refreshed(portfolio_data):
+    def update_last_refreshed(portfolio_data, _):
         if not portfolio_data or "fetched_at" not in portfolio_data:
             return "Last refreshed: just now"
         return f"Last refreshed: {portfolio_data['fetched_at']}"

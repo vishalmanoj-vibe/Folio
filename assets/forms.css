@@ -158,3 +158,21 @@ button:active {
 .txn-dropdown {
   width: 100px;
 }
+
+.txn-input-container {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+}
+
+.txn-ticker-hint {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  font-size: 11px;
+  color: var(--t-sec);
+  white-space: nowrap;
+  margin-top: 4px;
+  z-index: 10;
+  pointer-events: none;
+}

@@ -71,7 +71,7 @@
 .txn-title { font-size: 13px; font-weight: 500; margin: 0 0 4px; color: var(--t-pri); }
 .txn-path { font-size: 11px; color: var(--t-sec); margin: 0 0 12px; font-family: monospace; }
 .txn-label { font-size: 11px; color: var(--t-sec); margin: 0 0 4px; }
-.txn-inputs-row { display: flex; gap: 12px; flex-wrap: wrap; align-items: flex-end; }
+.txn-inputs-row { display: flex; gap: 12px; flex-wrap: wrap; align-items: flex-end; margin-bottom: 24px; }
 .txn-status-msg { font-size: 12px; margin-top: 8px; min-height: 18px; color: var(--green); }
 .txn-history-summary { font-size: 12px; color: var(--t-sec); cursor: pointer; margin-top: 8px; }
 .txn-history-log { margin-top: 10px; overflow-x: auto; }
