@@ -26,7 +26,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 import dash
-from dash import html, dcc, Input, Output
+from dash import html, dcc, Input, Output, State
 import webbrowser
 import threading
 import os
@@ -63,7 +63,7 @@ INITIAL_PORTFOLIO_DATA: dict = {}
 
 if INITIAL_HOLDINGS:
     try:
-        INITIAL_PORTFOLIO_DATA = fetch_live(INITIAL_HOLDINGS, "1Y")
+        INITIAL_PORTFOLIO_DATA = fetch_live(INITIAL_HOLDINGS, "max")
         print("✅ Initial portfolio data loaded")
     except Exception as e:
         logger.warning(f"Initial market fetch failed: {e}")
@@ -113,23 +113,62 @@ app.layout = dmc.MantineProvider(
     )
 )
 
-# ── Refresh callback ─────────────────
+# ── Refresh logic helpers ─────────────────
+def _perform_refresh(period):
+    history  = load_csv()
+    holdings = build_holdings(history)
+    portfolio_data = fetch_live(holdings, period) if holdings else {"holdings": [], "histories": {}}
+    return history, portfolio_data
+
+# ── Primary Refresh (Interval / Button) ─────────────────
 @app.callback(
     Output("txn-store",       "data"),
     Output("portfolio-store", "data"),
     Input("live-interval",    "n_intervals"),
     Input("refresh-btn",      "n_clicks"),
+    State("period-picker",    "value"),
+    State("analytics-period-picker", "value"),
     prevent_initial_call=True,
 )
-def refresh_portfolio_data(n_intervals, n_clicks):
+def refresh_periodic(n_intervals, n_clicks, p1, p2):
     try:
-        history  = load_csv()
-        holdings = build_holdings(history)
-        portfolio_data = fetch_live(holdings, "1Y") if holdings else {"holdings": [], "histories": {}}
-        return history, portfolio_data
+        # Use whichever picker is active/available
+        period = p1 or p2 or "max"
+        return _perform_refresh(period)
     except Exception as e:
-        logger.error(f"Portfolio refresh failed: {e}")
-        return [], {"holdings": [], "histories": {}}
+        logger.error(f"Periodic refresh failed: {e}")
+        return dash.no_update, dash.no_update
+
+# ── Overview Picker Refresh ─────────────────
+@app.callback(
+    Output("portfolio-store", "data", allow_duplicate=True),
+    Input("period-picker",    "value"),
+    prevent_initial_call=True,
+)
+def refresh_on_p1(p1):
+    try:
+        if p1 is None: return dash.no_update
+        _, data = _perform_refresh(p1)
+        return data
+    except Exception as e:
+        logger.error(f"Overview period refresh failed: {e}")
+        return dash.no_update
+
+# ── Analytics Picker Refresh ─────────────────
+@app.callback(
+    Output("portfolio-store", "data", allow_duplicate=True),
+    Input("analytics-period-picker", "value"),
+    prevent_initial_call=True,
+)
+def refresh_on_p2(p2):
+    try:
+        if p2 is None: return dash.no_update
+        _, data = _perform_refresh(p2)
+        return data
+    except Exception as e:
+        logger.error(f"Analytics period refresh failed: {e}")
+        return dash.no_update
+
 
 
 # ── Register Callbacks ────────────────────────────────────────────────────────

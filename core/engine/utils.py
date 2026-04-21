@@ -11,14 +11,24 @@ def get_period_cutoff(period: str) -> pd.Timestamp | None:
     """
     Calculate the start date based on a given time period string.
     """
-    now = pd.Timestamp.now()
+    # We align cutoffs with the UTC-normalized indices from fetch_live.
+    # For ASX, 'Today' start (10:00 AM Sydney) is 00:00 UTC.
+    # We use a robust way to get this regardless of server local time.
+    try:
+        now_syd = pd.Timestamp.now(tz="Australia/Sydney")
+    except:
+        # Fallback if tzdata is missing (though rare on Mac/Linux)
+        now_syd = pd.Timestamp.now()
+
+    now_utc = now_syd.tz_convert("UTC").tz_localize(None)
+    
     mapping = {
-        "1d":  now.replace(hour=10, minute=0, second=0, microsecond=0),
-        "1mo": now - timedelta(days=30),
-        "3mo": now - timedelta(days=91),
-        "6mo": now - timedelta(days=182),
-        "1y":  now - timedelta(days=365),
-        "2y":  now - timedelta(days=730),
+        "1d":  now_utc.floor("D"),
+        "1mo": now_utc - timedelta(days=30),
+        "3mo": now_utc - timedelta(days=91),
+        "6mo": now_utc - timedelta(days=182),
+        "1y":  now_utc - timedelta(days=365),
+        "2y":  now_utc - timedelta(days=730),
         "max": None,
     }
     return mapping.get(period, None)

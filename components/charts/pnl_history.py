@@ -11,6 +11,150 @@ from config.constants import GREEN, RED, COLORS
 from core.engine.utils import get_period_cutoff
 from components.charts.helpers import build_benchmark_traces, hex_to_rgba
 
+def _build_intraday_figure(
+    fig: "go.Figure",
+    holdings: list[dict],
+    mode: str,
+    theme_tokens: dict,
+) -> "go.Figure":
+    """
+    Build the 'Today' intraday P&L chart.
+
+    Data source : session_cache JSON file (direct read) — bypasses the dcc.Store
+                  entirely so stale max-period tranche data never causes an empty chart.
+    Zero line   : prev_close from the enriched holding (yesterday's close via yfinance).
+    Window      : ASX session 10:00–16:15 Sydney wall-clock.
+    X-axis ticks: every 30 minutes.
+    Updates     : every live-interval tick appends a new snapshot to the cache file.
+    """
+    import json as _json, os as _os
+    from datetime import datetime as _dt
+
+    BORDER  = theme_tokens["BORDER"]
+    T_SEC   = theme_tokens["T_SEC"]
+    GREEN_C = theme_tokens.get("GREEN", "#1D9E75")
+    RED_C   = theme_tokens.get("RED",   "#E24B4A")
+
+    today_str    = pd.Timestamp.now(tz="Australia/Sydney").strftime("%Y-%m-%d")
+    market_open  = pd.Timestamp(f"{today_str} 10:00:00")
+    market_close = pd.Timestamp(f"{today_str} 16:15:00")
+
+    # ── Load session cache directly from disk ─────────────────────────────────
+    cache_path = _os.path.join("data", "cache", f"intraday_{today_str}.json")
+    session_data: dict = {}
+    try:
+        if _os.path.exists(cache_path):
+            with open(cache_path) as _f:
+                session_data = _json.load(_f)
+    except Exception:
+        pass
+
+    if not session_data:
+        fig.add_annotation(
+            text="Waiting for market session data (ASX opens 10:00 AEDT) …",
+            xref="paper", yref="paper",
+            x=0.5, y=0.5, showarrow=False,
+            font=dict(size=13, color=T_SEC),
+        )
+        return fig
+
+    # Build a lookup: ticker -> prev_close from the enriched holdings in the store.
+    # prev_close is always up-to-date regardless of which period was used for the store.
+    prev_close_map  = {h["ticker"]: h.get("prev_close", 0.0) for h in holdings}
+    total_shares_map = {h["ticker"]: h.get("total_shares", 0.0) for h in holdings}
+
+    # ── Compute day P&L series per holding ────────────────────────────────────
+    all_series: list[pd.Series] = []
+
+    for ticker, points in session_data.items():
+        prev_close   = prev_close_map.get(ticker, 0.0)
+        total_shares = total_shares_map.get(ticker, 0.0)
+        if prev_close <= 0 or total_shares <= 0 or not points:
+            continue
+
+        df = pd.DataFrame(points)
+        df["Date"] = pd.to_datetime(df["Date"])
+        df = df.sort_values("Date").drop_duplicates("Date")
+        df = df[(df["Date"] >= market_open) & (df["Date"] <= market_close)]
+
+        if df.empty:
+            continue
+
+        price_s = df.set_index("Date")["Close"]
+
+        if mode == "pct":
+            day_s = ((price_s - prev_close) / prev_close * 100).round(4)
+        else:
+            day_s = ((price_s - prev_close) * total_shares).round(2)
+
+        all_series.append(day_s)
+
+    if not all_series:
+        fig.add_annotation(
+            text="Waiting for market session data (ASX opens 10:00 AEDT) …",
+            xref="paper", yref="paper",
+            x=0.5, y=0.5, showarrow=False,
+            font=dict(size=13, color=T_SEC),
+        )
+        return fig
+
+    # ── Portfolio aggregate ───────────────────────────────────────────────────
+    combined = pd.concat(all_series, axis=1, sort=True).sort_index().ffill().fillna(0)
+
+    if mode == "pct":
+        # Weight by cost basis so larger positions contribute more
+        weights = []
+        for h in holdings:
+            if h["ticker"] in session_data and h.get("prev_close", 0) > 0:
+                weights.append(h.get("total_cost", h.get("prev_close", 1) * h.get("total_shares", 1)))
+        if weights and len(weights) == combined.shape[1]:
+            total_w    = sum(weights)
+            weight_arr = [w / total_w for w in weights]
+            portfolio_s = (combined * weight_arr).sum(axis=1).round(4)
+        else:
+            portfolio_s = combined.mean(axis=1).round(4)
+    else:
+        portfolio_s = combined.sum(axis=1).round(2)
+
+    last_val   = float(portfolio_s.iloc[-1]) if len(portfolio_s) else 0.0
+    line_color = GREEN_C if last_val >= 0 else RED_C
+    fill_color = "rgba(29,158,117,0.12)" if last_val >= 0 else "rgba(226,75,74,0.10)"
+
+    fig.add_trace(go.Scatter(
+        x=portfolio_s.index,
+        y=portfolio_s.values,
+        name="Portfolio Today",
+        mode="lines+markers",
+        fill="tozeroy",
+        fillcolor=fill_color,
+        line=dict(color=line_color, width=2.5),
+        marker=dict(size=5, color=line_color),
+        hovertemplate=(
+            "<b>%{x|%H:%M}</b><br>"
+            + ("%{y:+.2f}%<extra>Day change</extra>" if mode == "pct"
+               else "$%{y:+,.2f}<extra>Day P&L</extra>")
+        ),
+    ))
+
+    fig.add_hline(y=0, line_color=BORDER, line_width=0.8)
+
+    # Corner annotation with latest value
+    sign  = "+" if last_val >= 0 else ""
+    label = f"{sign}{last_val:.2f}%" if mode == "pct" else f"{sign}${last_val:,.2f}"
+    fig.add_annotation(
+        text=f"<b>{label}</b>",
+        xref="paper", yref="paper",
+        x=0.01, y=0.97,
+        xanchor="left", yanchor="top",
+        showarrow=False,
+        font=dict(size=14, color=line_color),
+        bgcolor=theme_tokens.get("BG", "#1A1A2E"),
+        borderpad=4,
+    )
+
+    return fig
+
+
 def build_pnl_history_figure(
     holdings: list[dict],
     mode: str,
@@ -65,10 +209,15 @@ def build_pnl_history_figure(
     if period == "1d":
         layout["xaxis"].update(dict(
             tickformat="%H:%M",
-            nticks=6,
+            dtick=30 * 60 * 1000,  # 30-minute ticks in milliseconds
+            tickangle=0,
+        ))
+        # Fix x-axis to ASX session window 10:00–16:15 Sydney wall-clock
+        today_str = pd.Timestamp.now(tz="Australia/Sydney").strftime("%Y-%m-%d")
+        layout["xaxis"].update(dict(
+            range=[f"{today_str} 10:00:00", f"{today_str} 16:15:00"],
         ))
     else:
-        # For historical periods, let Plotly auto-format dates
         layout["xaxis"].update(dict(
             tickformat=None,
         ))
@@ -78,16 +227,23 @@ def build_pnl_history_figure(
     color_map = {h["ticker"]: COLORS[i % len(COLORS)] for i, h in enumerate(holdings)}
     cutoff    = get_period_cutoff(period)
 
+    # ── Intraday 'Today' chart — dedicated rendering path ────────────────────
+    if period == "1d":
+        return _build_intraday_figure(fig, holdings, mode, theme_tokens)
+
     def build_series(tr):
         idx        = pd.to_datetime(tr["dates"])
         pnl_series = pd.Series(tr["pnl"], index=idx)
         buy_dt     = pd.to_datetime(tr["buy_date"])
-        if buy_dt not in pnl_series.index:
+        # Only inject a zero-value anchor at buy_dt for historical (daily) periods.
+        # For intraday ("1d") the buy date is always in the past, so injecting it
+        # would add an out-of-window point that distorts the series after sorting.
+        if period != "1d" and buy_dt not in pnl_series.index:
             pnl_series.loc[buy_dt] = 0.0
         pnl_series = pnl_series.sort_index()
         cost_series = pd.Series(tr["shares"] * tr["buy_price"], index=pnl_series.index)
         if cutoff is not None:
-            effective   = max(cutoff, buy_dt)
+            effective   = max(cutoff, buy_dt) if period != "1d" else cutoff
             pnl_series  = pnl_series[pnl_series.index   >= effective]
             cost_series = cost_series[cost_series.index >= effective]
         return pnl_series, cost_series, buy_dt
@@ -123,7 +279,9 @@ def build_pnl_history_figure(
         else:
             y = cpnl.round(2)
         fig.update_xaxes(range=[cpnl.index.min(), cpnl.index.max()])
-        lv       = float(y.iloc[-1]) if len(y) else 0
+            
+        y = y.round(2)
+        lv = float(y.iloc[-1]) if len(y) else 0
 
         fig.add_trace(go.Scatter(
             x=cpnl.index,
@@ -140,8 +298,8 @@ def build_pnl_history_figure(
             ),
         ))
 
-        # ── Benchmark overlays — % mode only ─────────────────────────────
-        if mode == "pct":
+        # ── Benchmark overlays — % mode only, not for intraday ──────────
+        if mode == "pct" and period != "1d":
             for trace in build_benchmark_traces(period, theme_tokens=theme_tokens, portfolio_start=cpnl.index.min()):
                 fig.add_trace(trace)
             fig.add_annotation(
@@ -262,7 +420,7 @@ def build_pnl_history_figure(
                 ),
             ))
 
-            if mode == "pct":
+            if mode == "pct" and period != "1d":
                 for trace in build_benchmark_traces(period, theme_tokens=theme_tokens, portfolio_start=cpnl.index.min()):
                     fig.add_trace(trace)
                 fig.add_annotation(

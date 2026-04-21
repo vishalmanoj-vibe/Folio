@@ -82,7 +82,7 @@ def _download_with_retry(
         try:
             kwargs = dict(
                 period=period, group_by="ticker",
-                auto_adjust=True, progress=False, actions=actions
+                auto_adjust=False, progress=False, actions=actions
             )
             if interval:
                 kwargs["interval"] = interval
@@ -105,12 +105,23 @@ def _extract_col(bulk_df: pd.DataFrame, ticker_yf: str, col_name: str) -> pd.Ser
         return bulk_df[col_name].dropna() if col_name in cols else pd.Series(dtype=float)
 
     # Try multiple combinations of MultiIndex keys
-    candidates = [
+    candidates = []
+    if col_name == "Close":
+        # Prefer Adj Close if available (equivalent to previous auto_adjust=True behavior)
+        candidates.extend([
+            (ticker_yf, "Adj Close"),
+            ("Adj Close", ticker_yf),
+            (ticker_yf.split(".")[0], "Adj Close"),
+            ("Adj Close", ticker_yf.split(".")[0])
+        ])
+    
+    candidates.extend([
         (ticker_yf, col_name),
         (col_name, ticker_yf),
         (ticker_yf.split(".")[0], col_name),
         (col_name, ticker_yf.split(".")[0])
-    ]
+    ])
+
     for cand in candidates:
         if cand in cols:
             return bulk_df[cand].dropna()
@@ -254,7 +265,7 @@ def fetch_benchmarks(period: str = "max") -> dict[str, list[dict]]:
     return result
 
 
-def fetch_live(holdings: list[dict], hist_period: str = "3mo") -> dict:
+def fetch_live(holdings: list[dict], hist_period: str = "max") -> dict:
     """
     Fetch live prices, history, dividends and per-tranche P&L for all holdings.
 
@@ -271,6 +282,9 @@ def fetch_live(holdings: list[dict], hist_period: str = "3mo") -> dict:
     tickers_yf  = [h["ticker_yf"] for h in holdings]
     tickers_str = " ".join(sorted(tickers_yf))
 
+    # Normalize period string (yfinance is case-sensitive, prefers lowercase)
+    hist_period = hist_period.lower()
+    
     # Outer cache key includes tickers so adding/removing a holding busts it
     cache_key = f"market_data_{hist_period}_{tickers_str.replace(' ', '_')}"
     cached = get_cache(cache_key)
@@ -296,11 +310,7 @@ def fetch_live(holdings: list[dict], hist_period: str = "3mo") -> dict:
             set_cache(full_cache_key, multi_full, ttl=3600)
 
     # ── C. Chart history: the user-selected period ────────────────────────────
-    if hist_period == "1d":
-        # For 'Today', we fetch 2d to ensure we capture the start of today's session
-        # even if period="1d" is finicky, then slice for today.
-        multi_period = _download_with_retry(tickers_yf, period="2d", interval="5m")
-    else:
+    if hist_period != "1d":
         multi_period = _download_with_retry(tickers_yf, period=hist_period)
 
     enriched:  list[dict] = []
@@ -311,20 +321,20 @@ def fetch_live(holdings: list[dict], hist_period: str = "3mo") -> dict:
         ticker_yf = h["ticker_yf"]
         try:
             # Chart history for P&L history chart
-            close_p = _extract_col(multi_period, ticker_yf, "Close")
-            
-            # Slice for today if period is 1d
-            if hist_period == "1d" and not close_p.empty:
-                today = datetime.now().date()
-                close_p = close_p[close_p.index.date == today]
-
-            # ── Session Cache Integration ─────────────────────────────────────
             if hist_period == "1d":
-                session_s = get_session_history(ticker)
-                if not session_s.empty:
-                    # Combine yfinance + our manual session log
-                    close_p = pd.concat([close_p, session_s]).sort_index()
-                    close_p = close_p[~close_p.index.duplicated(keep="last")]
+                # For the 'Today' chart we use exclusively the session cache —
+                # our own interval-recorded snapshots with tz-naive Sydney wall-clock
+                # timestamps. This avoids the tz-aware/tz-naive concat crash that
+                # occurs when mixing yfinance 5m data (tz-aware) with the session
+                # cache (tz-naive), which previously caused a silent fallback to
+                # daily history and an empty chart.
+                close_p = get_session_history(ticker)
+                # Ensure index is a proper DatetimeIndex (it may be object-typed
+                # after JSON round-trip through the cache file)
+                if not close_p.empty:
+                    close_p.index = pd.to_datetime(close_p.index)
+            else:
+                close_p = _extract_col(multi_period, ticker_yf, "Close")
 
             if not close_p.empty:
                 close_p.index = normalise_tz(pd.to_datetime(close_p.index))
@@ -374,7 +384,10 @@ def fetch_live(holdings: list[dict], hist_period: str = "3mo") -> dict:
             tranche_data = []
             if not close_p.empty:
                 tranche_data = compute_tranche_pnl(close_p, h.get("buy_tranches", []))
-            elif not close_f.empty:
+            elif not close_f.empty and hist_period != "1d":
+                # For 'Today' we only use intraday session data — never fall back
+                # to daily history, which would produce an empty chart after the
+                # 1d cutoff filter strips all historical bars.
                 tranche_data = compute_tranche_pnl(close_f, h.get("buy_tranches", []))
 
             enriched.append({
