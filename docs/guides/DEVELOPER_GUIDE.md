@@ -186,4 +186,13 @@ Forward-looking projections are handled by `prediction_service.py`.
 - **Confidence Intervals**: Displays an 80% uncertainty band to highlight potential market volatility.
 
 ### 3. Realized Dividend Tracking
-Unlike standard yield calculations, the app computes **Realized Dividends** by matching historical Ex-Dividend dates against the user's specific holding tranches. This ensures that dividends are only counted if the user actually held the shares on the relevant date.
+Unlike standard yield calculations, the app computes **Realized Dividends** by matching historical Ex-Dividend dates against the user's specific holding tranches. 
+- **Logic**: A dividend is "realized" only if the tranche purchase date is strictly before the Ex-Dividend date.
+- **Accuracy**: This provides a dollar-accurate representation of income actually earned, rather than a theoretical annual yield based on current price.
+
+### 4. Intraday Market Sessions (Today View)
+The "Today" P&L view utilizes a dedicated intraday tracking system to provide real-time updates without the limitations of standard daily-interval data.
+- **Data Source**: Every time the dashboard refreshes (default 60s), the current state is appended to a local JSON snapshot (`data/cache/intraday_YYYY-MM-DD.json`).
+- **Bypass Strategy**: The P&L History chart reads this file directly when in "1d" mode. This bypasses the main `portfolio-store` for chart rendering, preventing "Timezone Concat" errors that occur when mixing historical daily data (often UTC-naive) with live intraday data (Sydney wall-clock).
+- **Window**: The chart is strictly pinned to the ASX trading window (10:00 AM – 4:15 PM Sydney Time).
+- **Persistence**: Snapshotting ensures that intraday progress is preserved even if the application is restarted during the trading day.

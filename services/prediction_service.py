@@ -23,7 +23,12 @@ def _ensure_cache_dir():
         os.makedirs(CACHE_DIR, exist_ok=True)
 
 def _generate_cache_key(dates: list, values: list, horizon_days: int) -> str:
-    """Generate a unique key based on the data and horizon."""
+    """
+    Generates a unique MD5 hash for a given dataset and forecast horizon.
+    
+    This ensures that if the portfolio data changes (e.g., new transactions 
+    or market moves), the cache is invalidated and a fresh forecast is computed.
+    """
     if not dates:
         return ""
     # Use the last date and a hash of the values to ensure the key changes if data updates
@@ -32,13 +37,24 @@ def _generate_cache_key(dates: list, values: list, horizon_days: int) -> str:
 
 def get_forecast(dates: list, values: list, horizon_str: str) -> dict:
     """
-    Get forecast data for the given horizon.
-    Returns: {
-        "dates": [...],
-        "yhat": [...],
-        "yhat_lower": [...],
-        "yhat_upper": [...]
-    }
+    Generates a forward-looking return forecast using Facebook Prophet.
+
+    Model Parameters:
+    - **Interval Width**: 80% (provides a balanced uncertainty band).
+    - **Holidays**: Australian trading holidays are incorporated to improve seasonal accuracy.
+    - **Seasonality**: Weekly and Yearly seasonality enabled; Daily disabled for stock data.
+
+    Caching:
+    - Results are stored in `data/cache/predictions.json`.
+    - Cache is limited to the 10 most recent requests to prevent disk bloat.
+
+    Args:
+        dates: List of historical date strings (YYYY-MM-DD).
+        values: List of historical cumulative return values.
+        horizon_str: Forecast horizon (e.g., '90d', '1y', '5y').
+
+    Returns:
+        dict: Forecasted dates, yhat (median), yhat_lower, and yhat_upper series.
     """
     horizon_map = {
         "90d": 90,
@@ -83,26 +99,17 @@ def get_forecast(dates: list, values: list, horizon_str: str) -> dict:
         })
 
         # Initialize and fit model
-        # Using free parameters: AU holidays, yearly/weekly seasonality.
-        # Confidence interval is set to 80% (interval_width=0.80) to provide a 
-        # balanced view of potential outcomes without being overly pessimistic.
         model = Prophet(
             daily_seasonality=False,
             weekly_seasonality=True,
             yearly_seasonality=True,
             interval_width=0.80 
         )
-        # Adding AU holidays helps the model ignore non-trading day anomalies in historical data.
         model.add_country_holidays(country_name="AU")
         model.fit(df)
 
         # Create future dataframe
         future = model.make_future_dataframe(periods=days, freq="D")
-        
-        # Remove weekends from future (optional, but cleaner for stocks)
-        # Note: Financial markets are usually M-F
-        # future = future[future["ds"].dt.weekday < 5]
-        
         forecast = model.predict(future)
 
         # Only return the future portion
@@ -125,11 +132,7 @@ def get_forecast(dates: list, values: list, horizon_str: str) -> dict:
                 with open(PREDICTIONS_CACHE_FILE, "r") as f:
                     cache = json.load(f)
             
-            # Limit cache size to 10 entries to avoid bloat.
-            # This ensures the predictions.json file doesn't grow indefinitely 
-            # while still covering the most recent ticker combinations.
             if len(cache) > 10:
-                # Remove oldest entry
                 oldest_key = list(cache.keys())[0]
                 cache.pop(oldest_key)
                 

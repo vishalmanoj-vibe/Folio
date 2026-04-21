@@ -28,7 +28,20 @@ def stat_card(
     sub_color: str = "var(--t-sec)",
     tip: str = "",
 ) -> html.Div:
-    """Stat card with optional ℹ tooltip on the label."""
+    """
+    Creates a styled stat card component.
+
+    Args:
+        label: The main title of the card.
+        value: The primary metric value (e.g., "$1,234.56").
+        sub: Optional subtitle or secondary metric (e.g., "+2.5%").
+        color: CSS color for the primary value.
+        sub_color: CSS color for the secondary value.
+        tip: Optional tooltip text displayed on an info icon next to the label.
+
+    Returns:
+        A Dash html.Div containing the formatted stat card.
+    """
     label_children = [html.Span(label, className="stat-card-title")]
     if tip:
         label_children.append(
@@ -45,7 +58,16 @@ def stat_card(
 
 
 def chart_title(label: str, info_key: str = "") -> html.Div:
-    """Clean chart title with improved info icon"""
+    """
+    Creates a clean chart title with an optional help icon.
+
+    Args:
+        label: The display text for the title.
+        info_key: Either a direct tooltip string or a key into config.constants.CHART_INFO.
+
+    Returns:
+        A Dash html.Div containing the title and optional icon.
+    """
     if info_key and info_key in CHART_INFO:
         tip = CHART_INFO[info_key][1]
     else:
@@ -70,6 +92,15 @@ def section(title_node: html.Div, children) -> html.Div:
 
 
 def alert_card(alert: dict) -> html.Div:
+    """
+    Creates a themed alert banner for the intelligence dashboard.
+
+    Args:
+        alert: Dictionary containing 'level' (danger/warning/info), 'icon', 'title', and 'detail'.
+
+    Returns:
+        A Dash html.Div styled as an alert card.
+    """
     level = alert.get("level", "info")
     color = _LEVEL_COLOR.get(level, COLORS[0])
     bg    = _LEVEL_BG.get(level, "rgba(55,138,221,0.08)")
@@ -87,7 +118,15 @@ def alert_card(alert: dict) -> html.Div:
 
 
 def txn_table(history: list[dict]) -> html.Element:
-    """Polished transaction table - same style as original but better readability"""
+    """
+    Renders the transaction history table with deep-linking to ticker details.
+
+    Args:
+        history: List of transaction dictionaries from the CSV.
+
+    Returns:
+        A Dash html.Table component.
+    """
     if not history:
         return html.P("No transactions yet.", className="txn-empty")
 

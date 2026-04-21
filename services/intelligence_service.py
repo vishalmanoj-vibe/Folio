@@ -130,6 +130,22 @@ def _append_metadata_csv(ticker: str, meta_type: str, data: dict):
 # ─────────────────────────────────────────────────────────────────────────────
 
 def fetch_etf_sector_weights(ticker_yf: str) -> dict[str, float]:
+    """
+    Retrieves the sector weightings for a given ETF.
+
+    Tiered Fetching Strategy:
+    1.  **Memory Cache**: Check volatile `get_cache` for recently fetched data.
+    2.  **Local CSV**: Check `data/metadata.csv` for persistent local storage (prevents yfinance bloat).
+    3.  **yfinance (funds_data)**: Attempt to fetch structured `funds_data.sector_weightings`.
+    4.  **yfinance (info)**: Fallback to the single `sector` field in the general info dict.
+    5.  **Fallback**: Return "Unclassified" if all else fails.
+
+    Args:
+        ticker_yf: The Yahoo Finance ticker symbol (e.g., "VAS.AX").
+
+    Returns:
+        dict: A mapping of {Sector Name: Percentage Weight}.
+    """
     key = f"sector_{ticker_yf}"
     cached = get_cache(key)
     if cached is not None: return cached
@@ -173,6 +189,9 @@ def fetch_etf_sector_weights(ticker_yf: str) -> dict[str, float]:
         return {"Unclassified": 100.0}
 
 def fetch_etf_geo_weights(ticker_yf: str) -> dict[str, float]:
+    """
+    Retrieves the geographic weightings for a given ETF.
+    """
     key = f"geo_{ticker_yf}"
     cached = get_cache(key)
     if cached is not None: return cached
@@ -204,7 +223,6 @@ def fetch_etf_geo_weights(ticker_yf: str) -> dict[str, float]:
             return result
         
         # ── 1. Check for structured regional exposure (Best source) ──
-        # Note: regional_exposure is a dict of {region: weight} in newer yfinance versions
         try:
             re = fd.regional_exposure
             if re and isinstance(re, dict) and len(re) > 0:
@@ -224,7 +242,7 @@ def fetch_etf_geo_weights(ticker_yf: str) -> dict[str, float]:
         except:
             pass
 
-        # ── 3. Fallback to top_holdings parse (Existing logic) ──
+        # ── 3. Fallback to top_holdings parse ──
         df = fd.top_holdings
         if df is not None and not df.empty:
             region_weights: dict[str, float] = {}
@@ -237,7 +255,6 @@ def fetch_etf_geo_weights(ticker_yf: str) -> dict[str, float]:
                 accounted += pct
 
             if accounted < 15.0:
-                # Sparse data -> check tk.info for hints before giving up
                 info = tk.info
                 cat = info.get("category", "").lower()
                 if "australia" in cat:
@@ -263,7 +280,6 @@ def fetch_etf_geo_weights(ticker_yf: str) -> dict[str, float]:
                 total = sum(region_weights.values())
                 result = {k: round(v / total * 100, 1) for k, v in region_weights.items()} if total > 0 else {"Unclassified": 100.0}
         else:
-            # Absolute fallback
             result = {_symbol_to_region(ticker_yf): 100.0}
 
         result = dict(sorted(result.items(), key=lambda x: x[1], reverse=True))
@@ -275,7 +291,7 @@ def fetch_etf_geo_weights(ticker_yf: str) -> dict[str, float]:
         return {"Unclassified": 100.0}
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Risk & Performance logic (Omitted for brevity in this scratch, but kept in actual)
+# Risk & Performance logic
 # ─────────────────────────────────────────────────────────────────────────────
 
 def _histories_to_returns(histories: dict) -> pd.DataFrame:
@@ -300,7 +316,10 @@ def portfolio_returns(histories: dict, holdings: list[dict]) -> pd.Series:
     if not common: return pd.Series(dtype=float)
     w = pd.Series({t: weights[t] for t in common})
     w = w / w.sum()
-    return ret_df[common].mul(w, axis=1).sum(axis=1).dropna()
+    # Ensure we only calculate a portfolio return if ALL components have data.
+    # This prevents artificial volatility suppression and correctly truncates
+    # the backtest window to the youngest asset's inception.
+    return ret_df[common].mul(w, axis=1).sum(axis=1, min_count=len(common)).dropna()
 
 def annualised_volatility(returns: pd.Series) -> float:
     if returns.empty or len(returns) < 5: return float("nan")
@@ -354,24 +373,35 @@ def compute_risk_metrics(port_data: dict, period: str = "max", returns: pd.Serie
     return {"vol": vol, "sharpe": sharpe, "max_dd": max_dd, "current_dd": cur_dd, "ticker_vols": per_ticker_volatility(histories), "dd_dates": fmt_date_index(dd_s.index), "dd_values": dd_s.tolist(), "ret_dates": fmt_date_index(cum_ret.index), "ret_values": cum_ret.round(2).tolist(), "n_days": len(port_ret)}
 
 def _get_full_exposure(port_data: dict, fetch_fn) -> dict[str, float]:
+    """
+    Computes the blended exposure (sector or geo) for the entire portfolio.
+    """
     holdings = port_data.get("holdings", [])
     weights  = _portfolio_weights(holdings)
     blended: dict[str, float] = {}
+    
     for h in holdings:
         ticker_yf = h.get("ticker_yf", h["ticker"] + ".AX")
         port_w = weights.get(h["ticker"], 0)
         if port_w <= 0: continue
+        
         for category, pct in fetch_fn(ticker_yf).items():
             blended[category] = blended.get(category, 0) + port_w * pct
+            
     total = sum(blended.values())
     return {k: round(v / total * 100, 1) for k, v in blended.items()} if total > 0 else {}
 
+
 def _group_exposure(full_exp: dict[str, float]) -> dict[str, float]:
+    """
+    Groups small exposure categories into 'Other' to keep charts readable.
+    """
     sorted_blended = sorted(full_exp.items(), key=lambda x: x[1], reverse=True)
     if len(sorted_blended) > 15:
         top_14 = sorted_blended[:14]
         other_sum = sum(v for k, v in sorted_blended[14:])
         existing_other = next((i for i, (k, _) in enumerate(top_14) if k == "Other"), None)
+        
         if existing_other is not None:
             top_14[existing_other] = ("Other", round(top_14[existing_other][1] + other_sum, 1))
         else:
@@ -379,66 +409,165 @@ def _group_exposure(full_exp: dict[str, float]) -> dict[str, float]:
         return dict(top_14)
     return dict(sorted_blended)
 
+
 def sector_exposure(port_data: dict) -> dict[str, float]:
+    """Returns blended portfolio sector exposure."""
     return _group_exposure(_get_full_exposure(port_data, fetch_etf_sector_weights))
 
+
 def geo_exposure(port_data: dict) -> dict[str, float]:
+    """Returns blended portfolio geographic exposure."""
     return _group_exposure(_get_full_exposure(port_data, fetch_etf_geo_weights))
 
+
 def get_exposure_detail(port_data: dict, exposure_type: str, category_name: str) -> list[dict]:
+    """
+    Returns ticker-level contributions to a specific sector or geographic category.
+    Used for the sunburst chart drill-down modal.
+    """
     holdings = port_data.get("holdings", [])
     weights  = _portfolio_weights(holdings)
     fetch_fn = fetch_etf_sector_weights if exposure_type == "sector" else fetch_etf_geo_weights
+    
+    # Identify which categories are grouped under 'Other'
     full_exp = _get_full_exposure(port_data, fetch_fn)
     sorted_exp = sorted(full_exp.items(), key=lambda x: x[1], reverse=True)
     top_categories = {k for k, v in sorted_exp[:14]} if len(sorted_exp) > 15 else {k for k, v in sorted_exp}
+    
     detail = []
     for h in holdings:
         ticker = h["ticker"]
         ticker_yf = h.get("ticker_yf", ticker + ".AX")
         port_w = weights.get(ticker, 0)
         if port_w <= 0: continue
+        
         ticker_data = fetch_fn(ticker_yf)
         for cat, pct in ticker_data.items():
             contribution = port_w * pct
             if contribution <= 0: continue
-            if (category_name == "Other" and (cat not in top_categories or cat == "Other")) or cat == category_name:
-                detail.append({"ticker": ticker, "weight": contribution, "sub_category": cat})
+            
+            # Match logic: either direct category match, or if category_name is 'Other', 
+            # match anything not in the top 14.
+            is_other_match = (category_name == "Other" and cat not in top_categories)
+            if cat == category_name or is_other_match:
+                detail.append({
+                    "ticker": ticker,
+                    "weight": round(contribution, 2),
+                    "sub_category": cat
+                })
+                
     return sorted(detail, key=lambda x: x["weight"], reverse=True)
 
+
 def compute_smart_alerts(metrics: dict, port_data: dict) -> list[dict]:
+    """
+    Evaluates the portfolio against predefined risk THRESHOLDS to generate alerts.
+
+    Rules include:
+    - Single ETF concentration (>40%)
+    - Sector overweight (>40%)
+    - High tech exposure (>35%)
+    - High annualized volatility (>20%)
+    - Low Sharpe ratio (<0.5)
+    - Significant drawdown (<-15%)
+
+    Args:
+        metrics: Dictionary of computed risk metrics (Sharpe, Vol, etc.).
+        port_data: The enriched portfolio dataset.
+
+    Returns:
+        list: A list of alert dictionaries ready for alert_card rendering.
+    """
     alerts: list[dict] = []
     holdings = port_data.get("holdings", [])
     if not holdings: return alerts
-    weights, sec_exp, geo_exp_data = _portfolio_weights(holdings), sector_exposure(port_data), geo_exposure(port_data)
+    
+    weights      = _portfolio_weights(holdings)
+    sec_exp      = sector_exposure(port_data)
+    geo_exp_data = geo_exposure(port_data)
+    
+    # 1. Concentration Alerts
     for ticker, w in weights.items():
         pct = round(w * 100, 1)
         if pct >= THRESHOLDS["single_etf_weight"]:
-            alerts.append({"level": "warning", "icon": "⚖", "title": f"{ticker} is {pct}% of your portfolio", "detail": f"Concentrated risk."})
+            alerts.append({
+                "level": "warning", "icon": "⚖", 
+                "title": f"{ticker} is {pct}% of your portfolio", 
+                "detail": "Concentrated risk in a single asset."
+            })
+            
+    # 2. Sector Alerts
     for sector, pct in sec_exp.items():
         if sector not in ("Other", "Unclassified") and pct >= THRESHOLDS["sector_overweight"]:
-            alerts.append({"level": "warning", "icon": "🏭", "title": f"Overweight {sector} ({pct}%)", "detail": "Increased idiosyncratic risk."})
+            alerts.append({
+                "level": "warning", "icon": "🏭", 
+                "title": f"Overweight {sector} ({pct}%)", 
+                "detail": "Increased idiosyncratic risk from sector concentration."
+            })
+            
     tech_pct = sec_exp.get("Technology", 0)
     if THRESHOLDS["tech_overweight"] <= tech_pct < THRESHOLDS["sector_overweight"]:
-        alerts.append({"level": "warning", "icon": "💻", "title": f"High Tech exposure ({tech_pct}%)", "detail": "Tech is more volatile."})
+        alerts.append({
+            "level": "info", "icon": "💻", 
+            "title": f"High Tech exposure ({tech_pct}%)", 
+            "detail": "Technology tends to be higher volatility."
+        })
+        
+    # 3. Geography Alerts
     for region, pct in geo_exp_data.items():
         if region not in ("Other", "Unclassified") and pct >= THRESHOLDS["geo_overweight"]:
-            alerts.append({"level": "info", "icon": "🌏", "title": f"Heavy {region} exposure ({pct}%)", "detail": "Reduced diversification."})
+            alerts.append({
+                "level": "info", "icon": "🌏", 
+                "title": f"Heavy {region} exposure ({pct}%)", 
+                "detail": "Reduced geographic diversification."
+            })
+            
+    # 4. Performance & Risk Metrics
     vol = metrics.get("vol")
     if vol is not None and not math.isnan(vol) and vol >= THRESHOLDS["high_vol_annualised"]:
-        alerts.append({"level": "warning", "icon": "📈", "title": f"Elevated vol ({vol:.1f}% p.a.)", "detail": "Higher price swings."})
+        alerts.append({
+            "level": "warning", "icon": "📈", 
+            "title": f"Elevated Volatility ({vol:.1f}% p.a.)", 
+            "detail": "Expect higher-than-average price swings."
+        })
+        
     sharpe = metrics.get("sharpe")
     if sharpe is not None and not math.isnan(sharpe):
         if sharpe < THRESHOLDS["low_sharpe"]:
-            alerts.append({"level": "info", "icon": "📉", "title": f"Low Sharpe ({sharpe:.2f})", "detail": "Risk isn't justified."})
+            alerts.append({
+                "level": "info", "icon": "📉", 
+                "title": f"Low Sharpe Ratio ({sharpe:.2f})", 
+                "detail": "Historical returns haven't fully justified the risk taken."
+            })
         elif sharpe >= 1.5:
-            alerts.append({"level": "info", "icon": "⭐", "title": f"Strong Sharpe ({sharpe:.2f})", "detail": "Excellent returns per risk."})
+            alerts.append({
+                "level": "info", "icon": "⭐", 
+                "title": f"Strong Sharpe Ratio ({sharpe:.2f})", 
+                "detail": "Excellent risk-adjusted returns."
+            })
+            
     current_dd = metrics.get("current_dd")
     if current_dd is not None and not math.isnan(current_dd) and current_dd <= THRESHOLDS["bad_drawdown"]:
-        alerts.append({"level": "danger", "icon": "🔻", "title": f"Portfolio in drawdown ({current_dd:.1f}%)", "detail": f"Portfolio is {abs(current_dd):.1f}% below peak."})
+        alerts.append({
+            "level": "danger", "icon": "🔻", 
+            "title": f"Portfolio in drawdown ({current_dd:.1f}%)", 
+            "detail": f"Portfolio is {abs(current_dd):.1f}% below its previous all-time high."
+        })
+        
+    # 5. Data Integrity Alerts
     unclassified = sec_exp.get("Unclassified", 0)
     if unclassified > 5:
-        alerts.append({"level": "info", "icon": "❓", "title": f"{unclassified:.0f}% unclassified", "detail": "Missing data for some tickers."})
+        alerts.append({
+            "level": "info", "icon": "❓", 
+            "title": f"{unclassified:.0f}% Unclassified", 
+            "detail": "Missing sector data for some tickers; allocation view may be incomplete."
+        })
+        
     if not alerts:
-        alerts.append({"level": "info", "icon": "✅", "title": "Portfolio well-balanced", "detail": "No alerts."})
+        alerts.append({
+            "level": "info", "icon": "✅", 
+            "title": "Portfolio well-balanced", 
+            "detail": "No significant risk alerts detected."
+        })
+        
     return alerts

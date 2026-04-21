@@ -9,14 +9,15 @@ Built with Dash, Plotly, and yfinance.
 
 ## Features
 - **Live Tracking**: Live prices via Yahoo Finance (yfinance) with ASX-specific optimizations.
-- **P&L Analysis**: Unrealised P&L from purchase date, per tranche, and Today's P&L metrics.
+- **Intraday Monitoring**: Dedicated "Today" P&L tracking with 1-minute resolution snapshots and persistent daily session caching.
+- **P&L Analysis**: Unrealised P&L from purchase date, per tranche, and historical performance tracking.
 - **Intelligence Dashboard**: Advanced risk metrics (Sharpe, Volatility, Max Drawdown), sector & geographic allocation with Sunburst drill-downs.
 - **Portfolio Forecasting**: Prophet-based return predictions with custom confidence intervals and disk-caching.
 - **Analytics Page**: Secondary performance metrics, normalized price history, and return correlation heatmaps.
-- **Dividend Tracking**: Automatic tracking of annual dividend income, yield, and historical **realized dividends** based on holding dates.
+- **Dividend Tracking**: Automatic tracking of annual dividend income, yield, and **realized dividends** (calculated based on tranche-level eligibility).
 - **Interactive UI**: Add buy/sell transactions via a calendar-based entry system; data persists to CSV.
 - **Modular Architecture**: Clean, multi-page Dash structure with modular CSS and a decoupled engine/service model.
-- **Modern UI**: Dark/light theme toggle, Radix UI component overrides, and PDF export support.
+- **Modern UI**: Dark/light theme toggle, Radix UI component overrides, and premium aesthetics.
 
 ## Setup
 

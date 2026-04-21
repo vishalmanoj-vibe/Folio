@@ -146,7 +146,15 @@ def _compute_dividends_bulk(
     mkt_value: float,
 ) -> tuple[float, float, float]:
     """
-    Compute dividends from a pre-extracted series.
+    Compute aggregate dividend metrics from a historical series.
+
+    Args:
+        div_s: Series of historical dividend payments per share.
+        total_shares: Current number of shares held.
+        mkt_value: Current total market value of the holding.
+
+    Returns:
+        tuple: (Annual Dividend $, Total Historical Dividend $, Dividend Yield %)
     """
     if div_s.empty:
         return 0.0, 0.0, 0.0
@@ -176,6 +184,13 @@ def _calculate_realized_dividends(div_s: pd.Series, tranches: list[dict]) -> flo
       - Matches historical Ex-Dividend dates against shares held on those dates.
       - A tranche is eligible if the purchase date is strictly BEFORE the Ex-date.
       - This provides a "realized" figure rather than a generic annual yield.
+
+    Args:
+        div_s: Series of historical dividend payments per share.
+        tranches: List of buy tranches for the ticker.
+
+    Returns:
+        float: Total dollar amount of dividends realized by the user.
     """
     if div_s.empty or not tranches:
         return 0.0
