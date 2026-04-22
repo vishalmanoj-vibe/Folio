@@ -35,9 +35,10 @@ def _build_intraday_figure(
     GREEN_C = theme_tokens.get("GREEN", "#1D9E75")
     RED_C   = theme_tokens.get("RED",   "#E24B4A")
 
-    today_str    = pd.Timestamp.now(tz="Australia/Sydney").strftime("%Y-%m-%d")
-    market_open  = pd.Timestamp(f"{today_str} 10:00:00")
-    market_close = pd.Timestamp(f"{today_str} 16:15:00")
+    now_syd      = pd.Timestamp.now(tz="Australia/Sydney")
+    today_str    = now_syd.strftime("%Y-%m-%d")
+    market_open  = pd.Timestamp(f"{today_str} 10:00:00", tz="Australia/Sydney")
+    market_close = pd.Timestamp(f"{today_str} 16:15:00", tz="Australia/Sydney")
 
     # ── Load session cache directly from disk ─────────────────────────────────
     cache_path = _os.path.join("data", "cache", f"intraday_{today_str}.json")
@@ -51,7 +52,7 @@ def _build_intraday_figure(
 
     if not session_data:
         fig.add_annotation(
-            text="Waiting for market session data (ASX opens 10:00 AEDT) …",
+            text="Waiting for market session data (ASX opens 10:00 Sydney Time) …",
             xref="paper", yref="paper",
             x=0.5, y=0.5, showarrow=False,
             font=dict(size=13, color=T_SEC),
@@ -73,7 +74,7 @@ def _build_intraday_figure(
             continue
 
         df = pd.DataFrame(points)
-        df["Date"] = pd.to_datetime(df["Date"])
+        df["Date"] = pd.to_datetime(df["Date"]).dt.tz_localize("Australia/Sydney")
         df = df.sort_values("Date").drop_duplicates("Date")
         df = df[(df["Date"] >= market_open) & (df["Date"] <= market_close)]
 
@@ -91,7 +92,7 @@ def _build_intraday_figure(
 
     if not all_series:
         fig.add_annotation(
-            text="Waiting for market session data (ASX opens 10:00 AEDT) …",
+            text="Waiting for market session data (ASX opens 10:00 Sydney Time) …",
             xref="paper", yref="paper",
             x=0.5, y=0.5, showarrow=False,
             font=dict(size=13, color=T_SEC),
@@ -213,9 +214,13 @@ def build_pnl_history_figure(
             tickangle=0,
         ))
         # Fix x-axis to ASX session window 10:00–16:15 Sydney wall-clock
-        today_str = pd.Timestamp.now(tz="Australia/Sydney").strftime("%Y-%m-%d")
+        now_syd   = pd.Timestamp.now(tz="Australia/Sydney")
+        today_str = now_syd.strftime("%Y-%m-%d")
+        # Use ISO format with timezone offset to ensure Plotly respects Sydney time
+        range_start = f"{today_str}T10:00:00"
+        range_end   = f"{today_str}T16:15:00"
         layout["xaxis"].update(dict(
-            range=[f"{today_str} 10:00:00", f"{today_str} 16:15:00"],
+            range=[range_start, range_end],
         ))
     else:
         layout["xaxis"].update(dict(

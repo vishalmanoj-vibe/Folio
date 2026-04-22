@@ -10,12 +10,14 @@ CACHE_DIR = "data/cache"
 os.makedirs(CACHE_DIR, exist_ok=True)
 
 def _get_filename():
-    today = datetime.now().strftime("%Y-%m-%d")
+    # Use Sydney time for the filename to ensure consistency
+    today = pd.Timestamp.now(tz="Australia/Sydney").strftime("%Y-%m-%d")
     return os.path.join(CACHE_DIR, f"intraday_{today}.json")
 
 def record_snapshot(enriched_holdings: list[dict]):
     """
     Record the current last_price for all holdings into today's session cache.
+    Uses Sydney time for timestamps to prevent AEDT/AEST offsets.
     """
     filename = _get_filename()
     session_data = {}
@@ -27,7 +29,8 @@ def record_snapshot(enriched_holdings: list[dict]):
         except Exception as e:
             logger.warning("Failed to read session cache: %s", e)
 
-    now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    # Use Sydney time for the recorded timestamp
+    now_str = pd.Timestamp.now(tz="Australia/Sydney").strftime("%Y-%m-%d %H:%M:%S")
     updated = False
     
     for h in enriched_holdings:
@@ -41,7 +44,7 @@ def record_snapshot(enriched_holdings: list[dict]):
         if ticker not in session_data:
             session_data[ticker] = []
             
-        # Only add if the price or time is different (avoid bloat)
+        # Only add if the price is different (avoid bloat)
         history = session_data[ticker]
         if not history or history[-1]["Close"] != price:
             history.append({"Date": now_str, "Close": price})
@@ -80,7 +83,8 @@ def get_session_history(ticker: str) -> pd.Series:
 
 def clear_old_caches(keep_days: int = 7):
     """Delete session caches older than keep_days."""
-    cutoff = datetime.now() - pd.Timedelta(days=keep_days)
+    # Use Sydney time for cutoff calculation
+    cutoff = pd.Timestamp.now(tz="Australia/Sydney") - pd.Timedelta(days=keep_days)
     
     for f in os.listdir(CACHE_DIR):
         if not f.startswith("intraday_"):
@@ -88,7 +92,8 @@ def clear_old_caches(keep_days: int = 7):
         try:
             date_str = f.replace("intraday_", "").replace(".json", "")
             f_date = datetime.strptime(date_str, "%Y-%m-%d")
-            if f_date < cutoff:
+            # Convert f_date to Sydney for comparison if needed, or just compare dates
+            if pd.Timestamp(f_date).date() < cutoff.date():
                 os.remove(os.path.join(CACHE_DIR, f))
                 logger.info("Cleared old session cache: %s", f)
         except Exception as e:

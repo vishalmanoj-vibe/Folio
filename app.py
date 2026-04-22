@@ -32,6 +32,7 @@ import threading
 import os
 import sys
 import signal
+import time
 
 from components.portfolio_layout import INDEX_STRING
 from data.csv_handler import load_csv
@@ -122,8 +123,8 @@ def _perform_refresh(period):
 
 # ── Primary Refresh (Interval / Button) ─────────────────
 @app.callback(
-    Output("txn-store",       "data"),
-    Output("portfolio-store", "data"),
+    Output("txn-store",       "data", allow_duplicate=True),
+    Output("portfolio-store", "data", allow_duplicate=True),
     Input("live-interval",    "n_intervals"),
     Input("refresh-btn",      "n_clicks"),
     State("period-picker",    "value"),
@@ -131,7 +132,12 @@ def _perform_refresh(period):
     prevent_initial_call=True,
 )
 def refresh_periodic(n_intervals, n_clicks, p1, p2):
+    """
+    Periodic refresh triggered by browser timer.
+    Note: Snapshot recording also happens in a background thread for reliability.
+    """
     try:
+        # Use whatever period picker is available in the current layout
         period = p1 or p2 or "max"
         return _perform_refresh(period)
     except Exception as e:
@@ -249,6 +255,24 @@ if __name__ == "__main__":
     # Register signals
     signal.signal(signal.SIGINT, handle_exit)
     signal.signal(signal.SIGTERM, handle_exit)
+
+    # ── Background Snapshot Thread ─────────────────
+    def background_refresh():
+        """
+        Independent thread that records snapshots every 60s.
+        Ensures 'Today' chart has continuous data even if browser is closed.
+        """
+        while True:
+            try:
+                # We don't care about the UI period here; 
+                # we just want fetch_live to run and record_snapshot to trigger.
+                _perform_refresh("1d")
+                logger.debug("Background snapshot recorded.")
+            except Exception as e:
+                logger.error(f"Background refresh failed: {e}")
+            time.sleep(60)
+
+    threading.Thread(target=background_refresh, daemon=True).start()
 
     # Start browser after a short delay
     threading.Timer(1.5, open_browser).start()
