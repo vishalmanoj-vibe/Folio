@@ -6,29 +6,27 @@ Route: /analytics
 """
 
 import dash
-from dash import html, dcc, Input, Output, State
+from dash import html, dcc
 import dash_mantine_components as dmc
-import dash_bootstrap_components as dbc
-from components.header import create_header
 from components.ui_helpers import chart_title, section
 from config.constants import COLORS
 
-dash.register_page(__name__, path="/analytics", title="Portfolio — Analytics")
+dash.register_page(__name__, path="/analytics", title="Analytics")
 
 def layout():
     return html.Div([
-        # ── Header ────────────────────────────────────────────────────────
-        create_header(
-            title="Portfolio Analytics",
-            subtitle="Allocation, Risk, and Performance deep-dive",
-            links_before=[
-                {"label": "Overview", "href": "/"}
+        # ── Page Header Row ───────────────────────────────────────────────
+        html.Div(
+            [
+                html.Div([
+                    html.H1("Analytics", className="header-title"),
+                    html.P("Allocation, risk & performance deep-dive", className="header-subtitle"),
+                ], className="header-title-row"),
+                html.Div([
+                    # Standalone export button removed to avoid duplicate ID with global nav
+                ], className="header-controls"),
             ],
-            links_after=[
-                {"label": "Intelligence", "href": "/intelligence"}
-            ],
-            show_pdf=True,
-            market_status=html.Div(id="market-status")
+            className="page-header-row"
         ),
 
         # ── Tabs Navigation ───────────────────────────────────────────────
@@ -38,7 +36,6 @@ def layout():
                     [
                         dmc.TabsTab("Allocation", value="allocation"),
                         dmc.TabsTab("Risk & Performance", value="performance"),
-                        dmc.TabsTab("Income", value="income"),
                     ],
                     className="tabs-list-custom"
                 ),
@@ -63,18 +60,17 @@ def layout():
                                     radius="xl"
                                 ),
                             ], style={"display": "flex", "alignItems": "center", "marginBottom": "20px"}),
-                            dcc.Loading(
-                                dcc.Graph(id="portfolio-treemap", config={"displayModeBar": False}, style={"height": "600px"}),
-                                type="circle", color=COLORS[0]
-                            )
+                            html.Div([
+                                dcc.Loading(
+                                    dcc.Graph(id="portfolio-treemap", config={"displayModeBar": False}, style={"height": "600px"}),
+                                    type="circle", color=COLORS[0]
+                                ),
+                                html.Div(
+                                    "Colour encodes P&L performance. Size encodes market value.",
+                                    style={"fontSize": "11px", "color": "var(--t-muted)", "marginTop": "12px", "textAlign": "center"}
+                                )
+                            ])
                         ),
-                        
-                        html.Div(
-                            "The treemap above provides a hierarchical breakdown of your portfolio. "
-                            "Size represents market value (allocation), while color shows percentage P&L performance. "
-                            "Switch modes to see concentration risk by sector or region.",
-                            style={"fontSize": "12px", "color": "var(--t-sec)", "marginTop": "10px", "textAlign": "center"}
-                        )
                     ]),
                     value="allocation"
                 ),
@@ -86,21 +82,19 @@ def layout():
                         section(
                             html.Div([
                                 chart_title("Price History — Normalised to 100", "price-chart-desc"),
-                                dmc.Select(
+                                dmc.SegmentedControl(
                                     id="analytics-period-picker",
                                     data=[
                                         {"label": "Since purchase", "value": "max"},
-                                        {"label": "1 month",        "value": "1mo"},
-                                        {"label": "3 months",       "value": "3mo"},
-                                        {"label": "6 months",       "value": "6mo"},
-                                        {"label": "1 year",         "value": "1y"},
-                                        {"label": "2 years",        "value": "2y"},
+                                        {"label": "1M", "value": "1mo"},
+                                        {"label": "3M", "value": "3mo"},
+                                        {"label": "6M", "value": "6mo"},
+                                        {"label": "1Y", "value": "1y"},
                                     ],
                                     value="max",
-                                    variant="unstyled",
-                                    allowDeselect=False,
-                                    persistence=True,
-                                    style={"width": "120px", "marginLeft": "auto", "fontSize": "12px", "color": "var(--t-sec)"},
+                                    size="sm",
+                                    radius="lg",
+                                    className="period-segmented-control"
                                 ),
                             ], style={"display": "flex", "alignItems": "center", "marginBottom": "10px"}),
                             dcc.Graph(id="price-chart", config={"displayModeBar": False}, style={"height": "400px"})
@@ -108,7 +102,7 @@ def layout():
 
                         # Row for Correlation & Volatility
                         section(
-                            html.Div(), # Empty title node
+                            None, # No title node
                             html.Div([
                                 html.Div([
                                     chart_title("Return Correlation Matrix", "corr-desc"),
@@ -121,25 +115,12 @@ def layout():
                                         type="circle", color=COLORS[2]
                                     )
                                 ], className="grid-item-1"),
-                            ], className="charts-grid-row", style={"gap": "24px"})
+                            ], className="charts-grid-row")
                         )
                     ]),
                     value="performance"
                 ),
 
-                # ── Tab 3: Income ─────────────────────────────────────────────
-                dmc.TabsPanel(
-                    html.Div([
-                        section(
-                            chart_title("Dividend Income Detail", "div-desc"),
-                            html.Div(
-                                dcc.Graph(id="dividend-lollipops", config={"displayModeBar": False}),
-                                style={"height": "550px", "overflowY": "auto", "borderRadius": "8px", "background": "var(--bg)"}
-                            )
-                        )
-                    ]),
-                    value="income"
-                ),
             ],
             value="allocation",
             variant="default",

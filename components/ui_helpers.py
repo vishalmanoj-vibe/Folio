@@ -1,24 +1,12 @@
 """
 components/ui_helpers.py
 =========================
-Refined UI helpers. Keeps the original clean aesthetic you prefer, with small polish:
-- Better spacing and typography on stat cards
-- Improved transaction history table (clickable tickers, better alignment)
-- Cleaner chart titles
+Refined UI helpers for the Portfolio Dashboard.
 """
 
 from dash import html
 import dash_mantine_components as dmc
-from config.constants import GREEN, RED, COLORS, CHART_INFO
-
-# Alert level styling
-_LEVEL_COLOR = {"danger": "var(--danger)", "warning": "var(--warning)", "info":  "var(--info)"}
-_LEVEL_BG    = {
-    "danger":  "rgba(226,75,74,0.08)",
-    "warning": "rgba(239,159,39,0.08)",
-    "info":    "rgba(55,138,221,0.08)",
-}
-
+from config.constants import COLORS, CHART_INFO
 
 def stat_card(
     label: str,
@@ -28,105 +16,54 @@ def stat_card(
     sub_color: str = "var(--t-sec)",
     tip: str = "",
 ) -> html.Div:
-    """
-    Creates a styled stat card component.
-
-    Args:
-        label: The main title of the card.
-        value: The primary metric value (e.g., "$1,234.56").
-        sub: Optional subtitle or secondary metric (e.g., "+2.5%").
-        color: CSS color for the primary value.
-        sub_color: CSS color for the secondary value.
-        tip: Optional tooltip text displayed on an info icon next to the label.
-
-    Returns:
-        A Dash html.Div containing the formatted stat card.
-    """
+    """Creates a styled stat card component."""
     label_children = [html.Span(label, className="stat-card-title")]
     if tip:
         label_children.append(
             html.Span("ℹ", title=tip, className="chart-info-icon")
         )
-    return html.Div(
-        [
-            html.Div(label_children, className="stat-card-label-row"),
-            html.P(value, className="stat-card-value", style={"color": color}),
-            html.P(sub, className="stat-card-sub", style={"color": sub_color}) if sub else None,
-        ],
-        className="stat-card stat-card-container",
-    )
-
+    children = [
+        html.Div(label_children, className="stat-card-label-row"),
+        html.P(value, className="stat-card-value", style={"color": color}),
+    ]
+    if sub:
+        children.append(html.P(sub, className="stat-card-sub", style={"color": sub_color}))
+        
+    return html.Div(children, className="stat-card-container")
 
 def chart_title(label: str, info_key: str = "") -> html.Div:
-    """
-    Creates a clean chart title with an optional help icon.
-
-    Args:
-        label: The display text for the title.
-        info_key: Either a direct tooltip string or a key into config.constants.CHART_INFO.
-
-    Returns:
-        A Dash html.Div containing the title and optional icon.
-    """
+    """Creates a clean chart title with an optional help icon."""
     if info_key and info_key in CHART_INFO:
         tip = CHART_INFO[info_key][1]
     else:
         tip = info_key
     
     children = [html.Span(label, className="chart-title-text")]
-    
     if tip:
-        children.append(
-            html.Span("ℹ", title=tip, className="chart-info-icon")
-        )
+        children.append(html.Span("ℹ", title=tip, className="chart-info-icon"))
     
     return html.Div(children, className="chart-title-container")
 
-
-def section(title_node: html.Div, children) -> html.Div:
-    """Original section style"""
-    return html.Div(
-        [title_node, children],
-        className="section-container",
-    )
-
+def section(title_node: html.Div | None, children) -> html.Div:
+    """Standard section wrapper."""
+    content = [title_node, children] if title_node is not None else [children]
+    return html.Div(content, className="section-container")
 
 def alert_card(alert: dict) -> html.Div:
-    """
-    Creates a themed alert banner for the intelligence dashboard.
-
-    Args:
-        alert: Dictionary containing 'level' (danger/warning/info), 'icon', 'title', and 'detail'.
-
-    Returns:
-        A Dash html.Div styled as an alert card.
-    """
+    """Creates a themed smart alert card for the Intelligence dashboard."""
     level = alert.get("level", "info")
-    color = _LEVEL_COLOR.get(level, COLORS[0])
-    bg    = _LEVEL_BG.get(level, "rgba(55,138,221,0.08)")
-    return html.Div(
+    # Map 'danger' to 'danger', 'warning' to 'warning', 'info' to 'info', 'ok' to 'ok'
+    # These match the CSS classes in base.css
+    return html.Div([
+        html.Span(alert.get("icon", "ℹ"), className="alert-icon"),
         html.Div([
-            html.Span(alert.get("icon", "ℹ"), className="alert-icon"),
-            html.Div([
-                html.Span(alert.get("title", ""), className="alert-title", style={"color": color}),
-                html.Span("  —  " + alert.get("detail", ""), className="alert-detail"),
-            ]),
-        ], className="alert-content"),
-        className="alert-container",
-        style={"background": bg, "border": f"0.5px solid {color}"},
-    )
-
+            html.Div(alert.get("title", ""), className="smart-alert-title"),
+            html.Div(alert.get("detail", ""), className="smart-alert-detail"),
+        ]),
+    ], className=f"smart-alert {level}")
 
 def txn_table(history: list[dict]) -> html.Element:
-    """
-    Renders the transaction history table with deep-linking to ticker details.
-
-    Args:
-        history: List of transaction dictionaries from the CSV.
-
-    Returns:
-        A Dash html.Table component.
-    """
+    """Renders the transaction history table with deep-linking to positions."""
     if not history:
         return html.P("No transactions yet.", className="txn-empty")
 
@@ -134,7 +71,7 @@ def txn_table(history: list[dict]) -> html.Element:
         html.Tr([
             html.Td(t["date"], className="table-td"),
             html.Td(
-                html.A(t["ticker"], href=f"/etf/{t['ticker']}", className="ticker-link"),
+                html.A(t["ticker"], href="/positions", className="ticker-link"),
                 className="table-td", style={"fontWeight": "500"}
             ),
             html.Td(
@@ -142,8 +79,8 @@ def txn_table(history: list[dict]) -> html.Element:
                 className="table-td",
                 style={"color": "var(--green)" if t["type"] == "buy" else "var(--red)", "fontWeight": "600"}
             ),
-            html.Td(f"{float(t['shares']):,.2f}", className="table-td"),
-            html.Td(f"${float(t['price']):,.4f}", className="table-td"),
+            html.Td(f"{float(t['shares']):g}", className="table-td"),
+            html.Td(f"${float(t['price']):,.3f}", className="table-td"),
             html.Td(f"${float(t['shares']) * float(t['price']):,.2f}", className="table-td"),
         ])
         for t in reversed(history)
@@ -157,31 +94,28 @@ def txn_table(history: list[dict]) -> html.Element:
         className="table-container",
     )
 
-
 def stat_card_skeleton() -> html.Div:
     """Pulsing placeholder for a stat card"""
     return html.Div(
         [
-            html.Div(dmc.Skeleton(height=14, width="40%", radius="sm"), className="stat-card-label-row"),
-            dmc.Skeleton(height=28, width="80%", radius="sm", style={"marginTop": "8px"}),
-            dmc.Skeleton(height=14, width="60%", radius="sm", style={"marginTop": "10px"}),
+            html.Div(dmc.Skeleton(height=10, width="40%", radius="sm"), className="stat-card-label-row"),
+            dmc.Skeleton(height=24, width="80%", radius="sm", style={"marginTop": "6px"}),
+            dmc.Skeleton(height=10, width="60%", radius="sm", style={"marginTop": "10px"}),
         ],
-        className="stat-card stat-card-container",
+        className="stat-card-container",
     )
-
 
 def table_skeleton(rows: int = 5, cols: int = 6) -> html.Div:
     """Pulsing placeholder for a table"""
     return html.Div(
         [
             html.Div(
-                [dmc.Skeleton(height=35, radius="sm", style={"marginBottom": "8px"}) for _ in range(rows + 1)],
+                [dmc.Skeleton(height=32, radius="sm", style={"marginBottom": "8px"}) for _ in range(rows + 1)],
                 style={"padding": "12px"}
             )
         ],
-        style={"overflowX": "auto", "borderRadius": "8px", "border": "0.5px solid var(--border)", "background": "var(--surface)"},
+        className="overflow-table",
     )
-
 
 def chart_skeleton(height: int = 300) -> dmc.Skeleton:
     """Pulsing placeholder for a chart"""

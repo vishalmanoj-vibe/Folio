@@ -60,7 +60,7 @@ def register_callbacks(app):
 
     # Add new transaction
     @app.callback(
-        Output("txn-store", "data"),
+        Output("txn-store", "data", allow_duplicate=True),
         Output("txn-msg", "children"),
         Output("txn-msg", "style"),
         Input("txn-submit", "n_clicks"),

@@ -121,26 +121,6 @@ def register_callbacks(app) -> None:
             geo_data=geo_map
         )
 
-    # ── Dividend Lollipops ─────────────────────────────────────────────────────
-    @app.callback(
-        Output("dividend-lollipops", "figure"),
-        Input("portfolio-store", "data"),
-        Input("theme-store", "data"),
-    )
-    def dividend_lollipops(data, theme):
-        t_ = get_theme(theme or "dark")
-        if not data or "holdings" not in data or not data["holdings"]:
-            fig = go.Figure()
-            fig.update_layout(**t_["PLOTLY_BASE"])
-            return fig
-            
-        plot_data = []
-        for h in data["holdings"]:
-            val = h.get("annual_div", 0)
-            if val > 0:
-                plot_data.append({"ticker": h["ticker"], "value": val})
-            
-        return build_performance_lollipops(plot_data, t_, "dollar")
 
     # ── Analytics Risk ────────────────────────────────────────────────────────
     @app.callback(

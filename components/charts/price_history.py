@@ -33,13 +33,36 @@ def build_price_chart_figure(
     Returns:
         A Plotly go.Figure object.
     """
-    BORDER      = theme_tokens["BORDER"]
-    PLOTLY_BASE = theme_tokens["PLOTLY_BASE"]
-
-    layout = PLOTLY_BASE.copy()
+    T_SEC = theme_tokens["T_SEC"]
+    T_PRI = theme_tokens["T_PRI"]
+    
+    layout = theme_tokens["PLOTLY_BASE"].copy()
     layout.update(dict(
-        xaxis=dict(showgrid=False),
-        yaxis=dict(gridcolor=BORDER),
+        xaxis=dict(
+            showgrid=False, 
+            tickfont=dict(size=11, color=T_SEC),
+            zeroline=False,
+            tickformat="%b %y",
+            nticks=6,
+        ),
+        yaxis=dict(
+            gridcolor="rgba(255,255,255,0.05)", 
+            tickfont=dict(size=11, color=T_SEC),
+            zeroline=False,
+            side="right", # Values on right as in mockup
+            fixedrange=True,
+        ),
+        legend=dict(
+            orientation="h",
+            yanchor="bottom",
+            y=1.1,
+            xanchor="right",
+            x=1,
+            font=dict(size=10, color=T_SEC),
+        ),
+        hovermode="x unified",
+        margin=dict(t=60, b=30, l=10, r=40), # Space for legend and right-axis
+        height=400,
     ))
     
     fig = go.Figure()
@@ -55,20 +78,18 @@ def build_price_chart_figure(
                 purchase_map[ticker] = pd.to_datetime(fp)
 
     # For non-max periods, use a single calendar cutoff for all tickers
-    calendar_cutoff = get_period_cutoff(period)  # None when period == "max"
+    calendar_cutoff = get_period_cutoff(period)
 
     for i, (t, recs) in enumerate(histories.items()):
         df = pd.DataFrame(recs)
-        if df.empty:
-            continue
+        if df.empty: continue
 
         if "Date" in df.columns:
             df["Date"] = pd.to_datetime(df["Date"])
             df = df.set_index("Date").sort_index()
 
-        # Determine the effective start date for this ticker
+        # Determine start date
         if period == "max":
-            # Trim to first purchase date so we only show "since you bought it"
             ticker_cutoff = purchase_map.get(t)
             if ticker_cutoff is not None:
                 df = df[df.index >= ticker_cutoff]
@@ -78,14 +99,16 @@ def build_price_chart_figure(
         if df.empty or df["Close"].iloc[0] == 0:
             continue
 
-        # Normalize to 100 at the start of the (trimmed) window
+        # Normalize to 100
         base = df["Close"].iloc[0]
         fig.add_trace(go.Scatter(
-            x=df.index.strftime("%Y-%m-%d").tolist(),
+            x=df.index,
             y=(df["Close"] / base * 100).round(2),
-            name=t, mode="lines",
-            line=dict(color=COLORS[i % len(COLORS)], width=1.8),
+            name=t, 
+            mode="lines",
+            line=dict(color=COLORS[i % len(COLORS)], width=2.0, shape='spline'), # Spline for smoother look
+            hovertemplate=f"{t}: %{{y:.2f}}<extra></extra>"
         ))
 
-    fig.add_hline(y=100, line_dash="dot", line_color=BORDER)
+    fig.add_hline(y=100, line_dash="dot", line_color="rgba(255,255,255,0.2)", line_width=1)
     return fig

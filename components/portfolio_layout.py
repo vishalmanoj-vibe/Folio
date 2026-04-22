@@ -1,15 +1,14 @@
 """
 components/portfolio_layout.py
 ==============================
-Portfolio page layout.
+Portfolio page layout for the Overview page.
 """
 
-from datetime import datetime
 from dash import dcc, html
 import dash_mantine_components as dmc
-from config.settings import CSV_PATH
+from datetime import datetime
 from components.ui_helpers import chart_title, section
-from components.header import create_header
+from config.settings import CSV_PATH
 
 # ── CSS injected into <head> ───────────────────────────────────────────────────
 INDEX_STRING = '''
@@ -24,7 +23,7 @@ INDEX_STRING = '''
                     const theme = JSON.parse(stored);
                     document.documentElement.setAttribute('data-theme', theme);
                     document.body.setAttribute('data-theme', theme);
-                    document.documentElement.style.backgroundColor = theme === 'dark' ? '#111110' : '#ffffff';
+                    document.documentElement.style.backgroundColor = theme === 'dark' ? '#0a0a0a' : '#f5f7f7';
                 }
             } catch (e) {}
         })();
@@ -36,20 +35,22 @@ INDEX_STRING = '''
 
 def create_layout(initial_history: list[dict] | None = None) -> html.Div:
     """
-    Construct the main dashboard layout.
+    Construct the main dashboard overview layout.
     """
     return html.Div(
         [
-            # ── Header ────────────────────────────────────────────────────────
-            create_header(
-                title="Portfolio Overview",
-                subtitle="Live P&L · Yahoo Finance · ASX ETFs",
-                links_after=[
-                    {"label": "Analytics", "href": "/analytics"},
-                    {"label": "Intelligence", "href": "/intelligence"}
+            # ── Page Header Row ───────────────────────────────────────────────
+            html.Div(
+                [
+                    html.Div([
+                        html.H1("Portfolio overview", className="header-title"),
+                        html.P("Live P&L · Yahoo Finance · ASX ETFs", className="header-subtitle"),
+                    ], className="header-title-row"),
+                    html.Div([
+                        # Header button removed to consolidate into table-level toggle
+                    ], className="header-controls"),
                 ],
-                show_pdf=True,
-                market_status=html.Div(id="market-status")
+                className="page-header-row"
             ),
 
             # ── Stat cards ────────────────────────────────────────────────────
@@ -63,9 +64,8 @@ def create_layout(initial_history: list[dict] | None = None) -> html.Div:
 
             # ── Live positions table ──────────────────────────────────────────
             section(
+                chart_title("Live positions"),
                 html.Div([
-                    chart_title("Live positions"),
-                    
                     html.Div([
                         html.Div([
                             html.Span("🔍", style={
@@ -88,102 +88,91 @@ def create_layout(initial_history: list[dict] | None = None) -> html.Div:
                                 persistence=True,
                             ),
                         ], style={"position": "relative"}),
-                        dmc.Button(
-                            "Add Transaction",
+                        
+                        html.Button(
+                            "+ Add transaction",
                             id="compact-toggle-btn",
-                            variant="subtle",
-                            size="xs",
-                            className="compact-toggle-btn",
+                            n_clicks=0,
+                            className="btn-primary btn-sm"
                         ),
-                    ], className="table-controls-row", style={"display": "flex", "justifyContent": "space-between", "alignItems": "center", "marginBottom": "12px"}),
+                    ], className="table-controls-row"),
 
+                    # ── Quick-Add Form (Collapsed) ────────────────────────────
                     dmc.Collapse(
-                        html.Div(
-                            [
-                                html.Div(
-                                    [
-                                        html.Div([
-                                            html.P("Type", className="txn-label"),
-                                            dmc.Select(
-                                                id="txn-type",
-                                                data=[{"label": "Buy",  "value": "buy"},
-                                                      {"label": "Sell", "value": "sell"}],
-                                                value="buy",
-                                                allowDeselect=False,
-                                                className="txn-dropdown",
-                                            ),
-                                        ]),
-                                        html.Div([
-                                            html.P("Ticker", className="txn-label"),
-                                            dmc.TextInput(
-                                                id="txn-ticker",
-                                                placeholder="e.g. VHY",
-                                                className="txn-input-text",
-                                            ),
-                                            html.Div(id="txn-ticker-hint", className="txn-ticker-hint"),
-                                        ], className="txn-input-container"),
-                                        html.Div([
-                                            html.P("Shares", className="txn-label"),
-                                            dmc.NumberInput(
-                                                id="txn-shares",
-                                                placeholder="0",
-                                                min=0,
-                                                className="txn-input-num",
-                                            ),
-                                        ]),
-                                        html.Div([
-                                            html.P("Price ($)", className="txn-label"),
-                                            dmc.NumberInput(
-                                                id="txn-price",
-                                                placeholder="0.00",
-                                                min=0,
-                                                decimalScale=2,
-                                                className="txn-input-num",
-                                            ),
-                                        ]),
-                                        html.Div([
-                                            html.P("Date", className="txn-label"),
-                                            dmc.DateInput(
-                                                id="txn-date",
-                                                value=datetime.now().date(),
-                                                valueFormat="YYYY-MM-DD",
-                                                className="txn-input-date",
-                                                allowDeselect=False,
-                                            ),
-                                        ]),
-                                        html.Div([
-                                            html.P("\u00a0", className="txn-label"),
-                                            dmc.Button(
-                                                "Submit",
-                                                id="txn-submit",
-                                                n_clicks=0,
-                                                className="btn-md",
-                                            ),
-                                        ]),
-                                    ],
-                                    className="txn-inputs-row",
-                                ),
-                                html.P(id="txn-msg", className="txn-status-msg"),
-                                html.Details([
-                                    html.Summary("Transaction history", className="txn-history-summary"),
-                                    html.Div(id="txn-log", className="txn-history-log"),
-                                ]),
-                                html.P(f"Saved to: {CSV_PATH}", className="txn-path", style={"marginTop": "8px"}),
-                            ],
-                            className="txn-panel-inner-content",
-                            style={"padding": "12px", "background": "var(--surface)", "borderRadius": "8px", "border": "1px solid var(--border)", "marginBottom": "16px"}
-                        ),
                         id="txn-collapse",
                         opened=False,
+                        children=[
+                            html.Div([
+                                html.Div([
+                                    # Type & Ticker
+                                    html.Div([
+                                        html.P("Type", className="txn-label"),
+                                        dmc.Select(
+                                            id="txn-type",
+                                            data=[{"label": "Buy",  "value": "buy"},
+                                                  {"label": "Sell", "value": "sell"}],
+                                            value="buy",
+                                            allowDeselect=False,
+                                            className="txn-dropdown",
+                                        ),
+                                    ], className="txn-input-container"),
+                                    
+                                    html.Div([
+                                        html.P("Ticker", className="txn-label"),
+                                        dmc.TextInput(id="txn-ticker", placeholder="VHY", className="txn-input-text"),
+                                        html.Div(id="txn-ticker-hint", className="txn-ticker-hint"),
+                                    ], className="txn-input-container"),
+
+                                    # Shares & Price
+                                    html.Div([
+                                        html.P("Shares", className="txn-label"),
+                                        dmc.NumberInput(id="txn-shares", placeholder="0", min=0, className="txn-input-num"),
+                                    ], className="txn-input-container"),
+
+                                    html.Div([
+                                        html.P("Price", className="txn-label"),
+                                        dmc.NumberInput(id="txn-price", placeholder="0.00", min=0, decimalScale=3, className="txn-input-num"),
+                                    ], className="txn-input-container"),
+
+                                    # Date
+                                    html.Div([
+                                        html.P("Date", className="txn-label"),
+                                        dmc.DateInput(
+                                            id="txn-date",
+                                            value=datetime.now().date(),
+                                            valueFormat="YYYY-MM-DD",
+                                            className="txn-input-date",
+                                        ),
+                                    ], className="txn-input-container"),
+
+                                    # Submit
+                                    html.Div([
+                                        html.Button("Add", id="txn-submit", n_clicks=0, className="btn-primary btn-sm", style={"width": "120px"}),
+                                    ], style={"alignSelf": "flex-end", "paddingBottom": "2px"}),
+
+                                ], className="txn-form-grid", style={"border": "none", "background": "transparent", "padding": "0"}),
+                                
+                                html.P(id="txn-msg", className="txn-status-msg"),
+                                
+                                # History Detail
+                                html.Details([
+                                    html.Summary("View history log", className="txn-history-summary"),
+                                    html.Div(id="txn-log", className="txn-history-log"),
+                                ], id="txn-history-details"),
+                                
+                                html.P(f"Storage: {CSV_PATH}", className="txn-path"),
+                            ], className="card-inset", style={"marginBottom": "16px", "padding": "16px"}),
+                        ]
                     ),
+
+                    html.Div(id="live-table")
                 ], style={"display": "flex", "flexDirection": "column"}),
-                html.Div(id="live-table")
             ),
 
             # ── P&L history chart ─────────────────────────────────────────────
             section(
                 html.Div([
-                    chart_title("P&L from purchase date", "pnl-history"),
+                    chart_title("P&L history", "pnl-history"),
                     html.Div(
                         [
                             dmc.Select(
@@ -240,4 +229,5 @@ def create_layout(initial_history: list[dict] | None = None) -> html.Div:
                 ]),
             ),
         ],
+        className="page-root"
     )

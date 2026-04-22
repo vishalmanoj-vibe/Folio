@@ -4,9 +4,9 @@ pandas>=2.0.0
 yfinance>=0.2.38
 pytz>=2024.1
 prophet>=1.1.5
+dash-mantine-components>=0.14.0
+dash-bootstrap-components>=1.6.0
 
 # Testing
 pytest>=7.0.0
 pytest-cov>=4.0.0
-
-dash-bootstrap-components

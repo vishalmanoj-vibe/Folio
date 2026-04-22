@@ -29,9 +29,8 @@ def build_corr_figure(histories: dict, period: str, theme_tokens: dict) -> go.Fi
     cutoff = get_period_cutoff(period)
     
     if not histories or len(histories) < 2:
-        fig.add_annotation(text="Need 2+ holdings with history",
-                           showarrow=False, font=dict(color=T_SEC, size=13))
-        return fig
+        from components.charts.intel_helpers import create_empty_fig
+        return create_empty_fig("Need 2+ holdings with history", height=380, theme_tokens=theme_tokens)
         
     dfs = {}
     for t, r in histories.items():
@@ -48,29 +47,58 @@ def build_corr_figure(histories: dict, period: str, theme_tokens: dict) -> go.Fi
             dfs[t] = s
             
     if len(dfs) < 2:
-        fig.add_annotation(text="Need 2+ holdings with at least 10 days of history",
-                           showarrow=False, font=dict(color=T_SEC, size=13))
-        return fig
+        from components.charts.intel_helpers import create_empty_fig
+        return create_empty_fig("Insufficient data for correlation", height=380, theme_tokens=theme_tokens)
         
     corr  = pd.DataFrame(dfs).corr(min_periods=10).round(2)
     ticks = list(corr.columns)
     
     fig.add_trace(go.Heatmap(
-        z=corr.values.tolist(), x=ticks, y=ticks,
-        colorscale=[[0, theme_tokens["GREEN"]], [0.5, theme_tokens["WARNING"]], [1, theme_tokens["RED"]]],
+        z=corr.values.tolist(), 
+        x=ticks, 
+        y=ticks,
+        colorscale=[
+            [0, theme_tokens["RED"]],    # -1.0
+            [0.5, theme_tokens["SURFACE"]], # 0.0
+            [1, theme_tokens["GREEN"]]    # +1.0
+        ],
         zmin=-1, zmax=1,
+        xgap=6, ygap=6, # Creates the "tiled" look
         text=[[f"{v:.2f}" for v in row] for row in corr.values.tolist()],
-        texttemplate="%{text}", textfont=dict(size=9),
-        showscale=True, colorbar=dict(thickness=8, len=0.7, tickfont=dict(color=theme_tokens["T_SEC"], size=9)),
+        texttemplate="%{text}",
+        textfont=dict(size=11, color="white", family="Inter, sans-serif"),
+        showscale=True,
+        colorbar=dict(
+            thickness=10,
+            len=0.4,
+            y=0.5,
+            x=1.1,
+            tickmode="array",
+            tickvals=[-1, 0, 1],
+            ticktext=["-1", "0", "+1"],
+            tickfont=dict(color=theme_tokens["T_SEC"], size=10),
+            outlinecolor="rgba(0,0,0,0)",
+        ),
+        hoverinfo="none",
     ))
     
     fig.update_layout(
-        paper_bgcolor=theme_tokens["BG"],
-        plot_bgcolor=theme_tokens["BG"],
-        margin=dict(t=20, b=20, l=20, r=20),
-        height=400,
-        xaxis=dict(showgrid=False, tickfont=dict(size=9, color=theme_tokens["T_SEC"])),
-        yaxis=dict(showgrid=False, tickfont=dict(size=9, color=theme_tokens["T_SEC"]), autorange="reversed"),
+        paper_bgcolor="rgba(0,0,0,0)",
+        plot_bgcolor="rgba(0,0,0,0)",
+        margin=dict(t=10, b=40, l=40, r=60),
+        height=380,
+        xaxis=dict(
+            showgrid=False, 
+            tickfont=dict(size=11, color=theme_tokens["T_SEC"]),
+            side="bottom",
+            zeroline=False
+        ),
+        yaxis=dict(
+            showgrid=False, 
+            tickfont=dict(size=11, color=theme_tokens["T_SEC"]), 
+            autorange="reversed",
+            zeroline=False
+        ),
         uirevision=True,
     )
     return fig

@@ -144,7 +144,7 @@ def register_callbacks(app) -> None:
         for x in rows_data:
             rows.append(html.Tr([
                 html.Td(
-                    html.A(x["ticker"], href=f"/etf/{x['ticker']}",
+                    html.A(x["ticker"], href="/positions",
                            className="ticker-link"),
                     style=td_style,
                 ),
@@ -153,7 +153,7 @@ def register_callbacks(app) -> None:
                                "maxWidth": "160px", "overflow": "hidden",
                                "textOverflow": "ellipsis"},
                         title=x["name"]),
-                html.Td(str(x["total_shares"]), style=td_style),
+                html.Td(f"{x['total_shares']:,.2f}", style=td_style),
                 html.Td(f"${x['avg_cost']:,.4f}",  style=td_style),
                 html.Td(f"${x['last_price']:,.3f}", style=td_style),
                 html.Td([

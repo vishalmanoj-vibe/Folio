@@ -45,7 +45,8 @@ import callbacks.chart_callbacks          as charts
 import callbacks.alert_callbacks          as alerts
 import callbacks.ui_callbacks             as ui
 import callbacks.intelligence_callbacks   as intell_cb
-import callbacks.etf_detail_callbacks     as etf_detail_cb
+import callbacks.positions_callbacks      as positions_cb
+import callbacks.dividend_callbacks       as dividends_cb
 
 # ── Initial data load ─────────────────────────────────────────────────────────
 try:
@@ -84,13 +85,11 @@ app = dash.Dash(
 app.title = "Portfolio — Live"
 app.index_string = INDEX_STRING
 
-# Import pages after app creation
-import pages.etf_detail as etf_detail      # noqa: E402
-import pages.intelligence as intelligence  # noqa: E402
-import pages.analytics as analytics        # noqa: E402
-import pages.portfolio as portfolio_page    # noqa: E402
+# Pages are loaded automatically via use_pages=True
 
 import dash_mantine_components as dmc
+
+from components.header import create_header
 
 # ── Root Layout ───────────────────────────────────────────────────────────────
 app.layout = dmc.MantineProvider(
@@ -105,9 +104,14 @@ app.layout = dmc.MantineProvider(
             dcc.Store(id="portfolio-store", data=INITIAL_PORTFOLIO_DATA),
             dcc.Store(id="alerts-store"),
             dcc.Store(id="theme-store",          data="dark", storage_type='local'),
-            dcc.Store(id="compact-mode-store",   data=True, storage_type='local'),
+            dcc.Store(id="compact-mode-store",   data=True),
             dcc.Store(id="table-state-store",     data={"search": "", "sort_col": "mkt_value", "sort_dir": "desc"}, storage_type='local'),
             dcc.Interval(id="live-interval", interval=REFRESH_INTERVAL, n_intervals=0),
+            dcc.Store(id="nav-link-store"),
+            
+            # Global Navigation
+            create_header(),
+            
             dash.page_container,
         ],
         className="app-container",
@@ -204,7 +208,8 @@ txn.register_callbacks(app)
 charts.register_callbacks(app)
 alerts.register_callbacks(app)
 ui.register_callbacks(app)
-etf_detail_cb.register_callbacks(app)
+positions_cb.register_callbacks(app)
+dividends_cb.register_callbacks(app)
 intell_cb.register_callbacks(app)
 
 
@@ -246,11 +251,12 @@ def handle_exit(sig, frame):
 # ── Run ───────────────────────────────────────────────────────────────────────
 if __name__ == "__main__":
     from config.settings import CSV_PATH
-    print(f"\n  Portfolio Dashboard — Live P&L (multi-page)")
-    print(f"  CSV:          {CSV_PATH}")
-    print(f"  Main:         http://127.0.0.1:8050/")
-    print(f"  Analytics:    http://127.0.0.1:8050/analytics")
-    print(f"  Intelligence: http://127.0.0.1:8050/intelligence\n")
+    print(f"  Main (Overview): http://127.0.0.1:8050/")
+    print(f"  Analytics:       http://127.0.0.1:8050/analytics")
+    print(f"  Positions:       http://127.0.0.1:8050/positions")
+    print(f"  Intelligence:    http://127.0.0.1:8050/intelligence")
+    print(f"  Dividends:       http://127.0.0.1:8050/dividends")
+    print(f"  Transactions:    http://127.0.0.1:8050/transactions\n")
 
     # Register signals
     signal.signal(signal.SIGINT, handle_exit)

@@ -24,7 +24,7 @@ def register_callbacks(app) -> None:
             const theme = shouldToggle ? (current === 'dark' ? 'light' : 'dark') : current;
             
             document.body.setAttribute('data-theme', theme);
-            document.documentElement.style.backgroundColor = theme === 'dark' ? '#111110' : '#ffffff';
+            document.documentElement.style.backgroundColor = theme === 'dark' ? '#0a0a0a' : '#ffffff';
             
             // Return theme for store and icon text
             return [theme, theme === 'dark' ? '☾' : '☀'];
@@ -48,25 +48,34 @@ def register_callbacks(app) -> None:
         Output("compact-mode-store", "data"),
         Output("txn-collapse", "opened"),
         Output("compact-toggle-btn", "children"),
+        Output("compact-toggle-btn", "className"),
         Input("compact-toggle-btn", "n_clicks"),
         State("compact-mode-store", "data"),
         prevent_initial_call=False
     )
     def toggle_compact_mode(n, is_compact):
+        # Determine if we are in the initial load
+        triggered = [t['prop_id'] for t in dash.callback_context.triggered]
+        is_initial = not triggered or triggered == [''] or triggered == ['.']
         
-        # On first load (n=None/0), use the stored state
-        new_state = not is_compact if n else is_compact
+        if is_initial:
+            new_state = True # Always start collapsed
+        else:
+            new_state = not is_compact
         
         opened = not new_state
         label  = "Hide Form" if opened else "Add Transaction"
         icon   = "−" if opened else "+"
         
         children = [
-            html.Span(icon, style={"fontSize": "16px", "fontWeight": "bold", "marginRight": "6px"}),
+            html.Span(icon, style={"fontSize": "16px", "fontWeight": "bold"}),
             label
         ]
         
-        return new_state, opened, children
+        # Teal highlight when closed, standard when opened
+        btn_class = "btn-primary btn-sm" if not opened else "btn-sm"
+        
+        return new_state, opened, children, btn_class
 
 
     # ── Table Header Sorting ──────────────────────────────────────────────────
@@ -97,3 +106,24 @@ def register_callbacks(app) -> None:
             new_state["sort_dir"] = "asc" if clicked_col in ["ticker", "name"] else "desc"
             
         return new_state
+
+
+    # ── Active Nav Link Highlighting ──────────────────────────────────────────
+    app.clientside_callback(
+        """
+        function(pathname) {
+            const links = document.querySelectorAll('.nav-link');
+            links.forEach(link => {
+                const href = link.getAttribute('href');
+                if (href === pathname) {
+                    link.classList.add('active');
+                } else {
+                    link.classList.remove('active');
+                }
+            });
+            return window.dash_clientside.no_update;
+        }
+        """,
+        Output("nav-link-store", "data"),
+        Input("url", "pathname"),
+    )
