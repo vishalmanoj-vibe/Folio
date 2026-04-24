@@ -45,13 +45,13 @@ def layout() -> html.Div:
                     html.Div([
                         section(
                             chart_title("Annual estimated income by ETF"),
-                            dcc.Graph(id="dividend-income-chart", config={"displayModeBar": False}),
+                            html.Div(id="dividend-income-chart", className="dividend-progress-container"),
                         )
                     ], className="grid-item-1"),
                     html.Div([
                         section(
                             chart_title("Yield comparison (%)"),
-                            dcc.Graph(id="dividend-yield-chart", config={"displayModeBar": False}),
+                            html.Div(id="dividend-yield-chart", className="dividend-progress-container"),
                         )
                     ], className="grid-item-1"),
                 ], className="charts-grid-row"),

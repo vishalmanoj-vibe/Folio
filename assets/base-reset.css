@@ -1,0 +1,76 @@
+/* ============================================================
+   base-reset.css — Global Reset & Form Overrides
+   ============================================================ */
+
+*, *::before, *::after { box-sizing: border-box; }
+
+/* ── Root & Body ── */
+html {
+  background-color: #0a0a0a;
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  background-color: var(--bg) !important;
+  color: var(--t-pri);
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Inter", sans-serif;
+  font-size: 13px;
+  line-height: 1.5;
+  transition: background-color 0.2s ease, color 0.2s ease;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ── React root ── */
+#react-entry-point,
+._dash-loading {
+  min-height: 100vh;
+  background-color: var(--bg);
+}
+
+/* Mantine Component Overrides moved to ui-components.css */
+
+/* Specific targeting for standard inputs to avoid breaking switches/checkboxes */
+input[type="text"], 
+input[type="number"], 
+input[type="password"], 
+input[type="email"], 
+select, 
+.dash-input {
+  background: var(--surface-3) !important;
+  color: var(--t-pri) !important;
+  border: 0.5px solid var(--border) !important;
+  outline: none !important;
+  box-shadow: none !important;
+  border-radius: 6px !important;
+  height: 34px !important;
+  box-sizing: border-box !important;
+  padding: 0 10px !important;
+  line-height: 32px !important;
+  font-size: 12px !important;
+}
+
+input:focus, select:focus, .dash-input:focus {
+  outline: none !important;
+  box-shadow: none !important;
+  border-color: var(--cyan) !important;
+}
+
+input::placeholder { color: var(--t-sec) !important; }
+
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none !important; margin: 0 !important; }
+input[type="number"] { -moz-appearance: textfield !important; }
+
+/* Custom switches moved to ui-components.css */
+
+/* Skeleton placeholders */
+.skeleton {
+  background: var(--surface-2);
+  border-radius: 4px;
+  animation: pulse 1.6s ease-in-out infinite;
+}
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.5; }
+}

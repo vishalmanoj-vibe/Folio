@@ -16,8 +16,14 @@ def _get_filename():
 
 def record_snapshot(enriched_holdings: list[dict]):
     """
-    Record the current last_price for all holdings into today's session cache.
-    Uses Sydney time for timestamps to prevent AEDT/AEST offsets.
+    Record the current price for all holdings into today's session cache.
+    
+    This persistence layer ensures that the "Today" (1d) chart remains 
+    continuous even if the application is restarted during trading hours.
+    
+    Timezone Strategy:
+    - We strictly use 'Australia/Sydney' for timestamps to align with ASX market sessions.
+    - Prices are only recorded if they differ from the last entry to prevent file bloat.
     """
     filename = _get_filename()
     session_data = {}

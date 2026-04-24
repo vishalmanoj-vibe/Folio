@@ -7,11 +7,13 @@
   .Select,
   [id$="-btn"],
   .dash-loading-callback,
+  .nav-bar,
   .nav-link,
   .back-link,
   .btn-toggle,
   .btn-sm,
   .btn-md,
+  .settings-details,
   #theme-toggle {
     display: none !important;
   }

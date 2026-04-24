@@ -1,12 +1,10 @@
-"""
-callbacks/positions_callbacks.py
-==================================
-Callbacks for the Positions page.
-"""
-
+import logging
 import yfinance as yf
 import plotly.graph_objects as go
 from dash import Input, Output, State, ALL, html, dcc, ctx
+
+logger = logging.getLogger(__name__)
+
 from config.constants import (
     COLORS, BORDER, GREEN, RED, T_PRI, T_SEC, BG, SURFACE, NAMES
 )
@@ -40,7 +38,7 @@ def register_callbacks(app) -> None:
     @app.callback(
         Output("positions-card-grid", "children"),
         Input("portfolio-store", "data"),
-        State("positions-selected-ticker", "data")
+        Input("positions-selected-ticker", "data")
     )
     def render_card_grid(port_data, selected_ticker):
         if not port_data or "holdings" not in port_data:
@@ -48,47 +46,53 @@ def register_callbacks(app) -> None:
 
         cards = []
         for h in port_data["holdings"]:
-            ticker = h["ticker"]
-            name = NAMES.get(ticker, ticker)
-            pnl = h["pnl_pct"]
-            pnl_cls = "c-pos" if pnl >= 0 else "c-neg"
-            is_selected = ticker == selected_ticker
-            
-            # Sparkline
-            spark_fig = go.Figure()
-            history = port_data.get("histories", {}).get(ticker, [])
-            if history:
-                prices = [x["Close"] for x in history[-20:]]
-                is_pos = pnl >= 0
-                line_color = GREEN if is_pos else RED
-                fill_color = "rgba(29,158,117,0.08)" if is_pos else "rgba(226,75,74,0.08)"
+            try:
+                ticker = h["ticker"]
+                name = NAMES.get(ticker, ticker)
+                pnl = h["pnl_pct"]
+                pnl_cls = "c-pos" if pnl >= 0 else "c-neg"
+                is_selected = ticker == selected_ticker
                 
-                spark_fig.add_trace(go.Scatter(
-                    y=prices, mode="lines", 
-                    line=dict(color=line_color, width=1.5),
-                    fill='tozeroy', 
-                    fillcolor=fill_color
-                ))
-            spark_fig.update_layout(
-                xaxis=dict(visible=False), yaxis=dict(visible=False),
-                margin=dict(l=0, r=0, t=0, b=0), height=30,
-                paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
-                showlegend=False
-            )
+                # ── Mini Sparkline Generator ──
+                # Renders a high-density area chart of the last 20 price points 
+                # to provide quick visual context for each holding.
+                spark_fig = go.Figure()
+                history = port_data.get("histories", {}).get(ticker, [])
+                if history:
+                    prices = [x["Close"] for x in history[-20:]]
+                    is_pos = pnl >= 0
+                    line_color = GREEN if is_pos else RED
+                    fill_color = "rgba(29,158,117,0.08)" if is_pos else "rgba(226,75,74,0.08)"
+                    
+                    spark_fig.add_trace(go.Scatter(
+                        y=prices, mode="lines", 
+                        line=dict(color=line_color, width=1.5),
+                        fill='tozeroy', 
+                        fillcolor=fill_color
+                    ))
+                spark_fig.update_layout(
+                    xaxis=dict(visible=False), yaxis=dict(visible=False),
+                    margin=dict(l=0, r=0, t=0, b=0), height=30,
+                    paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
+                    showlegend=False
+                )
 
-            cards.append(
-                html.Div([
-                    html.Div(ticker, className="holding-card-ticker"),
-                    html.Div(name,   className="holding-card-name"),
-                    html.Div(f"${h['mkt_value']:,.2f}", className="holding-card-value"),
-                    html.Div(f"{pnl:+.2f}%", className=f"holding-card-pnl {pnl_cls}"),
-                    html.Div(f"Yield: {h.get('div_yield', 0):.2f}%", className="holding-card-name", style={"marginTop": "4px"}),
-                    dcc.Graph(figure=spark_fig, config={"displayModeBar": False}, className="holding-card-sparkline")
-                ], 
-                id={"type": "pos-card", "index": ticker},
-                className=f"holding-card {'selected' if is_selected else ''}",
-                n_clicks=0)
-            )
+                cards.append(
+                    html.Div([
+                        html.Div(ticker, className="holding-card-ticker"),
+                        html.Div(name,   className="holding-card-name"),
+                        html.Div(f"${h['mkt_value']:,.2f}", className="holding-card-value"),
+                        html.Div(f"{pnl:+.2f}%", className=f"holding-card-pnl {pnl_cls}"),
+                        html.Div(f"Yield: {h.get('div_yield', 0):.2f}%", className="holding-card-name", style={"marginTop": "4px"}),
+                        dcc.Graph(figure=spark_fig, config={"displayModeBar": False}, className="holding-card-sparkline")
+                    ], 
+                    id={"type": "pos-card", "index": ticker},
+                    className=f"holding-card {'selected' if is_selected else ''}",
+                    n_clicks=0)
+                )
+            except Exception as e:
+                logger.error(f"Failed to render card for {h.get('ticker', '?')}: {e}")
+                continue
         return cards
 
     # ── 2. Handle Card Clicks ──────────────────────────────────────────────────
@@ -99,6 +103,12 @@ def register_callbacks(app) -> None:
         prevent_initial_call=True
     )
     def select_ticker(n_clicks_list, current):
+        """
+        Interactivity: Listens to clicks on ANY card in the grid.
+        The ctx.triggered_id contains the index (ticker) of the clicked card.
+        This updates the 'positions-selected-ticker' store, which in turn 
+        triggers the detail panel (metrics, chart, transactions) to refresh.
+        """
         if not ctx.triggered_id:
             return current
         return ctx.triggered_id["index"]
@@ -111,10 +121,11 @@ def register_callbacks(app) -> None:
     )
     def render_detail_metrics(ticker, port_data):
         if not ticker or not port_data or "holdings" not in port_data:
-            return html.Div("Select a position to view details", className="c-muted")
+            return []
 
         h = next((x for x in port_data["holdings"] if x["ticker"] == ticker), None)
-        if not h: return html.Div("Position not found")
+        if not h:
+            return html.Div(f"Metrics for {ticker} are currently unavailable", className="c-muted")
 
         pnl = h["pnl"]; pc = GREEN if pnl >= 0 else RED
         day_pnl = h["day_pnl"]; dc = GREEN if day_pnl >= 0 else RED
@@ -154,20 +165,39 @@ def register_callbacks(app) -> None:
         if not ticker: return fig
 
         holding = next((h for h in port_data.get("holdings", []) if h["ticker"] == ticker), None)
+        if not holding: return fig
+
         try:
             tk = yf.Ticker(ticker + ".AX")
-            df = tk.history(start=holding["first_purchase"] if period == "purchase" else None, period=period if period != "purchase" else None)
+            df = tk.history(start=holding["first_purchase"] if period == "purchase" else None, 
+                            period=period if period != "purchase" else None)
+            
             if not df.empty:
-                if df.index.tz is not None: df.index = df.index.tz_convert(None)
+                if df.index.tz is not None: 
+                    df.index = df.index.tz_convert(None)
+                
                 fig.add_trace(go.Candlestick(
                     x=df.index, open=df["Open"], high=df["High"], low=df["Low"], close=df["Close"],
                     increasing_line_color=GREEN, decreasing_line_color=RED,
-                    increasing_fillcolor=GREEN, decreasing_fillcolor=RED, name=ticker
+                    increasing_fillcolor=GREEN, decreasing_fillcolor=RED, 
+                    name=ticker,
+                    opacity=0.9
                 ))
+                
                 if holding and holding.get("avg_cost"):
-                    fig.add_hline(y=holding["avg_cost"], line_dash="dot", line_color="rgba(255,255,255,0.3)",
-                                  annotation_text=f"Avg cost ${holding['avg_cost']:,.3f}", annotation_position="top left")
-        except: pass
+                    fig.add_hline(
+                        y=holding["avg_cost"], 
+                        line_dash="dot", 
+                        line_color="rgba(255,255,255,0.4)",
+                        annotation_text=f"Avg cost ${holding['avg_cost']:,.3f}", 
+                        annotation_position="top left"
+                    )
+            else:
+                fig.add_annotation(text=f"No price history available for {ticker}", 
+                                  showarrow=False, font=dict(size=14, color="var(--t-sec)"))
+        except Exception as e:
+            logger.error(f"Failed to fetch history for {ticker}: {e}")
+            fig.add_annotation(text="Error loading chart data", showarrow=False)
         return fig
 
     # ── 5. Detail Panel — Transaction Table ──────────────────────────────────
@@ -195,4 +225,41 @@ def register_callbacks(app) -> None:
             html.Thead(html.Tr([html.Th(c, style=_TH) for c in ["Date", "Type", "Shares", "Price", "Total"]])),
             html.Tbody(rows)
         ], style={"width": "100%", "borderCollapse": "collapse"})
+
+    # ── 6. Period Selection Buttons ──────────────────────────────────────────
+    @app.callback(
+        Output("positions-period-btns", "children"),
+        Input("positions-period-store", "data")
+    )
+    def render_period_btns(current_period):
+        periods = [
+            ("1M", "1mo"),
+            ("3M", "3mo"),
+            ("1Y", "1y"),
+            ("YTD", "ytd"),
+            ("MAX", "max")
+        ]
+        
+        btns = []
+        for label, val in periods:
+            is_active = (current_period == val)
+            btns.append(
+                html.Button(
+                    label,
+                    id={"type": "pos-period-btn", "index": val},
+                    className=f"period-btn {'active' if is_active else ''}",
+                    n_clicks=0
+                )
+            )
+        return btns
+
+    # ── 7. Detail Title ──────────────────────────────────────────────────────
+    @app.callback(
+        Output("positions-detail-title", "children"),
+        Input("positions-selected-ticker", "data")
+    )
+    def update_detail_title(ticker):
+        if not ticker:
+            return "Select a position to view details"
+        return f"Details for {ticker}"
 

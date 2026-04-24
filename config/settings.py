@@ -19,7 +19,7 @@ METADATA_CSV_PATH = os.getenv(
 )
 
 # ── Intervals ─────────────────────────────────────────────────────────────────
-REFRESH_INTERVAL = int(os.getenv("REFRESH_INTERVAL_MS", 60_000))  # milliseconds
+REFRESH_INTERVAL = int(os.getenv("REFRESH_INTERVAL_MS", 30_000))  # milliseconds
 
 # ── Market configuration ──────────────────────────────────────────────────────
 MARKET_TIMEZONE = os.getenv("MARKET_TIMEZONE", "Australia/Sydney")
@@ -31,7 +31,7 @@ API_MAX_RETRIES = int(os.getenv("API_MAX_RETRIES", 3))
 API_RETRY_BACKOFF_BASE = float(os.getenv("API_RETRY_BACKOFF_BASE", 2.0))
 
 # ── Cache configuration ───────────────────────────────────────────────────────
-CACHE_TTL_SECONDS = int(os.getenv("CACHE_TTL_SECONDS", 60))
+CACHE_TTL_SECONDS = int(os.getenv("CACHE_TTL_SECONDS", 25))
 
 # ── Alert thresholds ─────────────────────────────────────────────────────────
 ALERT_THRESHOLDS = {

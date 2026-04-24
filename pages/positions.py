@@ -15,10 +15,6 @@ dash.register_page(__name__, path="/positions", title="Positions")
 def layout() -> html.Div:
     return html.Div(
         [
-            # Hidden store for the selected ticker
-            dcc.Store(id="positions-selected-ticker", storage_type="session"),
-            dcc.Store(id="positions-period-store", data="3mo", storage_type="session"),
-
             # ── Page Header ──────────────────────────────────────────────────
             html.Div(
                 [
@@ -36,7 +32,7 @@ def layout() -> html.Div:
 
                 # ── ETF Detail Panel ────────────────────────────────────────────
                 section(
-                    None,
+                    html.Div("Select a position to view details", id="positions-detail-title", className="chart-title-text"),
                     html.Div([
                         html.Div(id="etf-detail-cards", className="etf-detail-grid"),
                         

@@ -8,6 +8,22 @@ from dash import html
 import dash_mantine_components as dmc
 from config.constants import COLORS, CHART_INFO
 
+def interpolate_color(start_hex: str, end_hex: str, fraction: float) -> str:
+    """Linearly interpolates between two hex colors based on a fraction (0 to 1)."""
+    s = start_hex.lstrip('#')
+    e = end_hex.lstrip('#')
+    
+    # Standard hex to RGB
+    r1, g1, b1 = int(s[0:2], 16), int(s[2:4], 16), int(s[4:6], 16)
+    r2, g2, b2 = int(e[0:2], 16), int(e[2:4], 16), int(e[4:6], 16)
+    
+    # LERP (Linear Interpolation)
+    r = int(r1 + (r2 - r1) * fraction)
+    g = int(g1 + (g2 - g1) * fraction)
+    b = int(b1 + (b2 - b1) * fraction)
+    
+    return f"#{r:02x}{g:02x}{b:02x}"
+
 def stat_card(
     label: str,
     value: str,
@@ -20,7 +36,16 @@ def stat_card(
     label_children = [html.Span(label, className="stat-card-title")]
     if tip:
         label_children.append(
-            html.Span("ℹ", title=tip, className="chart-info-icon")
+            dmc.Tooltip(
+                label=tip,
+                multiline=True,
+                w=240,
+                withArrow=True,
+                transitionProps={"transition": "fade", "duration": 200},
+                position="top",
+                zIndex=2000,
+                children=html.Span("ℹ", className="chart-info-icon")
+            )
         )
     children = [
         html.Div(label_children, className="stat-card-label-row"),
@@ -40,7 +65,18 @@ def chart_title(label: str, info_key: str = "") -> html.Div:
     
     children = [html.Span(label, className="chart-title-text")]
     if tip:
-        children.append(html.Span("ℹ", title=tip, className="chart-info-icon"))
+        children.append(
+            dmc.Tooltip(
+                label=tip,
+                multiline=True,
+                w=280,
+                withArrow=True,
+                transitionProps={"transition": "fade", "duration": 200},
+                position="top",
+                zIndex=2000,
+                children=html.Span("ℹ", className="chart-info-icon")
+            )
+        )
     
     return html.Div(children, className="chart-title-container")
 
@@ -62,7 +98,7 @@ def alert_card(alert: dict) -> html.Div:
         ]),
     ], className=f"smart-alert {level}")
 
-def txn_table(history: list[dict]) -> html.Element:
+def txn_table(history: list[dict]) -> html.Div:
     """Renders the transaction history table with deep-linking to positions."""
     if not history:
         return html.P("No transactions yet.", className="txn-empty")
@@ -120,3 +156,25 @@ def table_skeleton(rows: int = 5, cols: int = 6) -> html.Div:
 def chart_skeleton(height: int = 300) -> dmc.Skeleton:
     """Pulsing placeholder for a chart"""
     return dmc.Skeleton(height=height, radius="sm", style={"width": "100%"})
+
+def progress_row(ticker: str, value: float, max_val: float, prefix: str = "", suffix: str = "", color: str = "var(--cyan)") -> html.Div:
+    """
+    Creates a premium-styled horizontal progress row with label, bar, and value.
+    Commonly used for ranking ETFs by income or yield.
+    """
+    percent = (value / max_val * 100) if max_val > 0 else 0
+    fmt = ",.2f"
+    return html.Div([
+        html.Div(ticker, className="progress-ticker"),
+        html.Div(
+            dmc.Progress(
+                value=percent,
+                color=color,
+                size="lg",
+                radius="xl",
+                className="progress-bar-component"
+            ),
+            className="progress-bar-wrapper"
+        ),
+        html.Div(f"{prefix}{value:{fmt}}{suffix}", className="progress-value"),
+    ], className="progress-row")

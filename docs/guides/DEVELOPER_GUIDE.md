@@ -54,6 +54,27 @@ Once running, the `dcc.Interval` (default 60s) triggers the `refresh_portfolio_d
 - It repeats the **Load -> Build -> Enrich** cycle.
 - The updated JSON is pushed to `portfolio-store`.
 - All charts and metrics across all pages are decorated with `@callback(Input("portfolio-store", "data"))`, causing them to re-render automatically.
+- The `nav-link-store` ensures header badges update immediately upon navigation.
+
+---
+
+## Global State Management
+
+The application utilizes a sophisticated `dcc.Store` ecosystem to manage state across multiple pages without expensive re-fetches.
+
+### 1. The Portfolio Store (`portfolio-store`)
+- **Role**: The single source of truth for all holding data, histories, and metrics.
+- **Hydration**: Pre-seeded at startup in `app.py` to ensure instantaneous first-paint.
+- **Reactivity**: Updated every 60s (via `live-interval`) or immediately upon transaction entry.
+
+### 2. Preference & Session Stores
+- **`theme-store`**: Local storage persistence for light/dark mode preference.
+- **`period-store` / `pnl-mode-store`**: Session storage persistence for user selections (Timeframe, $ vs %), ensuring selections persist when navigating between pages.
+- **`positions-selected-ticker`**: Tracks the active ticker for the deep-dive panel on the Positions page.
+
+### 3. UI Context Stores
+- **`nav-link-store`**: Dynamically updates the header badges (Market Status, Last Refreshed) by listening to URL path changes.
+- **`compact-mode-store`**: Controls the density of the main portfolio table.
 
 ---
 
@@ -144,6 +165,31 @@ from services.market.data_fetcher import fetch_live, get_etf_name
 ```python
 from data.csv_handler import load_csv, save_csv
 ```
+
+---
+
+## Core Algorithms & Special Logic
+
+### 1. Realized Dividend Engine
+Unlike standard dashboards that only show current yield, this app computes **Realized Dividends** by correlating distribution history with purchase tranches.
+- **Tranche Matching**: A dividend is only credited if `purchase_date < ex_dividend_date`.
+- **Accuracy**: This prevents "phantom income" from showing up for stocks bought after their ex-date.
+
+### 2. Prophet Forecasting & Continuity Correction
+The forecasting engine in `prediction_service.py` uses Facebook Prophet with a custom "Continuity Correction" layer.
+- **The Problem**: Trends fitted by Prophet often have a vertical gap between the last historical price and the first forecasted point.
+- **The Fix**: We calculate the `drift` (Actual Last - Fitted Last) and apply it as a vertical offset to the entire forecast series, ensuring a smooth visual transition.
+
+### 3. Advanced Risk Metrics
+Metrics in `intelligence_service.py` are calculated using standard financial formulas:
+- **Sharpe Ratio**: `(Mean Excess Return / Std Dev of Return) * sqrt(252)`, using a 4.35% (Current RBA/Fed-proxy) risk-free rate.
+- **Volatility**: Annualized standard deviation of daily log returns.
+- **Drawdown**: Percentage drop from the previous all-time high in the selected period.
+
+### 4. Intraday Snapshotting & Persistence
+To overcome the limitations of yfinance's intraday data (which can be flaky for ASX), the app implements a **Session Cache**.
+- **Mechanism**: A background thread in `app.py` captures the portfolio state every 60s and appends it to `data/cache/intraday_YYYY-MM-DD.json`.
+- **Merge Logic**: The "Today" chart merges these local high-frequency snapshots with yfinance's 5m interval bars to provide a seamless, reliable view.
 ## Styling & UI Architecture
 
 ### CSS Modularization & Loading

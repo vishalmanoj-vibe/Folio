@@ -69,6 +69,7 @@ def get_theme(theme: str) -> dict:
         "WARNING": warning,
         "GREEN":   "#1D9E75",
         "RED":     "#E24B4A",
+        "CYAN":    "#009e80" if theme == "light" else "#00c9a7",
         "INFO":    info,
         "BENCH_1": bench_1,
         "BENCH_2": bench_2,

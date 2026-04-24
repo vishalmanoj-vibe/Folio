@@ -7,8 +7,10 @@ Open:  http://127.0.0.1:8050
 Pages
 -----
   /               → pages/portfolio.py
-  /etf/<ticker>   → pages/etf_detail.py
+  /positions      → pages/positions.py
+  /analytics      → pages/analytics.py
   /intelligence   → pages/intelligence.py
+  /dividends      → pages/dividends.py
 
 Responsiveness fix (Pre-seeded Stores)
 ----------------------------------
@@ -26,7 +28,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 import dash
-from dash import html, dcc, Input, Output, State
+from dash import html, dcc, Input, Output, State, ALL, ctx
 import webbrowser
 import threading
 import os
@@ -101,13 +103,24 @@ app.layout = dmc.MantineProvider(
         [
             dcc.Location(id="url", refresh=False),
             dcc.Store(id="txn-store",       data=INITIAL_HISTORY),
-            dcc.Store(id="portfolio-store", data=INITIAL_PORTFOLIO_DATA),
+            dcc.Store(id="portfolio-store",     data=INITIAL_PORTFOLIO_DATA),
             dcc.Store(id="alerts-store"),
             dcc.Store(id="theme-store",          data="dark", storage_type='local'),
             dcc.Store(id="compact-mode-store",   data=True),
             dcc.Store(id="table-state-store",     data={"search": "", "sort_col": "mkt_value", "sort_dir": "desc"}, storage_type='local'),
             dcc.Interval(id="live-interval", interval=REFRESH_INTERVAL, n_intervals=0),
             dcc.Store(id="nav-link-store"),
+
+            # ── Picker Stores (Session persistence) ────────────────────────────────
+            dcc.Store(id="period-store",           data="max",    storage_type='session'),
+            dcc.Store(id="pnl-mode-store",         data="pct",  storage_type='session'),
+            dcc.Store(id="ticker-store",           data="Portfolio", storage_type='session'),
+            dcc.Store(id="treemap-mode-store",     data="sector", storage_type='session'),
+            dcc.Store(id="analytics-period-store", data="max",    storage_type='session'),
+            dcc.Store(id="intel-period-store",     data="3mo",    storage_type='session'),
+            dcc.Store(id="intel-pred-store",       data=False,    storage_type='session'),
+            dcc.Store(id="positions-selected-ticker", data=None, storage_type='session'),
+            dcc.Store(id="positions-period-store", data="3mo", storage_type='session'),
             
             # Global Navigation
             create_header(),
@@ -131,9 +144,9 @@ def _perform_refresh(period):
     Output("portfolio-store", "data", allow_duplicate=True),
     Input("live-interval",    "n_intervals"),
     Input("refresh-btn",      "n_clicks"),
-    State("period-picker",    "value"),
-    State("analytics-period-picker", "value"),
-    prevent_initial_call=True,
+    State("period-store",     "data"),
+    State("analytics-period-store", "data"),
+    prevent_initial_call='initial_duplicate',
 )
 def refresh_periodic(n_intervals, n_clicks, p1, p2):
     """
@@ -141,7 +154,7 @@ def refresh_periodic(n_intervals, n_clicks, p1, p2):
     Note: Snapshot recording also happens in a background thread for reliability.
     """
     try:
-        # Use whatever period picker is available in the current layout
+        # Use whatever period store is populated
         period = p1 or p2 or "max"
         return _perform_refresh(period)
     except Exception as e:
@@ -152,8 +165,8 @@ def refresh_periodic(n_intervals, n_clicks, p1, p2):
 @app.callback(
     Output("portfolio-store", "data", allow_duplicate=True),
     Input("txn-store", "data"),
-    State("period-picker", "value"),
-    State("analytics-period-picker", "value"),
+    State("period-store", "data"),
+    State("analytics-period-store", "data"),
     prevent_initial_call=True,
 )
 def refresh_on_txn(txn_data, p1, p2):
@@ -170,35 +183,50 @@ def refresh_on_txn(txn_data, p1, p2):
         logger.error(f"Transaction-triggered refresh failed: {e}")
         return dash.no_update
 
-# ── Overview Picker Refresh ─────────────────
+# ── Store-Triggered Portfolio Refresh ─────────────────
 @app.callback(
     Output("portfolio-store", "data", allow_duplicate=True),
-    Input("period-picker",    "value"),
+    Input("period-store", "data"),
+    Input("analytics-period-store", "data"),
     prevent_initial_call=True,
 )
-def refresh_on_p1(p1):
+def refresh_on_period_change(p1, p2):
     try:
-        if p1 is None: return dash.no_update
-        _, data = _perform_refresh(p1)
+        # Determine which one changed or use a priority
+        period = p1 or p2 or "max"
+        _, data = _perform_refresh(period)
         return data
     except Exception as e:
-        logger.error(f"Overview period refresh failed: {e}")
+        logger.error(f"Store-triggered refresh failed: {e}")
         return dash.no_update
 
-# ── Analytics Picker Refresh ─────────────────
-@app.callback(
-    Output("portfolio-store", "data", allow_duplicate=True),
-    Input("analytics-period-picker", "value"),
-    prevent_initial_call=True,
-)
-def refresh_on_p2(p2):
-    try:
-        if p2 is None: return dash.no_update
-        _, data = _perform_refresh(p2)
-        return data
-    except Exception as e:
-        logger.error(f"Analytics period refresh failed: {e}")
-        return dash.no_update
+# ── Global Picker Syncing (Session Persistence) ──────────────────────────────
+@app.callback(Output("period-store", "data"), Input("period-picker", "value"), prevent_initial_call=True)
+def sync_p1(v): return v if v else dash.no_update
+
+@app.callback(Output("pnl-mode-store", "data"), Input("pnl-mode", "value"), prevent_initial_call=True)
+def sync_mode(v): return v if v else dash.no_update
+
+@app.callback(Output("ticker-store", "data"), Input("ticker-selector", "value"), prevent_initial_call=True)
+def sync_tk(v): return v if v else dash.no_update
+
+@app.callback(Output("treemap-mode-store", "data"), Input("treemap-mode", "value"), prevent_initial_call=True)
+def sync_tree(v): return v if v else dash.no_update
+
+@app.callback(Output("analytics-period-store", "data"), Input("analytics-period-picker", "value"), prevent_initial_call=True)
+def sync_p2(v): return v if v else dash.no_update
+
+@app.callback(Output("intel-period-store", "data"), Input("intel-period-picker", "value"), prevent_initial_call=True)
+def sync_p3(v): return v if v else dash.no_update
+
+@app.callback(Output("intel-pred-store", "data"), Input("intel-pred-toggle", "checked"), prevent_initial_call=True)
+def sync_pred(v): return v if v is not None else dash.no_update
+
+@app.callback(Output("positions-period-store", "data"), Input({"type": "pos-period-btn", "index": ALL}, "n_clicks"), prevent_initial_call=True)
+def sync_p4(n_list):
+    if not ctx.triggered_id: return dash.no_update
+    return ctx.triggered_id["index"]
+
 
 
 
@@ -252,11 +280,10 @@ def handle_exit(sig, frame):
 if __name__ == "__main__":
     from config.settings import CSV_PATH
     print(f"  Main (Overview): http://127.0.0.1:8050/")
-    print(f"  Analytics:       http://127.0.0.1:8050/analytics")
     print(f"  Positions:       http://127.0.0.1:8050/positions")
+    print(f"  Analytics:       http://127.0.0.1:8050/analytics")
     print(f"  Intelligence:    http://127.0.0.1:8050/intelligence")
-    print(f"  Dividends:       http://127.0.0.1:8050/dividends")
-    print(f"  Transactions:    http://127.0.0.1:8050/transactions\n")
+    print(f"  Dividends:       http://127.0.0.1:8050/dividends\n")
 
     # Register signals
     signal.signal(signal.SIGINT, handle_exit)

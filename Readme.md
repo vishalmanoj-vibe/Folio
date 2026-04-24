@@ -8,16 +8,16 @@ Built with Dash, Plotly, and yfinance.
 ![Dashboard](screenshot.png)
 
 ## Features
-- **Live Tracking**: Live prices via Yahoo Finance (yfinance) with ASX-specific optimizations.
-- **Intraday Monitoring**: Dedicated "Today" P&L tracking with 1-minute resolution snapshots and persistent daily session caching.
-- **P&L Analysis**: Unrealised P&L from purchase date, per tranche, and historical performance tracking.
-- **Intelligence Dashboard**: Advanced risk metrics (Sharpe, Volatility, Max Drawdown), sector & geographic allocation with Sunburst drill-downs.
-- **Portfolio Forecasting**: Prophet-based return predictions with custom confidence intervals and disk-caching.
-- **Analytics Page**: Secondary performance metrics, normalized price history, and return correlation heatmaps.
-- **Dividend Tracking**: Automatic tracking of annual dividend income, yield, and **realized dividends** (calculated based on tranche-level eligibility).
-- **Interactive UI**: Add buy/sell transactions via a calendar-based entry system; data persists to CSV.
-- **Modular Architecture**: Clean, multi-page Dash structure with modular CSS and a decoupled engine/service model.
-- **Modern UI**: Dark/light theme toggle, Radix UI component overrides, and premium aesthetics.
+- **Live Tracking**: Real-time prices via Yahoo Finance (yfinance) with ASX-specific bulk optimizations.
+- **Intraday Monitoring**: Dedicated "Today" P&L tracking with high-frequency session caching and persistent daily snapshots.
+- **Positions Deep-Dive**: Granular view of each holding with interactive candlestick charts, transaction history, and live sparklines.
+- **Intelligence Dashboard**: Institutional-grade risk metrics including **Sharpe Ratio**, **Annualized Volatility**, and **Max Drawdown**.
+- **Portfolio Forecasting**: Forward-looking return projections powered by **Facebook Prophet** with Australian holiday awareness and continuity correction.
+- **Allocation Analysis**: Hierarchical Sector and Geographic allocation with Sunburst drill-downs and smart risk alerts.
+- **Dividend Tracking**: Automatic calculation of **Realized Dividends** (tranche-level accuracy) vs. projected annual income.
+- **Interactive UI**: Modern, responsive interface with buy/sell entry, calendar-based tracking, and global state persistence.
+- **Modular Architecture**: Strictly decoupled layer model (Presentation, Service, Engine, Data) with modular CSS and a pre-seeded store pattern.
+- **Premium Aesthetics**: "Aura Ledger" dark-themed design with glassmorphism, Radix UI overrides, and smooth transitions.
 
 ## Setup
 

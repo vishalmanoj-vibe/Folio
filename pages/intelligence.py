@@ -55,13 +55,19 @@ def layout() -> html.Div:
                                 [
                                     # Prediction Controls
                                     html.Div([
-                                        html.Span("Forecast", style={"marginRight": "8px", "fontSize": "11px", "color": "var(--t-sec)"}),
-                                        dbc.Switch(
+                                        html.Span("Forecast", style={"marginRight": "10px", "fontSize": "11px", "color": "var(--t-sec)", "fontWeight": "500"}),
+                                        dmc.Switch(
                                             id="intel-pred-toggle",
-                                            value=False,
-                                            className="custom-switch",
+                                            checked=False,
+                                            size="sm",
+                                            color="cyan",
+                                            className="forecast-switch",
+                                            styles={
+                                                "track": {"cursor": "pointer"},
+                                                "thumb": {"backgroundColor": "#fff"}
+                                            }
                                         ),
-                                    ], style={"display": "flex", "alignItems": "center", "marginRight": "12px"}),
+                                    ], style={"display": "flex", "alignItems": "center", "marginRight": "16px"}),
                                     
                                     dmc.Select(
                                         id="intel-period-picker",
@@ -77,7 +83,7 @@ def layout() -> html.Div:
                                         value="3mo",
                                         allowDeselect=False,
                                         persistence=True,
-                                        style={"width": "140px"},
+                                        style={"width": "125px"},
                                     ),
                                 ], 
                                 style={"display": "flex", "alignItems": "center", "marginLeft": "auto"}

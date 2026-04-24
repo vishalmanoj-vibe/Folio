@@ -20,6 +20,7 @@ def register_callbacks(app) -> None:
     @app.callback(
         Output("alerts-banner", "children"),
         Input("portfolio-store", "data"),
+        prevent_initial_call=True,
     )
     def show_alerts(data):
         if not data or "holdings" not in data:

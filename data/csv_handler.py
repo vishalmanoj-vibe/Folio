@@ -60,9 +60,9 @@ def load_csv() -> list[dict]:
     mask_failed = df["date"].isna()
     if mask_failed.any():
         # Second-pass: DD.MM.YYYY
-        raw_col = pd.read_csv(CSV_PATH).iloc[:, df.columns.tolist().index("date")]
-        retry   = pd.to_datetime(raw_col, dayfirst=True, errors="coerce")
-        df.loc[mask_failed, "date"] = retry[mask_failed]
+        # Optimization: use existing df instead of re-reading file
+        retry = pd.to_datetime(df.loc[mask_failed, "date"], dayfirst=True, errors="coerce")
+        df.loc[mask_failed, "date"] = retry
 
     still_bad = (
         df["date"].isna().any()

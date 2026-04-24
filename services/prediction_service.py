@@ -97,12 +97,21 @@ def get_forecast(dates: list, values: list, horizon_str: str) -> dict:
             "ds": pd.to_datetime(dates),
             "y": values
         })
+        
+        # Determine seasonality based on data density
+        total_days = (df["ds"].max() - df["ds"].min()).days
+        n_points = len(df)
+        
+        # Defensive check: if we have very little data, seasonality is just noise
+        # Prophet needs at least 2 full cycles for meaningful seasonality
+        use_yearly = total_days > 730  # 2 years for yearly
+        use_weekly = n_points > 14    # 2 weeks for weekly
 
         # Initialize and fit model
         model = Prophet(
             daily_seasonality=False,
-            weekly_seasonality=True,
-            yearly_seasonality=True,
+            weekly_seasonality=use_weekly,
+            yearly_seasonality=use_yearly,
             interval_width=0.80 
         )
         model.add_country_holidays(country_name="AU")
@@ -112,8 +121,25 @@ def get_forecast(dates: list, values: list, horizon_str: str) -> dict:
         future = model.make_future_dataframe(periods=days, freq="D")
         forecast = model.predict(future)
 
-        # Only return the future portion
+        # ── Continuity correction ──
+        # Prophet fits a global trend which may not align perfectly with the very 
+        # last historical data point. This creates a vertical "jump" in the chart.
+        # We calculate the 'drift' to anchor the forecast to the actual last price.
         last_hist_date = df["ds"].iloc[-1]
+        actual_last = df["y"].iloc[-1]
+        
+        # Find the model's fitted value for the last historical date
+        fitted_last_row = forecast[forecast["ds"] == last_hist_date]
+        if not fitted_last_row.empty:
+            fitted_last = fitted_last_row["yhat"].iloc[0]
+            drift = actual_last - fitted_last
+            
+            # Apply the drift offset to the entire future forecast series
+            forecast["yhat"] += drift
+            forecast["yhat_lower"] += drift
+            forecast["yhat_upper"] += drift
+
+        # Only return the future portion
         future_mask = forecast["ds"] > last_hist_date
         res = forecast[future_mask]
 

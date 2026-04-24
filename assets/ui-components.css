@@ -1,0 +1,455 @@
+/* ============================================================
+   ui-components.css — Reusable Components
+   ============================================================ */
+
+/* ── Buttons ── */
+button {
+  background: var(--surface) !important;
+  color: var(--t-pri) !important;
+  border: 0.5px solid var(--border) !important;
+  outline: none !important;
+  box-shadow: none !important;
+  border-radius: 6px !important;
+  box-sizing: border-box !important;
+  height: 34px !important;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  cursor: pointer;
+  transition: transform 0.1s, opacity 0.1s, border-color 0.15s;
+  font-size: 12px;
+}
+
+button:hover  { transform: translateY(-1px); opacity: 0.92; border-color: var(--border-2) !important; }
+button:active { transform: scale(0.97); }
+
+.btn-primary {
+  background: var(--cyan) !important;
+  color: #0a0a0a !important;
+  border: none !important;
+  font-weight: 500 !important;
+}
+.btn-primary:hover { opacity: 0.88 !important; }
+
+.btn-sm { font-size: 11px !important; padding: 4px 10px !important; height: 28px !important; }
+.btn-md { font-size: 12px !important; padding: 6px 14px !important; height: 32px !important; }
+
+.compact-toggle-btn {
+  color: var(--t-sec) !important;
+  border: 0.5px solid var(--border) !important;
+  background: var(--surface) !important;
+  font-size: 11px !important;
+}
+.compact-toggle-btn:hover { color: var(--t-pri) !important; border-color: var(--border-2) !important; }
+
+/* ── KPI Stat Cards ── */
+.stat-cards-container {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 8px;
+  padding: 14px 24px;
+  border-bottom: 0.5px solid var(--border);
+}
+
+.stat-card-container {
+  background: var(--surface-2);
+  border-radius: 8px;
+  padding: 12px 14px;
+  border: 0.5px solid var(--border);
+  transition: transform 0.15s ease, border-color 0.15s;
+}
+.stat-card-container:hover {
+  transform: translateY(-1px);
+  border-color: var(--border-2);
+}
+
+.stat-card-label-row {
+  display: flex;
+  align-items: center;
+  margin: 0 0 6px;
+}
+
+.stat-card-title {
+  font-size: 10px;
+  color: var(--t-sec);
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.stat-card-value {
+  font-size: 22px;
+  font-weight: 500;
+  margin: 0;
+  letter-spacing: -0.03em;
+  color: var(--t-pri);
+}
+
+.stat-card-sub {
+  font-size: 10.5px;
+  margin: 4px 0 0;
+  color: var(--t-sec);
+}
+
+/* ── Cards & Panels ── */
+.card {
+  background: var(--surface-2);
+  border: 0.5px solid var(--border);
+  border-radius: 10px;
+  padding: 16px 18px;
+}
+
+.card-accent {
+  border-left: 2px solid var(--cyan);
+  border-radius: 0 10px 10px 0;
+}
+
+.card-inset {
+  background: var(--surface-3);
+  border: 0.5px solid var(--border);
+  border-radius: 8px;
+  padding: 10px 12px;
+}
+
+/* ── Tables ── */
+.table-container   { width: 100%; border-collapse: collapse; }
+.overflow-table    { overflow-x: auto; border-radius: 8px; border: 0.5px solid var(--border); }
+
+.table-th {
+  font-size: 10px; color: var(--t-sec); font-weight: 600;
+  padding: 9px 12px; border-bottom: 0.5px solid var(--border);
+  text-align: left; white-space: nowrap;
+  background: var(--surface-2);
+  text-transform: uppercase; letter-spacing: 0.4px;
+}
+
+.table-td {
+  font-size: 12px; padding: 9px 12px;
+  border-bottom: 0.5px solid var(--border);
+  white-space: nowrap; color: var(--t-pri);
+}
+
+.table-th-sortable { cursor: pointer; transition: background 0.15s; }
+.table-th-sortable:hover { background: var(--surface-3); }
+.sort-icon { font-size: 9px; margin-left: 5px; color: var(--t-sec); }
+
+.ticker-link {
+  color: var(--cyan);
+  text-decoration: none;
+  font-weight: 500;
+}
+.ticker-link:hover { color: var(--t-pri); text-decoration: underline; }
+
+.table-controls-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+/* Mantine TextInput override for table filter */
+.table-filter-input .mantine-TextInput-input {
+  background-color: var(--surface-3) !important;
+  border: 0.5px solid var(--border) !important;
+  color: var(--t-pri) !important;
+  border-radius: 6px !important;
+  font-size: 12px !important;
+  padding-left: 36px !important;
+}
+.table-filter-input .mantine-TextInput-input:focus {
+  border-color: var(--cyan) !important;
+}
+.table-filter-input .mantine-TextInput-section[data-position="left"] {
+  opacity: 0.6;
+}
+
+/* ── Segmented Controls & Period Pickers ── */
+.mantine-SegmentedControl-root {
+  background-color: var(--surface-3) !important;
+  border: 0.5px solid var(--border) !important;
+  padding: 3px !important;
+  border-radius: 7px !important;
+}
+.mantine-SegmentedControl-indicator {
+  background-color: var(--surface) !important;
+  border: 0.5px solid var(--border-2) !important;
+  border-radius: 5px !important;
+}
+.mantine-SegmentedControl-label {
+  color: var(--t-sec) !important;
+  font-size: 11px !important;
+  font-weight: 500 !important;
+}
+.mantine-SegmentedControl-label[data-active] {
+  color: var(--t-pri) !important;
+}
+
+.period-btn {
+  font-size: 11px !important;
+  padding: 4px 10px !important;
+  border-radius: 5px !important;
+  height: auto !important;
+}
+
+/* ── Analytics Tabs ── */
+.analytics-tabs { background: transparent; }
+
+.analytics-tabs .mantine-Tabs-list,
+.tabs-list-custom {
+  border-bottom: 0.5px solid var(--border) !important;
+  padding: 0 24px !important;
+  gap: 20px !important;
+  background: transparent !important;
+  display: flex !important;
+  align-items: flex-end !important;
+}
+
+.analytics-tabs .mantine-Tabs-tab {
+  height: 42px !important;
+  background: transparent !important;
+  border: none !important;
+  border-bottom: 1.5px solid transparent !important;
+  color: var(--t-sec) !important;
+  font-weight: 500 !important;
+  font-size: 12.5px !important;
+  padding: 0 4px !important;
+  margin-bottom: -0.5px !important;
+  transition: all 0.2s ease;
+  border-radius: 0 !important;
+  cursor: pointer !important;
+}
+.analytics-tabs .mantine-Tabs-tab:hover {
+  color: var(--t-pri) !important;
+  background: transparent !important;
+  border-bottom-color: var(--border) !important;
+}
+.analytics-tabs .mantine-Tabs-tab[data-active] {
+  color: var(--cyan) !important;
+  border-bottom-color: var(--cyan) !important;
+  background: transparent !important;
+}
+.analytics-tabs .mantine-Tabs-tab::before { display: none !important; }
+.analytics-tabs .mantine-Tabs-panel { animation: fadeIn 0.25s ease-out; }
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(3px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ── Alerts & Banners ── */
+.alerts-banner {
+  border-radius: 0;
+  font-size: 12px;
+  border-bottom: 0.5px solid var(--red);
+}
+
+.alert-container {
+  border-radius: 8px;
+  padding: 10px 14px;
+  margin-bottom: 6px;
+}
+
+.alert-content { display: flex; align-items: flex-start; }
+.alert-icon    { font-size: 15px; margin-right: 10px; line-height: 1.2; flex-shrink: 0; }
+.alert-title   { font-size: 12px; font-weight: 500; }
+.alert-detail  { font-size: 11px; color: var(--t-sec); }
+
+.alert-box {
+  background: var(--cyan-bg);
+  border: 0.5px solid var(--cyan-border);
+  border-radius: 7px;
+  padding: 9px 12px;
+  margin-top: 14px;
+}
+.alert-box-tag {
+  font-size: 9px;
+  letter-spacing: 0.7px;
+  color: var(--cyan);
+  text-transform: uppercase;
+  margin-bottom: 3px;
+  font-weight: 500;
+}
+.alert-box-text { font-size: 10.5px; color: var(--t-sec); line-height: 1.5; }
+
+/* ── Colour Utilities & Badges ── */
+.c-pos     { color: var(--green); }
+.c-neg     { color: var(--red); }
+.c-warn    { color: var(--warning); }
+.c-info    { color: var(--info); }
+.c-cyan    { color: var(--cyan); }
+.c-muted   { color: var(--t-sec); }
+
+.badge-chip {
+  font-size: 9px; font-weight: 600;
+  padding: 2px 8px; border-radius: 20px;
+  display: inline-flex; align-items: center;
+}
+.badge-pos  { background: var(--green-bg);   color: var(--green);   border: 0.5px solid rgba(0,232,122,0.25); }
+.badge-neg  { background: var(--red-bg);     color: var(--red);     border: 0.5px solid rgba(240,78,78,0.25); }
+.badge-neu  { background: var(--cyan-bg);    color: var(--cyan);    border: 0.5px solid var(--cyan-border); }
+.badge-warn { background: var(--warning-bg); color: var(--warning); border: 0.5px solid rgba(239,159,39,0.25); }
+
+/* ── Mantine & Component Overrides ── */
+.mantine-Button-root {
+  background-color: var(--surface) !important;
+  color: var(--t-pri) !important;
+  border: 0.5px solid var(--border) !important;
+  border-radius: 6px !important;
+  height: 32px !important;
+  font-weight: 500 !important;
+  transition: all 0.15s ease !important;
+}
+.mantine-Button-root:hover  { background-color: var(--surface-2) !important; transform: translateY(-1px); }
+.mantine-Button-root:active { transform: scale(0.97); }
+
+.mantine-Select-input,
+.mantine-TextInput-input,
+.mantine-NumberInput-input,
+.mantine-DateInput-input,
+.mantine-DatePickerInput-input {
+  background-color: var(--surface-3) !important;
+  color: var(--t-pri) !important;
+  border: 0.5px solid var(--border) !important;
+  border-radius: 6px !important;
+  height: 32px !important;
+  font-size: 11.5px !important;
+  padding: 0 10px !important;
+  transition: border-color 0.15s ease;
+}
+
+.mantine-Select-input:focus,
+.mantine-TextInput-input:focus {
+  border-color: var(--cyan) !important;
+}
+
+/* ── Compact Forecast Switch ── */
+.mantine-Switch-track {
+  background-color: var(--surface-3) !important;
+  border: 0.5px solid var(--border) !important;
+  cursor: pointer;
+  transition: all 0.2s ease !important;
+}
+
+.mantine-Switch-track:hover {
+  border-color: var(--t-muted) !important;
+}
+
+/* Try multiple selectors for maximum compatibility, ensuring they only match when checked */
+.forecast-switch input:checked + .mantine-Switch-track,
+.forecast-switch[data-checked="true"] .mantine-Switch-track,
+.mantine-Switch-track[data-checked="true"] {
+  background-color: var(--cyan) !important;
+  border-color: var(--cyan) !important;
+}
+
+.mantine-Switch-thumb {
+  border: none !important;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.4) !important;
+  background-color: #fff !important;
+  z-index: 5 !important;
+}
+
+.mantine-Switch-track[data-checked] .mantine-Switch-thumb {
+  background-color: #fff !important;
+}
+
+/* ── Segmented Control Refinement ── */
+.mantine-SegmentedControl-root {
+  background-color: var(--surface-3) !important;
+  border: 0.5px solid var(--border) !important;
+  padding: 2px !important;
+  border-radius: 8px !important;
+}
+.mantine-SegmentedControl-indicator {
+  background-color: var(--surface) !important;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.3) !important;
+  border-radius: 6px !important;
+}
+/* ── Information Tooltips ── */
+.chart-info-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px; height: 16px;
+  border-radius: 50%;
+  background: var(--surface-3);
+  border: 0.5px solid var(--border);
+  font-size: 10px;
+  color: var(--t-sec);
+  cursor: help;
+  margin-left: 8px;
+  transition: all 0.2s ease;
+  line-height: 1;
+}
+
+.chart-info-icon:hover {
+  background: var(--surface);
+  color: var(--cyan);
+  border-color: var(--cyan-border);
+}
+
+/* Mantine Tooltip Overrides */
+.mantine-Tooltip-tooltip {
+  background-color: var(--surface) !important;
+  color: var(--t-pri) !important;
+  border: 0.5px solid var(--border) !important;
+  padding: 10px 14px !important;
+  font-size: 11.5px !important;
+  line-height: 1.5 !important;
+  border-radius: 8px !important;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5) !important;
+  font-weight: 400 !important;
+}
+
+.mantine-Tooltip-arrow {
+  background-color: var(--surface) !important;
+  border: 0.5px solid var(--border) !important;
+}
+
+/* ── Dividend Progress Rows ── */
+.dividend-progress-container {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 8px 0;
+}
+
+.progress-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.progress-ticker {
+  width: 50px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--t-sec);
+  font-family: 'Inter', sans-serif;
+}
+
+.progress-bar-wrapper {
+  flex: 1;
+  display: flex;
+  align-items: center;
+}
+
+.progress-bar-component {
+  width: 100%;
+}
+
+/* Mantine Progress Track Overrides */
+.progress-bar-component .mantine-Progress-track {
+  background-color: var(--surface-3) !important;
+  height: 8px !important;
+}
+
+.progress-value {
+  width: 70px;
+  text-align: right;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--t-pri);
+  font-family: 'JetBrains Mono', 'Roboto Mono', monospace;
+}

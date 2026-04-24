@@ -49,14 +49,15 @@ def register_callbacks(app) -> None:
     @app.callback(
         Output("pnl-history-chart", "figure"),
         Input("portfolio-store",    "data"),
-        Input("pnl-mode",           "value"),
-        Input("period-picker",      "value"),
         Input("theme-store",        "data"),
-        Input("ticker-selector",    "value"),
+        Input("period-store",       "data"),
+        Input("pnl-mode-store",     "data"),
+        Input("ticker-store",       "data"),
     )
-    def pnl_history_chart(data, mode, period, theme, selected):
-        t_     = get_theme(theme or "dark")
-        period = period or "max"
+    def pnl_history_chart(data, theme, period, mode, selected):
+        t_       = get_theme(theme or "dark")
+        period   = period or "max"
+        mode     = mode or "pct"
         selected = selected or "Portfolio"
 
         if not data or "holdings" not in data or not data["holdings"]:
@@ -74,10 +75,10 @@ def register_callbacks(app) -> None:
     @app.callback(
         Output("price-chart",    "figure"),
         Input("portfolio-store", "data"),
-        Input("analytics-period-picker",   "value"),
         Input("theme-store",     "data"),
+        Input("analytics-period-store", "data"),
     )
-    def price_chart(data, period, theme):
+    def price_chart(data, theme, period):
         t_ = get_theme(theme or "dark")
         period = period or "max"
         if not data or "histories" not in data:
@@ -92,10 +93,11 @@ def register_callbacks(app) -> None:
         Output("portfolio-treemap", "figure"),
         Input("portfolio-store",    "data"),
         Input("theme-store",        "data"),
-        Input("treemap-mode",       "value"),
+        Input("treemap-mode-store", "data"),
     )
     def portfolio_treemap(data, theme, mode):
         t_ = get_theme(theme or "dark")
+        mode = mode or "sector"
         if not data or "holdings" not in data or not data["holdings"]:
             fig = go.Figure()
             fig.update_layout(**t_["PLOTLY_BASE"])
@@ -126,11 +128,12 @@ def register_callbacks(app) -> None:
     @app.callback(
         Output("analytics-vol-chart",    "figure"),
         Input("portfolio-store",         "data"),
-        Input("analytics-period-picker", "value"),
         Input("theme-store",             "data"),
+        Input("analytics-period-store", "data"),
     )
-    def update_analytics_volatility(data, period, theme):
+    def update_analytics_volatility(data, theme, period):
         t_ = get_theme(theme or "dark")
+        period = period or "max"
         if not data or "holdings" not in data or not data["holdings"]:
             from components.charts.intel_helpers import create_empty_fig, _BAR_MIN_H
             return create_empty_fig(height=_BAR_MIN_H, bar=True, theme_tokens=t_)
@@ -142,10 +145,10 @@ def register_callbacks(app) -> None:
     @app.callback(
         Output("corr-chart",     "figure"),
         Input("portfolio-store", "data"),
-        Input("analytics-period-picker",   "value"),
         Input("theme-store",     "data"),
+        Input("analytics-period-store", "data"),
     )
-    def update_corr_chart(data, period, theme):
+    def update_corr_chart(data, theme, period):
         t_ = get_theme(theme or "dark")
         period = period or "max"
         if not data or "histories" not in data:

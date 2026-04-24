@@ -88,11 +88,18 @@ def _build_intraday_figure(
         else:
             day_s = ((price_s - prev_close) * total_shares).round(2)
 
+        # ── Anchor at 10:00 AM ────────────────────────────────────────────────
+        # If the series doesn't start exactly at 10:00 AM, we prepend a zero point
+        # to ensure the chart line starts at the y=0 axis for all tickers.
+        if market_open not in day_s.index:
+            day_s.loc[market_open] = 0.0
+            day_s = day_s.sort_index()
+
         all_series.append(day_s)
 
     if not all_series:
         fig.add_annotation(
-            text="Waiting for market session data (ASX opens 10:00 Sydney Time) …",
+            text="Intraday data unavailable for this selection",
             xref="paper", yref="paper",
             x=0.5, y=0.5, showarrow=False,
             font=dict(size=13, color=T_SEC),
@@ -100,6 +107,8 @@ def _build_intraday_figure(
         return fig
 
     # ── Portfolio aggregate ───────────────────────────────────────────────────
+    # Use ffill to propagate last known price. Fillna(0) for the start of day 
+    # where some tickers might not have traded yet.
     combined = pd.concat(all_series, axis=1, sort=True).sort_index().ffill().fillna(0)
 
     if mode == "pct":

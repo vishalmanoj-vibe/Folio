@@ -51,18 +51,17 @@ def register_callbacks(app) -> None:
         Output("compact-toggle-btn", "className"),
         Input("compact-toggle-btn", "n_clicks"),
         State("compact-mode-store", "data"),
-        prevent_initial_call=False
+        prevent_initial_call=True
     )
     def toggle_compact_mode(n, is_compact):
-        # Determine if we are in the initial load
-        triggered = [t['prop_id'] for t in dash.callback_context.triggered]
-        is_initial = not triggered or triggered == [''] or triggered == ['.']
-        
-        if is_initial:
-            new_state = True # Always start collapsed
-        else:
-            new_state = not is_compact
-        
+        # Explicitly handle initial load or reset
+        if not n:
+            return True, False, [
+                html.Span("+", style={"fontSize": "16px", "fontWeight": "bold"}),
+                "Add Transaction"
+            ], "btn-primary btn-sm"
+            
+        new_state = not is_compact
         opened = not new_state
         label  = "Hide Form" if opened else "Add Transaction"
         icon   = "−" if opened else "+"
@@ -115,11 +114,20 @@ def register_callbacks(app) -> None:
             const links = document.querySelectorAll('.nav-link');
             links.forEach(link => {
                 const href = link.getAttribute('href');
+                if (!href) return;
+                
+                let isActive = false;
                 if (href === pathname) {
-                    link.classList.add('active');
-                } else {
-                    link.classList.remove('active');
+                    isActive = true;
+                } else if (href !== '/' && pathname.startsWith(href + '/')) {
+                    // Highlight parent for sub-pages like /positions/details
+                    isActive = true;
+                } else if (href === '/' && pathname.startsWith('/etf/')) {
+                    // Highlight Overview for ETF-specific deep dives
+                    isActive = true;
                 }
+                
+                link.classList.toggle('active', isActive);
             });
             return window.dash_clientside.no_update;
         }

@@ -9,7 +9,10 @@ Every non-trivial computation is delegated:
   market badge        →  services/market/market_status.py
 """
 
-from dash import Input, Output, html
+import logging
+from dash import Input, Output, State, html
+
+logger = logging.getLogger(__name__)
 
 from config.constants import GREEN, RED
 from core.engine.stats_engine import compute_portfolio_stats, build_live_table_rows
@@ -59,6 +62,8 @@ def register_callbacks(app) -> None:
 
         return [
             stat_card("Total value",      f"${s['total_val']:,.2f}",
+                      f"{ds}${abs(s['total_day']):,.2f} ({ds}{s['day_pct']:.2f}%) today", 
+                      "var(--t-pri)", dc,
                       tip="Current market value of all holdings combined."),
             stat_card("Cost basis",       f"${s['total_cost']:,.2f}",
                       tip="Total amount spent buying all current holdings, excluding brokerage."),
@@ -66,7 +71,7 @@ def register_callbacks(app) -> None:
                       f"{ps}{s['pnl_pct']:.2f}% all time", pc, pc,
                       tip="Paper profit or loss since purchase. Not realised until you sell."),
             stat_card("Today's P&L",      f"{ds}${s['total_day']:,.2f}",
-                      "across all positions", dc, dc,
+                      f"{ds}{s['day_pct']:.2f}% across all positions", dc, dc,
                       tip="Estimated change in portfolio value since yesterday's close."),
             stat_card("Realized dividends", f"${s['realized_div']:,.2f}",
                       "total cash received",
@@ -84,23 +89,33 @@ def register_callbacks(app) -> None:
     @app.callback(
         Output("live-table",        "children"),
         Input("portfolio-store",    "data"),
-        Input("table-filter",       "value"),
+        State("table-filter",       "value"),
         Input("table-state-store",  "data"),
     )
     def update_live_table(data, filter_query, table_state):
-        if not data or "holdings" not in data or not data["holdings"]:
+        # Extremely defensive checks for arguments
+        if not isinstance(data, dict):
+            logger.debug(f"live_table: data is not a dict: {type(data)}")
+            return table_skeleton(rows=5)
+
+        holdings = data.get("holdings", [])
+        if not holdings:
             return table_skeleton(rows=5)
 
         # ── Filtering ─────────────────────────────────────────────────────────
-        holdings = data["holdings"]
-        if filter_query:
+        if isinstance(filter_query, str) and filter_query:
             q = filter_query.lower()
             holdings = [
                 h for h in holdings 
                 if q in h["ticker"].lower() or q in h.get("name", "").lower()
             ]
+        elif filter_query:
+            logger.warning(f"live_table: filter_query is not a string: {type(filter_query)}")
 
         # ── Sorting ───────────────────────────────────────────────────────────
+        if not isinstance(table_state, dict):
+            table_state = {}
+            
         sort_col = table_state.get("sort_col", "mkt_value")
         sort_dir = table_state.get("sort_dir", "desc")
         

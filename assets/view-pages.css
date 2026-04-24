@@ -1,0 +1,205 @@
+/* ============================================================
+   view-pages.css — Page-Specific Styles & Overrides
+   ============================================================ */
+
+/* ── Portfolio / P&L Chart ── */
+.pnl-header-row {
+  display: flex;
+  align-items: center;
+  margin-bottom: 10px;
+  flex-wrap: wrap;
+}
+
+.pnl-controls-row {
+  display: flex;
+  gap: 8px;
+  margin-left: auto;
+}
+
+.ticker-toggle-row {
+  display: flex;
+  align-items: center;
+  margin-bottom: 10px;
+  flex-wrap: wrap;
+}
+
+.period-segmented-control {
+  background: transparent !important;
+  border: none !important;
+  gap: 4px !important;
+  margin-left: auto;
+}
+.period-segmented-control .mantine-SegmentedControl-control {
+  border: none !important;
+}
+.period-segmented-control .mantine-SegmentedControl-label {
+  font-size: 11px !important;
+  font-weight: 500 !important;
+  color: var(--t-sec) !important;
+  padding: 6px 12px !important;
+  border-radius: 6px !important;
+  transition: all 0.2s ease !important;
+}
+.period-segmented-control .mantine-SegmentedControl-label:hover {
+  color: var(--t-pri) !important;
+}
+.period-segmented-control .mantine-SegmentedControl-indicator {
+  background: rgba(0, 201, 167, 0.12) !important;
+  border-radius: 6px !important;
+  box-shadow: none !important;
+}
+.period-segmented-control .mantine-SegmentedControl-label[data-active] {
+  color: var(--cyan) !important;
+}
+
+/* ── Positions Page ── */
+.holding-card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.holding-card {
+  background: var(--surface-2);
+  border: 0.5px solid var(--border);
+  border-left: 2px solid var(--cyan);
+  border-radius: 0 10px 10px 0;
+  padding: 14px 16px;
+  cursor: pointer;
+  transition: border-color 0.15s, transform 0.15s;
+}
+.holding-card:hover {
+  border-color: var(--cyan);
+  transform: translateY(-1px);
+}
+.holding-card.selected { border-color: var(--cyan); background: var(--surface); box-shadow: 0 0 15px rgba(0, 201, 167, 0.35); }
+
+.holding-card-ticker  { font-size: 15px; font-weight: 500; color: var(--t-pri); }
+.holding-card-name    { font-size: 9.5px; color: var(--t-sec); margin-top: 2px; }
+.holding-card-value   { font-size: 14px; font-weight: 500; color: var(--t-pri); margin-top: 8px; }
+.holding-card-pnl     { font-size: 10px; margin-top: 3px; }
+.holding-card-sparkline { height: 28px; margin-top: 8px; }
+
+.etf-detail-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.etf-detail-card {
+  background: var(--surface-3);
+  border-radius: 7px;
+  padding: 9px 12px;
+}
+.etf-detail-label { font-size: 9.5px; color: var(--t-sec); margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.4px; }
+.etf-detail-value { font-size: 13px; font-weight: 500; color: var(--t-pri); }
+.etf-detail-sub   { font-size: 9px; color: var(--t-sec); margin-top: 2px; }
+
+/* ── Intelligence Page ── */
+.intel-data-note {
+  padding: 5px 24px;
+  border-bottom: 0.5px solid var(--border);
+  font-size: 10px;
+  color: var(--t-muted);
+  min-height: 22px;
+}
+
+.metrics-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.smart-alert {
+  display: flex;
+  gap: 10px;
+  padding: 9px 12px;
+  border-radius: 7px;
+  margin-bottom: 6px;
+  align-items: flex-start;
+  font-size: 11px;
+}
+.smart-alert.warning { background: var(--warning-bg); border: 0.5px solid rgba(239,159,39,0.2); }
+.smart-alert.info    { background: var(--info-bg);    border: 0.5px solid rgba(55,138,221,0.15); }
+.smart-alert.danger  { background: var(--red-bg);     border: 0.5px solid rgba(240,78,78,0.2); }
+.smart-alert.ok      { background: var(--cyan-bg);    border: 0.5px solid var(--cyan-border); }
+.smart-alert-title   { font-weight: 500; margin-bottom: 2px; }
+.smart-alert-detail  { font-size: 10.5px; color: var(--t-sec); }
+
+/* ── Dividends Page ── */
+.dividend-calendar-grid {
+  display: flex;
+  gap: 14px;
+  padding-bottom: 4px;
+  overflow-x: auto;
+}
+
+.dividend-event {
+  flex: 0 0 160px;
+  background: var(--surface-2);
+  border: 0.5px solid var(--border);
+  border-radius: 12px;
+  padding: 20px 16px;
+  text-align: center;
+}
+.dividend-event.upcoming { 
+  border-color: rgba(0, 201, 167, 0.3);
+  background: rgba(0, 201, 167, 0.04); 
+}
+
+.div-event-date   { font-size: 12px; color: var(--t-sec); margin-bottom: 8px; }
+.div-event-ticker { font-size: 18px; font-weight: 600; color: var(--t-pri); }
+.dividend-event.upcoming .div-event-ticker { color: var(--cyan); }
+
+.div-event-amount { font-size: 15px; color: var(--t-pri); font-weight: 500; margin-top: 6px; }
+.dividend-event.upcoming .div-event-amount { color: var(--green); }
+
+/* ── Transactions Page ── */
+.txn-form-grid {
+  display: grid;
+  grid-template-columns: 100px 120px 90px 90px 140px auto;
+  gap: 10px;
+  align-items: flex-end;
+  background: var(--surface);
+  border: 0.5px solid var(--border);
+  border-radius: 10px;
+  padding: 16px 18px;
+  margin-bottom: 14px;
+}
+
+.txn-label  { 
+  font-size: 10px; 
+  color: var(--t-sec); 
+  margin: 0 0 4px; 
+  text-transform: uppercase; 
+  letter-spacing: 0.4px;
+  min-height: 12px;
+  line-height: 12px;
+}
+.txn-status-msg { font-size: 11.5px; margin-top: 8px; min-height: 18px; color: var(--green); }
+.txn-path   { font-size: 10px; color: var(--t-muted); margin: 6px 0 0; font-family: monospace; }
+
+.txn-ticker-hint {
+  font-size: 10px; color: var(--cyan);
+  white-space: nowrap; margin-top: 2px;
+  min-height: 12px;
+  z-index: 10; pointer-events: none;
+}
+.txn-input-container { 
+  position: relative; display: flex; flex-direction: column; 
+  padding-bottom: 4px;
+}
+
+.txn-input-text { width: 110px; }
+.txn-input-num  { width: 90px; }
+.txn-input-date { width: 140px; }
+.txn-dropdown   { width: 100px; }
+
+.txn-history-summary {
+  font-size: 11px; color: var(--t-sec);
+  cursor: pointer; margin-top: 8px;
+}
+.txn-history-log { margin-top: 10px; overflow-x: auto; }

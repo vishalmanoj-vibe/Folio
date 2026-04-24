@@ -316,22 +316,56 @@ def portfolio_returns(histories: dict, holdings: list[dict]) -> pd.Series:
     if not common: return pd.Series(dtype=float)
     w = pd.Series({t: weights[t] for t in common})
     w = w / w.sum()
-    # Ensure we only calculate a portfolio return if ALL components have data.
-    # This prevents artificial volatility suppression and correctly truncates
-    # the backtest window to the youngest asset's inception.
-    return ret_df[common].mul(w, axis=1).sum(axis=1, min_count=len(common)).dropna()
+    # We use min_count=1 to allow calculation even if some tickers are missing 
+    # data for certain days (e.g. newly listed or trading halt).
+    # This prevents the whole backtest from disappearing.
+    return ret_df[common].mul(w, axis=1).sum(axis=1, min_count=1).dropna()
 
 def annualised_volatility(returns: pd.Series) -> float:
+    """
+    Computes the annualized volatility (standard deviation of returns).
+    
+    Formula: `std_dev(daily_returns) * sqrt(252) * 100`
+    
+    Args:
+        returns: Pandas Series of daily fractional returns.
+    
+    Returns:
+        float: Annualized volatility percentage, rounded to 2 decimal places.
+    """
     if returns.empty or len(returns) < 5: return float("nan")
     return round(float(returns.std() * math.sqrt(252) * 100), 2)
 
 def sharpe_ratio(returns: pd.Series) -> float:
+    """
+    Computes the annualized Sharpe Ratio.
+    
+    Formula: `(mean(returns) - risk_free_daily) / std_dev(returns) * sqrt(252)`
+    
+    Args:
+        returns: Pandas Series of daily fractional returns.
+    
+    Returns:
+        float: Annualized Sharpe Ratio, rounded to 2 decimal places.
+    """
     if returns.empty or len(returns) < 5: return float("nan")
     excess = returns - RISK_FREE_DAILY
     if excess.std() == 0: return float("nan")
     return round(float(excess.mean() / excess.std() * math.sqrt(252)), 2)
 
 def max_drawdown(returns: pd.Series) -> float:
+    """
+    Computes the Maximum Drawdown within the given return series.
+    
+    Drawdown is the percentage drop from the peak (all-time high) 
+    to the subsequent trough.
+    
+    Args:
+        returns: Pandas Series of daily fractional returns.
+    
+    Returns:
+        float: Maximum drawdown percentage (negative value), rounded to 2 decimal places.
+    """
     if returns.empty: return float("nan")
     equity = (1 + returns).cumprod()
     return round(float(((equity - equity.cummax()) / equity.cummax() * 100).min()), 2)

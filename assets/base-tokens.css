@@ -1,0 +1,84 @@
+/* ============================================================
+   base-tokens.css — Portfolio Dashboard Design Tokens
+   Token-first, theme-aware, teal-black palette.
+   ============================================================ */
+
+/* ── Dark theme (default) ── */
+body[data-theme="dark"] {
+  /* Backgrounds */
+  --bg:         #0a0a0a;   /* page canvas — pure black */
+  --surface:    #111a1a;   /* card / panel background */
+  --surface-2:  #0f1414;   /* slightly lighter card variant */
+  --surface-3:  #0a1010;   /* input / inset background */
+
+  /* Borders */
+  --border:     rgba(255, 255, 255, 0.07);
+  --border-2:   rgba(0, 201, 167, 0.12);  /* teal-tinted border for accents */
+
+  /* Typography */
+  --t-pri:   #e8eaed;
+  --t-sec:   #6b8a8a;
+  --t-muted: #2a4040;
+
+  /* Brand accents */
+  --cyan:    #00c9a7;   /* primary accent — nav, CTAs, highlights */
+  --cyan-2:  #00a085;   /* secondary cyan — subdued accents */
+  --cyan-bg: rgba(0, 201, 167, 0.07);
+  --cyan-border: rgba(0, 201, 167, 0.15);
+
+  /* Semantic */
+  --green:   #00e87a;   /* positive P&L */
+  --green-2: #1d9e75;   /* chart fills, allocation bars */
+  --green-bg: rgba(0, 232, 122, 0.08);
+  --red:     #f04e4e;   /* negative P&L */
+  --red-bg:  rgba(240, 78, 78, 0.08);
+  --warning: #ef9f27;
+  --warning-bg: rgba(239, 159, 39, 0.08);
+  --info:    #378add;
+  --info-bg: rgba(55, 138, 221, 0.08);
+
+  /* Benchmark chart lines */
+  --bench-1: #6b8fcc;
+  --bench-2: #cc8f6b;
+
+  /* Aliases kept for backward compat */
+  --danger: var(--red);
+
+  color-scheme: dark;
+}
+
+/* ── Light theme ── */
+body[data-theme="light"] {
+  --bg:         #f5f7f7;
+  --surface:    #ffffff;
+  --surface-2:  #f8fafa;
+  --surface-3:  #eef3f3;
+
+  --border:     rgba(0, 0, 0, 0.08);
+  --border-2:   rgba(0, 150, 120, 0.15);
+
+  --t-pri:   #1a1a1a;
+  --t-sec:   #5a7070;
+  --t-muted: #a8baba;
+
+  --cyan:    #009e80;
+  --cyan-2:  #007a60;
+  --cyan-bg: rgba(0, 158, 128, 0.06);
+  --cyan-border: rgba(0, 158, 128, 0.2);
+
+  --green:   #0d8a4a;
+  --green-2: #1d9e75;
+  --green-bg: rgba(13, 138, 74, 0.08);
+  --red:     #d63030;
+  --red-bg:  rgba(214, 48, 48, 0.08);
+  --warning: #c47a00;
+  --warning-bg: rgba(196, 122, 0, 0.08);
+  --info:    #1a6ab0;
+  --info-bg: rgba(26, 106, 176, 0.08);
+
+  --bench-1: #4a90e2;
+  --bench-2: #d0021b;
+  --danger: var(--red);
+
+  color-scheme: light;
+}

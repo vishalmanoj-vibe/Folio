@@ -5,6 +5,7 @@ Global navigation bar for the Sovereign Ledger dashboard.
 """
 
 from dash import html, dcc
+import dash_mantine_components as dmc
 
 def create_header(
     market_status: html.Div | None = None,

@@ -40,6 +40,9 @@ def compute_portfolio_stats(holdings: list[dict]) -> dict:
     total_pnl  = total_val - total_cost
     pnl_pct    = (total_pnl / total_cost * 100) if total_cost else 0.0
     total_day  = sum(x["day_pnl"]    for x in holdings)
+    prev_total = total_val - total_day
+    day_pct    = (total_day / prev_total * 100) if prev_total else 0.0
+
     annual_div = sum(x["annual_div"] for x in holdings)
     realized_div = sum(x.get("realized_div", 0.0) for x in holdings)
     port_yield = (annual_div / total_val * 100) if total_val else 0.0
@@ -50,6 +53,7 @@ def compute_portfolio_stats(holdings: list[dict]) -> dict:
         "total_pnl":    round(total_pnl,  2),
         "pnl_pct":      round(pnl_pct,    2),
         "total_day":    round(total_day,  2),
+        "day_pct":      round(day_pct,    2),
         "annual_div":   round(annual_div, 2),
         "realized_div": round(realized_div, 2),
         "port_yield":   round(port_yield, 2),

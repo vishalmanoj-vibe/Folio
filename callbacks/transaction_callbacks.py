@@ -13,6 +13,7 @@ from data.csv_handler import save_csv
 from components.ui_helpers import txn_table
 
 import logging
+import math
 logger = logging.getLogger(__name__)
 
 
@@ -63,6 +64,7 @@ def register_callbacks(app):
         Output("txn-store", "data", allow_duplicate=True),
         Output("txn-msg", "children"),
         Output("txn-msg", "style"),
+        Output("compact-mode-store", "data", allow_duplicate=True),
         Input("txn-submit", "n_clicks"),
         State("txn-type", "value"),
         State("txn-ticker", "value"),
@@ -74,10 +76,10 @@ def register_callbacks(app):
     )
     def add_transaction(n_clicks, txn_type, ticker, shares, price, date_str, current_history):
         if n_clicks is None or n_clicks == 0:
-            return dash.no_update, "", {}
+            return dash.no_update, "", {}, dash.no_update
 
         if not all([txn_type, ticker, shares is not None, price is not None, date_str]):
-            return dash.no_update, "❌ Please fill all fields", {"color": "#E24B4A"}
+            return dash.no_update, "❌ Please fill all fields", {"color": "#E24B4A"}, dash.no_update
 
         # Handle both string and date object (DMC may return either)
         if hasattr(date_str, 'strftime'):
@@ -95,7 +97,7 @@ def register_callbacks(app):
 
         is_valid, error_msg = validate_transaction(new_txn)
         if not is_valid:
-            return dash.no_update, f"❌ {error_msg}", {"color": "#E24B4A"}
+            return dash.no_update, f"❌ {error_msg}", {"color": "#E24B4A"}, dash.no_update
 
         updated_history = (current_history or []) + [new_txn]
 
@@ -103,10 +105,10 @@ def register_callbacks(app):
             save_csv(updated_history)
             success_msg = f"✅ Added {new_txn['type'].upper()} {new_txn['shares']:.2f} {new_txn['ticker']}"
             # Signal refresh is handled by app.py listening to txn-store change
-            return updated_history, success_msg, {"color": "#1D9E75"}
+            return updated_history, success_msg, {"color": "#1D9E75"}, True # Collapse on success
         except Exception as e:
             logger.error(f"Save failed: {e}")
-            return dash.no_update, f"❌ Save failed: {str(e)}", {"color": "#E24B4A"}
+            return dash.no_update, f"❌ Save failed: {str(e)}", {"color": "#E24B4A"}, dash.no_update
 
 
     # Refresh transaction history table whenever txn-store changes

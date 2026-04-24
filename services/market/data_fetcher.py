@@ -6,7 +6,7 @@ from datetime import datetime, timedelta
 
 from core import get_cache, set_cache
 from core.engine.portfolio_engine import compute_tranche_pnl, compute_holding_pnl
-from core.engine.utils import normalise_tz
+from core.engine.utils import normalise_tz, get_period_cutoff
 from config.settings import API_MAX_RETRIES, API_RETRY_BACKOFF_BASE, CACHE_TTL_SECONDS
 from services.market.session_cache import record_snapshot, get_session_history, clear_old_caches
 
@@ -122,6 +122,19 @@ def _extract_col(bulk_df: pd.DataFrame, ticker_yf: str, col_name: str) -> pd.Ser
         (col_name, ticker_yf.split(".")[0])
     ])
 
+    cols = bulk_df.columns
+    
+    # Single-index case (yfinance returns this for single ticker downloads)
+    if not isinstance(cols, pd.MultiIndex):
+        if col_name in cols:
+            return bulk_df[col_name].dropna()
+        # Fallback to similar names
+        for c in [col_name, col_name.replace(" ", ""), "Close", "Dividends"]:
+            if c in cols:
+                return bulk_df[c].dropna()
+        return pd.Series(dtype=float)
+
+    # Multi-index case
     for cand in candidates:
         if cand in cols:
             return bulk_df[cand].dropna()
@@ -304,14 +317,18 @@ def fetch_live(holdings: list[dict], hist_period: str = "max") -> dict:
     cache_key = f"market_data_{hist_period}_{tickers_str.replace(' ', '_')}"
     cached = get_cache(cache_key)
     if cached:
-        return cached
+        # Return a copy with fresh timestamp so Dash detects the change
+        res = cached.copy()
+        res["fetched_at"] = datetime.now().strftime("%H:%M:%S")
+        return res
 
     # ── A. Live quotes: single bulk 5-day download ────────────────────────────
     # Strategy:
     # Instead of slow per-ticker calls, we download the last 5 days for ALL tickers.
     # - iloc[-1] = Today's current price (or most recent close).
     # - iloc[-2] = Yesterday's close (prev_session).
-    # This ensures accuracy even during ASX off-hours.
+    # This ensures accuracy even during ASX off-hours and is significantly faster 
+    # than individual 'fast_info' calls which trigger separate network requests.
     logger.info("Fetching live quotes (5d) for %d tickers", len(tickers_yf))
     multi_live = _download_with_retry(tickers_yf, period="5d")
 
@@ -325,7 +342,14 @@ def fetch_live(holdings: list[dict], hist_period: str = "max") -> dict:
             set_cache(full_cache_key, multi_full, ttl=3600)
 
     # ── C. Chart history: the user-selected period ────────────────────────────
-    if hist_period != "1d":
+    if hist_period == "max" and not multi_full.empty:
+        # Reuse multi_full if possible to save a redundant network call
+        multi_period = multi_full
+    elif hist_period == "1d":
+        # Use 5d window to ensure we get today's intraday data reliably 
+        # (yfinance '1d' period can sometimes be empty for ASX tickers in the morning).
+        multi_period = _download_with_retry(tickers_yf, period="5d", interval="5m")
+    else:
         multi_period = _download_with_retry(tickers_yf, period=hist_period)
 
     enriched:  list[dict] = []
@@ -342,17 +366,37 @@ def fetch_live(holdings: list[dict], hist_period: str = "max") -> dict:
         try:
             # Chart history for P&L history chart
             if hist_period == "1d":
-                # For the 'Today' chart we use exclusively the session cache —
-                # our own interval-recorded snapshots with tz-naive Sydney wall-clock
-                # timestamps. This avoids the tz-aware/tz-naive concat crash that
-                # occurs when mixing yfinance 5m data (tz-aware) with the session
-                # cache (tz-naive), which previously caused a silent fallback to
-                # daily history and an empty chart.
-                close_p = get_session_history(ticker)
-                # Ensure index is a proper DatetimeIndex (it may be object-typed
-                # after JSON round-trip through the cache file)
-                if not close_p.empty:
-                    close_p.index = pd.to_datetime(close_p.index)
+                # Fetch yfinance intraday data for backfilling the morning
+                yf_1d = _extract_col(multi_period, ticker_yf, "Close")
+                # Filter out spurious zeros and normalize to UTC-naive
+                if not yf_1d.empty:
+                    yf_1d = yf_1d[yf_1d > 0]
+                    yf_1d.index = normalise_tz(yf_1d.index)
+                    # Use the standard cutoff (Today 00:00 UTC) for filtering
+                    cutoff = get_period_cutoff("1d")
+                    yf_1d = yf_1d[yf_1d.index >= cutoff]
+                
+                # Fetch our own interval snapshots
+                sess_1d = get_session_history(ticker)
+
+                if not sess_1d.empty:
+                    # Filter out spurious zeros
+                    sess_1d = sess_1d[sess_1d > 0]
+                    # Session cache uses Sydney wall-clock time strings (e.g. 10:00:00).
+                    # We MUST localize to Sydney then normalise to UTC-naive to align 
+                    # with yfinance's normalized timestamps.
+                    if not sess_1d.empty:
+                        sess_1d.index = pd.to_datetime(sess_1d.index).tz_localize("Australia/Sydney")
+                        sess_1d.index = normalise_tz(sess_1d.index)
+                
+                # Merge: prefer session snapshots (more frequent) over yfinance 5m backfill.
+                # This ensures the chart remains alive even when yfinance API data 
+                # lag behind the actual market session.
+                if not yf_1d.empty and not sess_1d.empty:
+                    close_p = pd.concat([yf_1d, sess_1d]).sort_index()
+                    close_p = close_p[~close_p.index.duplicated(keep='last')]
+                else:
+                    close_p = sess_1d if not sess_1d.empty else yf_1d
             else:
                 close_p = _extract_col(multi_period, ticker_yf, "Close")
 
@@ -399,7 +443,8 @@ def fetch_live(holdings: list[dict], hist_period: str = "max") -> dict:
 
             realized_div = _calculate_realized_dividends(div_f, h.get("buy_tranches", []))
             div_frequency = _deduce_frequency(div_f)
-            last_div_amount = float(div_f.iloc[-1]) if not div_f.empty else 0.0
+            div_f_clean = div_f[div_f > 0]
+            last_div_amount = float(div_f_clean.iloc[-1]) if not div_f_clean.empty else 0.0
 
             tranche_data = []
             if not close_p.empty:
@@ -428,8 +473,30 @@ def fetch_live(holdings: list[dict], hist_period: str = "max") -> dict:
                 "div_yield":      div_yield,
                 "div_frequency":  div_frequency,
                 "last_div_amount": round(last_div_amount, 4),
+                "last_div_date":   div_f.index[-1].strftime("%Y-%m-%d") if not div_f.empty else None,
                 "tranches":       tranche_data,
             })
+            
+            # Fetch real upcoming dividend info from ticker.info (cached via get_ticker_cached)
+            try:
+                tk = get_ticker_cached(ticker_yf)
+                info = tk.info or {}
+                # yfinance info keys for upcoming dividends
+                h_idx = len(enriched) - 1
+                enriched[h_idx]["next_div_date"] = None
+                enriched[h_idx]["payout_date"] = None
+                
+                ex_date = info.get("exDividendDate")
+                pay_date = info.get("dividendPayDate")
+                
+                if ex_date:
+                    dt = datetime.fromtimestamp(ex_date) if isinstance(ex_date, int) else pd.to_datetime(ex_date)
+                    enriched[h_idx]["next_div_date"] = dt.strftime("%Y-%m-%d")
+                if pay_date:
+                    dt = datetime.fromtimestamp(pay_date) if isinstance(pay_date, int) else pd.to_datetime(pay_date)
+                    enriched[h_idx]["payout_date"] = dt.strftime("%Y-%m-%d")
+            except Exception:
+                pass
 
         except Exception as exc:
             logger.warning("Failed to enrich %s: %s", ticker_yf, exc)
@@ -453,6 +520,9 @@ def fetch_live(holdings: list[dict], hist_period: str = "max") -> dict:
                 "div_yield":   0.0,
                 "div_frequency": "Unknown",
                 "last_div_amount": 0.0,
+                "last_div_date": None,
+                "next_div_date": None,
+                "payout_date": None,
                 "tranches":    [],
             })
 
