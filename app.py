@@ -62,6 +62,10 @@ except Exception as e:
 
 from data.portfolio_builder import build_holdings
 from services.market.data_fetcher import fetch_live
+from services.market.session_cache import clear_old_caches
+
+# ── Maintenance ──────────────────────────────────────────────────────────────
+clear_old_caches(keep_days=1)  # Aggressive cleanup on startup
 
 INITIAL_HOLDINGS = build_holdings(INITIAL_HISTORY)
 INITIAL_PORTFOLIO_DATA: dict = {}

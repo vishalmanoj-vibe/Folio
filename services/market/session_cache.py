@@ -88,7 +88,7 @@ def get_session_history(ticker: str) -> pd.Series:
         logger.warning("Failed to read session history for %s: %s", ticker, e)
         return pd.Series(dtype=float)
 
-def clear_old_caches(keep_days: int = 7):
+def clear_old_caches(keep_days: int = 2):
     """Delete session caches older than keep_days."""
     # Use Sydney time for cutoff calculation
     cutoff = pd.Timestamp.now(tz="Australia/Sydney") - pd.Timedelta(days=keep_days)
