@@ -53,13 +53,21 @@ def register_callbacks(app) -> None:
     )
     def update_stats(data):
         if not data or "holdings" not in data or not data["holdings"]:
-            return [stat_card_skeleton() for _ in range(6)]
+            return [stat_card_skeleton() for _ in range(8)]
 
         s  = compute_portfolio_stats(data["holdings"])
         ps = "+" if s["total_pnl"] >= 0 else ""
         ds = "+" if s["total_day"] >= 0 else ""
         pc = GREEN if s["total_pnl"] >= 0 else RED
         dc = GREEN if s["total_day"] >= 0 else RED
+        
+        # Total Return sign/color
+        ts = "+" if s["total_return_pct"] >= 0 else ""
+        tc = GREEN if s["total_return_pct"] >= 0 else RED
+
+        # Top Performer sign/color
+        tps = "+" if s["top_perf_pct"] >= 0 else ""
+        tpc = GREEN if s["top_perf_pct"] >= 0 else RED
 
         # Extract timestamp for "Today's P&L" card
         fetched_at = data.get("fetched_at", "")
@@ -78,6 +86,12 @@ def register_callbacks(app) -> None:
             stat_card("Today's P&L",      f"{ds}${s['total_day']:,.2f}",
                       f"{ds}{s['day_pct']:.2f}%{as_at}", dc, dc,
                       tip="Estimated change in portfolio value since yesterday's close."),
+            stat_card("Total return",     f"{ts}{s['total_return_pct']:.2f}%",
+                      "growth + dividends", tc, "var(--t-sec)",
+                      tip="The complete performance of your portfolio, combining price growth and all cash dividends received."),
+            stat_card("Top performer",    s['top_perf_ticker'],
+                      f"{tps}{s['top_perf_pct']:.2f}% today", "var(--cyan)", tpc,
+                      tip="The holding with the highest percentage gain in your portfolio during today's trading session."),
             stat_card("Realized dividends", f"${s['realized_div']:,.2f}",
                       "total cash received",
                       GREEN if s["realized_div"] > 0 else "var(--t-pri)",

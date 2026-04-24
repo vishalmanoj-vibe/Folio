@@ -47,10 +47,9 @@ button:active { transform: scale(0.97); }
 /* ── KPI Stat Cards ── */
 .stat-cards-container {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  grid-template-columns: repeat(2, 1fr);
   gap: 8px;
-  padding: 14px 24px;
-  border-bottom: 0.5px solid var(--border);
+  padding: 14px 16px 14px 0;
 }
 
 .stat-card-container {

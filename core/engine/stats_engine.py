@@ -48,6 +48,15 @@ def compute_portfolio_stats(holdings: list[dict]) -> dict:
     realized_div = sum(x.get("realized_div", 0.0) for x in holdings)
     port_yield = (annual_div / total_val * 100) if total_val else 0.0
 
+    # Calculate Total Return (Capital + Dividends)
+    total_profit = total_pnl + realized_div
+    total_return_pct = (total_profit / total_cost * 100) if total_cost else 0.0
+
+    # Identify Top Performer (Today)
+    top_perf = max(holdings, key=lambda x: x.get("day_chg_pct", 0.0)) if holdings else None
+    top_perf_ticker = top_perf["ticker"] if top_perf else "None"
+    top_perf_pct    = top_perf.get("day_chg_pct", 0.0) if top_perf else 0.0
+
     return {
         "total_val":    round(total_val,  2),
         "total_cost":   round(total_cost, 2),
@@ -58,6 +67,9 @@ def compute_portfolio_stats(holdings: list[dict]) -> dict:
         "annual_div":   round(annual_div, 2),
         "realized_div": round(realized_div, 2),
         "port_yield":   round(port_yield, 2),
+        "total_return_pct": round(total_return_pct, 2),
+        "top_perf_ticker": top_perf_ticker,
+        "top_perf_pct":    round(top_perf_pct, 2),
     }
 
 

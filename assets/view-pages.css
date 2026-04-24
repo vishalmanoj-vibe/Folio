@@ -3,6 +3,22 @@
    view-pages.css — Page-Specific Styles & Overrides
    ============================================================ */
 
+/* ── Overview: cards-left + chart-right split ── */
+.overview-split-row {
+  display: flex;
+  gap: 0;
+  padding: 14px 24px;
+  border-bottom: 0.5px solid var(--border);
+  align-items: flex-start;
+}
+
+.overview-chart-panel {
+  flex: 1;
+  min-width: 0; /* prevents flex blowout */
+  padding-left: 20px;
+  border-left: 0.5px solid var(--border);
+}
+
 /* ── Portfolio / P&L Chart ── */
 .pnl-header-row {
   display: flex;
