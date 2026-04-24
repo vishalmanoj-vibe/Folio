@@ -82,6 +82,14 @@ def _build_intraday_figure(
             continue
 
         price_s = df.set_index("Date")["Close"]
+        
+        # ── Data Sanitization ─────────────────────────────────────────────────
+        # Filter out spurious zero-prices and forward-fill gaps to prevent 
+        # sudden "cliff" drops in the chart during session gaps.
+        price_s = price_s[price_s > 0].ffill()
+
+        if price_s.empty:
+            continue
 
         if mode == "pct":
             day_s = ((price_s - prev_close) / prev_close * 100).round(4)
