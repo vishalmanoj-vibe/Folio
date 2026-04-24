@@ -19,6 +19,7 @@ from components.charts import (
     build_performance_lollipops,
     build_intel_volatility_chart,
 )
+from components.charts.intel_helpers import create_empty_fig
 from services.intelligence_service import (
     compute_risk_metrics,
     fetch_etf_sector_weights,
@@ -61,13 +62,7 @@ def register_callbacks(app) -> None:
         selected = selected or "Portfolio"
 
         if not data or "holdings" not in data or not data["holdings"]:
-            fig = go.Figure()
-            fig.update_layout(
-                xaxis=dict(showgrid=False, type="date"),
-                yaxis=dict(gridcolor=t_["BORDER"], zerolinecolor=t_["BORDER"]),
-                **t_["PLOTLY_BASE"]
-            )
-            return fig
+            return create_empty_fig("No holdings data available", height=450, theme_tokens=t_)
 
         return build_pnl_history_figure(data["holdings"], mode, period, t_, selected)
 
@@ -82,9 +77,7 @@ def register_callbacks(app) -> None:
         t_ = get_theme(theme or "dark")
         period = period or "max"
         if not data or "histories" not in data:
-            fig = go.Figure()
-            fig.update_layout(xaxis=dict(showgrid=False), yaxis=dict(gridcolor=t_["BORDER"]), **t_["PLOTLY_BASE"])
-            return fig
+            return create_empty_fig("No price history available", height=400, theme_tokens=t_)
         holdings = data.get("holdings", [])
         return build_price_chart_figure(data["histories"], period, t_, holdings)
 
@@ -99,9 +92,7 @@ def register_callbacks(app) -> None:
         t_ = get_theme(theme or "dark")
         mode = mode or "sector"
         if not data or "holdings" not in data or not data["holdings"]:
-            fig = go.Figure()
-            fig.update_layout(**t_["PLOTLY_BASE"])
-            return fig
+            return create_empty_fig("No holdings data available", height=450, theme_tokens=t_)
         
         mode = mode or "sector"
         sector_map = {}
@@ -152,7 +143,5 @@ def register_callbacks(app) -> None:
         t_ = get_theme(theme or "dark")
         period = period or "max"
         if not data or "histories" not in data:
-            fig = go.Figure()
-            fig.update_layout(**t_["PLOTLY_BASE"])
-            return fig
+            return create_empty_fig("No shared history found", height=380, theme_tokens=t_)
         return build_corr_figure(data["histories"], period, t_)

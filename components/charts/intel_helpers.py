@@ -16,23 +16,29 @@ def get_bar_height(n_rows: int) -> int:
 
 import plotly.graph_objects as go
 
-def create_empty_fig(msg: str = "Waiting for portfolio data…",
+def create_empty_fig(msg: str = "Waiting for data…",
                      height: int = 280,
                      bar: bool = False,
                      theme_tokens: dict | None = None) -> go.Figure:
     if theme_tokens:
         base = theme_tokens["PLOTLY_BASE"].copy()
+        t_sec = theme_tokens.get("T_SEC", base["font"]["color"])
     else:
-        from config.constants import PLOTLY_BASE
+        from config.constants import PLOTLY_BASE, T_SEC
         base = PLOTLY_BASE.copy()
+        t_sec = T_SEC
     
     base["margin"] = _BAR_MARGIN if bar else _LINE_MARGIN
     
     f = go.Figure()
     f.update_layout(
         **base, height=height,
-        annotations=[dict(text=msg, showarrow=False,
-                          font=dict(color=base["font"]["color"], size=13),
-                          opacity=0.6)],
+        annotations=[dict(
+            text=msg, 
+            showarrow=False,
+            xref="paper", yref="paper",
+            x=0.5, y=0.5,
+            font=dict(color=t_sec, size=13)
+        )],
     )
     return f

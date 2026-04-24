@@ -33,6 +33,19 @@
   z-index: 100;
 }
 
+.nav-links-container {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  flex: 1;
+}
+.nav-links-container::-webkit-scrollbar {
+  display: none;
+}
+
 .nav-logo {
   font-size: 14px;
   font-weight: 500;
@@ -102,12 +115,14 @@
 
 .settings-details  { position: relative; display: inline-block; }
 .settings-summary  {
-  list-style: none; cursor: pointer; font-size: 15px;
-  color: var(--t-sec); padding: 5px 7px; border-radius: 6px;
+  list-style: none; cursor: pointer; font-size: 19px;
+  color: var(--t-sec); padding: 4px 6px; border-radius: 6px;
   transition: all 0.15s; line-height: 1;
   display: flex; align-items: center; justify-content: center;
 }
 .settings-summary:hover         { color: var(--t-pri); background: var(--border); }
+.settings-summary span          { transition: transform 0.4s ease, color 0.15s; display: inline-block; }
+.settings-summary:hover span    { transform: rotate(90deg); color: var(--cyan); }
 .settings-summary::-webkit-details-marker { display: none; }
 
 .settings-menu {

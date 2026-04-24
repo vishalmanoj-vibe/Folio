@@ -21,11 +21,16 @@ def create_header(
             ["Portfolio"], 
             className="nav-logo"
         ),
-        html.A("Overview",     href="/",             className="nav-link"),
-        html.A("Positions",    href="/positions",    className="nav-link"),
-        html.A("Analytics",    href="/analytics",    className="nav-link"),
-        html.A("Intelligence", href="/intelligence", className="nav-link"),
-        html.A("Dividends",    href="/dividends",    className="nav-link"),
+        html.Div([
+            html.A("Overview",     href="/",             className="nav-link"),
+            html.A("Positions",    href="/positions",    className="nav-link"),
+            html.A("Analytics",    href="/analytics",    className="nav-link"),
+            html.Div([
+                html.A("Intelligence", href="/intelligence", className="nav-link"),
+                html.Span(id="intel-alert-count", className="nav-badge", style={"display": "none"})
+            ], style={"display": "flex", "alignItems": "center", "position": "relative"}),
+            html.A("Dividends",    href="/dividends",    className="nav-link"),
+        ], className="nav-links-container")
     ]
 
     # ── Right: Status & Settings ─────────────────────────────────────────────
@@ -40,13 +45,17 @@ def create_header(
     # Settings Menu
     settings_dropdown = html.Details([
         html.Summary(
-            html.Span("☾", id="settings-icon-text"),
+            html.Span("⚙", id="settings-icon-text"), # Settings gear
             className="settings-summary"
         ),
         html.Div([
-            html.Button("☀ / ☾ Theme",   id="theme-toggle", n_clicks=0, className="btn-sm"),
-            html.Button("↻ Refresh Data", id="refresh-btn",  n_clicks=0, className="btn-sm"),
-            html.Button("⬇ Export PDF",   id="pdf-btn",      n_clicks=0, className="btn-sm"),
+            html.Div("Settings", style={"fontSize": "10px", "fontWeight": "700", "color": "var(--t-sec)", "marginBottom": "8px", "textTransform": "uppercase"}),
+            html.Button([
+                html.Span("☾", id="theme-icon-indicator", style={"marginRight": "8px"}),
+                "Switch Theme"
+            ], id="theme-toggle", n_clicks=0, className="btn-sm", style={"width": "100%", "justifyContent": "flex-start"}),
+            html.Button("↻ Refresh Data", id="refresh-btn",  n_clicks=0, className="btn-sm", style={"width": "100%", "justifyContent": "flex-start"}),
+            html.Button("⬇ Export PDF",   id="pdf-btn",      n_clicks=0, className="btn-sm", style={"width": "100%", "justifyContent": "flex-start"}),
         ], className="settings-menu")
     ], className="settings-details")
 

@@ -19,16 +19,23 @@ def register_callbacks(app) -> None:
 
     @app.callback(
         Output("alerts-banner", "children"),
+        Output("intel-alert-count", "children"),
+        Output("intel-alert-count", "style"),
         Input("portfolio-store", "data"),
-        prevent_initial_call=True,
     )
     def show_alerts(data):
         if not data or "holdings" not in data:
-            return ""
+            return "", "", {"display": "none"}
 
         alerts = check_alerts(data["holdings"])
+        count = len(alerts)
+        
+        # Badge logic
+        badge_style = {"display": "inline-block"} if count > 0 else {"display": "none"}
+        badge_text = str(count) if count > 0 else ""
+
         if not alerts:
-            return ""
+            return "", badge_text, badge_style
 
         return html.Div(
             [html.Div(a["message"]) for a in alerts],
@@ -40,4 +47,4 @@ def register_callbacks(app) -> None:
                 "fontSize":      "13px",
                 "borderBottom":  "0.5px solid var(--red, #E24B4A)",
             },
-        )
+        ), badge_text, badge_style

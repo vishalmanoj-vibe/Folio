@@ -60,6 +60,10 @@ def register_callbacks(app) -> None:
         pc = GREEN if s["total_pnl"] >= 0 else RED
         dc = GREEN if s["total_day"] >= 0 else RED
 
+        # Extract timestamp for "Today's P&L" card
+        fetched_at = data.get("fetched_at", "")
+        as_at = f" as at {fetched_at[:5]}" if fetched_at else ""
+
         return [
             stat_card("Total value",      f"${s['total_val']:,.2f}",
                       f"{ds}${abs(s['total_day']):,.2f} ({ds}{s['day_pct']:.2f}%) today", 
@@ -71,7 +75,7 @@ def register_callbacks(app) -> None:
                       f"{ps}{s['pnl_pct']:.2f}% all time", pc, pc,
                       tip="Paper profit or loss since purchase. Not realised until you sell."),
             stat_card("Today's P&L",      f"{ds}${s['total_day']:,.2f}",
-                      f"{ds}{s['day_pct']:.2f}% across all positions", dc, dc,
+                      f"{ds}{s['day_pct']:.2f}%{as_at}", dc, dc,
                       tip="Estimated change in portfolio value since yesterday's close."),
             stat_card("Realized dividends", f"${s['realized_div']:,.2f}",
                       "total cash received",
@@ -112,9 +116,20 @@ def register_callbacks(app) -> None:
         elif filter_query:
             logger.warning(f"live_table: filter_query is not a string: {type(filter_query)}")
 
+        if not holdings:
+            return html.Div(
+                "No positions match your filter",
+                style={
+                    "textAlign": "center", "padding": "60px 20px",
+                    "color": "var(--t-sec)", "fontSize": "13px",
+                    "border": "0.5px dashed var(--border)", "borderRadius": "8px",
+                    "backgroundColor": "var(--surface-2)", "margin": "10px 0"
+                }
+            )
+
         # ── Sorting ───────────────────────────────────────────────────────────
-        if not isinstance(table_state, dict):
-            table_state = {}
+        if not isinstance(table_state, dict) or not table_state:
+            table_state = {"sort_col": "mkt_value", "sort_dir": "desc"}
             
         sort_col = table_state.get("sort_col", "mkt_value")
         sort_dir = table_state.get("sort_dir", "desc")

@@ -55,7 +55,7 @@ def layout() -> html.Div:
                                 [
                                     # Prediction Controls
                                     html.Div([
-                                        html.Span("Forecast", style={"marginRight": "10px", "fontSize": "11px", "color": "var(--t-sec)", "fontWeight": "500"}),
+                                        html.Span("Forecast", id="intel-forecast-label", style={"marginRight": "10px", "fontSize": "11px", "color": "var(--t-sec)", "fontWeight": "500"}),
                                         dmc.Switch(
                                             id="intel-pred-toggle",
                                             checked=False,

@@ -6,9 +6,10 @@ from dash import Input, Output, State, ALL, html, dcc, ctx
 logger = logging.getLogger(__name__)
 
 from config.constants import (
-    COLORS, BORDER, GREEN, RED, T_PRI, T_SEC, BG, SURFACE, NAMES
+    COLORS, BORDER, GREEN, RED, T_PRI, T_SEC, BG, SURFACE, NAMES, get_theme
 )
 from components.ui_helpers import stat_card
+from components.charts.intel_helpers import create_empty_fig
 
 # ── Plotly layout base ────────────────────────────────────────────────────────
 _CHART_LAYOUT = dict(
@@ -99,19 +100,22 @@ def register_callbacks(app) -> None:
     @app.callback(
         Output("positions-selected-ticker", "data"),
         Input({"type": "pos-card", "index": ALL}, "n_clicks"),
+        Input("portfolio-store", "data"),
         State("positions-selected-ticker", "data"),
-        prevent_initial_call=True
     )
-    def select_ticker(n_clicks_list, current):
+    def select_ticker(n_clicks_list, port_data, current):
         """
-        Interactivity: Listens to clicks on ANY card in the grid.
-        The ctx.triggered_id contains the index (ticker) of the clicked card.
-        This updates the 'positions-selected-ticker' store, which in turn 
-        triggers the detail panel (metrics, chart, transactions) to refresh.
+        Handles ticker selection with auto-default to first holding.
         """
-        if not ctx.triggered_id:
-            return current
-        return ctx.triggered_id["index"]
+        # If triggered by a card click
+        if ctx.triggered_id and isinstance(ctx.triggered_id, dict) and ctx.triggered_id.get("type") == "pos-card":
+            return ctx.triggered_id["index"]
+
+        # Default selection logic (on load or when store updates)
+        if current is None and port_data and "holdings" in port_data and port_data["holdings"]:
+            return port_data["holdings"][0]["ticker"]
+
+        return current
 
     # ── 3. Detail Panel — Metrics Cards ──────────────────────────────────────
     @app.callback(
@@ -154,18 +158,23 @@ def register_callbacks(app) -> None:
         Input("positions-selected-ticker", "data"),
         Input("positions-period-store", "data"),
         Input("portfolio-store", "data"),
+        Input("theme-store", "data"),
     )
-    def render_price_chart(ticker, period, port_data):
+    def render_price_chart(ticker, period, port_data, theme):
+        t_ = get_theme(theme or "dark")
+        if not ticker: 
+            return create_empty_fig("Select a position to view history", height=350, theme_tokens=t_)
+
+        holding = next((h for h in port_data.get("holdings", []) if h["ticker"] == ticker), None)
+        if not holding: 
+            return create_empty_fig(f"No data for {ticker}", height=350, theme_tokens=t_)
+
         fig = go.Figure()
         fig.update_layout(
             xaxis=dict(showgrid=False, rangeslider_visible=False),
             yaxis=dict(gridcolor="rgba(255,255,255,0.05)", tickprefix="$"),
             hovermode="x unified", height=350, **_CHART_LAYOUT
         )
-        if not ticker: return fig
-
-        holding = next((h for h in port_data.get("holdings", []) if h["ticker"] == ticker), None)
-        if not holding: return fig
 
         try:
             tk = yf.Ticker(ticker + ".AX")
@@ -243,11 +252,14 @@ def register_callbacks(app) -> None:
         btns = []
         for label, val in periods:
             is_active = (current_period == val)
+            # Use btn-primary for the active selection, otherwise standard styling
+            btn_class = f"period-btn btn-sm {'btn-primary' if is_active else ''}"
+            
             btns.append(
                 html.Button(
                     label,
                     id={"type": "pos-period-btn", "index": val},
-                    className=f"period-btn {'active' if is_active else ''}",
+                    className=btn_class,
                     n_clicks=0
                 )
             )

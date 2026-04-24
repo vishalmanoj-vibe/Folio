@@ -125,7 +125,12 @@ app.layout = dmc.MantineProvider(
             # Global Navigation
             create_header(),
             
-            dash.page_container,
+            # Page Content with Loading Indicator
+            dcc.Loading(
+                dash.page_container,
+                type="dot",
+                color="var(--cyan)",
+            ),
         ],
         className="app-container",
     )
@@ -219,8 +224,16 @@ def sync_p2(v): return v if v else dash.no_update
 @app.callback(Output("intel-period-store", "data"), Input("intel-period-picker", "value"), prevent_initial_call=True)
 def sync_p3(v): return v if v else dash.no_update
 
-@app.callback(Output("intel-pred-store", "data"), Input("intel-pred-toggle", "checked"), prevent_initial_call=True)
-def sync_pred(v): return v if v is not None else dash.no_update
+@app.callback(
+    Output("intel-pred-store", "data"),
+    Output("intel-forecast-label", "children"),
+    Input("intel-pred-toggle", "checked"),
+)
+def sync_pred(v):
+    if v is None:
+        return dash.no_update, dash.no_update
+    label = "Forecast ON" if v else "Forecast"
+    return v, label
 
 @app.callback(Output("positions-period-store", "data"), Input({"type": "pos-period-btn", "index": ALL}, "n_clicks"), prevent_initial_call=True)
 def sync_p4(n_list):

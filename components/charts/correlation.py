@@ -30,7 +30,7 @@ def build_corr_figure(histories: dict, period: str, theme_tokens: dict) -> go.Fi
     
     if not histories or len(histories) < 2:
         from components.charts.intel_helpers import create_empty_fig
-        return create_empty_fig("Need 2+ holdings with history", height=380, theme_tokens=theme_tokens)
+        return create_empty_fig("Need at least 2 holdings with shared history to compute correlation", height=380, theme_tokens=theme_tokens)
         
     dfs = {}
     for t, r in histories.items():
@@ -48,7 +48,7 @@ def build_corr_figure(histories: dict, period: str, theme_tokens: dict) -> go.Fi
             
     if len(dfs) < 2:
         from components.charts.intel_helpers import create_empty_fig
-        return create_empty_fig("Insufficient data for correlation", height=380, theme_tokens=theme_tokens)
+        return create_empty_fig("Need at least 2 holdings with shared history to compute correlation", height=380, theme_tokens=theme_tokens)
         
     corr  = pd.DataFrame(dfs).corr(min_periods=10).round(2)
     ticks = list(corr.columns)

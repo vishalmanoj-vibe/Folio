@@ -306,9 +306,9 @@ def build_pnl_history_figure(
             fillcolor="rgba(29,158,117,0.12)" if lv >= 0 else "rgba(226,75,74,0.10)",
             line=dict(color=GREEN if lv >= 0 else RED, width=2.5),
             hovertemplate=(
-                "%{y:.2f}%<extra>Portfolio</extra>"
+                "%{y:+.2f}%<extra>Portfolio</extra>"
                 if mode == "pct"
-                else "$%{y:,.2f}<extra>Portfolio</extra>"
+                else "$%{y:+,.2f}<extra>Portfolio</extra>"
             ),
         ))
 
@@ -381,9 +381,9 @@ def build_pnl_history_figure(
                 line=dict(color=bc, width=1, dash="dot"),
                 opacity=0.5,
                 hovertemplate=(
-                    "%{y:.2f}%<extra>" + tr["buy_date"] + "</extra>"
+                    "%{y:+.2f}%<extra>" + tr["buy_date"] + "</extra>"
                     if mode == "pct"
-                    else "$%{y:,.2f}<extra>" + tr["buy_date"] + "</extra>"
+                    else "$%{y:+,.2f}<extra>" + tr["buy_date"] + "</extra>"
                 ),
             ))
 
@@ -428,9 +428,9 @@ def build_pnl_history_figure(
                 fillcolor=hex_to_rgba(theme_tokens.get("INFO", "#378ADD"), 0.1), # ~10% opacity
                 line=dict(color=bc, width=2.5),
                 hovertemplate=(
-                    "%{y:.2f}%<extra>" + selected + " combined</extra>"
+                    "%{y:+.2f}%<extra>" + selected + " combined</extra>"
                     if mode == "pct"
-                    else "$%{y:,.2f}<extra>" + selected + " combined</extra>"
+                    else "$%{y:+,.2f}<extra>" + selected + " combined</extra>"
                 ),
             ))
 

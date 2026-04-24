@@ -16,23 +16,28 @@ def register_callbacks(app) -> None:
         app: The Dash application instance.
     """
 
-    # ── Dark / light theme toggle ─────────────────────────────────────────────
+    # ── 1. Dark / light theme store toggle ──
+    @app.callback(
+        Output("theme-store", "data"),
+        Input("theme-toggle", "n_clicks"),
+        State("theme-store", "data"),
+        prevent_initial_call=True
+    )
+    def toggle_theme_store(n, current):
+        return 'light' if current == 'dark' else 'dark'
+
+    # ── 2. Sync UI attributes and icon with theme store (Fires on load) ──
     app.clientside_callback(
         """
-        function(n, current) {
-            const shouldToggle = n > 0;
-            const theme = shouldToggle ? (current === 'dark' ? 'light' : 'dark') : current;
-            
-            document.body.setAttribute('data-theme', theme);
-            document.documentElement.style.backgroundColor = theme === 'dark' ? '#0a0a0a' : '#ffffff';
-            
-            // Return theme for store and icon text
-            return [theme, theme === 'dark' ? '☾' : '☀'];
+        function(theme) {
+            const t = theme || 'dark';
+            document.body.setAttribute('data-theme', t);
+            document.documentElement.style.backgroundColor = (t === 'dark') ? '#0a0a0a' : '#ffffff';
+            return (t === 'dark') ? '☾' : '☀';
         }
         """,
-        [Output("theme-store", "data"), Output("settings-icon-text", "children")],
-        Input("theme-toggle",    "n_clicks"),
-        State("theme-store",     "data"),
+        Output("theme-icon-indicator", "children"),
+        Input("theme-store", "data"),
     )
 
     # ── PDF / print button ────────────────────────────────────────────────────

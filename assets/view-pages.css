@@ -150,6 +150,12 @@
   background: rgba(0, 201, 167, 0.04); 
 }
 
+.cal-card-today {
+  border-color: var(--cyan) !important;
+  background: rgba(0, 201, 167, 0.12) !important;
+  box-shadow: 0 0 12px rgba(0, 201, 167, 0.2);
+}
+
 .div-event-date   { font-size: 12px; color: var(--t-sec); margin-bottom: 8px; }
 .div-event-ticker { font-size: 18px; font-weight: 600; color: var(--t-pri); }
 .dividend-event.upcoming .div-event-ticker { color: var(--cyan); }

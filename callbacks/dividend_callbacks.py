@@ -29,6 +29,12 @@ _TD = {
 
 def register_callbacks(app) -> None:
 
+    # Known/Confirmed Dividend Dates (Fallback for missing yfinance metadata)
+    CONFIRMED_PAY_DATES = {
+        ("VHY", "2026-04-01"): "2026-04-20",
+        ("IOZ", "2026-04-09"): "2026-04-21",
+    }
+
     @app.callback(
         Output("dividend-stats-cards",   "children"),
         Output("dividend-calendar",      "children"),
@@ -66,9 +72,19 @@ def register_callbacks(app) -> None:
                     # A tranche is eligible only if it was bought BEFORE the ex-dividend date
                     held_on_date = sum(t["shares"] for t in tranches if pd.to_datetime(t["date"]) < ex_date)
                     if held_on_date > 0:
+                        ex_date_str = ex_date.strftime("%Y-%m-%d")
+                        # Try to match with the most recent payout date from metadata or confirmed mapping
+                        pay_date = CONFIRMED_PAY_DATES.get((ticker, ex_date_str))
+                        if not pay_date and h.get("last_div_date") == ex_date_str:
+                            pay_date = h.get("payout_date")
+                            
                         all_divs.append({
-                            "date": ex_date, "ticker": ticker, "amount": amount,
-                            "total": amount * held_on_date, "shares": held_on_date
+                            "date": ex_date, 
+                            "pay_date": pay_date,
+                            "ticker": ticker, 
+                            "amount": amount,
+                            "total": amount * held_on_date, 
+                            "shares": held_on_date
                         })
 
             df = pd.DataFrame(all_divs).sort_values("date", ascending=False) if all_divs else pd.DataFrame()
@@ -133,6 +149,10 @@ def register_callbacks(app) -> None:
             for e in events[:8]:
                 days_left = (e["date"] - today).days
                 type_color = "var(--green)" if e["type"] == "PAYMENT" else "var(--cyan)" if e["type"] == "EX-DATE" else "var(--t-sec)"
+                card_cls = "cal-card"
+                if days_left <= 0:
+                    card_cls += " cal-card-today"
+
                 cal_cards.append(html.Div([
                     html.Div([
                         html.Span(e["ticker"], className="cal-ticker"),
@@ -141,7 +161,7 @@ def register_callbacks(app) -> None:
                     html.Div(f"{e['date'].strftime('%d %b')}", className="cal-date"),
                     html.Div(f"${e['total']:,.2f}", className="cal-amount"),
                     html.Div(f"In {days_left} days" if days_left > 0 else "Today", className="cal-days"),
-                ], className="cal-card"))
+                ], className=card_cls))
 
 
             # ── 4. Analysis Rows ──────────────────────────────────────────────────
@@ -180,21 +200,32 @@ def register_callbacks(app) -> None:
             ]
 
             # ── 5. Table ──────────────────────────────────────────────────────────
-            rows = [
-                html.Tr([
-                    html.Td(row["date"].strftime("%Y-%m-%d"), style=_TD),
-                    html.Td(row["ticker"], style={**_TD, "fontWeight": "600"}),
-                    html.Td(f"${row['amount']:.4f}", style=_TD),
-                    html.Td(f"{row['shares']:g}", style=_TD),
-                    html.Td(f"${row['total']:,.2f}", style={**_TD, "color": GREEN, "fontWeight": "600"}),
-                ])
-                for _, row in df.iterrows()
-            ] if not df.empty else []
-            
-            table = html.Table([
-                html.Thead(html.Tr([html.Th(c, style=_TH) for c in ["Ex-Date", "Ticker", "Per Share", "Shares Held", "Total Amount"]])),
-                html.Tbody(rows)
-            ], style={"width": "100%", "borderCollapse": "collapse"})
+            if df.empty:
+                table = html.Div(
+                    "No dividend history found — holdings may not have distributed yet",
+                    style={
+                        "textAlign": "center", "padding": "60px 20px",
+                        "color": "var(--t-sec)", "fontSize": "13px",
+                        "border": "0.5px dashed var(--border)", "borderRadius": "8px",
+                        "backgroundColor": "var(--surface-2)", "marginTop": "10px"
+                    }
+                )
+            else:
+                rows = [
+                    html.Tr([
+                        html.Td(row["date"].strftime("%Y-%m-%d"), style=_TD),
+                        html.Td(row["pay_date"] if row["pay_date"] else "—", style={**_TD, "color": "var(--t-sec)" if not row["pay_date"] else "var(--t-pri)"}),
+                        html.Td(row["ticker"], style={**_TD, "fontWeight": "600"}),
+                        html.Td(f"${row['amount']:.4f}", style=_TD),
+                        html.Td(f"{row['shares']:g}", style=_TD),
+                        html.Td(f"${row['total']:,.2f}", style={**_TD, "color": GREEN, "fontWeight": "600"}),
+                    ])
+                    for _, row in df.iterrows()
+                ]
+                table = html.Table([
+                    html.Thead(html.Tr([html.Th(c, style=_TH) for c in ["Ex-Date", "Pay-Date", "Ticker", "Per Share", "Shares Held", "Total Amount"]])),
+                    html.Tbody(rows)
+                ], style={"width": "100%", "borderCollapse": "collapse"})
 
             return stats, cal_cards, income_rows, yield_rows, table
         except Exception as e:
