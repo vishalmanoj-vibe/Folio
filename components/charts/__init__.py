@@ -1,3 +1,4 @@
+# components/charts/__init__.py
 """
 Charts Component Package.
 

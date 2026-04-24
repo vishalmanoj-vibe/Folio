@@ -1,3 +1,4 @@
+# components/charts/treemap.py
 import plotly.graph_objects as go
 
 def build_portfolio_treemap(

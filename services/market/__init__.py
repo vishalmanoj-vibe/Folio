@@ -1,3 +1,4 @@
+# services/market/__init__.py
 """
 Market services for Portfolio Dashboard.
 

@@ -1,3 +1,4 @@
+# components/charts/mantine_charts.py
 """
 components/charts/mantine_charts.py
 ===================================

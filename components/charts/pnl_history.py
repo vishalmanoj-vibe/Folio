@@ -1,3 +1,4 @@
+# components/charts/pnl_history.py
 """
 P&L History Chart Component.
 

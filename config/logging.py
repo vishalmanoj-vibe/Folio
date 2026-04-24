@@ -1,3 +1,4 @@
+# config/logging.py
 """
 Logging configuration for Portfolio Dashboard.
 

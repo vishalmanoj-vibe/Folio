@@ -1,3 +1,4 @@
+# config/constants.py
 """
 Constants for Portfolio Dashboard.
 

@@ -1,3 +1,4 @@
+# components/charts/intel_volatility.py
 """
 components/charts/intel_volatility.py
 """

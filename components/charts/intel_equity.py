@@ -1,3 +1,4 @@
+# components/charts/intel_equity.py
 """
 components/charts/intel_equity.py
 """

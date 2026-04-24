@@ -1,3 +1,4 @@
+# components/charts/price_history.py
 """
 Price History Chart Component.
 

@@ -1,3 +1,4 @@
+# config/settings.py
 """
 Settings and configuration for Portfolio Dashboard.
 

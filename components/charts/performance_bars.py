@@ -1,3 +1,4 @@
+# components/charts/performance_bars.py
 """
 components/charts/performance_bars.py
 =====================================

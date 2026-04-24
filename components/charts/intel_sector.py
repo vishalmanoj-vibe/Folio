@@ -1,3 +1,4 @@
+# components/charts/intel_sector.py
 """
 components/charts/intel_sector.py
 """

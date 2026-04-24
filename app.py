@@ -1,3 +1,4 @@
+# app.py
 """
 Portfolio Dashboard — modular entry point
 ==========================================
