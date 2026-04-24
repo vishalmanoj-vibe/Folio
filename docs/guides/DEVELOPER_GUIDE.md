@@ -15,8 +15,8 @@ The application follows a strictly decoupled layered architecture to ensure sepa
            ▼                           ▼                       ▼
 ┌───────────────────────┐   ┌───────────────────────┐   ┌───────────────────────┐
 │     SERVICE LAYER     │   │      ENGINE LAYER     │   │    DATA ACCESS LAYER  │
-│ (market, intelligence,│   │ (core/engine/         │   │ (data/csv_handler.py) │
-│  alert, prediction)   │   │  portfolio_engine.py) │   │                       │
+│ (market, intelligence,│   │ (core/engine/         │   │ (data/repository.py,  │
+│  alert, prediction)   │   │  portfolio_engine.py) │   │  data/csv_handler.py) │
 └──────────┬────────────┘   └───────────┬───────────┘   └───────────┬───────────┘
            │                            │                           │
            └───────────────┬────────────┴───────────────┬───────────┘
@@ -32,7 +32,7 @@ The application follows a strictly decoupled layered architecture to ensure sepa
 1.  **Presentation (UI/Assets)**: The entry point and orchestrator. It handles the "Shell" (HTML/CSS), multi-page routing, and interactive state (`dcc.Store`). It coordinates the flow by loading raw transactions from the **Data Layer** and passing them to the **Service Layer** for enrichment.
 2.  **Service (Orchestration)**: Coordinates complex workflows including external API calls (yfinance), tiered caching, and domain-specific logic like alert detection, hierarchical risk analysis, and Prophet forecasting.
 3.  **Engine (Logic)**: The "Mathematical Core". Pure Python logic for P&L computation, tranche aggregation, and performance metrics. It has **zero dependencies on Network, I/O, or Dash.**
-4.  **Data (Persistence)**: Handles direct I/O operations (CSV) and transactional integrity for the portfolio history.
+4.  **Data (Persistence)**: The `PortfolioRepository` provides a clean abstraction for data operations, decoupling the CSV logic from the rest of the application.
 5.  **Domain (Models)**: Typed definitions (Pydantic/TypedDict) that enforce data contracts across all layers.
 6.  **Foundation (Core/Config)**: System-wide utilities (Validators, TTL Caching, Logging) and environment configuration.
 
@@ -44,17 +44,17 @@ The dashboard uses a "Pre-seeded Store" pattern to ensure the first paint is ins
 
 ### 1. Startup Hydration (app.py)
 When the server starts, it performs a blocking load to prepare the initial state:
-1.  **Load**: `csv_handler.load_csv()` reads raw transactions.
+1.  **Load**: `repo.load_transactions()` reads raw data via the `PortfolioRepository`.
 2.  **Build**: `portfolio_engine.build_holdings()` aggregates transactions into `Holdings`.
-3.  **Enrich**: `market_service.fetch_live()` pulls current prices and computes P&L.
+3.  **Enrich**: `market_service.fetch_live()` pulls current prices using parallel workers.
 4.  **Seed**: `dcc.Store(id="portfolio-store", data=INITIAL_DATA)` is rendered into the layout.
 
 ### 2. Reactivity Loop
-Once running, the `dcc.Interval` (default 60s) triggers the `refresh_portfolio_data` callback:
-- It repeats the **Load -> Build -> Enrich** cycle.
-- The updated JSON is pushed to `portfolio-store`.
+Once running, the dashboard follows a **Single Refresh Owner** pattern:
+- **`update_txn_store`**: The exclusive writer for transaction data. It handles additions and periodic disk syncs.
+- **`update_portfolio_store`**: The exclusive caller of `fetch_live()`. It reacts to transaction changes or interval ticks.
 - All charts and metrics across all pages are decorated with `@callback(Input("portfolio-store", "data"))`, causing them to re-render automatically.
-- The `nav-link-store` ensures header badges update immediately upon navigation.
+- This ensures only one market fetch occurs per cycle, even with multiple disparate triggers.
 
 ---
 
@@ -108,8 +108,9 @@ portfolio_dashboard/
 │   └── prediction_service.py       # Prophet-based forecasting with disk-caching
 │
 ├── data/                           # Persistence layer
+│   ├── repository.py               # Data Repository abstraction
 │   ├── csv_handler.py              # CSV I/O with backup management
-│   ├── portfolio_builder.py        # Legacy shim for engine imports
+│   └── portfolio_builder.py        # Legacy shim for engine imports
 │   └── cache/                      # Persistent disk cache (e.g., predictions.json)
 │
 ├── components/                     # UI components
@@ -163,7 +164,9 @@ from services.market.data_fetcher import fetch_live, get_etf_name
 
 ### Persistence
 ```python
-from data.csv_handler import load_csv, save_csv
+from data.repository import PortfolioRepository
+repo = PortfolioRepository()
+history = repo.load_transactions()
 ```
 
 ---
@@ -186,10 +189,12 @@ Metrics in `intelligence_service.py` are calculated using standard financial for
 - **Volatility**: Annualized standard deviation of daily log returns.
 - **Drawdown**: Percentage drop from the previous all-time high in the selected period.
 
-### 4. Intraday Snapshotting & Persistence
-To overcome the limitations of yfinance's intraday data (which can be flaky for ASX), the app implements a **Session Cache**.
-- **Mechanism**: A background thread in `app.py` captures the portfolio state every 60s and appends it to `data/cache/intraday_YYYY-MM-DD.json`.
-- **Merge Logic**: The "Today" chart merges these local high-frequency snapshots with yfinance's 5m interval bars to provide a seamless, reliable view.
+### 4. Parallel Market Fetching & Caching
+To ensure high performance with multi-ticker portfolios, the `fetch_live` service utilizes concurrency:
+- **Parallel Workers**: Uses `ThreadPoolExecutor` (10 workers) to parallelize sequential I/O-bound requests (e.g., `ticker.info` for names and dividends).
+- **Metadata Caching**: Implements a simple in-memory TTL cache for Yahoo Finance metadata, avoiding redundant network calls for static data (ETF names, payout frequencies).
+- **Bulk Downloads**: Continues to use `yf.download()` for primary price history to minimize HTTP overhead.
+
 ## Styling & UI Architecture
 
 ### CSS Modularization & Loading

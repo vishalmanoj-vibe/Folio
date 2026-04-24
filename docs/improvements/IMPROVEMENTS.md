@@ -457,33 +457,72 @@ All changes are **fully backwards compatible**:
 
 ---
 
+### 18. **Single Refresh Owner Pattern** ✅
+**Files Modified:** `app.py`, `callbacks/transaction_callbacks.py`
+
+**What Was Added:**
+- Consolidated all store update logic into two dedicated "Master" callbacks in `app.py`.
+- `update_txn_store`: Single source of truth for transaction data.
+- `update_portfolio_store`: Exclusive caller of `fetch_live()`, preventing redundant network calls.
+- Removed multiple overlapping refresh callbacks to stabilize the application event loop.
+
+**Benefits:**
+- Eliminates race conditions and "chain reaction" refreshes.
+- Significant reduction in redundant network I/O.
+- Predictable and reliable state management.
+
+---
+
+### 19. **Parallel Market Fetching & Metadata Caching** ✅
+**Files Modified:** `services/market/data_fetcher.py`
+
+**What Was Added:**
+- Refactored `fetch_live()` to use `ThreadPoolExecutor` (10 workers) for parallelizing I/O-bound metadata requests.
+- Implemented an in-memory TTL cache for Yahoo Finance metadata (long names, dividend frequencies).
+- Collapsed sequential network wait times from `N * Latency` to `max(Latency)`.
+
+**Benefits:**
+- Drastically faster dashboard refreshes, especially for portfolios with many holdings.
+- Reduced API overhead via smart metadata caching.
+
+---
+
+### 20. **Data Repository Abstraction Layer** ✅
+**Files Modified:** `data/repository.py` (New), `app.py`
+
+**What Was Added:**
+- Introduced `PortfolioRepository` class to abstract data access from storage format.
+- Methods: `load_transactions()`, `save_transactions()`, `append_transaction()`.
+- Decoupled `app.py` logic from direct CSV file handling.
+
+**Benefits:**
+- Improved architectural modularity.
+- Prepared the codebase for future database migration (e.g., SQLite/PostgreSQL) with zero changes to application logic.
+
+---
+
 ## Summary of Files Changed
 
 ```
 Modified:
-  app.py                          ← Logging setup & routing updated
-  config/settings.py              ← Env vars, new config options
-  data/csv_handler.py             ← CSV backup/recovery
-  data/portfolio_builder.py        ← Transaction validation
-  services/alert_service.py        ← Configurable thresholds
-  services/intelligence_service.py ← Fixed geo-inference logic
-  services/market/data_fetcher.py  ← API retry logic
-  services/market/market_status.py ← Configurable market hours
-  requirements.txt                ← Test dependencies added
+  app.py                          ← Consolidated refresh logic & Repo integration
+  services/market/data_fetcher.py  ← Parallel fetching & Meta caching
+  callbacks/transaction_callbacks.py ← Removed redundant store updates
  
 Created:
-  .env.example                    ← Environment config template
-  config/logging.py               ← Centralized logging config
-  conftest.py                     ← Pytest configuration
-  pytest.ini                      ← Pytest settings
-  docs/improvements/TESTING.md    ← Testing guide
-  docs/improvements/IMPROVEMENTS.md ← This file
-  test/__init__.py                ← Test package
-  test/test_portfolio_builder.py  ← 20 unit tests
-  test/test_alert_service.py      ← 11 unit tests
-  test/test_csv_handler.py        ← 12 unit tests
-  test/test_market_status.py      ← 6 unit tests
+  data/repository.py               ← New Data Abstraction Layer
 ```
+
+---
+
+## Verification Checklist
+
+- [x] Single Refresh Owner pattern verified stable
+- [x] Parallel fetching reduces refresh time significantly
+- [x] Data repository abstraction functional across app
+- [x] All changes maintain 100% backwards compatibility
+- [x] Verified with manual and background refresh cycles
+
 
 Total: 8 modified + 12 new files = **20 files changed**
 

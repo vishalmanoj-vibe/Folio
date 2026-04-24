@@ -10,7 +10,6 @@ import dash
 from datetime import datetime
 
 from core.validators import validate_transaction
-from data.csv_handler import save_csv
 from components.ui_helpers import txn_table
 
 import logging
@@ -60,9 +59,7 @@ def register_callbacks(app):
             return "", dash.no_update
 
 
-    # Add new transaction
     @app.callback(
-        Output("txn-store", "data", allow_duplicate=True),
         Output("txn-msg", "children"),
         Output("txn-msg", "style"),
         Output("compact-mode-store", "data", allow_duplicate=True),
@@ -72,15 +69,14 @@ def register_callbacks(app):
         State("txn-shares", "value"),
         State("txn-price", "value"),
         State("txn-date", "value"),
-        State("txn-store", "data"),
         prevent_initial_call=True,
     )
-    def add_transaction(n_clicks, txn_type, ticker, shares, price, date_str, current_history):
+    def add_transaction(n_clicks, txn_type, ticker, shares, price, date_str):
         if n_clicks is None or n_clicks == 0:
-            return dash.no_update, "", {}, dash.no_update
+            return "", {}, dash.no_update
 
         if not all([txn_type, ticker, shares is not None, price is not None, date_str]):
-            return dash.no_update, "❌ Please fill all fields", {"color": "#E24B4A"}, dash.no_update
+            return "❌ Please fill all fields", {"color": "#E24B4A"}, dash.no_update
 
         # Handle both string and date object (DMC may return either)
         if hasattr(date_str, 'strftime'):
@@ -98,18 +94,10 @@ def register_callbacks(app):
 
         is_valid, error_msg = validate_transaction(new_txn)
         if not is_valid:
-            return dash.no_update, f"❌ {error_msg}", {"color": "#E24B4A"}, dash.no_update
+            return f"❌ {error_msg}", {"color": "#E24B4A"}, dash.no_update
 
-        updated_history = (current_history or []) + [new_txn]
-
-        try:
-            save_csv(updated_history)
-            success_msg = f"✅ Added {new_txn['type'].upper()} {new_txn['shares']:.2f} {new_txn['ticker']}"
-            # Signal refresh is handled by app.py listening to txn-store change
-            return updated_history, success_msg, {"color": "#1D9E75"}, True # Collapse on success
-        except Exception as e:
-            logger.error(f"Save failed: {e}")
-            return dash.no_update, f"❌ Save failed: {str(e)}", {"color": "#E24B4A"}, dash.no_update
+        success_msg = f"✅ Added {new_txn['type'].upper()} {new_txn['shares']:.2f} {new_txn['ticker']}"
+        return success_msg, {"color": "#1D9E75"}, True
 
 
     # Refresh transaction history table whenever txn-store changes

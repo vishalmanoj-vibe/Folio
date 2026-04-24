@@ -38,7 +38,8 @@ import signal
 import time
 
 from components.portfolio_layout import INDEX_STRING
-from data.csv_handler import load_csv
+from data.repository import PortfolioRepository
+from core.validators import validate_transaction
 from config.settings import REFRESH_INTERVAL
 
 # Callback modules
@@ -52,9 +53,11 @@ import callbacks.positions_callbacks      as positions_cb
 import callbacks.dividend_callbacks       as dividends_cb
 
 # ── Initial data load ─────────────────────────────────────────────────────────
+repo = PortfolioRepository()
+
 try:
-    INITIAL_HISTORY: list[dict] = load_csv()
-    logger.info(f"Loaded {len(INITIAL_HISTORY)} transactions from CSV")
+    INITIAL_HISTORY: list[dict] = repo.load_transactions()
+    logger.info(f"Loaded {len(INITIAL_HISTORY)} transactions from storage")
 except Exception as e:
     logger.error(f"Failed to load initial CSV: {e}")
     INITIAL_HISTORY = []
@@ -143,71 +146,67 @@ app.layout = dmc.MantineProvider(
 
 # ── Refresh logic helpers ─────────────────
 def _perform_refresh(period):
-    history  = load_csv()
+    history  = repo.load_transactions()
     holdings = build_holdings(history)
     portfolio_data = fetch_live(holdings, period) if holdings else {"holdings": [], "histories": {}}
     return history, portfolio_data
 
-# ── Primary Refresh (Interval / Button) ─────────────────
+# ── SINGLE OWNER: txn-store ───────────────────────────────────────────────────
 @app.callback(
-    Output("txn-store",       "data", allow_duplicate=True),
-    Output("portfolio-store", "data", allow_duplicate=True),
-    Input("live-interval",    "n_intervals"),
-    Input("refresh-btn",      "n_clicks"),
-    State("period-store",     "data"),
-    State("analytics-period-store", "data"),
-    prevent_initial_call='initial_duplicate',
-)
-def refresh_periodic(n_intervals, n_clicks, p1, p2):
-    """
-    Periodic refresh triggered by browser timer.
-    Note: Snapshot recording also happens in a background thread for reliability.
-    """
-    try:
-        # Use whatever period store is populated
-        period = p1 or p2 or "max"
-        return _perform_refresh(period)
-    except Exception as e:
-        logger.error(f"Periodic refresh failed: {e}")
-        return dash.no_update, dash.no_update
-
-# ── Immediate Refresh on Transaction Change ──────────────
-@app.callback(
-    Output("portfolio-store", "data", allow_duplicate=True),
-    Input("txn-store", "data"),
-    State("period-store", "data"),
-    State("analytics-period-store", "data"),
+    Output("txn-store", "data", allow_duplicate=True),
+    Input("live-interval", "n_intervals"),
+    Input("refresh-btn",   "n_clicks"),
+    Input("txn-submit",    "n_clicks"),
+    State("txn-type", "value"),
+    State("txn-ticker", "value"),
+    State("txn-shares", "value"),
+    State("txn-price", "value"),
+    State("txn-date", "value"),
+    State("txn-store", "data"),
     prevent_initial_call=True,
 )
-def refresh_on_txn(txn_data, p1, p2):
-    """
-    Triggered when a transaction is added via the UI.
-    Forces a portfolio-store refresh so charts/stats update immediately.
-    """
-    try:
-        logger.info("Transaction update detected; triggering portfolio refresh.")
-        period = p1 or p2 or "max"
-        _, data = _perform_refresh(period)
-        return data
-    except Exception as e:
-        logger.error(f"Transaction-triggered refresh failed: {e}")
+def update_txn_store(n1, n2, n_submit, t_type, ticker, shares, price, date_str, history):
+    """Only place where txn-store is updated. Handles interval sync and new additions."""
+    if ctx.triggered_id == "txn-submit":
+        if not all([t_type, ticker, shares is not None, price is not None, date_str]):
+            return dash.no_update
+        # Format date for CSV
+        d_val = date_str.strftime("%Y-%m-%d") if hasattr(date_str, 'strftime') else str(date_str).strip()
+        new_txn = {
+            "type": str(t_type).lower(),
+            "ticker": str(ticker).upper(),
+            "shares": float(shares),
+            "price": float(price),
+            "date": d_val,
+        }
+        valid, _ = validate_transaction(new_txn)
+        if valid:
+            updated = repo.append_transaction(new_txn)
+            return updated
         return dash.no_update
+    
+    # Otherwise periodic/manual sync from storage
+    return repo.load_transactions()
 
-# ── Store-Triggered Portfolio Refresh ─────────────────
+
+# ── SINGLE OWNER: portfolio-store ─────────────────────────────────────────────
 @app.callback(
     Output("portfolio-store", "data", allow_duplicate=True),
-    Input("period-store", "data"),
+    Input("txn-store",              "data"),
+    Input("period-store",           "data"),
     Input("analytics-period-store", "data"),
+    Input("live-interval",          "n_intervals"),
+    Input("refresh-btn",            "n_clicks"),
     prevent_initial_call=True,
 )
-def refresh_on_period_change(p1, p2):
+def update_portfolio_store(txn_data, p1, p2, n1, n2):
+    """Only place where portfolio-store is updated. Reacts to data or timeframe changes."""
     try:
-        # Determine which one changed or use a priority
         period = p1 or p2 or "max"
         _, data = _perform_refresh(period)
         return data
     except Exception as e:
-        logger.error(f"Store-triggered refresh failed: {e}")
+        logger.error(f"Portfolio refresh failed: {e}")
         return dash.no_update
 
 # ── Global Picker Syncing (Session Persistence) ──────────────────────────────

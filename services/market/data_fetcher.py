@@ -4,6 +4,7 @@ import time
 import pandas as pd
 import yfinance as yf
 from datetime import datetime, timedelta
+from concurrent.futures import ThreadPoolExecutor
 
 from core import get_cache, set_cache
 from core.engine.portfolio_engine import compute_tranche_pnl, compute_holding_pnl
@@ -22,6 +23,9 @@ BENCHMARK_TICKERS = {
 }
 _BENCHMARK_CACHE_TTL = 3600
 
+_INFO_CACHE: dict = {}
+_INFO_CACHE_TTL = 3600  # Cache dividend/metadata for 1 hour
+
 
 def get_ticker_cached(ticker_yf: str) -> yf.Ticker:
     """
@@ -36,35 +40,42 @@ def get_ticker_cached(ticker_yf: str) -> yf.Ticker:
 
 def get_etf_name(ticker: str) -> str:
     """
-    Retrieve the long name for an ETF from a dictionary of known names.
+    Retrieve the long name for an ETF with multi-layer caching.
     """
     from config.constants import NAMES
     ticker_upper = ticker.strip().upper()
     cache_key = f"name_{ticker_upper}"
+    
+    # 1. Check local name cache
     cached = _NAME_CACHE.get(cache_key)
     if cached and time.time() < cached[1]:
         return cached[0]
+    
     fallback = NAMES.get(ticker_upper, ticker_upper)
     try:
         yf_ticker = f"{ticker_upper}.AX" if "." not in ticker_upper else ticker_upper
+        
+        # 2. Check info cache for name
+        now = time.time()
+        if yf_ticker in _INFO_CACHE:
+            info, expiry = _INFO_CACHE[yf_ticker]
+            if now < expiry:
+                name = info.get("longName") or info.get("shortName") or fallback
+                _NAME_CACHE[cache_key] = (name, now + _NAME_CACHE_TTL)
+                return name
+
         tk = get_ticker_cached(yf_ticker)
-        try:
-            if hasattr(tk, "funds_data") and tk.funds_data is not None:
-                name = tk.funds_data.name
-                if name and isinstance(name, str) and len(name) > 3:
-                    result = name.strip()
-                    _NAME_CACHE[cache_key] = (result, time.time() + _NAME_CACHE_TTL)
-                    return result
-        except Exception:
-            pass
         info = tk.info or {}
-        name = info.get("longName") or info.get("shortName") or ""
-        result = name.strip() if (name and len(name) > 3 and name != ticker_upper) else fallback
-        _NAME_CACHE[cache_key] = (result, time.time() + _NAME_CACHE_TTL)
+        
+        # Update info cache while we're at it
+        _INFO_CACHE[yf_ticker] = (info, now + _INFO_CACHE_TTL)
+        
+        name = info.get("longName") or info.get("shortName") or fallback
+        result = name.strip() if (isinstance(name, str) and len(name) > 3) else fallback
+        _NAME_CACHE[cache_key] = (result, now + _NAME_CACHE_TTL)
         return result
     except Exception as e:
         logger.warning("Name fetch failed for %s: %s", ticker_upper, e)
-        _NAME_CACHE[cache_key] = (fallback, time.time() + 3600)
         return fallback
 
 
@@ -294,6 +305,156 @@ def fetch_benchmarks(period: str = "max") -> dict[str, list[dict]]:
     return result
 
 
+def _enrich_single_holding(h: dict, multi_live: pd.DataFrame, multi_full: pd.DataFrame, multi_period: pd.DataFrame, hist_period: str) -> tuple[dict, list[dict] | None]:
+    """
+    Helper to enrich a single holding with market data, dividends, and P&L.
+    Designed to run in a thread pool to parallelize I/O-bound metadata fetching.
+    """
+    ticker    = h["ticker"]
+    ticker_yf = h["ticker_yf"]
+    history_data = None
+    
+    # Ensure name is resolved (expensive I/O)
+    if "name" not in h or h["name"] == ticker:
+        h["name"] = get_etf_name(ticker)
+
+    try:
+        # 1. Chart history
+        if hist_period == "1d":
+            yf_1d = _extract_col(multi_period, ticker_yf, "Close")
+            if not yf_1d.empty:
+                yf_1d = yf_1d[yf_1d > 0]
+                yf_1d.index = normalise_tz(yf_1d.index)
+                cutoff = get_period_cutoff("1d")
+                yf_1d = yf_1d[yf_1d.index >= cutoff]
+            
+            sess_1d = get_session_history(ticker)
+            if not sess_1d.empty:
+                sess_1d = sess_1d[sess_1d > 0]
+                sess_1d.index = pd.to_datetime(sess_1d.index).tz_localize("Australia/Sydney")
+                sess_1d.index = normalise_tz(sess_1d.index)
+            
+            if not yf_1d.empty and not sess_1d.empty:
+                close_p = pd.concat([yf_1d, sess_1d]).sort_index()
+                close_p = close_p[~close_p.index.duplicated(keep='last')]
+            else:
+                close_p = sess_1d if not sess_1d.empty else yf_1d
+        else:
+            close_p = _extract_col(multi_period, ticker_yf, "Close")
+
+        if not close_p.empty:
+            close_p.index = normalise_tz(pd.to_datetime(close_p.index))
+            df_p = close_p.reset_index()
+            df_p.columns = ["Date", "Close"]
+            history_data = df_p.to_dict("records")
+
+        # 2. Market Metrics
+        close_f = _extract_col(multi_full, ticker_yf, "Close")
+        div_f   = _extract_col(multi_full, ticker_yf, "Dividends")
+        if not close_f.empty:
+            close_f.index = normalise_tz(pd.to_datetime(close_f.index))
+
+        live_close = _extract_col(multi_live, ticker_yf, "Close")
+        live_high  = _extract_col(multi_live, ticker_yf, "High")
+        live_low   = _extract_col(multi_live, ticker_yf, "Low")
+
+        if len(live_close) >= 2:
+            last_price = float(live_close.iloc[-1])
+            prev_close = float(live_close.iloc[-2])
+        elif len(live_close) == 1:
+            last_price = float(live_close.iloc[-1])
+            prev_close = float(close_f.iloc[-2]) if len(close_f) >= 2 else last_price
+        else:
+            last_price = float(close_f.iloc[-1]) if len(close_f) >= 1 else h["avg_cost"]
+            prev_close = float(close_f.iloc[-2]) if len(close_f) >= 2 else last_price
+
+        day_high = float(live_high.iloc[-1]) if not live_high.empty else last_price
+        day_low  = float(live_low.iloc[-1])  if not live_low.empty  else last_price
+
+        _pnl      = compute_holding_pnl(h, last_price, prev_close)
+        mkt_value = _pnl["mkt_value"]
+
+        annual_div, total_div, div_yield = _compute_dividends_bulk(div_f, h["total_shares"], mkt_value)
+        realized_div = _calculate_realized_dividends(div_f, h.get("buy_tranches", []))
+        div_frequency = _deduce_frequency(div_f)
+        div_f_clean = div_f[div_f > 0]
+        last_div_amount = float(div_f_clean.iloc[-1]) if not div_f_clean.empty else 0.0
+
+        tranche_data = []
+        if not close_p.empty:
+            tranche_data = compute_tranche_pnl(close_p, h.get("buy_tranches", []))
+        elif not close_f.empty and hist_period != "1d":
+            tranche_data = compute_tranche_pnl(close_f, h.get("buy_tranches", []))
+
+        enriched_h = {
+            **h,
+            "last_price":     round(last_price, 3),
+            "prev_close":     round(prev_close, 3),
+            "day_high":       round(day_high, 3),
+            "day_low":        round(day_low, 3),
+            "mkt_value":      mkt_value,
+            "pnl":            _pnl["pnl"],
+            "pnl_pct":        _pnl["pnl_pct"],
+            "day_pnl":        _pnl["day_pnl"],
+            "day_chg":        _pnl["day_chg"],
+            "day_chg_pct":    _pnl["day_chg_pct"],
+            "total_div":      total_div,
+            "realized_div":   realized_div,
+            "annual_div":     annual_div,
+            "div_yield":      div_yield,
+            "div_frequency":  div_frequency,
+            "last_div_amount": round(last_div_amount, 4),
+            "last_div_date":   div_f.index[-1].strftime("%Y-%m-%d") if not div_f.empty else None,
+            "tranches":       tranche_data,
+        }
+        
+        # 3. Upcoming Dividends (expensive I/O - using TTL cache)
+        try:
+            now = time.time()
+            if ticker_yf in _INFO_CACHE:
+                info, expiry = _INFO_CACHE[ticker_yf]
+                if now >= expiry:
+                    tk = get_ticker_cached(ticker_yf)
+                    info = tk.info or {}
+                    _INFO_CACHE[ticker_yf] = (info, now + _INFO_CACHE_TTL)
+            else:
+                tk = get_ticker_cached(ticker_yf)
+                info = tk.info or {}
+                _INFO_CACHE[ticker_yf] = (info, now + _INFO_CACHE_TTL)
+
+            enriched_h["next_div_date"] = None
+            enriched_h["payout_date"] = None
+            
+            ex_date = info.get("exDividendDate")
+            pay_date = info.get("dividendPayDate")
+            
+            if ex_date:
+                dt = datetime.fromtimestamp(ex_date) if isinstance(ex_date, int) else pd.to_datetime(ex_date)
+                enriched_h["next_div_date"] = dt.strftime("%Y-%m-%d")
+            if pay_date:
+                dt = datetime.fromtimestamp(pay_date) if isinstance(pay_date, int) else pd.to_datetime(pay_date)
+                enriched_h["payout_date"] = dt.strftime("%Y-%m-%d")
+        except Exception:
+            pass
+
+        return enriched_h, history_data
+
+    except Exception as exc:
+        logger.warning("Failed to enrich %s: %s", ticker_yf, exc)
+        fallback_price = round(h["avg_cost"], 3)
+        fallback_cost  = round(h["total_shares"] * h["avg_cost"], 2)
+        return {
+            **h,
+            "last_price":  fallback_price, "prev_close":  fallback_price,
+            "day_high":    fallback_price, "day_low":     fallback_price,
+            "mkt_value":   fallback_cost, "pnl": 0.0, "pnl_pct": 0.0,
+            "day_pnl": 0.0, "day_chg": 0.0, "day_chg_pct": 0.0,
+            "total_div": 0.0, "realized_div": 0.0, "annual_div": 0.0, "div_yield": 0.0,
+            "div_frequency": "Unknown", "last_div_amount": 0.0,
+            "last_div_date": None, "next_div_date": None, "payout_date": None, "tranches": [],
+        }, None
+
+
 def fetch_live(holdings: list[dict], hist_period: str = "max") -> dict:
     """
     Fetch live prices, history, dividends and per-tranche P&L for all holdings.
@@ -356,176 +517,18 @@ def fetch_live(holdings: list[dict], hist_period: str = "max") -> dict:
     enriched:  list[dict] = []
     histories: dict       = {}
 
-    for h in holdings:
-        ticker    = h["ticker"]
-        ticker_yf = h["ticker_yf"]
-        
-        # Ensure name is resolved (especially for newly added tickers)
-        if "name" not in h or h["name"] == ticker:
-            h["name"] = get_etf_name(ticker)
-
-        try:
-            # Chart history for P&L history chart
-            if hist_period == "1d":
-                # Fetch yfinance intraday data for backfilling the morning
-                yf_1d = _extract_col(multi_period, ticker_yf, "Close")
-                # Filter out spurious zeros and normalize to UTC-naive
-                if not yf_1d.empty:
-                    yf_1d = yf_1d[yf_1d > 0]
-                    yf_1d.index = normalise_tz(yf_1d.index)
-                    # Use the standard cutoff (Today 00:00 UTC) for filtering
-                    cutoff = get_period_cutoff("1d")
-                    yf_1d = yf_1d[yf_1d.index >= cutoff]
-                
-                # Fetch our own interval snapshots
-                sess_1d = get_session_history(ticker)
-
-                if not sess_1d.empty:
-                    # Filter out spurious zeros
-                    sess_1d = sess_1d[sess_1d > 0]
-                    # Session cache uses Sydney wall-clock time strings (e.g. 10:00:00).
-                    # We MUST localize to Sydney then normalise to UTC-naive to align 
-                    # with yfinance's normalized timestamps.
-                    if not sess_1d.empty:
-                        sess_1d.index = pd.to_datetime(sess_1d.index).tz_localize("Australia/Sydney")
-                        sess_1d.index = normalise_tz(sess_1d.index)
-                
-                # Merge: prefer session snapshots (more frequent) over yfinance 5m backfill.
-                # This ensures the chart remains alive even when yfinance API data 
-                # lag behind the actual market session.
-                if not yf_1d.empty and not sess_1d.empty:
-                    close_p = pd.concat([yf_1d, sess_1d]).sort_index()
-                    close_p = close_p[~close_p.index.duplicated(keep='last')]
-                else:
-                    close_p = sess_1d if not sess_1d.empty else yf_1d
-            else:
-                close_p = _extract_col(multi_period, ticker_yf, "Close")
-
-            if not close_p.empty:
-                close_p.index = normalise_tz(pd.to_datetime(close_p.index))
-                df_p = close_p.reset_index()
-                df_p.columns = ["Date", "Close"]
-                histories[ticker] = df_p.to_dict("records")
-
-            # Full history for dividends + tranche P&L
-            close_f = _extract_col(multi_full, ticker_yf, "Close")
-            div_f   = _extract_col(multi_full, ticker_yf, "Dividends")
-            if not close_f.empty:
-                close_f.index = normalise_tz(pd.to_datetime(close_f.index))
-
-            # ── Live OHLC from 5-day bulk download ────────────────────────────
-            # iloc[-1] = today (or last trading session)
-            # iloc[-2] = previous session (= prev_close)
-            live_close = _extract_col(multi_live, ticker_yf, "Close")
-            live_high  = _extract_col(multi_live, ticker_yf, "High")
-            live_low   = _extract_col(multi_live, ticker_yf, "Low")
-
-            if len(live_close) >= 2:
-                last_price = float(live_close.iloc[-1])
-                prev_close = float(live_close.iloc[-2])
-            elif len(live_close) == 1:
-                last_price = float(live_close.iloc[-1])
-                # Fall back to full history prev close if only one row
-                prev_close = float(close_f.iloc[-2]) if len(close_f) >= 2 else last_price
-            else:
-                # No live data — use full history
-                last_price = float(close_f.iloc[-1]) if len(close_f) >= 1 else h["avg_cost"]
-                prev_close = float(close_f.iloc[-2]) if len(close_f) >= 2 else last_price
-
-            day_high = float(live_high.iloc[-1]) if not live_high.empty else last_price
-            day_low  = float(live_low.iloc[-1])  if not live_low.empty  else last_price
-
-            _pnl      = compute_holding_pnl(h, last_price, prev_close)
-            mkt_value = _pnl["mkt_value"]
-
-            annual_div, total_div, div_yield = _compute_dividends_bulk(
-                div_f, h["total_shares"], mkt_value
-            )
-
-            realized_div = _calculate_realized_dividends(div_f, h.get("buy_tranches", []))
-            div_frequency = _deduce_frequency(div_f)
-            div_f_clean = div_f[div_f > 0]
-            last_div_amount = float(div_f_clean.iloc[-1]) if not div_f_clean.empty else 0.0
-
-            tranche_data = []
-            if not close_p.empty:
-                tranche_data = compute_tranche_pnl(close_p, h.get("buy_tranches", []))
-            elif not close_f.empty and hist_period != "1d":
-                # For 'Today' we only use intraday session data — never fall back
-                # to daily history, which would produce an empty chart after the
-                # 1d cutoff filter strips all historical bars.
-                tranche_data = compute_tranche_pnl(close_f, h.get("buy_tranches", []))
-
-            enriched.append({
-                **h,
-                "last_price":     round(last_price, 3),
-                "prev_close":     round(prev_close, 3),
-                "day_high":       round(day_high, 3),
-                "day_low":        round(day_low, 3),
-                "mkt_value":      mkt_value,
-                "pnl":            _pnl["pnl"],
-                "pnl_pct":        _pnl["pnl_pct"],
-                "day_pnl":        _pnl["day_pnl"],
-                "day_chg":        _pnl["day_chg"],
-                "day_chg_pct":    _pnl["day_chg_pct"],
-                "total_div":      total_div,
-                "realized_div":   realized_div,
-                "annual_div":     annual_div,
-                "div_yield":      div_yield,
-                "div_frequency":  div_frequency,
-                "last_div_amount": round(last_div_amount, 4),
-                "last_div_date":   div_f.index[-1].strftime("%Y-%m-%d") if not div_f.empty else None,
-                "tranches":       tranche_data,
-            })
-            
-            # Fetch real upcoming dividend info from ticker.info (cached via get_ticker_cached)
-            try:
-                tk = get_ticker_cached(ticker_yf)
-                info = tk.info or {}
-                # yfinance info keys for upcoming dividends
-                h_idx = len(enriched) - 1
-                enriched[h_idx]["next_div_date"] = None
-                enriched[h_idx]["payout_date"] = None
-                
-                ex_date = info.get("exDividendDate")
-                pay_date = info.get("dividendPayDate")
-                
-                if ex_date:
-                    dt = datetime.fromtimestamp(ex_date) if isinstance(ex_date, int) else pd.to_datetime(ex_date)
-                    enriched[h_idx]["next_div_date"] = dt.strftime("%Y-%m-%d")
-                if pay_date:
-                    dt = datetime.fromtimestamp(pay_date) if isinstance(pay_date, int) else pd.to_datetime(pay_date)
-                    enriched[h_idx]["payout_date"] = dt.strftime("%Y-%m-%d")
-            except Exception:
-                pass
-
-        except Exception as exc:
-            logger.warning("Failed to enrich %s: %s", ticker_yf, exc)
-            fallback_price = round(h["avg_cost"], 3)
-            fallback_cost  = round(h["total_shares"] * h["avg_cost"], 2)
-            enriched.append({
-                **h,
-                "last_price":  fallback_price,
-                "prev_close":  fallback_price,
-                "day_high":    fallback_price,
-                "day_low":     fallback_price,
-                "mkt_value":   fallback_cost,
-                "pnl":         0.0,
-                "pnl_pct":     0.0,
-                "day_pnl":     0.0,
-                "day_chg":     0.0,
-                "day_chg_pct": 0.0,
-                "total_div":   0.0,
-                "realized_div": 0.0,
-                "annual_div":  0.0,
-                "div_yield":   0.0,
-                "div_frequency": "Unknown",
-                "last_div_amount": 0.0,
-                "last_div_date": None,
-                "next_div_date": None,
-                "payout_date": None,
-                "tranches":    [],
-            })
+    # Parallelize the enrichment process (I/O bound due to get_etf_name and tk.info)
+    with ThreadPoolExecutor(max_workers=10) as executor:
+        futures = [
+            executor.submit(_enrich_single_holding, h, multi_live, multi_full, multi_period, hist_period)
+            for h in holdings
+        ]
+        results = [f.result() for f in futures]
+    
+    for h_enriched, history_data in results:
+        enriched.append(h_enriched)
+        if history_data:
+            histories[h_enriched["ticker"]] = history_data
 
     result = {
         "holdings":   enriched,
