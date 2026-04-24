@@ -86,29 +86,41 @@ def register_callbacks(app) -> None:
     # ── Table Header Sorting ──────────────────────────────────────────────────
     @app.callback(
         Output("table-state-store", "data"),
-        Input({"type": "table-th", "index": ALL}, "n_clicks"),
+        Input({"type": "table-th", "index": dash.ALL}, "n_clicks"),
         State("table-state-store", "data"),
         prevent_initial_call=True
     )
     def update_table_sorting(n_clicks_list, current_state):
-        if not ctx.triggered:
-            return current_state
+        # We need to find which specific column triggered the callback
+        if not ctx.triggered_id:
+            return dash.no_update
         
-        # Find which header was clicked
-        triggered_id = ctx.triggered_id
-        if not triggered_id or not isinstance(triggered_id, dict):
-            return current_state
+        # Pattern matching triggered_id is a dict
+        triggered = ctx.triggered_id
+        if not isinstance(triggered, dict) or triggered.get("type") != "table-th":
+            return dash.no_update
             
-        clicked_col = triggered_id["index"]
+        clicked_col = triggered.get("index")
+        if not clicked_col:
+            return dash.no_update
+
+        # Ensure current_state is a valid dict
+        if not current_state or not isinstance(current_state, dict):
+            current_state = {"sort_col": "mkt_value", "sort_dir": "desc", "search": ""}
         
         new_state = current_state.copy()
-        if new_state["sort_col"] == clicked_col:
-            # Toggle direction
-            new_state["sort_dir"] = "asc" if new_state["sort_dir"] == "desc" else "desc"
+        
+        # Toggle logic
+        if new_state.get("sort_col") == clicked_col:
+            # Toggle direction on same column
+            new_state["sort_dir"] = "asc" if new_state.get("sort_dir") == "desc" else "desc"
         else:
-            # New column, default to desc for everything except ticker/name
+            # New column: default to Descending for metrics, Ascending for labels
             new_state["sort_col"] = clicked_col
-            new_state["sort_dir"] = "asc" if clicked_col in ["ticker", "name"] else "desc"
+            if clicked_col in ["ticker", "name", "div_frequency"]:
+                new_state["sort_dir"] = "asc"
+            else:
+                new_state["sort_dir"] = "desc"
             
         return new_state
 

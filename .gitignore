@@ -21,26 +21,31 @@ env/
 .vscode/
 .idea/
 
+# Data & Caches
+*.csv
+*.json
+data/cache/
+data/raw/
+!data/cache/.gitkeep
+!data/raw/.gitkeep
+
 # Logs & Temporary
 *.log
 app_output.txt
 scratch/
 *.bak
+screenshot.png
 
 # Archives
 *.zip
 *.tar.gz
 
-# Data Caches (if applicable)
-data/raw/*_cache.csv
-
 # Gemini Agents
 .agents/
 GEMINI.md
 
-# Project scripts & screenshots
+# Project scripts
 dump_project.sh
-screenshot.png
 test_pnl.py
 test_*.py
 !test/  # Keep the actual test directory tracked
