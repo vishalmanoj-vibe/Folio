@@ -56,7 +56,7 @@ def layout():
                                         {"label": "By Sector", "value": "sector"},
                                         {"label": "By Region", "value": "geo"},
                                     ],
-                                    value="flat",
+                                    value="sector",
                                     size="xs",
                                     radius="xl"
                                 ),
@@ -92,7 +92,7 @@ def layout():
                                         {"label": "6M", "value": "6mo"},
                                         {"label": "1Y", "value": "1y"},
                                     ],
-                                    value="max",
+                                    value="1mo",
                                     size="sm",
                                     radius="lg",
                                     className="period-segmented-control"

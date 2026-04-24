@@ -55,7 +55,9 @@ def register_callbacks(app):
                 
             return name, round(price, 2) if price else dash.no_update
         except Exception as e:
-            logger.debug(f"Discovery failed for {ticker}: {e}")
+            # Only log if it's not a common 'not found' or network timeout
+            if ticker and len(ticker) > 2:
+                logger.debug(f"Discovery failed for {ticker}: {e}")
             return "", dash.no_update
 
 

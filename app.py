@@ -124,7 +124,7 @@ app.layout = dmc.MantineProvider(
             dcc.Store(id="pnl-mode-store",         data="pct",  storage_type='session'),
             dcc.Store(id="ticker-store",           data="Portfolio", storage_type='session'),
             dcc.Store(id="treemap-mode-store",     data="sector", storage_type='session'),
-            dcc.Store(id="analytics-period-store", data="max",    storage_type='session'),
+            dcc.Store(id="analytics-period-store", data="1mo",    storage_type='session'),
             dcc.Store(id="intel-period-store",     data="3mo",    storage_type='session'),
             dcc.Store(id="intel-pred-store",       data=False,    storage_type='session'),
             dcc.Store(id="positions-selected-ticker", data=None, storage_type='session'),
@@ -227,6 +227,25 @@ def sync_p2(v): return v if v else dash.no_update
 
 @app.callback(Output("intel-period-store", "data"), Input("intel-period-picker", "value"), prevent_initial_call=True)
 def sync_p3(v): return v if v else dash.no_update
+
+# ── Initialization Syncing (Store -> UI on load) ──────────────────────────────
+@app.callback(Output("period-picker", "value"), Input("period-store", "data"))
+def init_p1(v): return v if v else dash.no_update
+
+@app.callback(Output("pnl-mode", "value"), Input("pnl-mode-store", "data"))
+def init_mode(v): return v if v else dash.no_update
+
+@app.callback(Output("ticker-selector", "value"), Input("ticker-store", "data"))
+def init_tk(v): return v if v else dash.no_update
+
+@app.callback(Output("treemap-mode", "value"), Input("treemap-mode-store", "data"))
+def init_tree(v): return v if v else dash.no_update
+
+@app.callback(Output("analytics-period-picker", "value"), Input("analytics-period-store", "data"))
+def init_p2(v): return v if v else dash.no_update
+
+@app.callback(Output("intel-period-picker", "value"), Input("intel-period-store", "data"))
+def init_p3(v): return v if v else dash.no_update
 
 @app.callback(
     Output("intel-pred-store", "data"),

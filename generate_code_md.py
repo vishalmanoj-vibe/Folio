@@ -27,7 +27,8 @@ files_to_include = [
     "assets/ui-components.css",
     "assets/view-pages.css",
     "config/settings.py",
-    "config/constants.py"
+    "config/constants.py",
+    "config/logging.py"
 ]
 
 with open("portfolio_dashboard_code.md", "w") as out:

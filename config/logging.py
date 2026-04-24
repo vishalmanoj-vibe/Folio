@@ -15,7 +15,7 @@ from pathlib import Path
 
 SCRIPT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO").upper()
-LOG_FILE = os.getenv("LOG_FILE", os.path.join(SCRIPT_DIR, "portfolio.log"))
+LOG_FILE = os.getenv("LOG_FILE", os.path.join(SCRIPT_DIR, "logs", "portfolio.log"))
 LOG_FILE_ENABLED = os.getenv("LOG_FILE_ENABLED", "true").lower() == "true"
 
 # Create handlers list dynamically
@@ -72,6 +72,11 @@ CONFIG = {
 
 def setup_logging():
     """Initialize logging configuration."""
+    # Ensure log directory exists
+    log_dir = os.path.dirname(LOG_FILE)
+    if log_dir and not os.path.exists(log_dir):
+        os.makedirs(log_dir, exist_ok=True)
+
     logging.config.dictConfig(CONFIG)
     logger = logging.getLogger(__name__)
     

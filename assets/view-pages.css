@@ -154,6 +154,7 @@
   overflow-x: auto;
 }
 
+.cal-card,
 .dividend-event {
   flex: 0 0 160px;
   background: var(--surface-2);

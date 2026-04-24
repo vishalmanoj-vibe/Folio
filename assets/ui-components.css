@@ -51,6 +51,9 @@ button:active { transform: scale(0.97); }
   gap: 8px;
   padding: 14px 16px 14px 0;
 }
+.stat-cards-container.three-col {
+  grid-template-columns: repeat(3, 1fr);
+}
 
 .stat-card-container {
   background: var(--surface-2);

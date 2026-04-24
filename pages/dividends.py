@@ -29,7 +29,7 @@ def layout() -> html.Div:
 
             html.Div([
                 # ── KPI Row ───────────────────────────────────────────────────
-                html.Div(id="dividend-stats-cards", className="stat-cards-container"),
+                html.Div(id="dividend-stats-cards", className="stat-cards-container three-col"),
 
                 # ── Dividend Calendar ─────────────────────────────────────────────
                 section(
