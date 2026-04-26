@@ -16,6 +16,7 @@ Built with Dash, Plotly, and yfinance.
 - **Allocation Analysis**: Hierarchical Sector and Geographic allocation with Sunburst drill-downs and smart risk alerts.
 - **Dividend Tracking**: Automatic calculation of **Realized Dividends** (tranche-level accuracy) vs. projected annual income.
 - **Interactive UI**: Modern, responsive interface with buy/sell entry, calendar-based tracking, and global state persistence.
+- **Research Assistant**: AI-powered chat interface with **Gemini 2.5 Flash Lite** for deep portfolio analysis, ticker research, and persistent conversation memory.
 - **Modular Architecture**: Strictly decoupled layer model (Presentation, Service, Engine, Data) with a **PortfolioRepository** abstraction and a pre-seeded store pattern.
 - **Premium Aesthetics**: "Aura Ledger" dark-themed design with glassmorphism, Radix UI overrides, and smooth transitions.
 

@@ -72,6 +72,7 @@ except Exception as e:
 from data.portfolio_builder import build_holdings
 from services.market.data_fetcher import fetch_live
 from services.market.session_cache import clear_old_caches
+from services.research_memory import run_startup_maintenance
 
 # ── Maintenance ──────────────────────────────────────────────────────────────
 clear_old_caches(keep_days=1)  # Aggressive cleanup on startup
@@ -124,6 +125,7 @@ if INITIAL_WATCHLIST:
 
         INITIAL_WATCHLIST_DATA = live_data
         watchlist_repo.refresh_all_histories()
+        run_startup_maintenance(os.getenv("GEMINI_API_KEY", ""))
         print(f"✅ Watchlist loaded from cache ({len(disk_histories)} tickers from disk)")
     except Exception as e:
         logger.warning(f"Initial watchlist fetch failed: {e}")

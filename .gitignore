@@ -42,7 +42,7 @@ screenshot.png
 *.tar.gz
 
 # Gemini Agents
-.agents/
+.agent/
 GEMINI.md
 
 # Project scripts

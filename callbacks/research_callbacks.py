@@ -2,6 +2,10 @@ from dash import Input, Output, State, ctx, html, no_update
 import dash
 import logging
 from services.research_service import get_ai_response, build_portfolio_context
+from services.research_memory import (
+    append_turn, load_conversation_log,
+    load_memory_summary, check_memory_size
+)
 
 logger = logging.getLogger(__name__)
 
@@ -30,11 +34,28 @@ def register_callbacks(app):
         n = len(holdings)
         total_val = sum(h.get("mkt_value", 0) for h in holdings)
 
+        from services.research_memory import (
+            load_memory_summary, load_conversation_log
+        )
+        summary = load_memory_summary()
+        recent_log = load_conversation_log()
+
+        memory_note = ""
+        if summary:
+            memory_note = f"\n\nFrom our previous conversations: {summary}"
+        
+        recent_count = len(recent_log)
+        if recent_count > 0:
+            memory_note += (
+                f"\n\nI also have {recent_count} recent message(s) "
+                f"from the last 7 days in memory."
+            )
+
         welcome_msg = (
             f"Hi! I've loaded your portfolio — {n} holdings worth "
             f"${total_val:,.0f}. Ask me about your positions, or type "
-            "a ticker on the left to research it. Use the quick "
-            "prompts below to get started."
+            f"a ticker on the left to research it."
+            + memory_note
         )
 
         return [{"role": "assistant", "content": welcome_msg}]
@@ -115,9 +136,11 @@ def register_callbacks(app):
 
         history = list(current_history or [])
         history.append({"role": "user", "content": message})
+        append_turn("user", message)
 
         response = get_ai_response(history, portfolio_data, ticker or "")
         history.append({"role": "assistant", "content": response})
+        append_turn("assistant", response)
 
         new_usage = {"count": current_count + 1, "reset_date": today_str}
         return history, "", new_usage, {"display": "none"}, False
@@ -218,6 +241,9 @@ def register_callbacks(app):
         if pathname != "/research":
             return dash.no_update
 
+        from services.research_memory import check_memory_size
+        memory = check_memory_size()
+
         from datetime import date
         DAILY_LIMIT = 20
         today_str = str(date.today())
@@ -236,6 +262,20 @@ def register_callbacks(app):
             else "var(--warning)" if remaining > 3
             else "var(--red)"
         )
+
+        if memory.get("is_full"):
+            return html.Div([
+                html.Span(
+                    "⚠ Research memory is full (50MB). ",
+                    style={"color": "var(--red)", "fontSize": "11px",
+                           "fontWeight": "600"}
+                ),
+                html.Span(
+                    "Old conversations are being auto-summarised. "
+                    "If this persists, restart the app.",
+                    style={"color": "var(--t-sec)", "fontSize": "10px"}
+                ),
+            ], style={"padding": "6px 20px", "flexShrink": "0"})
 
         return html.Div([
             html.Span(

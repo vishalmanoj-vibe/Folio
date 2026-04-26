@@ -16,7 +16,7 @@ The application follows a strictly decoupled layered architecture to ensure sepa
 ┌───────────────────────┐   ┌───────────────────────┐   ┌───────────────────────┐
 │     SERVICE LAYER     │   │      ENGINE LAYER     │   │    DATA ACCESS LAYER  │
 │ (market, intelligence,│   │ (core/engine/         │   │ (data/repository.py,  │
-│  alert, prediction)   │   │  portfolio_engine.py) │   │  data/csv_handler.py) │
+│  research, prediction)│   │  portfolio_engine.py) │   │  data/csv_handler.py) │
 └──────────┬────────────┘   └───────────┬───────────┘   └───────────┬───────────┘
            │                            │                           │
            └───────────────┬────────────┴───────────────┬───────────┘
@@ -30,7 +30,12 @@ The application follows a strictly decoupled layered architecture to ensure sepa
 ### Layer Responsibilities
 
 1.  **Presentation (UI/Assets)**: The entry point and orchestrator. It handles the "Shell" (HTML/CSS), multi-page routing, and interactive state (`dcc.Store`). It coordinates the flow by loading raw transactions from the **Data Layer** and passing them to the **Service Layer** for enrichment.
-2.  **Service (Orchestration)**: Coordinates complex workflows including external API calls (yfinance), tiered caching, and domain-specific logic like alert detection, hierarchical risk analysis, and Prophet forecasting.
+2.  **Service (Orchestration & Intelligence)**: Coordinates complex workflows and AI-driven insights. This layer handles external API calls (yfinance, Gemini), tiered caching, and logic-heavy services:
+    - **Market Service**: Real-time pricing and metadata enrichment.
+    - **Research Service (AI)**: Contextual portfolio reasoning via Gemini 2.5 Flash Lite.
+    - **Memory Service**: Persistent state management with rolling 7-day logs and long-term summaries.
+    - **Intelligence Service**: Risk analysis (Sharpe, Volatility) and rule-based allocation alerts.
+    - **Prediction Service**: Forecasting using Facebook Prophet with continuity correction.
 3.  **Engine (Logic)**: The "Mathematical Core". Pure Python logic for P&L computation, tranche aggregation, and performance metrics. It has **zero dependencies on Network, I/O, or Dash.**
 4.  **Data (Persistence)**: The `PortfolioRepository` provides a clean abstraction for data operations, decoupling the CSV logic from the rest of the application.
 5.  **Domain (Models)**: Typed definitions (Pydantic/TypedDict) that enforce data contracts across all layers.
@@ -105,7 +110,9 @@ portfolio_dashboard/
 │   │   └── market_status.py        # ASX timezone/status logic
 │   ├── alert_service.py            # Price/Target monitoring
 │   ├── intelligence_service.py     # Hierarchical risk/allocation logic
-│   └── prediction_service.py       # Prophet-based forecasting with disk-caching
+│   ├── prediction_service.py       # Prophet-based forecasting with disk-caching
+│   ├── research_service.py         # Gemini-powered analysis & portfolio reasoning
+│   └── research_memory.py          # Persistent chat logs & rolling AI summaries
 │
 ├── data/                           # Persistence layer
 │   ├── repository.py               # Data Repository abstraction
@@ -124,12 +131,15 @@ portfolio_dashboard/
 ├── callbacks/                      # Dash interactivity
 │   ├── chart_callbacks.py          # Dashboard graph updates
 │   ├── portfolio_callbacks.py      # Table/Metric updates
-│   └── intelligence_callbacks.py   # Modal & Drill-down logic
+│   ├── intelligence_callbacks.py   # Modal & Drill-down logic
+│   └── research_callbacks.py       # AI chat interaction & memory status
 │
 ├── pages/                          # Multi-page routing
 │   ├── portfolio.py                # Main Dashboard (/)
 │   ├── analytics.py                # Secondary Metrics (/analytics)
 │   ├── intelligence.py             # Risk Analysis (/intelligence)
+│   ├── watchlist.py                # Future tracker (/watchlist)
+│   ├── research.py                 # AI Assistant (/research)
 │   └── etf_detail.py               # Ticker deep-dive (/etf/<ticker>)
 │
 └── assets/                         # Static assets (Modular CSS)
@@ -247,3 +257,11 @@ The "Today" P&L view utilizes a dedicated intraday tracking system to provide re
 - **Bypass Strategy**: The P&L History chart reads this file directly when in "1d" mode. This bypasses the main `portfolio-store` for chart rendering, preventing "Timezone Concat" errors that occur when mixing historical daily data (often UTC-naive) with live intraday data (Sydney wall-clock).
 - **Window**: The chart is strictly pinned to the ASX trading window (10:00 AM – 4:15 PM Sydney Time).
 - **Persistence**: Snapshotting ensures that intraday progress is preserved even if the application is restarted during the trading day.
+### 5. AI Research Assistant & Persistent Memory
+The **Research Page** leverages Google Gemini 2.5 Flash Lite for contextual portfolio reasoning.
+- **Contextual Awareness**: On every query, the assistant is injected with a live snapshot of the portfolio (Holdings, P&L, Weights) and the ticker currently being researched.
+- **Rolling Memory Pattern**: To provide continuity without bloating storage, the system uses a dual-layer memory:
+    - **Short-Term (7-day Log)**: Exact conversation turns stored in `conversation_log.json`.
+    - **Long-Term (AI Summary)**: On startup, old turns are automatically summarized into bullet points by Gemini and saved to `memory_summary.json`.
+- **Usage Monitoring**: A daily message limit (20) and storage cap (50MB) are enforced to ensure system stability.
+- **Startup Maintenance**: The `run_startup_maintenance` routine in `app.py` ensures the memory remains pruned and summarized before the app accepts user input.
