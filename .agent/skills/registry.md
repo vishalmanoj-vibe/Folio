@@ -45,6 +45,24 @@ Prevent "Duplicate ID" errors and callback collisions by maintaining a central m
 - `watchlist-msg`: Status feedback message.
 - `watchlist-chart`: Selected ticker price chart.
 
+### Research Assistant
+- `research-chat-store`: Conversation history (memory storage, clears on refresh).
+- `research-ticker-store`: Ticker being researched (memory storage).
+- `research-portfolio-summary`: Left panel live holdings display.
+- `research-chat-display`: Scrollable chat message area.
+- `research-ticker-input`: Free-text input for ticker to research.
+- `research-input`: Chat message text input.
+- `research-send-btn`: Message send button.
+- `research-disclaimer`: Static disclaimer text element.
+- `qp-1`: Quick prompt chip — "Does this fit my portfolio?"
+- `qp-2`: Quick prompt chip — "What are the risks?"
+- `qp-3`: Quick prompt chip — "Compare to what I own"
+- `qp-4`: Quick prompt chip — "What am I missing?"
+
 ## Rule for New IDs
 - **Namespace Pattern**: Always prefix new IDs with the page name (e.g., `tax-report-table`).
 - **Update this file**: Whenever a new ID is added, it MUST be registered here.
+- **Conflict check**: Before building any new feature, grep the existing IDs in
+  this file to confirm no collision. Never reuse an ID from another page.
+- **research-* namespace**: Reserved for the Research Assistant page. Do not
+  use this prefix for any other feature.

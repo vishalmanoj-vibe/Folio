@@ -25,6 +25,9 @@ waiting for the first `dcc.Interval` cycle.
 from config.logging import setup_logging
 setup_logging()
 
+from dotenv import load_dotenv
+load_dotenv()
+
 import logging
 logger = logging.getLogger(__name__)
 
@@ -53,6 +56,7 @@ import callbacks.intelligence_callbacks   as intell_cb
 import callbacks.positions_callbacks      as positions_cb
 import callbacks.dividend_callbacks       as dividends_cb
 import callbacks.watchlist_callbacks      as watchlist_cb
+import callbacks.research_callbacks  as research_cb
 
 # ── Initial data load ─────────────────────────────────────────────────────────
 repo = PortfolioRepository()
@@ -176,6 +180,15 @@ app.layout = dmc.MantineProvider(
             dcc.Store(id="positions-period-store", data="3mo", storage_type='session'),
             dcc.Store(id="watchlist-selected-ticker", data=None, storage_type='session'),
             dcc.Store(id="watchlist-period-store", data="1y", storage_type='session'),
+            dcc.Store(id="research-chat-store", data=[], 
+                      storage_type="memory"),
+            dcc.Store(id="research-ticker-store", data="", 
+                      storage_type="memory"),
+            dcc.Store(
+                id="research-usage-store",
+                data={"count": 0, "reset_date": ""},
+                storage_type="local",
+            ),
             
             # Global Navigation
             create_header(),
@@ -323,6 +336,7 @@ positions_cb.register_callbacks(app)
 dividends_cb.register_callbacks(app)
 intell_cb.register_callbacks(app)
 watchlist_cb.register_callbacks(app)
+research_cb.register_callbacks(app)
 
 
 # ── Browser Management ────────────────────────────────────────────────────────

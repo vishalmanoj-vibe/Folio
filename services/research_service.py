@@ -1,0 +1,107 @@
+import os
+import logging
+import copy
+import google.genai as genai
+
+logger = logging.getLogger(__name__)
+
+api_key = os.getenv("GEMINI_API_KEY")
+if not api_key:
+    logger.warning("GEMINI_API_KEY is missing from environment variables.")
+
+SYSTEM_PROMPT = """You are an Australian ASX ETF investment research assistant.
+Always reason from the portfolio data provided in each message.
+Never fabricate price data, yields, or returns.
+Keep responses to 3-4 paragraphs unless asked for more.
+End every response with: "Note: This is not financial advice."
+Be specific to the user's portfolio, not generic."""
+
+
+def build_portfolio_context(portfolio_data: dict, ticker: str = "") -> str:
+    if not portfolio_data or "holdings" not in portfolio_data or not portfolio_data["holdings"]:
+        return "Portfolio data is not yet loaded."
+
+    holdings = portfolio_data["holdings"]
+    fetched_at = portfolio_data.get("fetched_at", "Unknown")
+    
+    total_val = sum(float(h.get("mkt_value", 0)) for h in holdings)
+    
+    lines = [f"=== PORTFOLIO SNAPSHOT (Live as at {fetched_at}) ==="]
+    lines.append(f"Total value: ${total_val:,.0f}")
+    
+    for h in holdings:
+        t = h.get("ticker", "Unknown")
+        name = h.get("name", "Unknown")
+        mkt_value = float(h.get("mkt_value", 0))
+        div_yield = float(h.get("div_yield", 0)) if h.get("div_yield") is not None else 0.0
+        pnl_pct = float(h.get("pnl_pct", 0)) if h.get("pnl_pct") is not None else 0.0
+        
+        weight = (mkt_value / total_val * 100) if total_val > 0 else 0.0
+        
+        lines.append(f"{t} — {name}  {weight:.1f}%  |  yield {div_yield:.1f}%  |  P&L {pnl_pct:+.1f}%")
+        
+    if ticker:
+        lines.append(f"=== TICKER BEING RESEARCHED: {ticker.upper()} ===")
+        
+    return "\n".join(lines)
+
+
+def get_ai_response(history: list[dict], portfolio_data: dict,
+                    ticker: str = "") -> str:
+    logger.info(
+        f"get_ai_response called — "
+        f"holdings: {len(portfolio_data.get('holdings', []))}, "
+        f"history_len: {len(history)}"
+    )
+    try:
+        api_key = os.getenv("GEMINI_API_KEY")
+        if not api_key:
+            return "API key is not configured. Please add GEMINI_API_KEY to your .env file."
+
+        client = genai.Client(api_key=api_key)
+
+        # Build context and inject into a copy of the last user message
+        context = build_portfolio_context(portfolio_data, ticker)
+        logger.info(
+            f"Context length: {len(context)} chars, "
+            f"History turns: {len(history)}, "
+            f"Ticker: '{ticker}'"
+        )
+        
+        # Separate history into past turns and current message
+        if not history:
+            return "No message to respond to."
+        
+        past_turns = history[:-1]
+        current_message = history[-1]["content"]
+        full_message = context + "\n\n" + current_message
+
+        # Convert past turns to google-genai Content objects
+        # google-genai uses "model" not "assistant" for AI role
+        chat_history = []
+        for msg in past_turns:
+            role = "model" if msg["role"] == "assistant" else "user"
+            chat_history.append(
+                genai.types.Content(
+                    role=role,
+                    parts=[genai.types.Part(text=msg["content"])]
+                )
+            )
+
+        # Create chat session with history
+        chat = client.chats.create(
+            model="models/gemini-2.5-flash",
+            history=chat_history,
+            config=genai.types.GenerateContentConfig(
+                system_instruction=SYSTEM_PROMPT,
+                max_output_tokens=2048,
+            )
+        )
+
+        # Send the current message with context prepended
+        response = chat.send_message(full_message)
+        return response.text
+
+    except Exception as e:
+        logger.error(f"Error calling Gemini: {e}")
+        return "I couldn't reach the AI service. Please check your API key and try again."

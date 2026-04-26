@@ -47,3 +47,58 @@ if ctx.triggered and ctx.triggered[0]["value"] and ctx.triggered[0]["value"] > 0
 ```python
 eq_fig.update_layout(uirevision=f"pred_{pred_on}")
 ```
+
+### 4. Gemini API Context Injection Pattern
+**Symptom**: AI gives generic responses that ignore the user's portfolio.
+**Cause**: Portfolio context was stored in the history list, causing it to
+grow stale and eventually be truncated by token limits.
+**Solution**: Always prepend context to the LAST user message only, on every
+call. Never store context inside the history list:
+```python
+messages_to_send = history.copy()
+context = build_portfolio_context(portfolio_data, ticker)
+messages_to_send[-1]["content"] = context + "\n\n" + messages_to_send[-1]["content"]
+response = model.generate_content(...)
+```
+This keeps history clean and ensures every call has fresh portfolio data.
+
+### 5. Gemini GenerativeModel Chat vs generate_content
+**Symptom**: Multi-turn conversation loses context after first reply.
+**Cause**: Using model.generate_content() for multi-turn chat instead of
+the chat session pattern.
+**Solution**: For multi-turn conversations use the messages list pattern
+with roles explicitly set to "user" and "model" (not "assistant"):
+```python
+# Gemini uses "model" not "assistant" for the AI role
+history_for_gemini = [
+    {"role": "model" if m["role"] == "assistant" else "user",
+     "content": m["content"]}
+    for m in history[:-1]  # all but last message
+]
+```
+
+### 6. Preventing Interval-Triggered Chat Resets
+**Symptom**: Chat history is wiped every 30 seconds when the portfolio
+interval refresh fires, resetting mid-conversation.
+**Cause**: Using `Input("portfolio-store", "data")` as the trigger for a
+page-init callback means the callback re-fires on every periodic refresh.
+**Solution**: Use `Input("url", "pathname")` instead of
+`Input("portfolio-store", "data")` for initialisation callbacks on
+specific pages. Guard against re-initialisation by checking if the
+current state already exists before writing:
+```python
+@app.callback(
+    Output("research-chat-store", "data"),
+    Input("url", "pathname"),
+    State("portfolio-store", "data"),
+    State("research-chat-store", "data"),
+    prevent_initial_call=True,
+)
+def init_page_chat(pathname, portfolio_data, current_history):
+    if pathname != "/research":
+        return no_update
+    # Guard: do not overwrite an existing conversation
+    if current_history is not None and len(current_history) > 0:
+        return no_update
+    # ... build welcome message
+```
