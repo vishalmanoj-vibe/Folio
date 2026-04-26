@@ -47,6 +47,7 @@ GEMINI.md
 
 # Project scripts
 dump_project.sh
+generate_code_md.py
 test_pnl.py
 test_*.py
 !test/  # Keep the actual test directory tracked
