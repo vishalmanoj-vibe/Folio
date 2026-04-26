@@ -41,6 +41,7 @@ from components.portfolio_layout import INDEX_STRING
 from data.repository import PortfolioRepository
 from core.validators import validate_transaction
 from config.settings import REFRESH_INTERVAL
+from data.watchlist_repository import WatchlistRepository
 
 # Callback modules
 import callbacks.portfolio_callbacks      as portfolio
@@ -51,6 +52,7 @@ import callbacks.ui_callbacks             as ui
 import callbacks.intelligence_callbacks   as intell_cb
 import callbacks.positions_callbacks      as positions_cb
 import callbacks.dividend_callbacks       as dividends_cb
+import callbacks.watchlist_callbacks      as watchlist_cb
 
 # ── Initial data load ─────────────────────────────────────────────────────────
 repo = PortfolioRepository()
@@ -80,6 +82,48 @@ if INITIAL_HOLDINGS:
     except Exception as e:
         logger.warning(f"Initial market fetch failed: {e}")
         INITIAL_PORTFOLIO_DATA = {"holdings": INITIAL_HOLDINGS, "histories": {}}
+
+# ── Initial watchlist load ───────────────────────────────────────────────────
+watchlist_repo = WatchlistRepository()
+INITIAL_WATCHLIST = watchlist_repo.load_watchlist()
+INITIAL_WATCHLIST_DATA = {}
+
+if INITIAL_WATCHLIST:
+    try:
+        watchlist_holdings = [
+            {"ticker": i["ticker"], "ticker_yf": i["ticker"] + ".AX", "total_shares": 0, "avg_cost": 0, "total_cost": 0, "buy_tranches": []}
+            for i in INITIAL_WATCHLIST
+        ]
+        # Load histories from disk cache first — avoids yfinance fetch on every restart
+        disk_histories = {}
+        for item in INITIAL_WATCHLIST:
+            ticker = item["ticker"]
+            cached = watchlist_repo.load_history(ticker)
+            if cached:
+                disk_histories[ticker] = cached
+
+        # Only fetch live prices (5d), not full history
+        live_data = fetch_live(
+            watchlist_holdings, "1y",
+            record_snapshots=False,
+            use_disk_history=True
+        )
+
+        # Merge disk histories into result
+        # use_disk_history=True already handles this in fetch_live,
+        # but ensure any ticker missing from live result gets disk data
+        if "histories" not in live_data:
+            live_data["histories"] = {}
+        for ticker, hist in disk_histories.items():
+            if ticker not in live_data["histories"] or not live_data["histories"][ticker]:
+                live_data["histories"][ticker] = hist
+
+        INITIAL_WATCHLIST_DATA = live_data
+        watchlist_repo.refresh_all_histories()
+        print(f"✅ Watchlist loaded from cache ({len(disk_histories)} tickers from disk)")
+    except Exception as e:
+        logger.warning(f"Initial watchlist fetch failed: {e}")
+        INITIAL_WATCHLIST_DATA = {"holdings": [], "histories": {}}
 
 import dash_bootstrap_components as dbc
 
@@ -112,6 +156,7 @@ app.layout = dmc.MantineProvider(
             dcc.Location(id="url", refresh=False),
             dcc.Store(id="txn-store",       data=INITIAL_HISTORY),
             dcc.Store(id="portfolio-store",     data=INITIAL_PORTFOLIO_DATA),
+            dcc.Store(id="watchlist-store",     data=INITIAL_WATCHLIST_DATA),
             dcc.Store(id="alerts-store"),
             dcc.Store(id="theme-store",          data="dark", storage_type='local'),
             dcc.Store(id="compact-mode-store",   data=True),
@@ -129,6 +174,8 @@ app.layout = dmc.MantineProvider(
             dcc.Store(id="intel-pred-store",       data=False,    storage_type='session'),
             dcc.Store(id="positions-selected-ticker", data=None, storage_type='session'),
             dcc.Store(id="positions-period-store", data="3mo", storage_type='session'),
+            dcc.Store(id="watchlist-selected-ticker", data=None, storage_type='session'),
+            dcc.Store(id="watchlist-period-store", data="1y", storage_type='session'),
             
             # Global Navigation
             create_header(),
@@ -275,6 +322,7 @@ ui.register_callbacks(app)
 positions_cb.register_callbacks(app)
 dividends_cb.register_callbacks(app)
 intell_cb.register_callbacks(app)
+watchlist_cb.register_callbacks(app)
 
 
 # ── Browser Management ────────────────────────────────────────────────────────
@@ -319,7 +367,8 @@ if __name__ == "__main__":
     print(f"  Positions:       http://127.0.0.1:8050/positions")
     print(f"  Analytics:       http://127.0.0.1:8050/analytics")
     print(f"  Intelligence:    http://127.0.0.1:8050/intelligence")
-    print(f"  Dividends:       http://127.0.0.1:8050/dividends\n")
+    print(f"  Dividends:       http://127.0.0.1:8050/dividends")
+    print(f"  Watchlist:       http://127.0.0.1:8050/watchlist\n")
 
     # Register signals
     signal.signal(signal.SIGINT, handle_exit)

@@ -144,6 +144,13 @@ def _extract_col(bulk_df: pd.DataFrame, ticker_yf: str, col_name: str) -> pd.Ser
         for c in [col_name, col_name.replace(" ", ""), "Close", "Dividends"]:
             if c in cols:
                 return bulk_df[c].dropna()
+        # Single ticker download implicitly means the whole dataframe IS the ticker's data
+        # Check if it has standard columns like 'Close' or 'Open'
+        if 'Close' in cols or 'Open' in cols:
+            if col_name in cols:
+                return bulk_df[col_name].dropna()
+            if col_name == 'Close' and 'Adj Close' in cols:
+                return bulk_df['Adj Close'].dropna()
         return pd.Series(dtype=float)
 
     # Multi-index case
@@ -455,7 +462,7 @@ def _enrich_single_holding(h: dict, multi_live: pd.DataFrame, multi_full: pd.Dat
         }, None
 
 
-def fetch_live(holdings: list[dict], hist_period: str = "max") -> dict:
+def fetch_live(holdings: list[dict], hist_period: str = "max", record_snapshots: bool = True, use_disk_history: bool = False) -> dict:
     """
     Fetch live prices, history, dividends and per-tranche P&L for all holdings.
 
@@ -512,7 +519,10 @@ def fetch_live(holdings: list[dict], hist_period: str = "max") -> dict:
         # (yfinance '1d' period can sometimes be empty for ASX tickers in the morning).
         multi_period = _download_with_retry(tickers_yf, period="5d", interval="5m")
     else:
-        multi_period = _download_with_retry(tickers_yf, period=hist_period)
+        if use_disk_history:
+            multi_period = pd.DataFrame()
+        else:
+            multi_period = _download_with_retry(tickers_yf, period=hist_period)
 
     enriched:  list[dict] = []
     histories: dict       = {}
@@ -524,6 +534,31 @@ def fetch_live(holdings: list[dict], hist_period: str = "max") -> dict:
             for h in holdings
         ]
         results = [f.result() for f in futures]
+    
+    if use_disk_history:
+        from data.watchlist_repository import WatchlistRepository
+        repo = WatchlistRepository()
+        today_str = datetime.now().strftime("%Y-%m-%d")
+        for i, (h_enriched, _) in enumerate(results):
+            ticker = h_enriched["ticker"]
+            disk_history = repo.load_history(ticker)
+            
+            if not disk_history:
+                repo.fetch_and_save_history(ticker)
+                disk_history = repo.load_history(ticker)
+                
+            last_price = h_enriched.get("last_price")
+            
+            if disk_history and last_price:
+                last_entry_date = disk_history[-1]["Date"]
+                if last_entry_date != today_str:
+                    disk_history.append({"Date": today_str, "Close": last_price})
+                    repo.save_history(ticker, disk_history)
+                else:
+                    disk_history[-1]["Close"] = last_price
+                    repo.save_history(ticker, disk_history)
+            
+            results[i] = (h_enriched, disk_history)
     
     for h_enriched, history_data in results:
         enriched.append(h_enriched)
@@ -537,7 +572,8 @@ def fetch_live(holdings: list[dict], hist_period: str = "max") -> dict:
     }
     
     # ── Record snapshots for 'Today' chart persistence ───────────────────────
-    record_snapshot(enriched)
+    if record_snapshots:
+        record_snapshot(enriched)
     clear_old_caches()
 
     ttl = 5 if hist_period == "1d" else CACHE_TTL_SECONDS

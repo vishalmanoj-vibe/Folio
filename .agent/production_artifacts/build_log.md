@@ -1,16 +1,26 @@
-# Build Log: Automatic Dividend Tracking
+# Build Log: Watchlist Feature
 
-## Date: 2026-04-20
+## New IDs Registered
+- `watchlist-store`: Global data store.
+- `watchlist-input`: Ticker search.
+- `watchlist-add-btn`: Addition trigger.
+- `watchlist-table`: Main data view.
+- `watchlist-msg`: Feedback.
+- `watchlist-chart`: Visual analysis.
 
-### Summary of Changes
-Implemented a fully automated realized dividend tracking system. The solution uses market data from yfinance to calculate dividends based on historical ownership on ex-dividend dates.
+## Files Changed
+- `app.py`: Global state and callback registration.
+- `config/settings.py`: Path definitions.
+- `components/header.py`: Navigation update.
+- `.agents/skills/registry.md`: ID documentation.
 
-### Files Modified
-- `services/market/data_fetcher.py`: Added `_calculate_realized_dividends` and `_deduce_frequency`. Updated `fetch_live`.
-- `core/engine/stats_engine.py`: Updated `compute_portfolio_stats` and `build_live_table_rows`.
-- `callbacks/portfolio_callbacks.py`: Added "Realized Dividends" stat card and table columns.
+## New Files Created
+- `pages/watchlist.py`: Page entry.
+- `components/watchlist_layout.py`: Aura UI layout.
+- `callbacks/watchlist_callbacks.py`: Interactivity logic.
+- `data/watchlist_repository.py`: CSV data layer.
+- `data/raw/watchlist.csv`: Persistent storage.
 
-### Verification Results
-- VHY Realized: $5.68 (Matches manual check for 7 shares @ $0.8114).
-- VHY Frequency: Quarterly.
-- Stability: All functions handle empty data or missing tranches gracefully.
+## Stability Check
+- `prevent_initial_call=True` implemented in `watchlist_callbacks.py`.
+- Seeding `watchlist-store` in `app.py` for instant load.

@@ -132,6 +132,7 @@ def register_callbacks(app) -> None:
                 metrics.get("ret_values", []),
                 t_
             )
+            eq_fig.update_layout(uirevision=f"pred_{pred_on}")
 
             # ── B2. Prediction Trace (Optional) ───────────────────────────────────
             if pred_on:

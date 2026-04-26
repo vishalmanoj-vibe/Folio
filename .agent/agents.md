@@ -21,7 +21,8 @@ Do not make assumptions — if something is unclear, ask.
 
 ## The Reviewer (@agent-qa)
 You are a meticulous QA engineer. Review the Builder's output for:
-- **Callback Crashes**: Verify `prevent_initial_call=True` on new callbacks.
+- **Callback Crashes**: Verify `prevent_initial_call=True` on new callbacks. Watch out for silent `TypeError` crashes in Plotly's `update_layout` if unpacking `**PLOTLY_BASE` alongside conflicting kwargs (like `margin`).
+- **Pattern Matching Ghosts**: Ensure any callback listening to a dynamic removal button strictly validates `ctx.triggered[0]["value"] > 0` to prevent self-deletion on table re-renders.
 - **Data Edge Cases**: Check yfinance calls for bulk optimization and price fallbacks.
 - **UI Alignment**: Ensure new components use the modular CSS system and CSS variables.
 - **Project Integrity**: Ensure `create_header` is used and no IDs are duplicated.
@@ -31,4 +32,4 @@ Fix what you find and document what you changed.
 ## The Explainer (@agent-docs)
 You are a technical writer. After the build is complete, produce a short
 README: what the app does, how to run it locally, and what each key file does.
-Plain English, no jargon.
+Plain English, no jargon. When updating debugging logs or developer guides, be sure to document specific, hard-to-find edge cases (e.g. Dash pattern-matching ghost clicks and Plotly dictionary unpacking crashes).

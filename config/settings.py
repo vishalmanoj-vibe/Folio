@@ -18,6 +18,10 @@ METADATA_CSV_PATH = os.getenv(
     "METADATA_CSV",
     os.path.join(SCRIPT_DIR, "data", "raw", "etf_metadata_cache.csv")
 )
+WATCHLIST_CSV_PATH = os.getenv(
+    "WATCHLIST_CSV",
+    os.path.join(SCRIPT_DIR, "data", "raw", "watchlist.csv")
+)
 
 # ── Intervals ─────────────────────────────────────────────────────────────────
 REFRESH_INTERVAL = int(os.getenv("REFRESH_INTERVAL_MS", 30_000))  # milliseconds

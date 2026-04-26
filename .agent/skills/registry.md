@@ -37,6 +37,14 @@ Prevent "Duplicate ID" errors and callback collisions by maintaining a central m
 - `positions-txn-table`: Filtered transaction history for selection.
 - `txn-submit`: Button for "Add Transaction" form.
 
+### Watchlist
+- `watchlist-store`: Global store for watchlist data.
+- `watchlist-input`: Ticker input field.
+- `watchlist-add-btn`: Add button.
+- `watchlist-table`: Main watchlist data table.
+- `watchlist-msg`: Status feedback message.
+- `watchlist-chart`: Selected ticker price chart.
+
 ## Rule for New IDs
 - **Namespace Pattern**: Always prefix new IDs with the page name (e.g., `tax-report-table`).
 - **Update this file**: Whenever a new ID is added, it MUST be registered here.

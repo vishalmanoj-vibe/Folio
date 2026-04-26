@@ -41,5 +41,7 @@ def create_empty_fig(msg: str = "Waiting for data…",
             x=0.5, y=0.5,
             font=dict(color=t_sec, size=13)
         )],
+        xaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
+        yaxis=dict(showgrid=False, zeroline=False, showticklabels=False)
     )
     return f
