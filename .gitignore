@@ -12,6 +12,7 @@ htmlcov/
 portfolio-env/
 venv/
 env/
+.venv/
 .env
 
 # macOS
