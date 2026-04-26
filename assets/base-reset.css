@@ -7,7 +7,8 @@
 
 /* ── Root & Body ── */
 html {
-  background-color: #0a0a0a;
+  /* FIX: use CSS token instead of hardcoded hex */
+  background-color: var(--bg);
   scroll-behavior: smooth;
 }
 

@@ -1,6 +1,5 @@
 # callbacks/positions_callbacks.py
 import logging
-import yfinance as yf
 import plotly.graph_objects as go
 from dash import Input, Output, State, ALL, html, dcc, ctx
 
@@ -40,9 +39,14 @@ def register_callbacks(app) -> None:
     @app.callback(
         Output("positions-card-grid", "children"),
         Input("portfolio-store", "data"),
-        Input("positions-selected-ticker", "data")
+        Input("positions-selected-ticker", "data"),
+        Input("url", "pathname"),
+        prevent_initial_call=False,
     )
-    def render_card_grid(port_data, selected_ticker):
+    def render_card_grid(port_data, selected_ticker, url_pathname):
+        import dash
+        # FIX: prevent background recalculation when not on Positions page
+        if url_pathname != "/positions": return dash.no_update
         if not port_data or "holdings" not in port_data:
             return []
 
@@ -110,6 +114,10 @@ def register_callbacks(app) -> None:
         """
         # If triggered by a card click
         if ctx.triggered_id and isinstance(ctx.triggered_id, dict) and ctx.triggered_id.get("type") == "pos-card":
+            # FIX: ignore ghost clicks on dynamically generated components
+            if not ctx.triggered[0]["value"] or int(ctx.triggered[0]["value"]) < 1:
+                import dash
+                return dash.no_update
             return ctx.triggered_id["index"]
 
         # Default selection logic (on load or when store updates)
@@ -178,9 +186,33 @@ def register_callbacks(app) -> None:
         )
 
         try:
-            tk = yf.Ticker(ticker + ".AX")
-            df = tk.history(start=holding["first_purchase"] if period == "purchase" else None, 
-                            period=period if period != "purchase" else None)
+            # FIX: use pre-fetched histories from portfolio-store
+            history_records = port_data.get("histories", {}).get(ticker, [])
+            if not history_records:
+                return create_empty_fig(
+                    f"No price history for {ticker}", 
+                    height=350, theme_tokens=t_
+                )
+            
+            import pandas as pd
+            df = pd.DataFrame(history_records)
+            df["Date"] = pd.to_datetime(df["Date"])
+            df = df.set_index("Date").sort_index()
+            
+            # Apply period filter
+            from datetime import timedelta
+            period_map = {
+                "1mo": timedelta(days=30),
+                "3mo": timedelta(days=90),
+                "1y":  timedelta(days=365),
+                "ytd": None,
+                "max": None,
+            }
+            if period in period_map and period_map[period]:
+                cutoff = pd.Timestamp.now() - period_map[period]
+                df = df[df.index >= cutoff]
+            elif period == "ytd":
+                df = df[df.index >= pd.Timestamp(pd.Timestamp.now().year, 1, 1)]
             
             if not df.empty:
                 if df.index.tz is not None: 

@@ -63,9 +63,21 @@ def register_callbacks(app):
         DAILY_LIMIT = 20
         today_str = str(date.today())
 
-        # Guard: if somehow triggered without a real user action, bail immediately
         if not ctx.triggered_id:
-            return no_update, no_update, no_update, {"display": "none"}, False
+            return (dash.no_update, dash.no_update, 
+                    dash.no_update, {"display": "none"}, False)
+        
+        # Guard against mount-time ghost fires with n_clicks=0
+        triggered_val = ctx.triggered[0].get("value") or 0
+        if str(ctx.triggered_id) in ("qp-1", "qp-2", "qp-3", "qp-4"):
+            if not triggered_val or int(triggered_val) < 1:
+                return (dash.no_update, dash.no_update,
+                        dash.no_update, {"display": "none"}, False)
+        
+        if str(ctx.triggered_id) == "research-send-btn":
+            if not triggered_val or int(triggered_val) < 1:
+                return (dash.no_update, dash.no_update,
+                        dash.no_update, {"display": "none"}, False)
 
         if not usage_data:
             usage_data = {"count": 0, "reset_date": ""}
@@ -158,9 +170,14 @@ def register_callbacks(app):
     @app.callback(
         Output("research-portfolio-summary", "children"),
         Input("portfolio-store", "data"),
+        Input("url", "pathname"),
         prevent_initial_call=False
     )
-    def render_portfolio_summary(portfolio_data):
+    def render_portfolio_summary(portfolio_data, pathname):
+        import dash
+        if pathname != "/research":
+            return dash.no_update
+
         if not portfolio_data or not portfolio_data.get("holdings"):
             return html.P("Loading...", style={"color": "var(--t-sec)", "fontSize": "12px"})
             

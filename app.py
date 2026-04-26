@@ -269,43 +269,45 @@ def update_portfolio_store(txn_data, p1, p2, n1, n2):
         logger.error(f"Portfolio refresh failed: {e}")
         return dash.no_update
 
-# ── Global Picker Syncing (Session Persistence) ──────────────────────────────
-@app.callback(Output("period-store", "data"), Input("period-picker", "value"), prevent_initial_call=True)
-def sync_p1(v): return v if v else dash.no_update
+# ── Global Picker Syncing (UI -> Store) ──────────────────────────────────────
+# These callbacks ensure that user interactions with UI components are persisted
+# to global stores, which then drive the data fetching engine.
+@app.callback(Output("period-store", "data"), Input("period-picker", "value"), State("period-store", "data"), prevent_initial_call=True)
+def sync_p1(v, current): return v if v and v != current else dash.no_update
 
-@app.callback(Output("pnl-mode-store", "data"), Input("pnl-mode", "value"), prevent_initial_call=True)
-def sync_mode(v): return v if v else dash.no_update
+@app.callback(Output("pnl-mode-store", "data"), Input("pnl-mode", "value"), State("pnl-mode-store", "data"), prevent_initial_call=True)
+def sync_mode(v, current): return v if v and v != current else dash.no_update
 
-@app.callback(Output("ticker-store", "data"), Input("ticker-selector", "value"), prevent_initial_call=True)
-def sync_tk(v): return v if v else dash.no_update
+@app.callback(Output("ticker-store", "data"), Input("ticker-selector", "value"), State("ticker-store", "data"), prevent_initial_call=True)
+def sync_tk(v, current): return v if v and v != current else dash.no_update
 
-@app.callback(Output("treemap-mode-store", "data"), Input("treemap-mode", "value"), prevent_initial_call=True)
-def sync_tree(v): return v if v else dash.no_update
+@app.callback(Output("treemap-mode-store", "data"), Input("treemap-mode", "value"), State("treemap-mode-store", "data"), prevent_initial_call=True)
+def sync_tree(v, current): return v if v and v != current else dash.no_update
 
-@app.callback(Output("analytics-period-store", "data"), Input("analytics-period-picker", "value"), prevent_initial_call=True)
-def sync_p2(v): return v if v else dash.no_update
+@app.callback(Output("analytics-period-store", "data"), Input("analytics-period-picker", "value"), State("analytics-period-store", "data"), prevent_initial_call=True)
+def sync_p2(v, current): return v if v and v != current else dash.no_update
 
-@app.callback(Output("intel-period-store", "data"), Input("intel-period-picker", "value"), prevent_initial_call=True)
-def sync_p3(v): return v if v else dash.no_update
+@app.callback(Output("intel-period-store", "data"), Input("intel-period-picker", "value"), State("intel-period-store", "data"), prevent_initial_call=True)
+def sync_p3(v, current): return v if v and v != current else dash.no_update
 
 # ── Initialization Syncing (Store -> UI on load) ──────────────────────────────
-@app.callback(Output("period-picker", "value"), Input("period-store", "data"))
-def init_p1(v): return v if v else dash.no_update
+# We use Clientside Callbacks to break circular dependencies.
+# This ensures that when a page is navigated to, the UI reflects the persisted state.
+for picker_id, store_id in [
+    ("period-picker", "period-store"),
+    ("pnl-mode", "pnl-mode-store"),
+    ("ticker-selector", "ticker-store"),
+    ("treemap-mode", "treemap-mode-store"),
+    ("analytics-period-picker", "analytics-period-store"),
+    ("intel-period-picker", "intel-period-store")
+]:
+    app.clientside_callback(
+        "function(s, p) { return (s && s !== p) ? s : window.dash_clientside.no_update; }",
+        Output(picker_id, "value"),
+        Input(store_id, "data"),
+        State(picker_id, "value")
+    )
 
-@app.callback(Output("pnl-mode", "value"), Input("pnl-mode-store", "data"))
-def init_mode(v): return v if v else dash.no_update
-
-@app.callback(Output("ticker-selector", "value"), Input("ticker-store", "data"))
-def init_tk(v): return v if v else dash.no_update
-
-@app.callback(Output("treemap-mode", "value"), Input("treemap-mode-store", "data"))
-def init_tree(v): return v if v else dash.no_update
-
-@app.callback(Output("analytics-period-picker", "value"), Input("analytics-period-store", "data"))
-def init_p2(v): return v if v else dash.no_update
-
-@app.callback(Output("intel-period-picker", "value"), Input("intel-period-store", "data"))
-def init_p3(v): return v if v else dash.no_update
 
 @app.callback(
     Output("intel-pred-store", "data"),
@@ -321,6 +323,9 @@ def sync_pred(v):
 @app.callback(Output("positions-period-store", "data"), Input({"type": "pos-period-btn", "index": ALL}, "n_clicks"), prevent_initial_call=True)
 def sync_p4(n_list):
     if not ctx.triggered_id: return dash.no_update
+    # FIX: ignore ghost clicks on dynamically generated components
+    if not ctx.triggered[0]["value"] or int(ctx.triggered[0]["value"]) < 1:
+        return dash.no_update
     return ctx.triggered_id["index"]
 
 

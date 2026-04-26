@@ -37,10 +37,15 @@ def register_callbacks(app) -> None:
         Input("intel-period-store",    "data"),
         Input("theme-store",           "data"),
         Input("intel-pred-store",      "data"),
+        Input("url", "pathname"),
         State("intel-pred-toggle",     "checked"),
         State("intel-period-picker",   "value"),
+        prevent_initial_call=False,
     )
-    def update_intelligence(port_data, period_st, theme, pred_st, pred_ui, period_ui):
+    def update_intelligence(port_data, period_st, theme, pred_st, url_pathname, pred_ui, period_ui):
+        import dash
+        # FIX: prevent background recalculation when not on Intelligence page
+        if url_pathname != "/intelligence": return tuple([dash.no_update] * 5)
         t_ = get_theme(theme or "dark")
         period = period_st or period_ui or "3mo"
         

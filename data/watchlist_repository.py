@@ -118,31 +118,57 @@ class WatchlistRepository:
             logger.error(f"Failed to fetch history for {ticker}: {e}")
 
     def refresh_all_histories(self) -> None:
-        """
-        Re-fetch full history (period=max) for all tickers
-        currently in the watchlist and overwrite their cache files.
-        Called once on startup if cache appears to be short.
-        """
         watchlist = self.load_watchlist()
         if not watchlist:
             return
+        
+        tickers_to_refresh = []
         for item in watchlist:
             ticker = item["ticker"]
             existing = self.load_history(ticker)
             if existing:
-                import pandas as pd
                 first_date = pd.to_datetime(existing[0]["Date"])
                 age_days = (pd.Timestamp.now() - first_date).days
-                # Only refresh if cache is less than 3 years old
-                # (meaning it was fetched with period="1y" originally)
                 if age_days < 1000:
-                    logger.info(
-                        f"Refreshing {ticker} cache "
-                        f"(only {age_days} days of history)"
-                    )
-                self.fetch_and_save_history(ticker)
+                    tickers_to_refresh.append(ticker)
             else:
-                self.fetch_and_save_history(ticker)
+                tickers_to_refresh.append(ticker)
+        
+        if not tickers_to_refresh:
+            return
+        
+        # FIX: bulk download all tickers at once
+        import yfinance as yf
+        tickers_yf = [t + ".AX" for t in tickers_to_refresh]
+        bulk_df = yf.download(
+            tickers_yf, period="max", 
+            auto_adjust=False, progress=False
+        )
+        
+        if bulk_df.empty:
+            logger.warning("Bulk watchlist refresh returned empty data")
+            return
+        
+        for ticker in tickers_to_refresh:
+            ticker_yf = ticker + ".AX"
+            try:
+                from services.market.data_fetcher import _extract_col
+                close = _extract_col(bulk_df, ticker_yf, "Close")
+                if close.empty:
+                    continue
+                close.index = pd.to_datetime(close.index)
+                records = [
+                    {"Date": d.strftime("%Y-%m-%d"), 
+                     "Close": round(float(v), 4)}
+                    for d, v in close.items() if v > 0
+                ]
+                if records:
+                    self._save_history(ticker, records)
+                    logger.info(
+                        f"Bulk refreshed {ticker}: {len(records)} records"
+                    )
+            except Exception as e:
+                logger.warning(f"Failed to save history for {ticker}: {e}")
 
     def load_notes(self) -> dict:
         import json

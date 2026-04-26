@@ -236,6 +236,13 @@
   height: calc(100vh - 100px);
 }
 
+/* FIX: collapse research layout on small screens */
+@media (max-width: 800px) {
+  .research-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
 .research-context-panel {
   padding: 20px;
   border-right: 0.5px solid var(--border);

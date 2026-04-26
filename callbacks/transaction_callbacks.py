@@ -78,7 +78,8 @@ def register_callbacks(app):
             return "", {}, dash.no_update
 
         if not all([txn_type, ticker, shares is not None, price is not None, date_str]):
-            return "❌ Please fill all fields", {"color": "#E24B4A"}, dash.no_update
+            # FIX: use CSS token instead of hardcoded hex
+            return "❌ Please fill all fields", {"color": "var(--red)"}, dash.no_update
 
         # Handle both string and date object (DMC may return either)
         if hasattr(date_str, 'strftime'):
@@ -96,10 +97,12 @@ def register_callbacks(app):
 
         is_valid, error_msg = validate_transaction(new_txn)
         if not is_valid:
-            return f"❌ {error_msg}", {"color": "#E24B4A"}, dash.no_update
+            # FIX: use CSS token instead of hardcoded hex
+            return f"❌ {error_msg}", {"color": "var(--red)"}, dash.no_update
 
         success_msg = f"✅ Added {new_txn['type'].upper()} {new_txn['shares']:.2f} {new_txn['ticker']}"
-        return success_msg, {"color": "#1D9E75"}, True
+        # FIX: use CSS token instead of hardcoded hex
+        return success_msg, {"color": "var(--green)"}, True
 
 
     # Refresh transaction history table whenever txn-store changes
@@ -115,7 +118,7 @@ def register_callbacks(app):
 
     # Auto-clear message after ~60 seconds
     @app.callback(
-        Output("txn-msg", "children"),
+        Output("txn-msg", "children", allow_duplicate=True),
         Input("live-interval", "n_intervals"),
         State("txn-msg", "children"),
         prevent_initial_call=True,

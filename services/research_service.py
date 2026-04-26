@@ -14,7 +14,8 @@ Always reason from the portfolio data provided in each message.
 Never fabricate price data, yields, or returns.
 Keep responses to 3-4 paragraphs unless asked for more.
 End every response with: "Note: This is not financial advice."
-Be specific to the user's portfolio, not generic."""
+Be specific to the user's portfolio, not generic.
+When a ticker is listed under "TICKER USER IS CONSIDERING BUYING", treat it as a prospective purchase the user wants evaluated against their existing portfolio — not as a current holding."""
 
 
 def build_portfolio_context(portfolio_data: dict, ticker: str = "") -> str:
@@ -29,7 +30,9 @@ def build_portfolio_context(portfolio_data: dict, ticker: str = "") -> str:
     lines = [f"=== PORTFOLIO SNAPSHOT (Live as at {fetched_at}) ==="]
     lines.append(f"Total value: ${total_val:,.0f}")
     
-    for h in holdings:
+    # FIX: limit context to top 20 holdings by weight to prevent context window overflow
+    sorted_holdings = sorted(holdings, key=lambda x: float(x.get("mkt_value", 0)), reverse=True)
+    for h in sorted_holdings[:20]:
         t = h.get("ticker", "Unknown")
         name = h.get("name", "Unknown")
         mkt_value = float(h.get("mkt_value", 0))
@@ -41,7 +44,10 @@ def build_portfolio_context(portfolio_data: dict, ticker: str = "") -> str:
         lines.append(f"{t} — {name}  {weight:.1f}%  |  yield {div_yield:.1f}%  |  P&L {pnl_pct:+.1f}%")
         
     if ticker:
-        lines.append(f"=== TICKER BEING RESEARCHED: {ticker.upper()} ===")
+        lines.append(f"=== TICKER USER IS CONSIDERING BUYING: {ticker.upper()} ===")
+        lines.append("This ticker is NOT currently in the user's portfolio.")
+        lines.append("The user wants to know if it would be a good addition to their existing holdings shown above.")
+        lines.append("Evaluate fit based on: sector overlap, geographic overlap, yield impact, diversification benefit, and risk profile.")
         
     return "\n".join(lines)
 
@@ -90,7 +96,7 @@ def get_ai_response(history: list[dict], portfolio_data: dict,
 
         # Create chat session with history
         chat = client.chats.create(
-            model="models/gemini-2.5-flash",
+            model="models/gemini-2.5-flash-lite",
             history=chat_history,
             config=genai.types.GenerateContentConfig(
                 system_instruction=SYSTEM_PROMPT,

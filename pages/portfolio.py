@@ -17,4 +17,5 @@ dash.register_page(__name__, path="/", title="Portfolio")
 # Dash Pages calls `layout` (or `layout()`) when the page is rendered.
 # We call create_layout() without initial_history because txn-store is
 # already seeded from app.layout.
-layout = create_layout()
+def layout():
+    return create_layout()

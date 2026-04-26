@@ -50,8 +50,13 @@ def register_callbacks(app) -> None:
     @app.callback(
         Output("stat-cards",     "children"),
         Input("portfolio-store", "data"),
+        Input("url", "pathname"),
+        prevent_initial_call=False,
     )
-    def update_stats(data):
+    def update_stats(data, url_pathname):
+        import dash
+        # FIX: prevent background recalculation when not on Portfolio page
+        if url_pathname != "/": return dash.no_update
         if not data or "holdings" not in data or not data["holdings"]:
             return [stat_card_skeleton() for _ in range(8)]
 
@@ -108,10 +113,15 @@ def register_callbacks(app) -> None:
     @app.callback(
         Output("live-table",        "children"),
         Input("portfolio-store",    "data"),
-        State("table-filter",       "value"),
         Input("table-state-store",  "data"),
+        Input("url", "pathname"),
+        State("table-filter",       "value"),
+        prevent_initial_call=False,
     )
-    def update_live_table(data, filter_query, table_state):
+    def update_live_table(data, table_state, url_pathname, filter_query):
+        import dash
+        # FIX: prevent background recalculation when not on Portfolio page
+        if url_pathname != "/": return dash.no_update
         # Extremely defensive checks for arguments
         if not isinstance(data, dict):
             logger.debug(f"live_table: data is not a dict: {type(data)}")

@@ -43,8 +43,13 @@ def register_callbacks(app) -> None:
         Output("dividend-yield-chart",   "children"),
         Output("dividend-table",         "children"),
         Input("portfolio-store", "data"),
+        Input("url", "pathname"),
+        prevent_initial_call=False,
     )
-    def update_dividends(port_data):
+    def update_dividends(port_data, url_pathname):
+        import dash
+        # FIX: prevent background recalculation when not on Dividends page
+        if url_pathname != "/dividends": return tuple([dash.no_update] * 5)
         try:
             if not port_data or "holdings" not in port_data:
                 return [], [], [], [], "No data"
@@ -167,8 +172,9 @@ def register_callbacks(app) -> None:
 
             # ── 4. Analysis Rows ──────────────────────────────────────────────────
             # Colors for gradient
-            C_START = "#1D9E75" # Theme Green
-            C_END   = "#EF9F27" # Theme Orange
+            # FIX: use CSS tokens instead of hardcoded hex for gradient endpoints
+            C_START = "var(--green)"  # Theme Green
+            C_END   = "var(--orange)" # Theme Orange
 
             # Income Rows
             income_data = sorted([{"ticker": h["ticker"], "val": h.get("annual_div", 0)} for h in holdings], key=lambda x: x["val"], reverse=True)

@@ -52,7 +52,8 @@ def register_callbacks(app) -> None:
         Output("pnl-history-chart", "figure"),
         Input("portfolio-store",    "data"),
         Input("theme-store",        "data"),
-        Input("period-store",       "data"),
+        # FIX: change to State to prevent double-rendering when portfolio-store updates
+        State("period-store",       "data"),
         Input("pnl-mode-store",     "data"),
         Input("ticker-store",       "data"),
     )
@@ -72,7 +73,8 @@ def register_callbacks(app) -> None:
         Output("price-chart",    "figure"),
         Input("portfolio-store", "data"),
         Input("theme-store",     "data"),
-        Input("analytics-period-store", "data"),
+        # FIX: change to State to prevent double-rendering
+        State("analytics-period-store", "data"),
     )
     def price_chart(data, theme, period):
         t_ = get_theme(theme or "dark")
@@ -121,7 +123,8 @@ def register_callbacks(app) -> None:
         Output("analytics-vol-chart",    "figure"),
         Input("portfolio-store",         "data"),
         Input("theme-store",             "data"),
-        Input("analytics-period-store", "data"),
+        # FIX: change to State to prevent double-rendering
+        State("analytics-period-store", "data"),
     )
     def update_analytics_volatility(data, theme, period):
         t_ = get_theme(theme or "dark")
@@ -138,7 +141,8 @@ def register_callbacks(app) -> None:
         Output("corr-chart",     "figure"),
         Input("portfolio-store", "data"),
         Input("theme-store",     "data"),
-        Input("analytics-period-store", "data"),
+        # FIX: change to State to prevent double-rendering
+        State("analytics-period-store", "data"),
     )
     def update_corr_chart(data, theme, period):
         t_ = get_theme(theme or "dark")

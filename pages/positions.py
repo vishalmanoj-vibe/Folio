@@ -32,8 +32,9 @@ def layout() -> html.Div:
                 html.Div(id="positions-card-grid", className="holding-card-grid"),
 
                 # ── ETF Detail Panel ────────────────────────────────────────────
+                # FIX: wrap chart_title() in an id'd container so the callback can target positions-detail-title
                 section(
-                    html.Div("Select a position to view details", id="positions-detail-title", className="chart-title-text"),
+                    html.Div(chart_title("Select a position to view details", "positions-detail"), id="positions-detail-title"),
                     html.Div([
                         html.Div(id="etf-detail-cards", className="etf-detail-grid"),
                         

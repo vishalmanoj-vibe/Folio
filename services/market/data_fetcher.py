@@ -368,12 +368,21 @@ def _enrich_single_holding(h: dict, multi_live: pd.DataFrame, multi_full: pd.Dat
         if len(live_close) >= 2:
             last_price = float(live_close.iloc[-1])
             prev_close = float(live_close.iloc[-2])
+            # FIX: zero-price fallback for ASX off-hours
+            if last_price == 0.0 or last_price is None:
+                last_price = prev_close if prev_close else h["avg_cost"]
         elif len(live_close) == 1:
             last_price = float(live_close.iloc[-1])
             prev_close = float(close_f.iloc[-2]) if len(close_f) >= 2 else last_price
+            # FIX: zero-price fallback for ASX off-hours
+            if last_price == 0.0 or last_price is None:
+                last_price = prev_close if prev_close else h["avg_cost"]
         else:
             last_price = float(close_f.iloc[-1]) if len(close_f) >= 1 else h["avg_cost"]
             prev_close = float(close_f.iloc[-2]) if len(close_f) >= 2 else last_price
+            # FIX: zero-price fallback for ASX off-hours
+            if last_price == 0.0 or last_price is None:
+                last_price = prev_close if prev_close else h["avg_cost"]
 
         day_high = float(live_high.iloc[-1]) if not live_high.empty else last_price
         day_low  = float(live_low.iloc[-1])  if not live_low.empty  else last_price
@@ -483,7 +492,12 @@ def fetch_live(holdings: list[dict], hist_period: str = "max", record_snapshots:
     hist_period = hist_period.lower()
     
     # Outer cache key includes tickers so adding/removing a holding busts it
-    cache_key = f"market_data_{hist_period}_{tickers_str.replace(' ', '_')}"
+    holdings_sig = "_".join(
+        f"{h['ticker']}{h['total_shares']:.4f}" 
+        for h in sorted(holdings, key=lambda x: x['ticker'])
+    )
+    # FIX: include share counts in cache key to bust on new transactions
+    cache_key = f"market_data_{hist_period}_{holdings_sig}"
     cached = get_cache(cache_key)
     if cached:
         # Return a copy with fresh timestamp so Dash detects the change
