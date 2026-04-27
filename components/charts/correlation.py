@@ -59,9 +59,9 @@ def build_corr_figure(histories: dict, period: str, theme_tokens: dict) -> go.Fi
         x=ticks, 
         y=ticks,
         colorscale=[
-            [0, theme_tokens["RED"]],    # -1.0
-            [0.5, theme_tokens["SURFACE"]], # 0.0
-            [1, theme_tokens["GREEN"]]    # +1.0
+            [0, theme_tokens["GREEN"]],    # -1.0
+            [0.5, theme_tokens["WARNING"]], # 0.0
+            [1, theme_tokens["RED"]]       # +1.0
         ],
         zmin=-1, zmax=1,
         xgap=6, ygap=6, # Creates the "tiled" look

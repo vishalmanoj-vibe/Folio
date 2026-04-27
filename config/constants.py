@@ -132,8 +132,8 @@ CHART_INFO = {
     ),
     "correlation": (
         "Return correlation matrix",
-        "How similarly two holdings move together, from -1 to +1. Near +1 (green) "
-        "= move together, less diversification. Near 0 = move independently. "
-        "Near -1 (red) = move oppositely, good diversification."
+        "How similarly two holdings move together, from -1 to +1. Near +1 (red) "
+        "= move together, higher concentration risk. Near 0 (yellow) = move independently. "
+        "Near -1 (green) = move oppositely, high diversification."
     ),
 }

@@ -68,6 +68,7 @@ def register_callbacks(app):
         Output("research-typing-indicator", "style"),
         Output("research-send-btn", "disabled"),
         Input("research-send-btn", "n_clicks"),
+        Input("research-input", "n_submit"),
         Input("qp-1", "n_clicks"),
         Input("qp-2", "n_clicks"),
         Input("qp-3", "n_clicks"),
@@ -79,7 +80,7 @@ def register_callbacks(app):
         State("research-usage-store", "data"),
         prevent_initial_call=True
     )
-    def send_research_message(n_send, n1, n2, n3, n4, input_val, current_history, portfolio_data, ticker, usage_data):
+    def send_research_message(n_send, n_submit, n1, n2, n3, n4, input_val, current_history, portfolio_data, ticker, usage_data):
         from datetime import date
         DAILY_LIMIT = 20
         today_str = str(date.today())
@@ -88,14 +89,15 @@ def register_callbacks(app):
             return (dash.no_update, dash.no_update, 
                     dash.no_update, {"display": "none"}, False)
         
-        # Guard against mount-time ghost fires with n_clicks=0
+        # Guard against mount-time ghost fires
         triggered_val = ctx.triggered[0].get("value") or 0
         if str(ctx.triggered_id) in ("qp-1", "qp-2", "qp-3", "qp-4"):
             if not triggered_val or int(triggered_val) < 1:
                 return (dash.no_update, dash.no_update,
                         dash.no_update, {"display": "none"}, False)
         
-        if str(ctx.triggered_id) == "research-send-btn":
+        # Send button or Enter key
+        if str(ctx.triggered_id) in ("research-send-btn", "research-input"):
             if not triggered_val or int(triggered_val) < 1:
                 return (dash.no_update, dash.no_update,
                         dash.no_update, {"display": "none"}, False)
@@ -128,7 +130,7 @@ def register_callbacks(app):
             message = "Compare this ticker to what I already own"
         elif ctx.triggered_id == "qp-4":
             message = "What sectors or regions am I missing in my portfolio?"
-        elif ctx.triggered_id == "research-send-btn":
+        elif ctx.triggered_id in ("research-send-btn", "research-input"):
             message = input_val
 
         if not message or not str(message).strip():
@@ -148,8 +150,8 @@ def register_callbacks(app):
     # --- CLIENTSIDE: Show typing indicator immediately on send click ---
     app.clientside_callback(
         """
-        function(n_clicks) {
-            if (n_clicks && n_clicks > 0) {
+        function(n_btn, n_submit) {
+            if ((n_btn && n_btn > 0) || (n_submit && n_submit > 0)) {
                 return [{"display": "flex", "padding": "4px 20px 8px"}, true];
             }
             return [{"display": "none"}, false];
@@ -158,6 +160,7 @@ def register_callbacks(app):
         Output("research-typing-indicator", "style", allow_duplicate=True),
         Output("research-send-btn", "disabled", allow_duplicate=True),
         Input("research-send-btn", "n_clicks"),
+        Input("research-input", "n_submit"),
         prevent_initial_call=True,
     )
 

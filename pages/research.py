@@ -63,11 +63,14 @@ def layout():
                 ], className="quick-prompt-chips"),
 
                 html.Div([
-                    dmc.TextInput(
+                    dcc.Input(
                         id="research-input",
+                        type="text",
                         placeholder="Ask anything about your portfolio or a ticker...",
-                        style={"flex": "1"},
-                        debounce=False
+                        className="mantine-TextInput-input",
+                        style={"flex": "1", "height": "34px"},
+                        debounce=False,
+                        autoComplete="off"
                     ),
                     html.Div(
                         id="research-send-btn-wrapper",
