@@ -196,11 +196,7 @@ app.layout = dmc.MantineProvider(
             create_header(),
             
             # Page Content with Loading Indicator
-            dcc.Loading(
-                dash.page_container,
-                type="dot",
-                color="var(--cyan)",
-            ),
+            dash.page_container,
         ],
         className="app-container",
     )
@@ -244,6 +240,13 @@ def update_txn_store(n1, n2, n_submit, t_type, ticker, shares, price, date_str, 
         valid, _ = validate_transaction(new_txn)
         if valid:
             updated = repo.append_transaction(new_txn)
+            
+            from core import _cache
+            # Clear all market data caches to force fresh fetch across all periods
+            keys_to_clear = [k for k in _cache.keys() if k.startswith("market_data_")]
+            for k in keys_to_clear:
+                _cache.pop(k, None)
+                
             return updated
         return dash.no_update
     
@@ -344,6 +347,19 @@ dividends_cb.register_callbacks(app)
 intell_cb.register_callbacks(app)
 watchlist_cb.register_callbacks(app)
 research_cb.register_callbacks(app)
+
+
+# ── Render Performance Optimizations ──────────────────────────────────────────
+app.clientside_callback(
+    """
+    function(data) {
+        return window.dash_clientside.no_update;
+    }
+    """,
+    Output("nav-link-store", "data", allow_duplicate=True),
+    Input("portfolio-store", "data"),
+    prevent_initial_call=True,
+)
 
 
 # ── Browser Management ────────────────────────────────────────────────────────

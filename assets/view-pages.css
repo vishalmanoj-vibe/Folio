@@ -407,3 +407,16 @@
   flex-shrink: 0;
   min-height: 30px;
 }
+
+/* ── Smooth data refresh transitions ── */
+.stat-card-container {
+  transition: opacity 0.2s ease-in-out;
+}
+
+.js-plotly-plot {
+  transition: opacity 0.15s ease-in-out;
+}
+
+#live-table {
+  transition: opacity 0.2s ease-in-out;
+}

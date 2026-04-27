@@ -590,7 +590,7 @@ def fetch_live(holdings: list[dict], hist_period: str = "max", record_snapshots:
         record_snapshot(enriched)
     clear_old_caches()
 
-    ttl = 5 if hist_period == "1d" else CACHE_TTL_SECONDS
+    ttl = 5 if hist_period == "1d" else 10
     set_cache(cache_key, result, ttl=ttl)
     logger.info("Done — %d enriched, %d with history", len(enriched), len(histories))
     return result
