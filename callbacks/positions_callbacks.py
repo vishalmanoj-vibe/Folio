@@ -158,7 +158,7 @@ def register_callbacks(app) -> None:
                 html.Div(val,   className="etf-detail-value", style={"color": color} if color else {}),
                 html.Div(sub,   className="etf-detail-sub"),
             ], className="etf-detail-card")
-            for label, val, sub, *extra in [(m[0], m[1], m[2], m[3] if len(m)>3 else None) for m in metrics]
+            for label, val, sub, color in [(m[0], m[1], m[2], m[3] if len(m)>3 else None) for m in metrics]
         ]
 
     # ── 4. Detail Panel — Price Chart ─────────────────────────────────────────
@@ -218,13 +218,22 @@ def register_callbacks(app) -> None:
                 if df.index.tz is not None: 
                     df.index = df.index.tz_convert(None)
                 
-                fig.add_trace(go.Candlestick(
-                    x=df.index, open=df["Open"], high=df["High"], low=df["Low"], close=df["Close"],
-                    increasing_line_color=GREEN, decreasing_line_color=RED,
-                    increasing_fillcolor=GREEN, decreasing_fillcolor=RED, 
-                    name=ticker,
-                    opacity=0.9
-                ))
+                if all(col in df.columns for col in ["Open", "High", "Low", "Close"]):
+                    fig.add_trace(go.Candlestick(
+                        x=df.index, open=df["Open"], high=df["High"], low=df["Low"], close=df["Close"],
+                        increasing_line_color=GREEN, decreasing_line_color=RED,
+                        increasing_fillcolor=GREEN, decreasing_fillcolor=RED, 
+                        name=ticker,
+                        opacity=0.9
+                    ))
+                else:
+                    # Fallback to line chart if OHLC is missing (e.g. for intraday 1d)
+                    fig.add_trace(go.Scatter(
+                        x=df.index, y=df["Close"], mode="lines",
+                        line=dict(color=GREEN if df["Close"].iloc[-1] >= df["Close"].iloc[0] else RED, width=2),
+                        name=ticker,
+                        hovertemplate="$%{y:,.3f}<extra></extra>"
+                    ))
                 
                 if holding and holding.get("avg_cost"):
                     fig.add_hline(

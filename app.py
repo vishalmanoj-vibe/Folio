@@ -260,14 +260,29 @@ def update_txn_store(n1, n2, n_submit, t_type, ticker, shares, price, date_str, 
     Input("txn-store",              "data"),
     Input("period-store",           "data"),
     Input("analytics-period-store", "data"),
+    Input("positions-period-store", "data"),
+    Input("watchlist-period-store", "data"),
     Input("live-interval",          "n_intervals"),
     Input("refresh-btn",            "n_clicks"),
     prevent_initial_call=True,
 )
-def update_portfolio_store(txn_data, p1, p2, n1, n2):
+def update_portfolio_store(txn_data, p1, p2, p3, p4, n1, n2):
     """Only place where portfolio-store is updated. Reacts to data or timeframe changes."""
     try:
-        period = p1 or p2 or "max"
+        # Determine the maximum period requested across all pages to ensure history is available
+        # Order of preference: 'max' > '1y' > 'ytd' > '3mo' > '1mo' > '1d'
+        period_priority = {"max": 100, "1y": 80, "ytd": 70, "3mo": 60, "1mo": 40, "1d": 20}
+        requested = [p1, p2, p3, p4]
+        
+        # Filter None and get weights
+        weights = [(period_priority.get(p, 0), p) for p in requested if p]
+        
+        if weights:
+            # Sort by weight descending and pick the top period string
+            period = sorted(weights, key=lambda x: x[0], reverse=True)[0][1]
+        else:
+            period = "max"
+
         _, data = _perform_refresh(period)
         return data
     except Exception as e:

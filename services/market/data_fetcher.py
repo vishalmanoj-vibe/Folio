@@ -327,6 +327,7 @@ def _enrich_single_holding(h: dict, multi_live: pd.DataFrame, multi_full: pd.Dat
 
     try:
         # 1. Chart history
+        close_p = pd.Series(dtype=float)
         if hist_period == "1d":
             yf_1d = _extract_col(multi_period, ticker_yf, "Close")
             if not yf_1d.empty:
@@ -346,14 +347,28 @@ def _enrich_single_holding(h: dict, multi_live: pd.DataFrame, multi_full: pd.Dat
                 close_p = close_p[~close_p.index.duplicated(keep='last')]
             else:
                 close_p = sess_1d if not sess_1d.empty else yf_1d
+            
+            if not close_p.empty:
+                close_p.index = normalise_tz(pd.to_datetime(close_p.index))
+                df_p = close_p.reset_index()
+                df_p.columns = ["Date", "Close"]
+                history_data = df_p.to_dict("records")
         else:
-            close_p = _extract_col(multi_period, ticker_yf, "Close")
-
-        if not close_p.empty:
-            close_p.index = normalise_tz(pd.to_datetime(close_p.index))
-            df_p = close_p.reset_index()
-            df_p.columns = ["Date", "Close"]
-            history_data = df_p.to_dict("records")
+            # Extract OHLC for Candlestick support
+            ohlc_cols = ["Open", "High", "Low", "Close"]
+            dfs = []
+            for col in ohlc_cols:
+                s = _extract_col(multi_period, ticker_yf, col)
+                if not s.empty:
+                    s.name = col
+                    dfs.append(s)
+            
+            if dfs:
+                df_combined = pd.concat(dfs, axis=1).dropna(subset=["Close"])
+                if not df_combined.empty:
+                    df_combined.index = normalise_tz(pd.to_datetime(df_combined.index))
+                    history_data = df_combined.reset_index().to_dict("records")
+                    close_p = df_combined["Close"]
 
         # 2. Market Metrics
         close_f = _extract_col(multi_full, ticker_yf, "Close")

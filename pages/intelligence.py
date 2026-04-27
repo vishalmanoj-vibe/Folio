@@ -121,6 +121,24 @@ def layout() -> html.Div:
                     ],
                     style={"padding": "16px 24px"}
                 ),
+
+                # ── E. Technical signals ───────────────────────────────────────────
+                html.Div([
+                    html.Div([
+                        html.Span(
+                            "Technical Signals",
+                            className="chart-title-text"
+                        ),
+                        html.Span(
+                            " · RSI, MACD, Bollinger Bands computed from price history",
+                            style={"fontSize": "10px",
+                                   "color": "var(--t-sec)",
+                                   "marginLeft": "8px"}
+                        ),
+                    ], className="chart-title-container",
+                       style={"marginBottom": "12px"}),
+                    html.Div(id="intel-signals-table"),
+                ], className="section-container", style={"padding": "16px 24px"}),
             ], className="page-container")
         ],
         className="page-root"

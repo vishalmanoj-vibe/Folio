@@ -2,6 +2,9 @@ import os
 import logging
 import copy
 import google.genai as genai
+from services.technical_indicators import (
+    compute_signals
+)
 
 logger = logging.getLogger(__name__)
 
@@ -43,13 +46,37 @@ def build_portfolio_context(portfolio_data: dict, ticker: str = "") -> str:
         
         lines.append(f"{t} — {name}  {weight:.1f}%  |  yield {div_yield:.1f}%  |  P&L {pnl_pct:+.1f}%")
         
+    # Add technical signals for each holding
+    sig_lines = []
+    histories = portfolio_data.get("histories", {})
+    for h in sorted_holdings[:10]:
+        ticker_h = h["ticker"]
+        history = histories.get(ticker_h, [])
+        if not history:
+            continue
+        sig = compute_signals(ticker_h, history)
+        if "error" not in sig:
+            sig_lines.append(
+                f"  {ticker_h}: RSI={sig['rsi']:.0f} "
+                f"({sig['rsi_label']}), "
+                f"MACD={sig['macd_label']}, "
+                f"Bollinger={sig['bb_label']}"
+            )
+    
+    if sig_lines:
+        lines.append("\nTechnical Signals (from price history):")
+        lines.extend(sig_lines)
+        lines.append("")
+        
     if ticker:
         lines.append(f"=== TICKER USER IS CONSIDERING BUYING: {ticker.upper()} ===")
         lines.append("This ticker is NOT currently in the user's portfolio.")
         lines.append("The user wants to know if it would be a good addition to their existing holdings shown above.")
         lines.append("Evaluate fit based on: sector overlap, geographic overlap, yield impact, diversification benefit, and risk profile.")
         
-    return "\n".join(lines)
+    context = "\n".join(lines)
+    logger.info(f"Generated portfolio context (length {len(context)}): {context[:200]}...")
+    return context
 
 
 def get_ai_response(history: list[dict], portfolio_data: dict,

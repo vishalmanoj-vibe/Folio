@@ -169,14 +169,11 @@ def register_callbacks(app) -> None:
                     html.Div(f"In {days_left} days" if days_left > 0 else "Today", className="cal-days"),
                 ], className=card_cls))
 
-
             # ── 4. Analysis Rows ──────────────────────────────────────────────────
-            # Colors for gradient
-            # FIX: use CSS tokens instead of hardcoded hex for gradient endpoints
-            C_START = "var(--green)"  # Theme Green
-            C_END   = "var(--orange)" # Theme Orange
+            # NOTE: interpolate_color requires hex strings, not CSS vars
+            C_START = "#1D9E75" # Theme Green
+            C_END   = "#EF9F27" # Theme Orange
 
-            # Income Rows
             income_data = sorted([{"ticker": h["ticker"], "val": h.get("annual_div", 0)} for h in holdings], key=lambda x: x["val"], reverse=True)
             income_data = [x for x in income_data if x["val"] > 0]
             max_income = max([x["val"] for x in income_data]) if income_data else 0
