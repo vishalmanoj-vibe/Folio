@@ -354,7 +354,10 @@ def _enrich_single_holding(h: dict, multi_live: pd.DataFrame, multi_full: pd.Dat
                 df_p.columns = ["Date", "Close"]
                 history_data = df_p.to_dict("records")
         else:
-            # Extract OHLC for Candlestick support
+            # ── 1b. OHLC Extraction (Extended History) ───────────────────
+            # Extracts full candle data to support Candlestick charts.
+            # We extract columns individually because bulk download 
+            # might have missing values for specific tickers/periods.
             ohlc_cols = ["Open", "High", "Low", "Close"]
             dfs = []
             for col in ohlc_cols:
@@ -364,6 +367,7 @@ def _enrich_single_holding(h: dict, multi_live: pd.DataFrame, multi_full: pd.Dat
                     dfs.append(s)
             
             if dfs:
+                # Combine and drop rows where Close is missing (minimum requirement)
                 df_combined = pd.concat(dfs, axis=1).dropna(subset=["Close"])
                 if not df_combined.empty:
                     df_combined.index = normalise_tz(pd.to_datetime(df_combined.index))

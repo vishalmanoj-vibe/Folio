@@ -1,4 +1,11 @@
 # services/technical_indicators.py
+"""
+Technical Indicators Service
+============================
+Provides pure-pandas implementations of common technical indicators.
+Math is based on industry standards (Wilder's RSI, standard MACD 12/26/9).
+No external TA libraries (pandas_ta, talib) are used to maintain portability.
+"""
 import pandas as pd
 import logging
 
@@ -7,6 +14,11 @@ logger = logging.getLogger(__name__)
 def compute_rsi(prices: pd.Series, period: int = 14) -> pd.Series:
     """
     Compute Relative Strength Index (RSI).
+    Uses Wilder's smoothing method (matching industry standard).
+    
+    Formula:
+      RSI = 100 - (100 / (1 + RS))
+      RS = AvgGain / AvgLoss (smoothed using EWM with com=period-1)
     """
     delta = prices.diff()
     gain = delta.clip(lower=0)
@@ -21,6 +33,10 @@ def compute_rsi(prices: pd.Series, period: int = 14) -> pd.Series:
 def compute_macd(prices: pd.Series, fast: int = 12, slow: int = 26, signal: int = 9) -> tuple:
     """
     Compute MACD line and Signal line.
+    
+    Formula:
+      MACD = EMA(fast) - EMA(slow)
+      Signal = EMA(MACD, signal)
     """
     ema_fast = prices.ewm(span=fast, adjust=False).mean()
     ema_slow = prices.ewm(span=slow, adjust=False).mean()
@@ -33,6 +49,7 @@ def compute_macd(prices: pd.Series, fast: int = 12, slow: int = 26, signal: int 
 def compute_bbands(prices: pd.Series, period: int = 20, std: int = 2) -> tuple:
     """
     Compute Bollinger Bands (Upper, Middle, Lower).
+    Uses 20-period SMA +/- 2 standard deviations by default.
     """
     mid = prices.rolling(period).mean()
     sd = prices.rolling(period).std()
@@ -46,12 +63,14 @@ def compute_signals(ticker: str, history: list[dict]) -> dict:
     """
     Compute high-level technical signals from price history.
     Takes a list of {"Date": str, "Close": float} dicts.
+    Returns a standardized dictionary of indicators and labels.
     """
     try:
+        # Minimum history required for stable indicator calculation
         if not history or len(history) < 30:
             return {"ticker": ticker, "error": "Insufficient data"}
         
-        # Convert to pandas Series
+        # ── 1. Data Preparation ───────────────────────────────────────────
         df = pd.DataFrame(history)
         df["Date"] = pd.to_datetime(df["Date"])
         df = df.set_index("Date").sort_index()
@@ -60,18 +79,18 @@ def compute_signals(ticker: str, history: list[dict]) -> dict:
         if prices.empty:
             return {"ticker": ticker, "error": "Empty history"}
 
-        # Compute indicators
+        # ── 2. Indicator Calculation ──────────────────────────────────────
         rsi_series = compute_rsi(prices)
         macd_line, signal_line = compute_macd(prices)
         bb_upper, bb_mid, bb_lower = compute_bbands(prices)
         
-        # Get latest values
+        # ── 3. Signal Classification ──────────────────────────────────────
         rsi_val = float(rsi_series.iloc[-1])
         macd_val = float(macd_line.iloc[-1])
         macd_sig = float(signal_line.iloc[-1])
         last_price = float(prices.iloc[-1])
         
-        # Classify RSI
+        # RSI classification (Standard thresholds)
         if rsi_val < 30:
             rsi_label = "Oversold"
         elif rsi_val > 70:
@@ -79,10 +98,10 @@ def compute_signals(ticker: str, history: list[dict]) -> dict:
         else:
             rsi_label = "Neutral"
             
-        # Classify MACD
+        # MACD classification (Crossover logic)
         macd_label = "Bullish" if macd_val > macd_sig else "Bearish"
         
-        # Classify Bollinger position
+        # Bollinger position classification
         if last_price > bb_upper.iloc[-1]:
             bb_label = "Above upper band"
         elif last_price < bb_lower.iloc[-1]:

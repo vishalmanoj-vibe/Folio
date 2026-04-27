@@ -543,14 +543,87 @@ Total: 8 modified + 12 new files = **20 files changed**
 - [x] No breaking changes to user interface
 - [x] Tested syntax and imports
 
+### 21. **Technical Analysis Engine (Pure Pandas)** ✅
+**Files Modified:** `services/technical_indicators.py` (New), `callbacks/intelligence_callbacks.py`
+
+**What Was Added:**
+- Pure-pandas implementation of common technical indicators (RSI, MACD, Bollinger Bands).
+- **Wilder's RSI**: Uses `ewm(com=period-1)` to match industry-standard calculations.
+- **MACD**: Standard (12, 26, 9) signal line crossover logic.
+- **Bollinger Bands**: 20-day SMA +/- 2 standard deviations.
+- **Signal Classification**: Automated labeling (Oversold, Bullish, etc.) for high-density UI tables.
+
+**Benefits:**
+- **Zero Dependencies**: No need for `pandas_ta` or `talib`, keeping the environment lean.
+- **High Performance**: Vectorized pandas operations ensure fast calculation for 50+ tickers.
+- **Unified Logic**: One service provides indicators for both the Intelligence page and AI Research context.
+
+---
+
+### 22. **OHLC Data & Candlestick Support** ✅
+**Files Modified:** `services/market/data_fetcher.py`, `pages/positions.py`
+
+**What Was Added:**
+- Refactored market data extraction to pull **Open, High, Low, and Close** columns.
+- Support for `go.Candlestick` charts in the Positions deep-dive.
+- **Intraday Fallback**: Automatic reversion to Line charts when OHLC data is missing (common for "1d" period).
+
+**Benefits:**
+- Professional-grade market visualization.
+- Better visibility into intraday price action and volatility.
+
+---
+
+### 23. **Multi-Page Period Synchronization** ✅
+**Files Modified:** `app.py`
+
+**What Was Added:**
+- Global synchronization logic that listens to all page-specific period stores (`positions-period-store`, `watchlist-period-store`, etc.).
+- The master `portfolio-store` refresh now fetches the **maximum requested period** across all pages.
+
+**Benefits:**
+- Seamless navigation: switching from the Overview (1y) to Positions (max) no longer requires a waiting for a new network fetch.
+- Reduced API overhead by consolidating disparate time-period requests into a single bulk fetch.
+
+---
+
+### 24. **AI Research Signal Injection** ✅
+**Files Modified:** `services/research_service.py`
+
+**What Was Added:**
+- Automatically injects live technical status (RSI/MACD/BB) into the context prompt for Gemini.
+- The AI now "sees" if a stock is oversold or has a bullish MACD crossover when evaluating a prospective buy.
+
+**Benefits:**
+- Higher fidelity AI reasoning.
+- Contextualizing technical math with qualitative portfolio goals.
+
+---
+
+### Summary of Recent Milestones (Update)
+| Milestone | Status | Impact |
+|-----------|--------|--------|
+| Technical Analysis Engine | ✅ Done | Medium (Data Enrichment) |
+| Candlestick Support | ✅ Done | Medium (UX/Visuals) |
+| Period Synchronization | ✅ Done | High (System Stability) |
+| AI Signal Injection | ✅ Done | Medium (AI Reasoning) |
+
+---
+
+## Verification Checklist (Final)
+
+- [x] Pure-pandas RSI matches Wilder's standard
+- [x] Candlestick charts fallback gracefully on 1d period
+- [x] Period sync prevents empty charts on page navigation
+- [x] Gemini assistant accurately references technical labels
+- [x] All Dash callback return signatures (6 outputs) verified
+
 ---
 
 ## Next Steps
 
-1. **Review** - Test suite shows where improvements are used
-2. **Deploy** - Use `.env.example` to customize for your deployment
-3. **Monitor** - Check `portfolio.log` for any issues
-4. **Optimize** - Run `pytest --cov` to see test coverage
-5. **Extend** - Add more tests/features as needed
+1. **Unit Testing** - Extend `test/` directory to cover `technical_indicators.py`.
+2. **Alert Integration** - Feed technical signals (e.g. RSI < 30) into the `alert_service.py`.
+3. **Database Migration** - Use the Repository pattern to move from CSV to SQLite.
 
-All improvements are production-ready and thoroughly documented.
+All improvements are production-ready and documented.

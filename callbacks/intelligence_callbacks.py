@@ -286,6 +286,14 @@ def register_callbacks(app) -> None:
                            "padding": "12px"}
                 )
 
+            # ── 5. Final Output ───────────────────────────────────────────────────
+            # Return signature must match the 6 Outputs defined in the callback:
+            # 1. intel-risk-cards
+            # 2. intel-equity-chart
+            # 3. intel-drawdown-chart
+            # 4. intel-alerts
+            # 5. intel-data-note
+            # 6. intel-signals-table
             return (
                 risk_cards,
                 eq_fig, dd_fig,

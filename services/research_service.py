@@ -105,8 +105,9 @@ def get_ai_response(history: list[dict], portfolio_data: dict,
         if not history:
             return "No message to respond to."
         
-        past_turns = history[:-1]
-        current_message = history[-1]["content"]
+        # Prepend the full portfolio context (including TA signals) to the 
+        # last user message. This ensures the AI reasons with fresh data 
+        # while keeping the actual chat history (past_turns) clean and lean.
         full_message = context + "\n\n" + current_message
 
         # Convert past turns to google-genai Content objects

@@ -257,9 +257,27 @@ The "Today" P&L view utilizes a dedicated intraday tracking system to provide re
 - **Bypass Strategy**: The P&L History chart reads this file directly when in "1d" mode. This bypasses the main `portfolio-store` for chart rendering, preventing "Timezone Concat" errors that occur when mixing historical daily data (often UTC-naive) with live intraday data (Sydney wall-clock).
 - **Window**: The chart is strictly pinned to the ASX trading window (10:00 AM – 4:15 PM Sydney Time).
 - **Persistence**: Snapshotting ensures that intraday progress is preserved even if the application is restarted during the trading day.
-### 5. AI Research Assistant & Persistent Memory
+### 5. Technical Indicators Engine (Pure Pandas)
+The **Technical Indicators Service** (`services/technical_indicators.py`) provides high-performance technical analysis without external TA library dependencies.
+- **Pure Pandas Math**: All indicators (RSI, MACD, Bollinger Bands) are implemented using native pandas vectorized operations (`ewm`, `rolling`, `std`) to ensure portability and speed.
+- **Wilder's Smoothing**: The RSI implementation uses Wilder's method (`com=period-1`) to match industry-standard trading platforms.
+- **Standardized Signals**: The `compute_signals` function returns a consistent 10-key dictionary, including human-readable labels (e.g., "Oversold", "Bullish") for immediate UI consumption.
+
+### 6. OHLC Data Architecture & Candlestick Support
+The data fetching layer was enriched to support high-fidelity price visualization.
+- **OHLC Extraction**: The `data_fetcher.py` now extracts `Open`, `High`, and `Low` columns in addition to `Close`. 
+- **Graceful Fallback**: Since the "1d" (intraday) period often lacks OHLC columns, the system implements a fallback to standard Line charts (`go.Scatter`) when Candlestick data is unavailable.
+- **Data Cleansing**: The fetcher performs a strict `dropna(subset=["Close"])` and timezone normalization on combined OHLC frames to prevent rendering crashes.
+
+### 7. Multi-Page Period Synchronization
+To ensure consistent data views across the dashboard, the application implements a "Global Max Period" strategy.
+- **The Problem**: Different pages (e.g., Positions vs. Watchlist) may request different time periods, but they share the global `portfolio-store`.
+- **The Fix**: The refresh callback in `app.py` evaluates all active page-specific period stores and instructs the market service to fetch the **maximum** duration requested. This ensures that when a user switches pages, the required historical data is already present in the global cache.
+
+### 8. AI Research Assistant & Persistent Memory
 The **Research Page** leverages Google Gemini 2.5 Flash Lite for contextual portfolio reasoning.
 - **Contextual Awareness**: On every query, the assistant is injected with a live snapshot of the portfolio (Holdings, P&L, Weights) and the ticker currently being researched.
+- **Technical Integration**: Live technical signals (RSI/MACD/BB) are automatically computed and injected into the prompt context, allowing the AI to reason about technical entry points.
 - **Rolling Memory Pattern**: To provide continuity without bloating storage, the system uses a dual-layer memory:
     - **Short-Term (7-day Log)**: Exact conversation turns stored in `conversation_log.json`.
     - **Long-Term (AI Summary)**: On startup, old turns are automatically summarized into bullet points by Gemini and saved to `memory_summary.json`.
