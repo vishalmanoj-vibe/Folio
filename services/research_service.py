@@ -5,6 +5,11 @@ import google.genai as genai
 from services.technical_indicators import (
     compute_signals
 )
+from services.web_search import (
+    search_financial_news,
+    format_search_results,
+    should_search_web
+)
 
 logger = logging.getLogger(__name__)
 
@@ -95,6 +100,30 @@ def get_ai_response(history: list[dict], portfolio_data: dict,
 
         # Build context and inject into a copy of the last user message
         context = build_portfolio_context(portfolio_data, ticker)
+        
+        # Auto web search if message needs live data
+        current_message_search = history[-1]["content"] if history else ""
+        
+        search_context = ""
+        if should_search_web(current_message_search):
+            # Build smart query from message + ticker
+            search_query = current_message_search[:100]
+            if ticker:
+                search_query = (
+                    f"{ticker} ASX {search_query}"
+                )
+            
+            results = search_financial_news(
+                search_query, max_results=3
+            )
+            search_context = format_search_results(
+                results
+            )
+            if search_context:
+                logger.info(
+                    f"Web search added: "
+                    f"{len(results)} results"
+                )
         logger.info(
             f"Context length: {len(context)} chars, "
             f"History turns: {len(history)}, "
@@ -105,10 +134,18 @@ def get_ai_response(history: list[dict], portfolio_data: dict,
         if not history:
             return "No message to respond to."
         
+        past_turns = history[:-1]
+        current_message = history[-1]["content"]
+
         # Prepend the full portfolio context (including TA signals) to the 
         # last user message. This ensures the AI reasons with fresh data 
         # while keeping the actual chat history (past_turns) clean and lean.
-        full_message = context + "\n\n" + current_message
+        full_context = context
+        if search_context:
+            full_context += (
+                "\n\n" + search_context
+            )
+        full_message = full_context + "\n\n" + current_message
 
         # Convert past turns to google-genai Content objects
         # google-genai uses "model" not "assistant" for AI role

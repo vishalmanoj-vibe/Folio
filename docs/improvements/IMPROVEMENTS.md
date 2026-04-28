@@ -530,7 +530,9 @@ Total: 8 modified + 12 new files = **20 files changed**
 
 ## Verification Checklist
 
-- [x] Input validation integrated and tested
+- [x] Fix "fully red" chart issue on Positions page (enabled auto_adjust=True for OHLC consistency)
+- [x] Technical signals integrated into Research Assistant
+- [ ] Alert system integration for RSI/MACD signals
 - [x] API retry logic implemented with exponential backoff
 - [x] All hardcoded config values support env vars
 - [x] Market hours configuration flexible

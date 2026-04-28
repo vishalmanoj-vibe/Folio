@@ -141,7 +141,19 @@ def register_callbacks(app):
         append_turn("user", message)
 
         response = get_ai_response(history, portfolio_data, ticker or "")
-        history.append({"role": "assistant", "content": response})
+        from services.web_search import should_search_web
+        used_search = should_search_web(message)
+        
+        response_content = response
+        if used_search:
+            response_content = (
+                "🔍 *Web search used*\n\n" + response
+            )
+        
+        history.append({
+            "role": "assistant",
+            "content": response_content
+        })
         append_turn("assistant", response)
 
         new_usage = {"count": current_count + 1, "reset_date": today_str}

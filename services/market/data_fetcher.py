@@ -94,7 +94,7 @@ def _download_with_retry(
         try:
             kwargs = dict(
                 period=period, group_by="ticker",
-                auto_adjust=False, progress=False, actions=actions
+                auto_adjust=True, progress=False, actions=actions
             )
             if interval:
                 kwargs["interval"] = interval
@@ -118,15 +118,6 @@ def _extract_col(bulk_df: pd.DataFrame, ticker_yf: str, col_name: str) -> pd.Ser
 
     # Try multiple combinations of MultiIndex keys
     candidates = []
-    if col_name == "Close":
-        # Prefer Adj Close if available (equivalent to previous auto_adjust=True behavior)
-        candidates.extend([
-            (ticker_yf, "Adj Close"),
-            ("Adj Close", ticker_yf),
-            (ticker_yf.split(".")[0], "Adj Close"),
-            ("Adj Close", ticker_yf.split(".")[0])
-        ])
-    
     candidates.extend([
         (ticker_yf, col_name),
         (col_name, ticker_yf),
@@ -149,8 +140,6 @@ def _extract_col(bulk_df: pd.DataFrame, ticker_yf: str, col_name: str) -> pd.Ser
         if 'Close' in cols or 'Open' in cols:
             if col_name in cols:
                 return bulk_df[col_name].dropna()
-            if col_name == 'Close' and 'Adj Close' in cols:
-                return bulk_df['Adj Close'].dropna()
         return pd.Series(dtype=float)
 
     # Multi-index case

@@ -33,6 +33,7 @@ The application follows a strictly decoupled layered architecture to ensure sepa
 2.  **Service (Orchestration & Intelligence)**: Coordinates complex workflows and AI-driven insights. This layer handles external API calls (yfinance, Gemini), tiered caching, and logic-heavy services:
     - **Market Service**: Real-time pricing and metadata enrichment.
     - **Research Service (AI)**: Contextual portfolio reasoning via Gemini 2.5 Flash Lite.
+    - **Web Search Service**: Live financial news integration via DuckDuckGo.
     - **Memory Service**: Persistent state management with rolling 7-day logs and long-term summaries.
     - **Intelligence Service**: Risk analysis (Sharpe, Volatility) and rule-based allocation alerts.
     - **Prediction Service**: Forecasting using Facebook Prophet with continuity correction.
@@ -40,6 +41,14 @@ The application follows a strictly decoupled layered architecture to ensure sepa
 4.  **Data (Persistence)**: The `PortfolioRepository` provides a clean abstraction for data operations, decoupling the CSV logic from the rest of the application.
 5.  **Domain (Models)**: Typed definitions (Pydantic/TypedDict) that enforce data contracts across all layers.
 6.  **Foundation (Core/Config)**: System-wide utilities (Validators, TTL Caching, Logging) and environment configuration.
+
+---
+
+## Data Consistency (OHLC & P&L)
+To ensure visual and mathematical consistency across the dashboard, the system uses `auto_adjust=True` for all historical market data fetching.
+- **Why**: Standardizing on adjusted prices prevents "dividend drops" from appearing as artificial price crashes in Candlestick charts and prevents false signals in Technical Indicators (RSI/MACD).
+- **Impact**: All historical OHLC values (Open, High, Low, Close) are adjusted proportionally to reflect corporate actions and dividends.
+- **Limitation**: While this is ideal for performance visualization, it may cause a mismatch if comparing adjusted historical prices to raw historical purchase prices for very old transactions in stocks that have split. (Rare for ASX ETFs).
 
 ---
 
@@ -283,3 +292,10 @@ The **Research Page** leverages Google Gemini 2.5 Flash Lite for contextual port
     - **Long-Term (AI Summary)**: On startup, old turns are automatically summarized into bullet points by Gemini and saved to `memory_summary.json`.
 - **Usage Monitoring**: A daily message limit (20) and storage cap (50MB) are enforced to ensure system stability.
 - **Startup Maintenance**: The `run_startup_maintenance` routine in `app.py` ensures the memory remains pruned and summarized before the app accepts user input.
+
+### 9. Live Web Search Integration
+The research assistant is now equipped with real-time web search capabilities to supplement portfolio context.
+- **Trigger**: The `should_search_web` function evaluates user messages for financial keywords (e.g., "announcement", "forecast", "asx").
+- **Smart Querying**: If a search is triggered, the system constructs a targeted query combining the user message with the active ticker context.
+- **Provider**: Powered by `duckduckgo-search` (via the `ddgs` package), fetching the most recent (last month) Australian financial news.
+- **UI Feedback**: Assistant responses that incorporate web data are clearly marked with a `🔍 Web search used` indicator.
