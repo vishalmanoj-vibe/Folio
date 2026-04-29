@@ -57,6 +57,7 @@ import callbacks.positions_callbacks      as positions_cb
 import callbacks.dividend_callbacks       as dividends_cb
 import callbacks.watchlist_callbacks      as watchlist_cb
 import callbacks.research_callbacks  as research_cb
+import callbacks.report_callbacks as report_cb
 
 # ── Initial data load ─────────────────────────────────────────────────────────
 repo = PortfolioRepository()
@@ -130,6 +131,34 @@ if INITIAL_WATCHLIST:
     except Exception as e:
         logger.warning(f"Initial watchlist fetch failed: {e}")
         INITIAL_WATCHLIST_DATA = {"holdings": [], "histories": {}}
+
+# Auto-generate weekly report on Mondays
+from datetime import datetime as _dt
+from callbacks.report_callbacks import (
+    _get_last_report_date,
+    _save_last_report_date,
+    REPORT_DATE_FILE
+)
+_today = _dt.now()
+_last = _get_last_report_date()
+_is_monday = _dt.now().weekday() == 0
+_already_done_today = (
+    _dt.now().strftime("%d %B %Y") in _last
+)
+if _is_monday and not _already_done_today:
+    try:
+        from services.report_service import (
+            generate_weekly_report
+        )
+        import os as _os
+        _api_key = _os.getenv("GEMINI_API_KEY","")
+        _pdf = generate_weekly_report(
+            INITIAL_PORTFOLIO_DATA, _api_key
+        )
+        _save_last_report_date()
+        print("✅ Weekly report auto-generated")
+    except Exception as _e:
+        print(f"⚠️  Auto-report failed: {_e}")
 
 import dash_bootstrap_components as dbc
 
@@ -362,6 +391,7 @@ dividends_cb.register_callbacks(app)
 intell_cb.register_callbacks(app)
 watchlist_cb.register_callbacks(app)
 research_cb.register_callbacks(app)
+report_cb.register_callbacks(app)
 
 
 # ── Render Performance Optimizations ──────────────────────────────────────────

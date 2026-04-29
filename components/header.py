@@ -28,6 +28,7 @@ def create_header(
             html.A("Analytics",    href="/analytics",    className="nav-link"),
             html.A("Watchlist",    href="/watchlist",    className="nav-link"),
             html.A("Research", href="/research", className="nav-link"),
+            html.A("Reports", href="/reports", className="nav-link"),
             html.Div([
                 html.A("Intelligence", href="/intelligence", className="nav-link"),
                 html.Span(id="intel-alert-count", className="nav-badge", style={"display": "none"})
