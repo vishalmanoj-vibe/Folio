@@ -132,33 +132,7 @@ if INITIAL_WATCHLIST:
         logger.warning(f"Initial watchlist fetch failed: {e}")
         INITIAL_WATCHLIST_DATA = {"holdings": [], "histories": {}}
 
-# Auto-generate weekly report on Mondays
-from datetime import datetime as _dt
-from callbacks.report_callbacks import (
-    _get_last_report_date,
-    _save_last_report_date,
-    REPORT_DATE_FILE
-)
-_today = _dt.now()
-_last = _get_last_report_date()
-_is_monday = _dt.now().weekday() == 0
-_already_done_today = (
-    _dt.now().strftime("%d %B %Y") in _last
-)
-if _is_monday and not _already_done_today:
-    try:
-        from services.report_service import (
-            generate_weekly_report
-        )
-        import os as _os
-        _api_key = _os.getenv("GEMINI_API_KEY","")
-        _pdf = generate_weekly_report(
-            INITIAL_PORTFOLIO_DATA, _api_key
-        )
-        _save_last_report_date()
-        print("✅ Weekly report auto-generated")
-    except Exception as _e:
-        print(f"⚠️  Auto-report failed: {_e}")
+# Note: Weekly report is now manually generated via the Reports page.
 
 import dash_bootstrap_components as dbc
 

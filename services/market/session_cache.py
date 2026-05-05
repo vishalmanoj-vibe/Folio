@@ -64,6 +64,72 @@ def record_snapshot(enriched_holdings: list[dict]):
         except Exception as e:
             logger.error("Failed to write session cache: %s", e)
 
+def backfill_session_cache(tickers_data: dict[str, pd.Series]):
+    """
+    Backfill the session cache with historical intraday data (e.g. from yfinance).
+    
+    Args:
+        tickers_data: Dict mapping ticker strings to pandas Series of Close prices.
+    """
+    filename = _get_filename()
+    session_data = {}
+    
+    if os.path.exists(filename):
+        try:
+            with open(filename, "r") as f:
+                session_data = json.load(f)
+        except Exception as e:
+            logger.warning("Failed to read session cache for backfill: %s", e)
+
+    updated = False
+    now_syd = pd.Timestamp.now(tz="Australia/Sydney")
+    today_str = now_syd.strftime("%Y-%m-%d")
+    market_open = pd.Timestamp(f"{today_str} 10:00:00", tz="Australia/Sydney")
+
+    for ticker, series in tickers_data.items():
+        if series.empty:
+            continue
+            
+        if ticker not in session_data:
+            session_data[ticker] = []
+            
+        existing_points = session_data[ticker]
+        existing_times = {p["Date"] for p in existing_points}
+        
+        new_points = []
+        for ts, price in series.items():
+            # Ensure timestamp is in Sydney time
+            try:
+                if ts.tzinfo is None:
+                    ts_syd = pd.Timestamp(ts).tz_localize("UTC").tz_convert("Australia/Sydney")
+                else:
+                    ts_syd = pd.Timestamp(ts).tz_convert("Australia/Sydney")
+            except Exception:
+                ts_syd = pd.Timestamp(ts)
+
+            # Only include points from today's market session
+            if ts_syd.strftime("%Y-%m-%d") != today_str or ts_syd < market_open:
+                continue
+                
+            time_str = ts_syd.strftime("%Y-%m-%d %H:%M:%S")
+            if time_str not in existing_times and price > 0:
+                new_points.append({"Date": time_str, "Close": round(float(price), 4)})
+        
+        if new_points:
+            session_data[ticker].extend(new_points)
+            # Re-sort to ensure chart continuity
+            session_data[ticker].sort(key=lambda x: x["Date"])
+            updated = True
+            
+    if updated:
+        try:
+            with open(filename, "w") as f:
+                json.dump(session_data, f)
+            logger.info("Backfilled session cache for %d tickers", len(tickers_data))
+        except Exception as e:
+            logger.error("Failed to write backfilled session cache: %s", e)
+
+
 def get_session_history(ticker: str) -> pd.Series:
     """
     Retrieve today's recorded points for a ticker as a pandas Series.
@@ -87,6 +153,7 @@ def get_session_history(ticker: str) -> pd.Series:
     except Exception as e:
         logger.warning("Failed to read session history for %s: %s", ticker, e)
         return pd.Series(dtype=float)
+
 
 def clear_old_caches(keep_days: int = 2):
     """Delete session caches older than keep_days."""

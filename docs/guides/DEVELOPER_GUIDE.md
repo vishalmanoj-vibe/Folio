@@ -79,7 +79,7 @@ The application utilizes a sophisticated `dcc.Store` ecosystem to manage state a
 ### 1. The Portfolio Store (`portfolio-store`)
 - **Role**: The single source of truth for all holding data, histories, and metrics.
 - **Hydration**: Pre-seeded at startup in `app.py` to ensure instantaneous first-paint.
-- **Reactivity**: Updated every 60s (via `live-interval`) or immediately upon transaction entry.
+- **Reactivity**: Updated every 60s (via `live-interval` defined in `config/settings.py`) or immediately upon transaction entry.
 
 ### 2. Preference & Session Stores
 - **`theme-store`**: Local storage persistence for light/dark mode preference.
@@ -212,6 +212,7 @@ Metrics in `intelligence_service.py` are calculated using standard financial for
 To ensure high performance with multi-ticker portfolios, the `fetch_live` service utilizes concurrency:
 - **Parallel Workers**: Uses `ThreadPoolExecutor` (10 workers) to parallelize sequential I/O-bound requests (e.g., `ticker.info` for names and dividends).
 - **Metadata Caching**: Implements a simple in-memory TTL cache for Yahoo Finance metadata, avoiding redundant network calls for static data (ETF names, payout frequencies).
+- **Domain-Specific TTLs**: Separates heavy computations from the 60s live tick. Technical signals are cached for 24 hours (`TECHNICALS_CACHE_TTL`), and historical dividend processing is cached for 7 days (`DIVIDENDS_CACHE_TTL`).
 - **Bulk Downloads**: Continues to use `yf.download()` for primary price history to minimize HTTP overhead.
 
 ## Styling & UI Architecture

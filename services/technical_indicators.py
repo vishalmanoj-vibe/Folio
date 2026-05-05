@@ -59,6 +59,9 @@ def compute_bbands(prices: pd.Series, period: int = 20, std: int = 2) -> tuple:
     
     return upper, mid, lower
 
+from core import get_cache, set_cache
+from config.settings import TECHNICALS_CACHE_TTL
+
 def compute_signals(ticker: str, history: list[dict]) -> dict:
     """
     Compute high-level technical signals from price history.
@@ -69,6 +72,14 @@ def compute_signals(ticker: str, history: list[dict]) -> dict:
         # Minimum history required for stable indicator calculation
         if not history or len(history) < 30:
             return {"ticker": ticker, "error": "Insufficient data"}
+            
+        # Check cache
+        last_date = history[-1].get("Date", "unknown")
+        cache_key = f"technicals_{ticker}_{last_date}"
+        cached = get_cache(cache_key)
+        if cached:
+            return cached
+        
         
         # ── 1. Data Preparation ───────────────────────────────────────────
         df = pd.DataFrame(history)
@@ -109,7 +120,7 @@ def compute_signals(ticker: str, history: list[dict]) -> dict:
         else:
             bb_label = "Inside bands"
             
-        return {
+        result = {
             "ticker": ticker,
             "rsi": round(rsi_val, 2),
             "rsi_label": rsi_label,
@@ -121,6 +132,9 @@ def compute_signals(ticker: str, history: list[dict]) -> dict:
             "bb_label": bb_label,
             "last_price": round(last_price, 3),
         }
+        
+        set_cache(cache_key, result, ttl=TECHNICALS_CACHE_TTL)
+        return result
         
     except Exception as e:
         logger.error(f"Error computing signals for {ticker}: {e}")

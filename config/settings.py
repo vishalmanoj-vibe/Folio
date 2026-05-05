@@ -24,7 +24,9 @@ WATCHLIST_CSV_PATH = os.getenv(
 )
 
 # ── Intervals ─────────────────────────────────────────────────────────────────
-REFRESH_INTERVAL = int(os.getenv("REFRESH_INTERVAL_MS", 30_000))  # milliseconds
+REFRESH_INTERVAL = int(os.getenv("REFRESH_INTERVAL_MS", 60_000))  # milliseconds
+TECHNICALS_CACHE_TTL = int(os.getenv("TECHNICALS_CACHE_TTL", 86400))  # 24 hours in seconds
+DIVIDENDS_CACHE_TTL = int(os.getenv("DIVIDENDS_CACHE_TTL", 604800))   # 7 days in seconds
 
 # ── Market configuration ──────────────────────────────────────────────────────
 MARKET_TIMEZONE = os.getenv("MARKET_TIMEZONE", "Australia/Sydney")

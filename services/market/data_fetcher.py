@@ -10,7 +10,9 @@ from core import get_cache, set_cache
 from core.engine.portfolio_engine import compute_tranche_pnl, compute_holding_pnl
 from core.engine.utils import normalise_tz, get_period_cutoff
 from config.settings import API_MAX_RETRIES, API_RETRY_BACKOFF_BASE, CACHE_TTL_SECONDS
-from services.market.session_cache import record_snapshot, get_session_history, clear_old_caches
+from services.market.session_cache import (
+    record_snapshot, get_session_history, clear_old_caches, backfill_session_cache
+)
 
 logger = logging.getLogger(__name__)
 
@@ -595,7 +597,24 @@ def fetch_live(holdings: list[dict], hist_period: str = "max", record_snapshots:
     
     # ── Record snapshots for 'Today' chart persistence ───────────────────────
     if record_snapshots:
-        record_snapshot(enriched)
+        try:
+            # Always record the latest point for immediate continuity
+            record_snapshot(enriched)
+            
+            # Additionally backfill if we have intraday history for the 'Today' chart
+            if hist_period == "1d":
+                backfill_map = {}
+                for ticker, hist_list in histories.items():
+                    if hist_list:
+                        df_h = pd.DataFrame(hist_list)
+                        if not df_h.empty and "Date" in df_h.columns and "Close" in df_h.columns:
+                            backfill_map[ticker] = df_h.set_index("Date")["Close"]
+                
+                if backfill_map:
+                    backfill_session_cache(backfill_map)
+        except Exception as PERSIST_EXC:
+            logger.error("Snapshot/Backfill recording failed: %s", PERSIST_EXC)
+    
     clear_old_caches()
 
     ttl = 5 if hist_period == "1d" else 10

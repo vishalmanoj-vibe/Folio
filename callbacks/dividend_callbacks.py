@@ -28,6 +28,9 @@ _TD = {
     "color": "var(--t-pri)",
 }
 
+from core import get_cache, set_cache
+from config.settings import DIVIDENDS_CACHE_TTL
+
 def register_callbacks(app) -> None:
 
     # Known/Confirmed Dividend Dates (Fallback for missing yfinance metadata)
@@ -55,7 +58,13 @@ def register_callbacks(app) -> None:
                 return [], [], [], [], "No data"
 
             holdings = port_data["holdings"]
-            tickers_yf = [h["ticker_yf"] for h in holdings]
+            tickers_yf = sorted([h["ticker_yf"] for h in holdings])
+            tickers_str = "_".join(tickers_yf)
+            
+            cache_key = f"dividends_{tickers_str}"
+            cached = get_cache(cache_key)
+            if cached:
+                return cached
             
             # ── 1. Historical Data Fetch ──────────────────────────────────────────
             bulk_df = _download_with_retry(tickers_yf, period="max", actions=True)
@@ -231,7 +240,9 @@ def register_callbacks(app) -> None:
                     html.Tbody(rows)
                 ], style={"width": "100%", "borderCollapse": "collapse"})
 
-            return stats, cal_cards, income_rows, yield_rows, table
+            result = (stats, cal_cards, income_rows, yield_rows, table)
+            set_cache(cache_key, result, ttl=DIVIDENDS_CACHE_TTL)
+            return result
         except Exception as e:
             logger.error(f"Failed to update dividends page: {e}")
             return [], [], [], [], "An error occurred while loading dividend data"
