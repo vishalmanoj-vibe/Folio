@@ -116,9 +116,10 @@ def register_callbacks(app) -> None:
         Input("table-state-store",  "data"),
         Input("url", "pathname"),
         State("table-filter",       "value"),
+        State("signals-store",      "data"),
         prevent_initial_call=False,
     )
-    def update_live_table(data, table_state, url_pathname, filter_query):
+    def update_live_table(data, table_state, url_pathname, filter_query, signals_store):
         import dash
         # FIX: prevent background recalculation when not on Portfolio page
         if url_pathname != "/": return dash.no_update
@@ -195,6 +196,25 @@ def register_callbacks(app) -> None:
                 className="table-th-sortable"
             )
 
+        def _signal_badge_td(ticker, signals_store, td_style):
+            sig = (signals_store or {}).get("raw", {}).get(ticker)
+            if not sig:
+                return html.Td(html.Span("—", style={"color": "var(--t-sec)"}), style=td_style)
+            signal_val = sig.get("signal", "—")
+            badge_color = GREEN if signal_val == "BUY" else (RED if signal_val == "SELL" else "var(--t-sec)")
+            return html.Td(
+                html.Span(
+                    signal_val,
+                    style={
+                        "fontSize": "10px", "fontWeight": "bold",
+                        "padding": "2px 6px", "borderRadius": "4px",
+                        "backgroundColor": "var(--surface-2)",
+                        "color": badge_color, "border": f"1px solid {badge_color}",
+                    }
+                ),
+                style=td_style
+            )
+
         rows = []
         for x in rows_data:
             rows.append(html.Tr([
@@ -224,6 +244,7 @@ def register_callbacks(app) -> None:
                 html.Td(f"${x['total_cost']:,.2f}", style=td_style),
                 pnl_td(x["pnl"],     x["pnl_pct"],    x["pnl_color"],     x["pnl_sign"]),
                 pnl_td(x["day_pnl"], x["day_chg_pct"], x["day_pnl_color"], x["day_pnl_sign"]),
+                _signal_badge_td(x["ticker"], signals_store, td_style),
                 html.Td(f"{x['div_yield']:.2f}%", style=td_style),
                 html.Td(f"${x['realized_div']:,.2f}", style=td_style),
                 html.Td(x["div_frequency"], style={**td_style, "fontSize": "11px", "color": "var(--t-sec)"}),
@@ -237,11 +258,16 @@ def register_callbacks(app) -> None:
             ("Unrealised P&L", "pnl"), ("Today's P&L", "day_pnl"), 
             ("Div yield", "div_yield"), ("Realized div", "realized_div"), ("Freq", "div_frequency")
         ]
+        suggestion_th = html.Th("Suggestion", style=th_style)
 
         return html.Div(
             html.Table(
                 [
-                    html.Thead(html.Tr([sortable_th(label, col_id) for label, col_id in headers])),
+                    html.Thead(html.Tr(
+                        [sortable_th(label, col_id) for label, col_id in headers[:11]]
+                        + [suggestion_th]
+                        + [sortable_th(label, col_id) for label, col_id in headers[11:]]
+                    )),
                     html.Tbody(rows),
                 ],
                 style={"width": "100%", "borderCollapse": "collapse"},
