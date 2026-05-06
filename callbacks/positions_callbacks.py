@@ -41,9 +41,10 @@ def register_callbacks(app) -> None:
         Input("portfolio-store", "data"),
         Input("positions-selected-ticker", "data"),
         Input("url", "pathname"),
-        prevent_initial_call=False,
+        Input("signals-store", "data"),
+        prevent_initial_call=True,
     )
-    def render_card_grid(port_data, selected_ticker, url_pathname):
+    def render_card_grid(port_data, selected_ticker, url_pathname, signals_store):
         import dash
         # FIX: prevent background recalculation when not on Positions page
         if url_pathname != "/positions": return dash.no_update
@@ -58,6 +59,24 @@ def register_callbacks(app) -> None:
                 pnl = h["pnl_pct"]
                 pnl_cls = "c-pos" if pnl >= 0 else "c-neg"
                 is_selected = ticker == selected_ticker
+                
+                signal_badge = None
+                if signals_store and "raw" in signals_store:
+                    sig_data = signals_store["raw"].get(ticker)
+                    if sig_data:
+                        signal_val = sig_data.get("signal", "HOLD")
+                        color_map = {"BUY": GREEN, "SELL": RED, "HOLD": "var(--t-sec)"}
+                        badge_color = color_map.get(signal_val, "var(--t-sec)")
+                        signal_badge = html.Div(
+                            signal_val,
+                            style={
+                                "fontSize": "10px", "fontWeight": "bold", 
+                                "padding": "2px 6px", "borderRadius": "4px",
+                                "backgroundColor": "var(--surface-2)",
+                                "color": badge_color, "border": f"1px solid {badge_color}",
+                                "display": "inline-block", "marginTop": "4px"
+                            }
+                        )
                 
                 # ── Mini Sparkline Generator ──
                 # Renders a high-density area chart of the last 20 price points 
@@ -83,18 +102,26 @@ def register_callbacks(app) -> None:
                     showlegend=False
                 )
 
+                card_children = [
+                    html.Div(ticker, className="holding-card-ticker"),
+                    html.Div(name,   className="holding-card-name"),
+                    html.Div(f"${h['mkt_value']:,.2f}", className="holding-card-value"),
+                    html.Div(f"{pnl:+.2f}%", className=f"holding-card-pnl {pnl_cls}"),
+                    html.Div(f"Yield: {h.get('div_yield', 0):.2f}%", className="holding-card-name", style={"marginTop": "4px"}),
+                ]
+                
+                if signal_badge:
+                    card_children.append(signal_badge)
+                    
+                card_children.append(dcc.Graph(figure=spark_fig, config={"displayModeBar": False}, className="holding-card-sparkline"))
+
                 cards.append(
-                    html.Div([
-                        html.Div(ticker, className="holding-card-ticker"),
-                        html.Div(name,   className="holding-card-name"),
-                        html.Div(f"${h['mkt_value']:,.2f}", className="holding-card-value"),
-                        html.Div(f"{pnl:+.2f}%", className=f"holding-card-pnl {pnl_cls}"),
-                        html.Div(f"Yield: {h.get('div_yield', 0):.2f}%", className="holding-card-name", style={"marginTop": "4px"}),
-                        dcc.Graph(figure=spark_fig, config={"displayModeBar": False}, className="holding-card-sparkline")
-                    ], 
-                    id={"type": "pos-card", "index": ticker},
-                    className=f"holding-card {'selected' if is_selected else ''}",
-                    n_clicks=0)
+                    html.Div(
+                        card_children, 
+                        id={"type": "pos-card", "index": ticker},
+                        className=f"holding-card {'selected' if is_selected else ''}",
+                        n_clicks=0
+                    )
                 )
             except Exception as e:
                 logger.error(f"Failed to render card for {h.get('ticker', '?')}: {e}")
@@ -131,8 +158,9 @@ def register_callbacks(app) -> None:
         Output("etf-detail-cards", "children"),
         Input("positions-selected-ticker", "data"),
         Input("portfolio-store", "data"),
+        Input("signals-store", "data"),
     )
-    def render_detail_metrics(ticker, port_data):
+    def render_detail_metrics(ticker, port_data, signals_store):
         if not ticker or not port_data or "holdings" not in port_data:
             return []
 
@@ -152,7 +180,7 @@ def register_callbacks(app) -> None:
             ("Div Yield", f"{h.get('div_yield', 0):.2f}%", f"Annual: ${h.get('annual_div', 0):,.2f}"),
         ]
 
-        return [
+        cards_layout = [
             html.Div([
                 html.Div(label, className="etf-detail-label"),
                 html.Div(val,   className="etf-detail-value", style={"color": color} if color else {}),
@@ -160,6 +188,39 @@ def register_callbacks(app) -> None:
             ], className="etf-detail-card")
             for label, val, sub, color in [(m[0], m[1], m[2], m[3] if len(m)>3 else None) for m in metrics]
         ]
+        
+        # Add AI Insight card if available
+        if signals_store and "ai" in signals_store and ticker in signals_store["ai"]:
+            ai_data = signals_store["ai"][ticker]
+            raw_sig = signals_store["raw"].get(ticker, {}) if "raw" in signals_store else {}
+            verdict = ai_data.get("verdict", "Mixed")
+            
+            # Map verdict to color
+            v_color = GREEN if verdict == "Confident" else (RED if verdict == "Risk flagged" else "var(--t-sec)")
+            
+            # Build children dynamically — never pass None into a children list
+            ai_children = [
+                html.Div([
+                    html.I(className="fas fa-robot", style={"marginRight": "8px", "color": "var(--grape)"}),
+                    "AI Analyst Insight"
+                ], className="etf-detail-label", style={"display": "flex", "alignItems": "center"}),
+                html.Div(verdict, className="etf-detail-value", style={"color": v_color, "fontSize": "16px"}),
+                html.Div(ai_data.get("explanation", ""), className="etf-detail-sub", style={"marginTop": "8px", "whiteSpace": "normal"}),
+            ]
+            if ai_data.get("risks"):
+                ai_children.append(html.Div([
+                    html.Div(f"• {r}", style={"color": RED, "marginTop": "4px"}) for r in ai_data["risks"]
+                ]))
+            if raw_sig:
+                ai_children.append(html.Div([
+                    html.Div(f"Technical Score: {raw_sig.get('score', 0.0):.2f}", style={"marginTop": "8px", "fontWeight": "bold", "color": "var(--t-pri)"}),
+                    html.Div([html.Div(f"• {r}") for r in raw_sig.get("reasons", [])], style={"marginTop": "4px", "color": "var(--t-sec)"})
+                ]))
+
+            ai_card = html.Div(ai_children, className="etf-detail-card", style={"gridColumn": "1 / -1"})
+            cards_layout.append(ai_card)
+
+        return cards_layout
 
     # ── 4. Detail Panel — Price Chart ─────────────────────────────────────────
     @app.callback(

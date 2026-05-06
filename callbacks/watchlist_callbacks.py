@@ -79,9 +79,10 @@ def register_callbacks(app) -> None:
         Input("watchlist-store", "data"),
         Input("url", "pathname"),
         Input("watchlist-selected-ticker", "data"),
+        Input("watchlist-signals-store", "data"),
         prevent_initial_call=False,
     )
-    def render_watchlist_table(data, pathname, selected_ticker):
+    def render_watchlist_table(data, pathname, selected_ticker, signals_store):
         # Multi-page safety: only render if on the watchlist page
         if pathname != "/watchlist":
             return dash.no_update, dash.no_update
@@ -118,6 +119,23 @@ def register_callbacks(app) -> None:
             
             color_cls = "c-pos" if chg >= 0 else "c-neg"
             sign = "+" if chg >= 0 else ""
+
+            # Signal badge
+            sig = (signals_store or {}).get("raw", {}).get(ticker)
+            if sig:
+                signal_val = sig.get("signal", "—")
+                badge_color = GREEN if signal_val == "BUY" else (RED if signal_val == "SELL" else "var(--t-sec)")
+                signal_cell = html.Span(
+                    signal_val,
+                    style={
+                        "fontSize": "10px", "fontWeight": "bold",
+                        "padding": "2px 6px", "borderRadius": "4px",
+                        "backgroundColor": "var(--surface-2)",
+                        "color": badge_color, "border": f"1px solid {badge_color}",
+                    }
+                )
+            else:
+                signal_cell = html.Span("—", style={"color": "var(--t-sec)", "fontSize": "12px"})
             
             # High-density click target
             is_active = (ticker == selected_ticker)
@@ -148,21 +166,16 @@ def register_callbacks(app) -> None:
                 ], style=td_style),
                 html.Td(
                     f"${day_high:,.3f} / ${day_low:,.3f}",
-                    style={**td_style, "fontSize": "11px",
-                           "color": "var(--t-sec)"}
+                    style={**td_style, "fontSize": "11px", "color": "var(--t-sec)"}
                 ),
-                html.Td([
+                html.Td(
                     html.Div(
                         f"{div_yield:.2f}%",
                         style={"fontWeight": "500",
                                "color": "var(--green)" if div_yield > 3 else "var(--t-pri)"}
                     ),
-                    html.Div(
-                        next_div,
-                        style={"fontSize": "10px", "color": "var(--t-sec)",
-                               "marginTop": "2px"}
-                    ),
-                ], style=td_style),
+                    style=td_style),
+                html.Td(signal_cell, style=td_style),
                 html.Td(
                     html.Button("✕", id={"type": "watchlist-remove-btn", "index": ticker}, 
                                 className="btn-sm", style={"color": "var(--red)", "padding": "2px 8px"}),
@@ -178,7 +191,7 @@ def register_callbacks(app) -> None:
                 html.Th("Day Change", style=th_style),
                 html.Th("High / Low", style=th_style),
                 html.Th("Div Yield",  style=th_style),
-                html.Th("Next Div",   style=th_style),
+                html.Th("Suggestion", style=th_style),
                 html.Th("",           style={**th_style, "textAlign": "right"}),
             ])),
             html.Tbody(rows)
@@ -350,8 +363,9 @@ def register_callbacks(app) -> None:
         Output("watchlist-stat-cards", "children"),
         Input("watchlist-selected-ticker", "data"),
         State("watchlist-store", "data"),
+        Input("watchlist-signals-store", "data"),
     )
-    def render_watchlist_stat_cards(selected_ticker, data):
+    def render_watchlist_stat_cards(selected_ticker, data, signals_store):
         from components.ui_helpers import stat_card
         if not selected_ticker or not data or "holdings" not in data:
             return []
@@ -375,7 +389,7 @@ def register_callbacks(app) -> None:
         day_color = "var(--green)" if day_chg >= 0 else "var(--red)"
         day_sign  = "+" if day_chg >= 0 else ""
 
-        return [
+        cards = [
             stat_card(
                 "Last Price",
                 f"${price:,.3f}",
@@ -400,6 +414,39 @@ def register_callbacks(app) -> None:
                 "distribution schedule",
             ),
         ]
+
+        # Append AI Insight card if signals exist for this ticker
+        if signals_store and "ai" in signals_store and selected_ticker in signals_store["ai"]:
+            ai_data = signals_store["ai"][selected_ticker]
+            raw_sig = signals_store.get("raw", {}).get(selected_ticker, {})
+            verdict = ai_data.get("verdict", "Mixed")
+            v_color = GREEN if verdict == "Confident" else (RED if verdict == "Risk flagged" else "var(--t-sec)")
+
+            # Build children dynamically — never pass None into a children list
+            ai_children = [
+                html.Div([
+                    html.I(className="fas fa-robot", style={"marginRight": "8px", "color": "var(--grape)"}),
+                    "AI Analyst Insight"
+                ], className="etf-detail-label", style={"display": "flex", "alignItems": "center"}),
+                html.Div(verdict, className="etf-detail-value", style={"color": v_color, "fontSize": "16px"}),
+                html.Div(ai_data.get("explanation", ""), className="etf-detail-sub",
+                         style={"marginTop": "8px", "whiteSpace": "normal"}),
+            ]
+            if ai_data.get("risks"):
+                ai_children.append(html.Div([
+                    html.Div(f"• {r}", style={"color": RED, "marginTop": "4px"}) for r in ai_data["risks"]
+                ]))
+            if raw_sig:
+                ai_children.append(html.Div([
+                    html.Div(f"Technical Score: {raw_sig.get('score', 0.0):.2f}",
+                             style={"marginTop": "8px", "fontWeight": "bold", "color": "var(--t-pri)"}),
+                    html.Div([html.Div(f"• {r}") for r in raw_sig.get("reasons", [])],
+                             style={"marginTop": "4px", "color": "var(--t-sec)"})
+                ]))
+
+            cards.append(html.Div(ai_children, className="etf-detail-card", style={"gridColumn": "1 / -1"}))
+
+        return cards
 
     @app.callback(
         Output("watchlist-notes-input", "value"),

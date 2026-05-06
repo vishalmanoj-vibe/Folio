@@ -152,6 +152,14 @@ def _extract_col(bulk_df: pd.DataFrame, ticker_yf: str, col_name: str) -> pd.Ser
     return pd.Series(dtype=float)
 
 
+def extract_close(bulk_df: pd.DataFrame, ticker_yf: str) -> pd.Series:
+    """
+    Public API: extract the Close price series for a ticker from a bulk download DataFrame.
+    Use this in services/ instead of importing the private _extract_col directly.
+    """
+    return _extract_col(bulk_df, ticker_yf, "Close")
+
+
 def _extract_scalar(bulk_df: pd.DataFrame, ticker_yf: str, col_name: str) -> float:
     """
     Extract the last scalar value of a column for a ticker from a bulk download.
@@ -479,6 +487,24 @@ def _enrich_single_holding(h: dict, multi_live: pd.DataFrame, multi_full: pd.Dat
             "div_frequency": "Unknown", "last_div_amount": 0.0,
             "last_div_date": None, "next_div_date": None, "payout_date": None, "tranches": [],
         }, None
+
+
+def get_full_history_cache(holdings: list[dict]) -> pd.DataFrame:
+    """
+    Helper to reconstruct the exact cache key for the full OHLC history
+    and retrieve it from the server-side cache.
+    """
+    if not holdings:
+        return pd.DataFrame()
+        
+    tickers_yf = [h["ticker_yf"] for h in holdings]
+    tickers_str = " ".join(sorted(tickers_yf))
+    full_cache_key = f"bulk_full_{tickers_str.replace(' ', '_')}"
+    
+    cached = get_cache(full_cache_key)
+    if cached is not None:
+        return cached
+    return pd.DataFrame()
 
 
 def fetch_live(holdings: list[dict], hist_period: str = "max", record_snapshots: bool = True, use_disk_history: bool = False) -> dict:

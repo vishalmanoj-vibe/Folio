@@ -58,6 +58,7 @@ import callbacks.dividend_callbacks       as dividends_cb
 import callbacks.watchlist_callbacks      as watchlist_cb
 import callbacks.research_callbacks  as research_cb
 import callbacks.report_callbacks as report_cb
+import callbacks.signals_callbacks        as signals_cb
 
 # ── Initial data load ─────────────────────────────────────────────────────────
 repo = PortfolioRepository()
@@ -167,6 +168,8 @@ app.layout = dmc.MantineProvider(
             dcc.Store(id="portfolio-store",     data=INITIAL_PORTFOLIO_DATA),
             dcc.Store(id="watchlist-store",     data=INITIAL_WATCHLIST_DATA),
             dcc.Store(id="alerts-store"),
+            dcc.Store(id="signals-store",           data={}, storage_type="session"),
+            dcc.Store(id="watchlist-signals-store", data={}, storage_type="session"),
             dcc.Store(id="theme-store",          data="dark", storage_type='local'),
             dcc.Store(id="compact-mode-store",   data=True),
             dcc.Store(id="table-state-store",     data={"search": "", "sort_col": "mkt_value", "sort_dir": "desc"}, storage_type='local'),
@@ -366,6 +369,7 @@ intell_cb.register_callbacks(app)
 watchlist_cb.register_callbacks(app)
 research_cb.register_callbacks(app)
 report_cb.register_callbacks(app)
+signals_cb.register_callbacks(app)
 
 
 # ── Render Performance Optimizations ──────────────────────────────────────────

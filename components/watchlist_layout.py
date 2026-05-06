@@ -22,8 +22,28 @@ def create_watchlist_layout() -> html.Div:
                         html.H1("Market Watchlist", className="header-title"),
                         html.P("Track potential purchases · Live pricing · Real-time metrics", className="header-subtitle"),
                     ], className="header-title-row"),
+                    html.Div([
+                        dmc.Button(
+                            "Generate Signals",
+                            id="watchlist-generate-signals-btn",
+                            variant="light",
+                            color="grape",
+                            size="sm",
+                            leftSection=html.I(className="fas fa-robot")
+                        ),
+                        dcc.Loading(
+                            id="watchlist-loading-signals",
+                            type="dot",
+                            color="var(--t-pri)",
+                            children=html.Span(
+                                id="watchlist-signals-status-label",
+                                style={"marginLeft": "10px", "fontSize": "11px", "color": "var(--t-sec)"}
+                            )
+                        )
+                    ], style={"marginLeft": "auto", "display": "flex", "alignItems": "center", "gap": "8px"})
                 ],
-                className="page-header-row"
+                className="page-header-row",
+                style={"display": "flex"}
             ),
 
             # ── Add Ticker Row ────────────────────────────────────────────────

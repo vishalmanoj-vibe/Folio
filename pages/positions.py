@@ -23,8 +23,28 @@ def layout() -> html.Div:
                         html.H1("Positions", className="header-title"),
                         html.P("Detailed view per ETF holding", className="header-subtitle"),
                     ], className="header-title-row"),
+                    html.Div([
+                        dmc.Button(
+                            "Generate Signals",
+                            id="generate-signals-btn",
+                            variant="light",
+                            color="grape",
+                            size="sm",
+                            leftSection=html.I(className="fas fa-robot")
+                        ),
+                        dcc.Loading(
+                            id="loading-signals",
+                            type="dot",
+                            color="var(--t-pri)",
+                            children=html.Span(
+                                id="signals-status-label",
+                                style={"marginLeft": "10px", "fontSize": "11px", "color": "var(--t-sec)"}
+                            )
+                        )
+                    ], style={"marginLeft": "auto", "display": "flex", "alignItems": "center", "gap": "8px"})
                 ],
-                className="page-header-row"
+                className="page-header-row",
+                style={"display": "flex"}
             ),
 
             html.Div([
