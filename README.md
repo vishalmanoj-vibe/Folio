@@ -17,7 +17,7 @@ Built with Dash, Plotly, and yfinance.
 - **Dividend Tracking**: Automatic calculation of **Realized Dividends** (tranche-level accuracy) vs. projected annual income.
 - **Interactive UI**: Modern, responsive interface with buy/sell entry, calendar-based tracking, and global state persistence.
 - **Research Assistant**: AI-powered chat interface with **Gemini 2.5 Flash Lite** for deep portfolio analysis, ticker research, and persistent conversation memory.
-- **Trading Signal Engine**: Deterministic, rule-based BUY/SELL/HOLD signals for both **portfolio holdings** and **watchlist tickers** using a weighted scoring model (Trend, Momentum, Price vs 200MA, Cost basis, Drawdown). An AI Analyst overlay explains each signal without overriding it. Available on both the Positions and Watchlist pages — triggered manually, never auto-runs.
+- **Trading Signal Engine**: Deterministic, rule-based BUY/SELL/HOLD signals for both **portfolio holdings** and **watchlist tickers** using a weighted scoring model (Trend, Momentum, Price vs 200MA, Cost basis, Drawdown). An AI Analyst overlay explains each signal without overriding it. Available on the Portfolio, Positions, and Watchlist pages — triggered manually, never auto-runs.
 - **Modular Architecture**: Strictly decoupled layer model (Presentation, Service, Engine, Data) with a **PortfolioRepository** abstraction and a pre-seeded store pattern.
 - **Premium Aesthetics**: "Aura Ledger" dark-themed design with glassmorphism, Radix UI overrides, and smooth transitions.
 
