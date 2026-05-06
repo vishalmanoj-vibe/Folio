@@ -9,7 +9,7 @@ from core.cache import get_cache, set_cache
 logger = logging.getLogger(__name__)
 
 SYSTEM_PROMPT = """You are a conservative long-term investment analyst.
-IMPORTANT RULES:
+STRICT RULES:
 - Do NOT suggest buying or selling.
 - Do NOT override the signal.
 - Only explain and critique.
@@ -134,8 +134,32 @@ def analyze_signals(signals_dict: dict) -> dict:
         ai_insights.update(cached)
         return ai_insights
         
-    client = genai.Client(api_key=api_key, http_options={'timeout': 10.0})
-    prompt = f"Analyze the following portfolio signals:\n{json.dumps(filtered_signals, indent=2)}\nReturn structured insights per ticker."
+    client = genai.Client(api_key=api_key)
+    prompt = f"""
+You are a conservative long-term investment analyst.
+STRICT RULES:
+- Do NOT suggest buying or selling.
+- Do NOT override the signal.
+- Only explain and critique.
+
+Input:
+{json.dumps(filtered_signals, indent=2)}
+
+Task:
+For EACH ticker:
+1. Explain WHY the signal was generated
+2. List 2-3 risks
+3. Give verdict: Reasonable, Weak, or Conflicting
+
+Return ONLY valid JSON in this format:
+{{
+  "TICKER": {{
+    "explanation": "...",
+    "risks": ["...", "..."],
+    "verdict": "Reasonable"
+  }}
+}}
+"""
     
     try:
         response = client.models.generate_content(
@@ -145,9 +169,13 @@ def analyze_signals(signals_dict: dict) -> dict:
                 system_instruction=SYSTEM_PROMPT,
                 temperature=0.2,
                 response_mime_type="application/json",
-            )
+            ),
+            request_options={"timeout": 10}
         )
         
+        if not response or not response.text:
+            raise ValueError("Empty AI response")
+            
         raw_output = _safe_parse(response.text)
         normalized_output = _normalize_ai_response(raw_output)
         
@@ -158,10 +186,11 @@ def analyze_signals(signals_dict: dict) -> dict:
     except Exception as e:
         logger.error(f"Failed to analyze signals via AI: {e}")
         for ticker in filtered_signals:
-            ai_insights[ticker] = {
-                "explanation": "AI analysis unavailable",
-                "risks": [],
-                "verdict": "Mixed"
-            }
+            if ticker not in ai_insights:
+                ai_insights[ticker] = {
+                    "explanation": "AI analysis unavailable",
+                    "risks": [],
+                    "verdict": "Mixed"
+                }
             
     return ai_insights
