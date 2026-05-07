@@ -371,6 +371,7 @@ def register_callbacks(app) -> None:
         Input("watchlist-selected-ticker", "data"),
         State("watchlist-store", "data"),
         Input("watchlist-signals-store", "data"),
+        prevent_initial_call=True,
     )
     def render_watchlist_stat_cards(selected_ticker, data, signals_store):
         from components.ui_helpers import stat_card

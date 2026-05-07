@@ -5,12 +5,10 @@ Market services for Portfolio Dashboard.
 Market data fetching and status checking.
 """
 
-from services.market.data_fetcher import fetch_live, _download_with_retry
-from services.market.market_status import is_market_open, market_badge
+from services.market.data_fetcher import fetch_live
+from services.market.market_status import is_market_open
 
 __all__ = [
     "fetch_live",
-    "_download_with_retry",
     "is_market_open",
-    "market_badge",
 ]

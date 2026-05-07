@@ -142,7 +142,7 @@ class WatchlistRepository:
         tickers_yf = [t + ".AX" for t in tickers_to_refresh]
         bulk_df = yf.download(
             tickers_yf, period="max", 
-            auto_adjust=False, progress=False
+            auto_adjust=True, progress=False
         )
         
         if bulk_df.empty:
@@ -152,8 +152,8 @@ class WatchlistRepository:
         for ticker in tickers_to_refresh:
             ticker_yf = ticker + ".AX"
             try:
-                from services.market.data_fetcher import _extract_col
-                close = _extract_col(bulk_df, ticker_yf, "Close")
+                from services.market.data_fetcher import extract_close
+                close = extract_close(bulk_df, ticker_yf)
                 if close.empty:
                     continue
                 close.index = pd.to_datetime(close.index)
@@ -163,7 +163,7 @@ class WatchlistRepository:
                     for d, v in close.items() if v > 0
                 ]
                 if records:
-                    self._save_history(ticker, records)
+                    self.save_history(ticker, records)
                     logger.info(
                         f"Bulk refreshed {ticker}: {len(records)} records"
                     )

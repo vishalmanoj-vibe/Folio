@@ -40,14 +40,5 @@ def register_callbacks(app) -> None:
 
         return html.Div(
             [html.Div(a["message"]) for a in alerts],
-            style={
-                "background":    "rgba(226, 75, 74, 0.1)", # Subtle red background
-                # FIX: use CSS token instead of hardcoded hex fallback
-                "color":         "var(--red)",
-                "padding":       "10px 24px",
-                "borderRadius":  "0",
-                "fontSize":      "13px",
-                # FIX: use CSS token instead of hardcoded hex fallback
-                "borderBottom":  "0.5px solid var(--red)",
-            },
+            className="alerts-banner"
         ), badge_text, badge_style

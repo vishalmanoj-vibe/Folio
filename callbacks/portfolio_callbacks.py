@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 
 from config.constants import GREEN, RED
 from core.engine.stats_engine import compute_portfolio_stats, build_live_table_rows
-from services.market.market_status import market_badge
+from components.market_badge import market_badge
 from components.ui_helpers import stat_card, stat_card_skeleton, table_skeleton
 
 

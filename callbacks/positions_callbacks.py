@@ -161,7 +161,7 @@ def register_callbacks(app) -> None:
          Output("positions-tech-signals-container", "children")],
         Input("positions-selected-ticker", "data"),
         Input("portfolio-store", "data"),
-        prevent_initial_call=False,
+        prevent_initial_call=True,
     )
     def render_detail_metrics(ticker, port_data):
         if not ticker or not port_data or "holdings" not in port_data:
@@ -491,7 +491,7 @@ def register_callbacks(app) -> None:
          Output("positions-dividend-yield-chart", "children"),
          Output("positions-dividend-table", "children")],
         Input("portfolio-store", "data"),
-        prevent_initial_call=False
+        prevent_initial_call=True
     )
     def render_portfolio_dividend_insights(port_data):
         if not port_data or "holdings" not in port_data:

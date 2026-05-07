@@ -1,0 +1,51 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.eggs/
+*.egg-info/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Virtual environment
+portfolio-env/
+venv/
+env/
+.venv/
+
+# Secrets
+.env
+
+# macOS
+.DS_Store
+
+# Editor
+.vscode/
+.idea/
+
+# Personal financial data
+data/raw/stock_portfolio_transactions.csv
+data/raw/etf_metadata_cache.csv
+data/raw/watchlist.csv
+data/portfolio.db
+
+# Generated caches & logs
+data/cache/
+!data/cache/.gitkeep
+!data/raw/.gitkeep
+*.log
+*.bak
+app_output.txt
+
+# One-off scripts (not part of the project)
+test_gemini.py
+test_pnl.py
+dump_project.sh
+generate_code_md.py
+project_dump.md
+scratch/
+
+# Archives
+*.zip
+*.tar.gz

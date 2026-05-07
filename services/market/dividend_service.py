@@ -3,7 +3,7 @@ import logging
 import pandas as pd
 from config.settings import DIVIDENDS_CACHE_TTL
 from core import get_cache, set_cache
-from services.market.data_fetcher import _download_with_retry, _extract_col
+from services.market.data_fetcher import _download_with_retry, extract_dividends
 from core.engine.utils import normalise_tz
 
 logger = logging.getLogger(__name__)
@@ -32,7 +32,7 @@ def get_ticker_dividend_data(ticker, ticker_yf):
         if bulk_df.empty:
             return pd.DataFrame()
 
-        div_s = _extract_col(bulk_df, ticker_yf, "Dividends")
+        div_s = extract_dividends(bulk_df, ticker_yf)
         if div_s.empty:
             df = pd.DataFrame()
             set_cache(cache_key, df, ttl=DIVIDENDS_CACHE_TTL)

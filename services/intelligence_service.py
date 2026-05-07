@@ -230,7 +230,7 @@ def fetch_etf_geo_weights(ticker_yf: str) -> dict[str, float]:
                 result = {k: round(float(v) * 100, 1) for k, v in re.items()}
                 set_cache(key, result, _GEO_TTL)
                 return result
-        except:
+        except Exception:
             pass
 
         # ── 2. Check for country exposure ──
@@ -240,7 +240,7 @@ def fetch_etf_geo_weights(ticker_yf: str) -> dict[str, float]:
                 result = {k: round(float(v) * 100, 1) for k, v in ce.items()}
                 set_cache(key, result, _GEO_TTL)
                 return result
-        except:
+        except Exception:
             pass
 
         # ── 3. Fallback to top_holdings parse ──

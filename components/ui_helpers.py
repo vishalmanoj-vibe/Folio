@@ -208,14 +208,7 @@ def tech_signal_badges(ticker: str, history: list[dict]) -> html.Div:
         return html.Div([
             html.Span(f"{label}: ", style={"color": "var(--t-sec)", "fontWeight": "normal"}),
             html.Span(value, style={"color": color, "fontWeight": "bold"})
-        ], style={
-            "display": "inline-block", 
-            "padding": "4px 8px", 
-            "borderRadius": "4px", 
-            "border": f"0.5px solid {color}",
-            "backgroundColor": "var(--surface-2)",
-            "fontSize": "11px"
-        })
+        ], className="tech-badge", style={"border": f"0.5px solid {color}"})
         
     return html.Div([
         badge("RSI", f"{sig['rsi']:.1f} ({sig['rsi_label']})", rsi_color),

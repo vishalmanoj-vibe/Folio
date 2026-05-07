@@ -50,7 +50,7 @@ def register_callbacks(app):
                 price = tk.fast_info.last_price
                 if price == 0 or math.isnan(price):
                     price = tk.info.get("regularMarketPrice") or tk.info.get("previousClose")
-            except:
+            except Exception:
                 price = tk.info.get("regularMarketPrice") or tk.info.get("previousClose")
                 
             return name, round(price, 2) if price else dash.no_update

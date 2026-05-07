@@ -116,33 +116,32 @@ def _extract_col(bulk_df: pd.DataFrame, ticker_yf: str, col_name: str) -> pd.Ser
         return pd.Series(dtype=float)
     cols = bulk_df.columns
     if not isinstance(cols, pd.MultiIndex):
-        return bulk_df[col_name].dropna() if col_name in cols else pd.Series(dtype=float)
-
-    # Try multiple combinations of MultiIndex keys
-    candidates = []
-    candidates.extend([
-        (ticker_yf, col_name),
-        (col_name, ticker_yf),
-        (ticker_yf.split(".")[0], col_name),
-        (col_name, ticker_yf.split(".")[0])
-    ])
-
-    cols = bulk_df.columns
-    
-    # Single-index case (yfinance returns this for single ticker downloads)
-    if not isinstance(cols, pd.MultiIndex):
         if col_name in cols:
             return bulk_df[col_name].dropna()
-        # Fallback to similar names
+        # Fallback to similar names (yfinance can be inconsistent)
         for c in [col_name, col_name.replace(" ", ""), "Close", "Dividends"]:
             if c in cols:
                 return bulk_df[c].dropna()
-        # Single ticker download implicitly means the whole dataframe IS the ticker's data
-        # Check if it has standard columns like 'Close' or 'Open'
+        # If it has standard columns, it is likely the ticker's data even if unnamed
         if 'Close' in cols or 'Open' in cols:
             if col_name in cols:
                 return bulk_df[col_name].dropna()
         return pd.Series(dtype=float)
+
+    # Try multiple combinations of MultiIndex keys
+    candidates = [
+        (ticker_yf, col_name),
+        (col_name, ticker_yf),
+        (ticker_yf.split(".")[0], col_name),
+        (col_name, ticker_yf.split(".")[0])
+    ]
+
+    # Multi-index case
+    for cand in candidates:
+        if cand in cols:
+            return bulk_df[cand].dropna()
+
+    return pd.Series(dtype=float)
 
     # Multi-index case
     for cand in candidates:
@@ -158,6 +157,13 @@ def extract_close(bulk_df: pd.DataFrame, ticker_yf: str) -> pd.Series:
     Use this in services/ instead of importing the private _extract_col directly.
     """
     return _extract_col(bulk_df, ticker_yf, "Close")
+
+
+def extract_dividends(bulk_df: pd.DataFrame, ticker_yf: str) -> pd.Series:
+    """
+    Public API: extract the Dividends series for a ticker from a bulk download DataFrame.
+    """
+    return _extract_col(bulk_df, ticker_yf, "Dividends")
 
 
 def _extract_scalar(bulk_df: pd.DataFrame, ticker_yf: str, col_name: str) -> float:

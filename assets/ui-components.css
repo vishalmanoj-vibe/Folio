@@ -242,8 +242,11 @@ button:active { transform: scale(0.97); }
 
 /* ── Alerts & Banners ── */
 .alerts-banner {
+  background: rgba(226, 75, 74, 0.1);
+  color: var(--red);
+  padding: 10px 24px;
   border-radius: 0;
-  font-size: 12px;
+  font-size: 13px;
   border-bottom: 0.5px solid var(--red);
 }
 
@@ -292,6 +295,14 @@ button:active { transform: scale(0.97); }
 .badge-neg  { background: var(--red-bg);     color: var(--red);     border: 0.5px solid rgba(240,78,78,0.25); }
 .badge-neu  { background: var(--cyan-bg);    color: var(--cyan);    border: 0.5px solid var(--cyan-border); }
 .badge-warn { background: var(--warning-bg); color: var(--warning); border: 0.5px solid rgba(239,159,39,0.25); }
+
+.tech-badge {
+  display: inline-block;
+  padding: 4px 8px;
+  border-radius: 4px;
+  background-color: var(--surface-2);
+  font-size: 11px;
+}
 
 /* ── Mantine & Component Overrides ── */
 .mantine-Button-root {

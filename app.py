@@ -11,7 +11,7 @@ Pages
   /positions      → pages/positions.py
   /analytics      → pages/analytics.py
   /intelligence   → pages/intelligence.py
-  /dividends      → pages/dividends.py
+  /ai-analyst     → pages/ai_analyst.py
 
 Responsiveness fix (Pre-seeded Stores)
 ----------------------------------
@@ -68,7 +68,7 @@ try:
 except Exception as e:
     logger.error(f"Failed to load initial CSV: {e}")
     INITIAL_HISTORY = []
-    print(f"\nERROR loading CSV:\n{e}\n")
+    logger.error(f"\nERROR loading CSV:\n{e}\n")
 
 from data.portfolio_builder import build_holdings
 from services.market.data_fetcher import fetch_live
@@ -84,7 +84,7 @@ INITIAL_PORTFOLIO_DATA: dict = {}
 if INITIAL_HOLDINGS:
     try:
         INITIAL_PORTFOLIO_DATA = fetch_live(INITIAL_HOLDINGS, "max")
-        print("✅ Initial portfolio data loaded")
+        logger.info("Initial portfolio data loaded successfully")
     except Exception as e:
         logger.warning(f"Initial market fetch failed: {e}")
         INITIAL_PORTFOLIO_DATA = {"holdings": INITIAL_HOLDINGS, "histories": {}}
@@ -127,7 +127,7 @@ if INITIAL_WATCHLIST:
         INITIAL_WATCHLIST_DATA = live_data
         watchlist_repo.refresh_all_histories()
         run_startup_maintenance(os.getenv("GEMINI_API_KEY", ""))
-        print(f"✅ Watchlist loaded from cache ({len(disk_histories)} tickers from disk)")
+        logger.info(f"Watchlist loaded from cache ({len(disk_histories)} tickers from disk)")
     except Exception as e:
         logger.warning(f"Initial watchlist fetch failed: {e}")
         INITIAL_WATCHLIST_DATA = {"holdings": [], "histories": {}}
@@ -409,7 +409,7 @@ def close_browser():
     during development.
     """
     if sys.platform == "darwin":
-        print("\n  Shutting down... closing browser tabs.")
+        logger.info("\n  Shutting down... closing browser tabs.")
         # Target both 127.0.0.1 and localhost in Safari
         cmd_safari = "osascript -e 'tell application \"Safari\" to close (every tab of every window whose URL contains \"127.0.0.1:8050\" or URL contains \"localhost:8050\")' 2>/dev/null"
         os.system(cmd_safari)
@@ -428,7 +428,6 @@ if __name__ == "__main__":
     print(f"  Positions:       http://127.0.0.1:8050/positions")
     print(f"  Watchlist:       http://127.0.0.1:8050/watchlist")
     print(f"  Intelligence:    http://127.0.0.1:8050/intelligence")
-    print(f"  Dividends:       http://127.0.0.1:8050/dividends")
     print(f"  Analytics:       http://127.0.0.1:8050/analytics")
     print(f"  AI Analyst:      http://127.0.0.1:8050/ai-analyst\n")
 

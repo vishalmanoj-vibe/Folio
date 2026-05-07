@@ -17,7 +17,7 @@ def get_period_cutoff(period: str) -> pd.Timestamp | None:
     # We use a robust way to get this regardless of server local time.
     try:
         now_syd = pd.Timestamp.now(tz="Australia/Sydney")
-    except:
+    except Exception:
         # Fallback if tzdata is missing (though rare on Mac/Linux)
         now_syd = pd.Timestamp.now()
 
