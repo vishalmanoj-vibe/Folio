@@ -425,7 +425,7 @@ def register_callbacks(app) -> None:
             # Build children dynamically — never pass None into a children list
             ai_children = [
                 html.Div([
-                    html.I(className="fas fa-robot", style={"marginRight": "8px", "color": "var(--grape)"}),
+                    html.Span("🤖", style={"marginRight": "8px"}),
                     "AI Analyst Insight"
                 ], className="etf-detail-label", style={"display": "flex", "alignItems": "center"}),
                 html.Div(verdict, className="etf-detail-value", style={"color": v_color, "fontSize": "16px"}),

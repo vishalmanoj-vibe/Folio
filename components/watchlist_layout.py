@@ -27,9 +27,9 @@ def create_watchlist_layout() -> html.Div:
                             "Generate Signals",
                             id="watchlist-generate-signals-btn",
                             variant="light",
-                            color="grape",
+                            color="teal",
                             size="sm",
-                            leftSection=html.I(className="fas fa-robot")
+                            leftSection="🤖"
                         ),
                         dcc.Loading(
                             id="watchlist-loading-signals",

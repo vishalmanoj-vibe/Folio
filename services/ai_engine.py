@@ -163,17 +163,16 @@ Return ONLY valid JSON in this format:
     
     try:
         response = client.models.generate_content(
-            model="gemini-2.5-flash",
+            model="models/gemini-2.5-flash-lite",
             contents=prompt,
             config=genai.types.GenerateContentConfig(
                 system_instruction=SYSTEM_PROMPT,
                 temperature=0.2,
-                response_mime_type="application/json",
             ),
             request_options={"timeout": 10}
         )
         
-        if not response or not response.text:
+        if not response or not getattr(response, "text", None):
             raise ValueError("Empty AI response")
             
         raw_output = _safe_parse(response.text)
