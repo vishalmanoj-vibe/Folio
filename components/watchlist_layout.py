@@ -123,6 +123,7 @@ def create_watchlist_layout() -> html.Div:
                                     "marginTop": "14px",
                                 }
                             ),
+                            html.Div(id="watchlist-ai-insight-container"),
                             html.Div([
                                 html.P(
                                     "Research notes",

@@ -125,8 +125,16 @@ def analyze_signals(signals_dict: dict) -> dict:
     if not filtered_signals:
         return ai_insights
         
-    filtered_signals = dict(sorted(filtered_signals.items()))
-    normalized_json = json.dumps(filtered_signals, sort_keys=True)
+    # Build a stable cache key using only the signal and a rounded score to prevent
+    # minor live price fluctuations from busting the cache and causing redundant API calls.
+    stable_signals = {
+        ticker: {
+            "signal": data["signal"],
+            "score": round(data["score"], 1)
+        }
+        for ticker, data in filtered_signals.items()
+    }
+    normalized_json = json.dumps(stable_signals, sort_keys=True)
     cache_key = "ai_signal_" + hashlib.md5(normalized_json.encode()).hexdigest()
     
     cached = get_cache(cache_key)
@@ -168,14 +176,15 @@ Return ONLY valid JSON in this format:
             config=genai.types.GenerateContentConfig(
                 system_instruction=SYSTEM_PROMPT,
                 temperature=0.2,
-            ),
-            request_options={"timeout": 10}
+            )
         )
         
         if not response or not getattr(response, "text", None):
             raise ValueError("Empty AI response")
             
+        logger.debug(f"Raw AI response for {list(filtered_signals.keys())}: {response.text}")
         raw_output = _safe_parse(response.text)
+        logger.debug(f"Parsed AI output: {raw_output}")
         normalized_output = _normalize_ai_response(raw_output)
         
         set_cache(cache_key, normalized_output, ttl=86400)

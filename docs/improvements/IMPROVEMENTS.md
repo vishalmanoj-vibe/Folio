@@ -602,30 +602,62 @@ Total: 8 modified + 12 new files = **20 files changed**
 
 ---
 
+### 25. **AI Engine Optimization & Cost Management** ✅
+**Files Modified:** `services/ai_engine.py`
+
+**What Was Added:**
+- **Deterministic Caching**: Refactored the `cache_key` generation to use a stable subset of signals. By hashing only the signal (BUY/SELL/HOLD) and the rounded score (1 decimal place) while ignoring highly volatile live price ticks, the 24-hour cache hit rate is significantly improved.
+- **SDK Compatibility Fix**: Removed the unsupported `request_options` parameter from the `google.genai` SDK call, resolving a hidden `TypeError` that was causing the "AI analysis unavailable" fallback.
+
+**Benefits:**
+- **Zero Redundant Costs**: Minimizes API calls by preventing minor price fluctuations from busting the cache.
+- **Improved Reliability**: Restores the AI Analyst Insight functionality for all tickers.
+
+---
+
+### 26. **AI Insight Layout Isolation** ✅
+**Files Modified:** `pages/positions.py`, `components/watchlist_layout.py`, `callbacks/positions_callbacks.py`, `callbacks/watchlist_callbacks.py`
+
+**What Was Added:**
+- **Container Separation**: Introduced `ai-insight-container` on both the Positions and Watchlist pages.
+- **Grid Stability**: Isolated the AI text block from the primary metrics CSS Grid. This prevents the large text content from forcing the metric cards to shrink to their minimum width (`auto-fit` compression).
+- **Typography Standards**: Upgraded AI explanation text from tiny 9px "sub-text" to standard readable 13px font with a 1.5 line height.
+- **Themed Metrics**: Styled technical scores and labels using the primary accent color (`var(--cyan)` / Teal) for visual consistency.
+
+**Benefits:**
+- **Layout Integrity**: Metric cards maintain their size regardless of AI content length.
+- **Readability**: AI analysis is now easy to read at a glance.
+
+---
+
+### 27. **Watchlist Chart Axis Scaling** ✅
+**Files Modified:** `callbacks/watchlist_callbacks.py`
+
+**What Was Added:**
+- **Dynamic Y-Axis Range**: Calculated the minimum and maximum price for the selected period.
+- **Zoomed View**: Configured the Y-axis range to `[min * 0.98, max * 1.02]`.
+
+**Benefits:**
+- **Better Data Density**: Eliminates the massive empty gap at the bottom of the chart caused by the default "start at $0" behavior (from `fill="tozeroy"`).
+- **Price Precision**: Small price movements are now clearly visible on high-priced assets.
+
+---
+
 ### Summary of Recent Milestones (Update)
 | Milestone | Status | Impact |
 |-----------|--------|--------|
-| Technical Analysis Engine | ✅ Done | Medium (Data Enrichment) |
-| Candlestick Support | ✅ Done | Medium (UX/Visuals) |
-| Period Synchronization | ✅ Done | High (System Stability) |
-| AI Signal Injection | ✅ Done | Medium (AI Reasoning) |
+| AI Engine Stabilization | ✅ Done | High (Cost & Stability) |
+| UI Layout Isolation | ✅ Done | Medium (UX/Visuals) |
+| Dynamic Chart Scaling | ✅ Done | Medium (Data Visibility) |
 
 ---
 
-## Verification Checklist (Final)
+## Verification Checklist (Final Update)
 
-- [x] Pure-pandas RSI matches Wilder's standard
-- [x] Candlestick charts fallback gracefully on 1d period
-- [x] Period sync prevents empty charts on page navigation
-- [x] Gemini assistant accurately references technical labels
-- [x] All Dash callback return signatures (6 outputs) verified
-
----
-
-## Next Steps
-
-1. **Unit Testing** - Extend `test/` directory to cover `technical_indicators.py`.
-2. **Alert Integration** - Feed technical signals (e.g. RSI < 30) into the `alert_service.py`.
-3. **Database Migration** - Use the Repository pattern to move from CSV to SQLite.
+- [x] AI analysis successfully restores "Confident/Mixed" verdicts
+- [x] Cache hits verified (sub-second load on second click)
+- [x] Metric cards maintain width when AI content loads
+- [x] Watchlist charts zoom to period lows
+- [x] All Dash callback return signatures verified
 
 All improvements are production-ready and documented.

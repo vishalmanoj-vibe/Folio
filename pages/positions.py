@@ -57,6 +57,7 @@ def layout() -> html.Div:
                     html.Div(chart_title("Select a position to view details", "positions-detail"), id="positions-detail-title"),
                     html.Div([
                         html.Div(id="etf-detail-cards", className="etf-detail-grid"),
+                        html.Div(id="ai-insight-container"),
                         
                         # Price Chart Section
                         html.Div([

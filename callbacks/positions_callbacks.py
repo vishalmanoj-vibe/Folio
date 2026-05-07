@@ -155,7 +155,7 @@ def register_callbacks(app) -> None:
 
     # ── 3. Detail Panel — Metrics Cards ──────────────────────────────────────
     @app.callback(
-        Output("etf-detail-cards", "children"),
+        [Output("etf-detail-cards", "children"), Output("ai-insight-container", "children")],
         Input("positions-selected-ticker", "data"),
         Input("portfolio-store", "data"),
         Input("signals-store", "data"),
@@ -163,11 +163,11 @@ def register_callbacks(app) -> None:
     )
     def render_detail_metrics(ticker, port_data, signals_store):
         if not ticker or not port_data or "holdings" not in port_data:
-            return []
+            return [], None
 
         h = next((x for x in port_data["holdings"] if x["ticker"] == ticker), None)
         if not h:
-            return html.Div(f"Metrics for {ticker} are currently unavailable", className="c-muted")
+            return html.Div(f"Metrics for {ticker} are currently unavailable", className="c-muted"), None
 
         pnl = h["pnl"]; pc = GREEN if pnl >= 0 else RED
         day_pnl = h["day_pnl"]; dc = GREEN if day_pnl >= 0 else RED
@@ -191,6 +191,7 @@ def register_callbacks(app) -> None:
         ]
         
         # Add AI Insight card if available
+        ai_card = None
         if signals_store and "ai" in signals_store and ticker in signals_store["ai"]:
             ai_data = signals_store["ai"][ticker]
             raw_sig = signals_store["raw"].get(ticker, {}) if "raw" in signals_store else {}
@@ -206,22 +207,21 @@ def register_callbacks(app) -> None:
                     "AI Analyst Insight"
                 ], className="etf-detail-label", style={"display": "flex", "alignItems": "center"}),
                 html.Div(verdict, className="etf-detail-value", style={"color": v_color, "fontSize": "16px"}),
-                html.Div(ai_data.get("explanation", ""), className="etf-detail-sub", style={"marginTop": "8px", "whiteSpace": "normal"}),
+                html.Div(ai_data.get("explanation", ""), style={"marginTop": "8px", "whiteSpace": "normal", "fontSize": "13px", "color": "var(--t-sec)", "lineHeight": "1.5"}),
             ]
             if ai_data.get("risks"):
                 ai_children.append(html.Div([
-                    html.Div(f"• {r}", style={"color": RED, "marginTop": "4px"}) for r in ai_data["risks"]
+                    html.Div(f"• {r}", style={"color": "var(--red)", "marginTop": "4px", "fontSize": "12px"}) for r in ai_data["risks"]
                 ]))
             if raw_sig:
                 ai_children.append(html.Div([
-                    html.Div(f"Technical Score: {raw_sig.get('score', 0.0):.2f}", style={"marginTop": "8px", "fontWeight": "bold", "color": "var(--t-pri)"}),
-                    html.Div([html.Div(f"• {r}") for r in raw_sig.get("reasons", [])], style={"marginTop": "4px", "color": "var(--t-sec)"})
+                    html.Div(f"Technical Score: {raw_sig.get('score', 0.0):.2f}", style={"marginTop": "8px", "fontWeight": "bold", "color": "var(--cyan)", "fontSize": "13px"}),
+                    html.Div([html.Div(f"• {r}") for r in raw_sig.get("reasons", [])], style={"marginTop": "4px", "color": "var(--t-sec)", "fontSize": "12px"})
                 ]))
 
-            ai_card = html.Div(ai_children, className="etf-detail-card", style={"gridColumn": "1 / -1"})
-            cards_layout.append(ai_card)
+            ai_card = html.Div(ai_children, className="etf-detail-card", style={"marginTop": "10px"})
 
-        return cards_layout
+        return cards_layout, ai_card
 
     # ── 4. Detail Panel — Price Chart ─────────────────────────────────────────
     @app.callback(

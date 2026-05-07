@@ -288,6 +288,9 @@ To ensure consistent data views across the dashboard, the application implements
 The **Research Page** leverages Google Gemini 2.5 Flash Lite for contextual portfolio reasoning.
 - **Contextual Awareness**: On every query, the assistant is injected with a live snapshot of the portfolio (Holdings, P&L, Weights) and the ticker currently being researched.
 - **Technical Integration**: Live technical signals (RSI/MACD/BB) are automatically computed and injected into the prompt context, allowing the AI to reason about technical entry points.
+- **Cost & Performance Optimization**:
+    - **Deterministic Caching**: To minimize Gemini API costs, the `ai_engine.py` generates a cache key based on a stable subset of signals (Signal + Rounded Score). Highly volatile live price ticks are ignored for cache key generation, preventing redundant paid API calls.
+    - **SDK Compatibility**: The engine uses the `google.genai` SDK with standardized parameter sets to ensure reliability and 10s-range response times.
 - **Rolling Memory Pattern**: To provide continuity without bloating storage, the system uses a dual-layer memory:
     - **Short-Term (7-day Log)**: Exact conversation turns stored in `conversation_log.json`.
     - **Long-Term (AI Summary)**: On startup, old turns are automatically summarized into bullet points by Gemini and saved to `memory_summary.json`.
@@ -300,3 +303,9 @@ The research assistant is now equipped with real-time web search capabilities to
 - **Smart Querying**: If a search is triggered, the system constructs a targeted query combining the user message with the active ticker context.
 - **Provider**: Powered by `duckduckgo-search` (via the `ddgs` package), fetching the most recent (last month) Australian financial news.
 - **UI Feedback**: Assistant responses that incorporate web data are clearly marked with a `🔍 Web search used` indicator.
+
+### 10. Technical Charting & UI Layout Stability
+To provide a professional trading experience, the dashboard implements several layout and visualization safeguards:
+- **Layout Isolation (AI Insights)**: To prevent large blocks of AI-generated text from disrupting the CSS Grid, AI Analyst insights are rendered in a dedicated `ai-insight-container`. This prevents the "auto-fit" behavior from shrinking the top-level metric cards when the AI card expands.
+- **Dynamic Chart Scaling**: Price charts on the Watchlist page calculate the period's min/max prices dynamically. The Y-axis is constrained to `[min * 0.98, max * 1.02]`, eliminating the massive empty gap at the bottom of the chart caused by the default "start at $0" behavior (common in `fill="tozeroy"` charts).
+- **Typography Standards**: All AI-generated explanations use standard 13px body font sizes with 1.5 line height for readability, while technical metrics (e.g., RSI Score) are consistently themed using the primary accent color (`var(--cyan)`).

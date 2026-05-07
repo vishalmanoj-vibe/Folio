@@ -319,13 +319,17 @@ def register_callbacks(app) -> None:
             zeroline=False,
             tickfont=dict(color=T_SEC, size=10),
         )
+        y_min = df["Close"].min()
+        y_max = df["Close"].max()
+        
         layout_args["yaxis"] = dict(
             showgrid=True,
             gridcolor=BORDER_COL,
             showline=False,
             zeroline=False,
             tickfont=dict(color=T_SEC, size=10),
-            side="right"
+            side="right",
+            range=[y_min * 0.98, y_max * 1.02]
         )
         layout_args["hovermode"] = "x unified"
         layout_args["showlegend"] = False
@@ -360,7 +364,7 @@ def register_callbacks(app) -> None:
         ]
 
     @app.callback(
-        Output("watchlist-stat-cards", "children"),
+        [Output("watchlist-stat-cards", "children"), Output("watchlist-ai-insight-container", "children")],
         Input("watchlist-selected-ticker", "data"),
         State("watchlist-store", "data"),
         Input("watchlist-signals-store", "data"),
@@ -368,14 +372,14 @@ def register_callbacks(app) -> None:
     def render_watchlist_stat_cards(selected_ticker, data, signals_store):
         from components.ui_helpers import stat_card
         if not selected_ticker or not data or "holdings" not in data:
-            return []
+            return [], None
 
         h = next(
             (x for x in data["holdings"] if x["ticker"] == selected_ticker),
             None
         )
         if not h:
-            return []
+            return [], None
 
         price      = h.get("last_price", 0)
         day_chg    = h.get("day_chg", 0)
@@ -416,6 +420,7 @@ def register_callbacks(app) -> None:
         ]
 
         # Append AI Insight card if signals exist for this ticker
+        ai_card = None
         if signals_store and "ai" in signals_store and selected_ticker in signals_store["ai"]:
             ai_data = signals_store["ai"][selected_ticker]
             raw_sig = signals_store.get("raw", {}).get(selected_ticker, {})
@@ -429,24 +434,24 @@ def register_callbacks(app) -> None:
                     "AI Analyst Insight"
                 ], className="etf-detail-label", style={"display": "flex", "alignItems": "center"}),
                 html.Div(verdict, className="etf-detail-value", style={"color": v_color, "fontSize": "16px"}),
-                html.Div(ai_data.get("explanation", ""), className="etf-detail-sub",
-                         style={"marginTop": "8px", "whiteSpace": "normal"}),
+                html.Div(ai_data.get("explanation", ""),
+                         style={"marginTop": "8px", "whiteSpace": "normal", "fontSize": "13px", "color": "var(--t-sec)", "lineHeight": "1.5"}),
             ]
             if ai_data.get("risks"):
                 ai_children.append(html.Div([
-                    html.Div(f"• {r}", style={"color": RED, "marginTop": "4px"}) for r in ai_data["risks"]
+                    html.Div(f"• {r}", style={"color": "var(--red)", "marginTop": "4px", "fontSize": "12px"}) for r in ai_data["risks"]
                 ]))
             if raw_sig:
                 ai_children.append(html.Div([
                     html.Div(f"Technical Score: {raw_sig.get('score', 0.0):.2f}",
-                             style={"marginTop": "8px", "fontWeight": "bold", "color": "var(--t-pri)"}),
+                             style={"marginTop": "8px", "fontWeight": "bold", "color": "var(--cyan)", "fontSize": "13px"}),
                     html.Div([html.Div(f"• {r}") for r in raw_sig.get("reasons", [])],
-                             style={"marginTop": "4px", "color": "var(--t-sec)"})
+                             style={"marginTop": "4px", "color": "var(--t-sec)", "fontSize": "12px"})
                 ]))
 
-            cards.append(html.Div(ai_children, className="etf-detail-card", style={"gridColumn": "1 / -1"}))
+            ai_card = html.Div(ai_children, className="etf-detail-card", style={"marginTop": "10px"})
 
-        return cards
+        return cards, ai_card
 
     @app.callback(
         Output("watchlist-notes-input", "value"),
