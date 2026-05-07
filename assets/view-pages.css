@@ -7,7 +7,7 @@
 .overview-split-row {
   display: flex;
   gap: 0;
-  padding: 14px 24px;
+  padding: 16px 24px;
   border-bottom: 0.5px solid var(--border);
   align-items: flex-start;
 }
@@ -118,7 +118,7 @@
 
 /* ── Intelligence Page ── */
 .intel-data-note {
-  padding: 5px 24px;
+  padding: 8px 24px;
   border-bottom: 0.5px solid var(--border);
   font-size: 10px;
   color: var(--t-muted);
@@ -421,4 +421,43 @@
 
 #live-table {
   transition: opacity 0.2s ease-in-out;
+}
+
+/* ── Dividend Summary Strip ── */
+.dividend-summary-strip {
+  display: flex;
+  justify-content: space-between;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 14px 24px;
+  margin-bottom: 24px;
+  gap: 20px;
+}
+
+.summary-item {
+  display: flex;
+  flex-direction: column;
+}
+
+.summary-label {
+  font-size: 9.5px;
+  color: var(--t-sec);
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  margin-bottom: 4px;
+}
+
+.summary-value {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--t-pri);
+}
+
+.summary-value.positive { color: var(--green); }
+
+/* ── Collapsible Dividends ── */
+.section[open] .txn-history-summary {
+  border-bottom: 0.5px solid var(--border);
+  background: var(--surface-2);
 }

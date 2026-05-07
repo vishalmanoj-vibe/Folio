@@ -111,18 +111,15 @@ def layout() -> html.Div:
                 ),
 
                 # ── D. Smart alerts ───────────────────────────────────────────────
-                html.Div(
-                    [
-                        chart_title(
-                            "Smart alerts",
-                            "Rule-based insights from holdings, allocation weights, and risk metrics.",
-                        ),
-                        html.Div(id="intel-alerts", style={"marginTop": "10px"}),
-                    ],
-                    style={"padding": "16px 24px"}
+                section(
+                    chart_title(
+                        "Smart alerts",
+                        "Rule-based insights from holdings, allocation weights, and risk metrics.",
+                    ),
+                    html.Div(id="intel-alerts", style={"marginTop": "10px"}),
                 ),
 
-            ], className="page-container")
+            ])
         ],
         className="page-root"
     )

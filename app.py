@@ -55,7 +55,6 @@ import callbacks.alert_callbacks          as alerts
 import callbacks.ui_callbacks             as ui
 import callbacks.intelligence_callbacks   as intell_cb
 import callbacks.positions_callbacks      as positions_cb
-import callbacks.dividend_callbacks       as dividends_cb
 import callbacks.watchlist_callbacks      as watchlist_cb
 import callbacks.research_callbacks  as research_cb
 import callbacks.signals_callbacks        as signals_cb
@@ -368,7 +367,6 @@ charts.register_callbacks(app)
 alerts.register_callbacks(app)
 ui.register_callbacks(app)
 positions_cb.register_callbacks(app)
-dividends_cb.register_callbacks(app)
 intell_cb.register_callbacks(app)
 watchlist_cb.register_callbacks(app)
 research_cb.register_callbacks(app)

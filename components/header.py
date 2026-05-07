@@ -30,7 +30,6 @@ def create_header(
                 html.A("Intelligence", href="/intelligence", className="nav-link"),
                 html.Span(id="intel-alert-count", className="nav-badge", style={"display": "none"})
             ], style={"display": "flex", "alignItems": "center", "position": "relative"}),
-            html.A("Dividends",    href="/dividends",    className="nav-link"),
             html.A("Analytics",    href="/analytics",    className="nav-link"),
             html.A("AI Analyst",   href="/ai-analyst",   className="nav-link"),
         ], className="nav-links-container")

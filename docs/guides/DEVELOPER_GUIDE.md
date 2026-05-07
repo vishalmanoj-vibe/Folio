@@ -32,6 +32,7 @@ The application follows a strictly decoupled layered architecture to ensure sepa
 1.  **Presentation (UI/Assets)**: The entry point and orchestrator. It handles the "Shell" (HTML/CSS), multi-page routing, and interactive state (`dcc.Store`). It coordinates the flow by loading raw transactions from the **Data Layer** and passing them to the **Service Layer** for enrichment.
 2.  **Service (Orchestration & Intelligence)**: Coordinates complex workflows and AI-driven insights. This layer handles external API calls (yfinance, Gemini), tiered caching, and logic-heavy services:
     - **Market Service**: Real-time pricing and metadata enrichment.
+    - **Dividend Service**: Centralized logic for realized income, trend analysis, and projected distributions.
     - **Research Service (AI)**: Contextual portfolio reasoning via Gemini 2.5 Flash Lite.
     - **Web Search Service**: Live financial news integration via DuckDuckGo.
     - **Memory Service**: Persistent state management with rolling 7-day logs and long-term summaries.
@@ -115,7 +116,8 @@ portfolio_dashboard/
 │
 ├── services/                       # Orchestration layer
 │   ├── market/                     # Network calls (yfinance)
-│   │   ├── data_fetcher.py         # Enrichment logic (Realized Dividends, Bulk Fetch)
+│   │   ├── data_fetcher.py         # Enrichment logic (Bulk Fetch)
+│   │   ├── dividend_service.py     # Realized Dividends & Trend logic
 │   │   └── market_status.py        # ASX timezone/status logic
 │   ├── alert_service.py            # Price/Target monitoring
 │   ├── intelligence_service.py     # Hierarchical risk/allocation logic
@@ -131,8 +133,7 @@ portfolio_dashboard/
 │
 ├── components/                     # UI components
 │   ├── charts/                     # go.Figure factories (Pure UI functions)
-│   │   ├── dividend.py             # Dividend bar charts
-│   │   ├── intelligence.py         # Sunburst & Risk charts
+│   │   ├── intel_helpers.py        # Sunburst & Risk charts
 │   │   └── ...
 │   ├── header.py                   # Shared navigation header
 │   └── portfolio_layout.py         # Main HTML structure
@@ -149,7 +150,7 @@ portfolio_dashboard/
 │   ├── intelligence.py             # Risk Analysis (/intelligence)
 │   ├── watchlist.py                # Future tracker (/watchlist)
 │   ├── research.py                 # AI Assistant (/research)
-│   └── etf_detail.py               # Ticker deep-dive (/etf/<ticker>)
+│   └── positions.py                # Ticker deep-dive (/positions)
 │
 └── assets/                         # Static assets (Modular CSS)
     ├── base.css                    # Resets & CSS Variables (Loads 1st)
@@ -309,3 +310,9 @@ To provide a professional trading experience, the dashboard implements several l
 - **Layout Isolation (AI Insights)**: To prevent large blocks of AI-generated text from disrupting the CSS Grid, AI Analyst insights are rendered in a dedicated `ai-insight-container`. This prevents the "auto-fit" behavior from shrinking the top-level metric cards when the AI card expands.
 - **Dynamic Chart Scaling**: Price charts on the Watchlist page calculate the period's min/max prices dynamically. The Y-axis is constrained to `[min * 0.98, max * 1.02]`, eliminating the massive empty gap at the bottom of the chart caused by the default "start at $0" behavior (common in `fill="tozeroy"` charts).
 - **Typography Standards**: All AI-generated explanations use standard 13px body font sizes with 1.5 line height for readability, while technical metrics (e.g., RSI Score) are consistently themed using the primary accent color (`var(--cyan)`).
+
+### 11. UI Layout Standardization (Grid & Sectioning)
+To eliminate visual inconsistencies and "compactness" issues, the dashboard follows a strict 24px horizontal grid.
+- **Header Standard**: `.page-header-row` is fixed at `padding: 16px 24px`.
+- **Structural Wrappers**: All major content blocks must be wrapped in the `section()` helper from `components.ui_helpers`. This enforces a `0.5px` bottom border and a uniform `16px 24px` padding.
+- **Dynamic Rendering**: To prevent "empty dashboard syndrome", pages use dynamic containers (e.g., `positions-price-chart-container`) that hide headers and empty plots until a ticker is selected, ensuring the initial state is clean and professional.

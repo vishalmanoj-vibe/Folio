@@ -8,8 +8,10 @@ logger = logging.getLogger(__name__)
 from config.constants import (
     COLORS, BORDER, GREEN, RED, T_PRI, T_SEC, BG, SURFACE, NAMES, get_theme
 )
-from components.ui_helpers import stat_card, tech_signal_badges
+from components.ui_helpers import stat_card, tech_signal_badges, progress_row, interpolate_color
 from components.charts.intel_helpers import create_empty_fig
+from services.market.dividend_service import calculate_portfolio_dividend_stats, get_ticker_dividend_data
+import pandas as pd
 
 # ── Plotly layout base ────────────────────────────────────────────────────────
 _CHART_LAYOUT = dict(
@@ -42,7 +44,7 @@ def register_callbacks(app) -> None:
         Input("positions-selected-ticker", "data"),
         Input("url", "pathname"),
         Input("signals-store", "data"),
-        prevent_initial_call=True,
+        prevent_initial_call=False,
     )
     def render_card_grid(port_data, selected_ticker, url_pathname, signals_store):
         import dash
@@ -156,23 +158,32 @@ def register_callbacks(app) -> None:
     # ── 3. Detail Panel — Metrics Cards ──────────────────────────────────────
     @app.callback(
         [Output("etf-detail-cards", "children"), 
-         Output("positions-tech-signals-container", "children"),
-         Output("ai-insight-container", "children")],
+         Output("positions-tech-signals-container", "children")],
         Input("positions-selected-ticker", "data"),
         Input("portfolio-store", "data"),
-        Input("signals-store", "data"),
-        prevent_initial_call=True,
+        prevent_initial_call=False,
     )
-    def render_detail_metrics(ticker, port_data, signals_store):
+    def render_detail_metrics(ticker, port_data):
         if not ticker or not port_data or "holdings" not in port_data:
-            return [], None, None
+            return [], None
 
         h = next((x for x in port_data["holdings"] if x["ticker"] == ticker), None)
         if not h:
-            return html.Div(f"Metrics for {ticker} are currently unavailable", className="c-muted"), None, None
+            return html.Div(f"Metrics for {ticker} are currently unavailable", className="c-muted"), None
 
         pnl = h["pnl"]; pc = GREEN if pnl >= 0 else RED
         day_pnl = h["day_pnl"]; dc = GREEN if day_pnl >= 0 else RED
+
+        # Calculate ticker-specific next payment
+        _, _, events = calculate_portfolio_dividend_stats([h])
+        today = pd.Timestamp.now().floor("D")
+        next_e = next((e for e in events if e["date"] >= today), None)
+        
+        next_div_val = "None"
+        next_div_sub = "No upcoming events"
+        if next_e:
+            next_div_val = f"${next_e['total']:,.2f}"
+            next_div_sub = f"{next_e['date'].strftime('%d %b')} ({next_e['type']})"
 
         metrics = [
             ("Total Invested", f"${h['total_cost']:,.2f}", f"{h['total_shares']:,.2f} units"),
@@ -181,6 +192,7 @@ def register_callbacks(app) -> None:
             ("Today's P&L", f"{'+$' if day_pnl >= 0 else '-$'}{abs(day_pnl):,.2f}", f"{h['day_chg_pct']:+.2f}%", dc),
             ("Avg Cost", f"${h['avg_cost']:,.4f}", "VWAP"),
             ("Div Yield", f"{h.get('div_yield', 0):.2f}%", f"Annual: ${h.get('annual_div', 0):,.2f}"),
+            ("Next Div", next_div_val, next_div_sub, GREEN if next_e else None),
         ]
 
         cards_layout = [
@@ -192,48 +204,58 @@ def register_callbacks(app) -> None:
             for label, val, sub, color in [(m[0], m[1], m[2], m[3] if len(m)>3 else None) for m in metrics]
         ]
         
-        # Add AI Insight card if available
-        ai_card = None
-        if signals_store and "ai" in signals_store and ticker in signals_store["ai"]:
-            ai_data = signals_store["ai"][ticker]
-            raw_sig = signals_store["raw"].get(ticker, {}) if "raw" in signals_store else {}
-            verdict = ai_data.get("verdict", "Mixed")
-            
-            # Map verdict to color
-            v_color = GREEN if verdict == "Confident" else (RED if verdict == "Risk flagged" else "var(--t-sec)")
-            
-            # Build children dynamically — never pass None into a children list
-            ai_children = [
-                html.Div([
-                    html.Span("🤖", style={"marginRight": "8px"}),
-                    "AI Analyst Insight"
-                ], className="etf-detail-label", style={"display": "flex", "alignItems": "center"}),
-                html.Div(verdict, className="etf-detail-value", style={"color": v_color, "fontSize": "16px"}),
-                html.Div(ai_data.get("explanation", ""), style={"marginTop": "8px", "whiteSpace": "normal", "fontSize": "13px", "color": "var(--t-sec)", "lineHeight": "1.5"}),
-            ]
-            if ai_data.get("risks"):
-                ai_children.append(html.Div([
-                    html.Div(f"• {r}", style={"color": "var(--red)", "marginTop": "4px", "fontSize": "12px"}) for r in ai_data["risks"]
-                ]))
-            if raw_sig:
-                ai_children.append(html.Div([
-                    html.Div(f"Technical Score: {raw_sig.get('score', 0.0):.2f}", style={"marginTop": "8px", "fontWeight": "bold", "color": "var(--cyan)", "fontSize": "13px"}),
-                    html.Div([html.Div(f"• {r}") for r in raw_sig.get("reasons", [])], style={"marginTop": "4px", "color": "var(--t-sec)", "fontSize": "12px"})
-                ]))
-
-            ai_card = html.Div(ai_children, className="etf-detail-card", style={"marginTop": "10px", "marginBottom": "24px", "width": "100%"})
-
         # Generate Tech Signals
         tech_signals = None
         history = port_data.get("histories", {}).get(ticker, [])
         if history:
             tech_signals = tech_signal_badges(ticker, history)
 
-        return cards_layout, tech_signals, ai_card
+        return cards_layout, tech_signals
+
+    @app.callback(
+        Output("ai-insight-container", "children"),
+        Input("positions-selected-ticker", "data"),
+        Input("signals-store", "data"),
+        prevent_initial_call=False,
+    )
+    def render_ai_insight(ticker, signals_store):
+        if not ticker or not signals_store or "ai" not in signals_store:
+            return None
+
+        if ticker not in signals_store["ai"]:
+            return None
+
+        ai_data = signals_store["ai"][ticker]
+        raw_sig = signals_store["raw"].get(ticker, {}) if "raw" in signals_store else {}
+        verdict = ai_data.get("verdict", "Mixed")
+        
+        # Map verdict to color
+        v_color = GREEN if verdict == "Confident" else (RED if verdict == "Risk flagged" else "var(--t-sec)")
+        
+        # Build children dynamically
+        ai_children = [
+            html.Div([
+                html.Span("🤖", style={"marginRight": "8px"}),
+                "AI Analyst Insight"
+            ], className="etf-detail-label", style={"display": "flex", "alignItems": "center"}),
+            html.Div(verdict, className="etf-detail-value", style={"color": v_color, "fontSize": "16px"}),
+            html.Div(ai_data.get("explanation", ""), style={"marginTop": "8px", "whiteSpace": "normal", "fontSize": "13px", "color": "var(--t-sec)", "lineHeight": "1.5"}),
+        ]
+        if ai_data.get("risks"):
+            ai_children.append(html.Div([
+                html.Div(f"• {r}", style={"color": "var(--red)", "marginTop": "4px", "fontSize": "12px"}) for r in ai_data["risks"]
+            ]))
+        if raw_sig:
+            ai_children.append(html.Div([
+                html.Div(f"Technical Score: {raw_sig.get('score', 0.0):.2f}", style={"marginTop": "8px", "fontWeight": "bold", "color": "var(--cyan)", "fontSize": "13px"}),
+                html.Div([html.Div(f"• {r}") for r in raw_sig.get("reasons", [])], style={"marginTop": "4px", "color": "var(--t-sec)", "fontSize": "12px"})
+            ]))
+
+        return html.Div(ai_children, className="etf-detail-card", style={"marginTop": "10px", "marginBottom": "24px", "width": "100%"})
 
     # ── 4. Detail Panel — Price Chart ─────────────────────────────────────────
     @app.callback(
-        Output("positions-price-chart", "figure"),
+        Output("positions-price-chart-container", "children"),
         Input("positions-selected-ticker", "data"),
         Input("positions-period-store", "data"),
         Input("portfolio-store", "data"),
@@ -242,11 +264,11 @@ def register_callbacks(app) -> None:
     def render_price_chart(ticker, period, port_data, theme):
         t_ = get_theme(theme or "dark")
         if not ticker: 
-            return create_empty_fig("Select a position to view history", height=350, theme_tokens=t_)
+            return None
 
         holding = next((h for h in port_data.get("holdings", []) if h["ticker"] == ticker), None)
         if not holding: 
-            return create_empty_fig(f"No data for {ticker}", height=350, theme_tokens=t_)
+            return None
 
         fig = go.Figure()
         fig.update_layout(
@@ -259,10 +281,7 @@ def register_callbacks(app) -> None:
             # FIX: use pre-fetched histories from portfolio-store
             history_records = port_data.get("histories", {}).get(ticker, [])
             if not history_records:
-                return create_empty_fig(
-                    f"No price history for {ticker}", 
-                    height=350, theme_tokens=t_
-                )
+                return html.Div(f"No price history for {ticker}", className="c-muted", style={"padding": "40px", "textAlign": "center"})
             
             import pandas as pd
             df = pd.DataFrame(history_records)
@@ -318,18 +337,28 @@ def register_callbacks(app) -> None:
                                   showarrow=False, font=dict(size=14, color="var(--t-sec)"))
         except Exception as e:
             logger.error(f"Failed to fetch history for {ticker}: {e}")
-            fig.add_annotation(text="Error loading chart data", showarrow=False)
-        return fig
+            return html.Div("Error loading chart data", className="c-neg", style={"padding": "20px"})
+
+        from components.ui_helpers import chart_title
+        return html.Div([
+            html.Div([
+                chart_title("Price history", "positions-price"),
+                html.Div(id="positions-period-btns", className="flex-row-gap", style={"marginLeft": "auto"})
+            ], className="flex-row flex-center", style={"marginBottom": "12px"}),
+            dcc.Graph(id="positions-price-chart", figure=fig, config={"displayModeBar": False}),
+        ], style={"marginTop": "24px"})
 
     # ── 5. Detail Panel — Transaction Table ──────────────────────────────────
     @app.callback(
-        Output("positions-txn-table", "children"),
+        Output("positions-txn-table-container", "children"),
         Input("positions-selected-ticker", "data"),
         Input("txn-store", "data"),
     )
     def render_txn_table(ticker, history):
-        if not ticker or not history: return "No data"
+        if not ticker or not history: return None
         txns = sorted([t for t in history if t["ticker"].upper() == ticker], key=lambda x: x["date"], reverse=True)
+        if not txns:
+            return None
         
         rows = []
         for t in txns:
@@ -342,10 +371,14 @@ def register_callbacks(app) -> None:
                 html.Td(f"${(float(t['shares']) * float(t['price'])):,.2f}", style=_TD),
             ]))
 
-        return html.Table([
-            html.Thead(html.Tr([html.Th(c, style=_TH) for c in ["Date", "Type", "Shares", "Price", "Total"]])),
-            html.Tbody(rows)
-        ], style={"width": "100%", "borderCollapse": "collapse"})
+        from components.ui_helpers import chart_title
+        return html.Div([
+            chart_title("Transaction history", "positions-txns"),
+            html.Table([
+                html.Thead(html.Tr([html.Th(c, style=_TH) for c in ["Date", "Type", "Shares", "Price", "Total"]])),
+                html.Tbody(rows)
+            ], className="overflow-table", style={"width": "100%", "borderCollapse": "collapse", "marginTop": "10px"})
+        ], style={"marginTop": "24px"})
 
     # ── 6. Period Selection Buttons ──────────────────────────────────────────
     @app.callback(
@@ -386,4 +419,127 @@ def register_callbacks(app) -> None:
         if not ticker:
             return "Select a position to view details"
         return f"Details for {ticker}"
+
+    # ── 9. Ticker-Specific Dividend Details ───────────────────────────────────
+    @app.callback(
+        Output("positions-ticker-dividend-container", "children"),
+        Input("positions-selected-ticker", "data"),
+        Input("portfolio-store", "data"),
+        prevent_initial_call=True
+    )
+    def render_ticker_dividends(ticker, port_data):
+        if not ticker or not port_data or "holdings" not in port_data:
+            return None
+            
+        h = next((x for x in port_data["holdings"] if x["ticker"] == ticker), None)
+        if not h: return None
+        
+        df = get_ticker_dividend_data(ticker, h["ticker_yf"])
+        if df.empty:
+            return html.Div("No dividend history found for this position.", className="c-muted", style={"fontSize": "13px", "padding": "20px", "border": "0.5px dashed var(--border)", "borderRadius": "8px", "textAlign": "center"})
+            
+        # 1. Mini Bar Chart (Trend)
+        plot_df = df.head(8).iloc[::-1] # Last 8, chronological
+        
+        fig = go.Figure()
+        fig.add_trace(go.Bar(
+            x=plot_df["date"],
+            y=plot_df["amount"],
+            marker_color=GREEN,
+            name="Distribution",
+            hovertemplate="$%{y:.4f}<extra></extra>"
+        ))
+        fig.update_layout(
+            height=140,
+            margin=dict(l=0, r=0, t=20, b=0),
+            xaxis=dict(visible=True, showgrid=False, tickformat="%b %y", tickfont=dict(size=9, color=T_SEC)),
+            yaxis=dict(visible=False),
+            paper_bgcolor="rgba(0,0,0,0)",
+            plot_bgcolor="rgba(0,0,0,0)",
+        )
+        
+        # 2. Last 5 Payments Table
+        rows = []
+        for _, row in df.head(5).iterrows():
+            rows.append(html.Tr([
+                html.Td(row["date"].strftime("%d %b %Y"), style=_TD),
+                html.Td(row["pay_date"] if row["pay_date"] else "—", style={**_TD, "color": T_SEC}),
+                html.Td(f"${row['amount']:.4f}", style={**_TD, "fontWeight": "600", "color": GREEN}),
+            ]))
+            
+        table = html.Table([
+            html.Thead(html.Tr([html.Th(c, style=_TH) for c in ["Ex-Date", "Pay-Date", "Amount"]])),
+            html.Tbody(rows)
+        ], style={"width": "100%", "borderCollapse": "collapse"})
+        
+        from components.ui_helpers import chart_title
+        return html.Div([
+            chart_title(f"Dividend trend & history"),
+            html.Div([
+                html.Div([
+                    dcc.Graph(figure=fig, config={"displayModeBar": False})
+                ], style={"flex": "1", "minWidth": "200px"}),
+                html.Div([
+                    table
+                ], style={"flex": "1.2", "minWidth": "250px"}),
+            ], style={"display": "flex", "flexWrap": "wrap", "gap": "24px", "marginTop": "12px"})
+        ], style={"padding": "16px", "backgroundColor": "var(--surface-2)", "borderRadius": "8px", "border": "1px solid var(--border)"})
+
+    # ── 10. Portfolio Dividend Insights ───────────────────────────────────────
+    @app.callback(
+        [Output("positions-dividend-income-chart", "children"),
+         Output("positions-dividend-yield-chart", "children"),
+         Output("positions-dividend-table", "children")],
+        Input("portfolio-store", "data"),
+        prevent_initial_call=False
+    )
+    def render_portfolio_dividend_insights(port_data):
+        if not port_data or "holdings" not in port_data:
+            return [None]*3
+            
+        holdings = port_data["holdings"]
+        df_full, stats, _ = calculate_portfolio_dividend_stats(holdings)
+        
+        # 1. Comparison Charts (Progress Rows)
+        C_START = "#1D9E75" 
+        C_END   = "#EF9F27" 
+
+        income_data = sorted([{"ticker": h["ticker"], "val": h.get("annual_div", 0)} for h in holdings], key=lambda x: x["val"], reverse=True)
+        income_data = [x for x in income_data if x["val"] > 0]
+        max_income = max([x["val"] for x in income_data]) if income_data else 0
+        n_income = len(income_data)
+        income_rows = [
+            progress_row(x["ticker"], x["val"], max_income, prefix="$", color=interpolate_color(C_START, C_END, i / (n_income - 1)) if n_income > 1 else C_START)
+            for i, x in enumerate(income_data)
+        ]
+
+        yield_data = sorted([{"ticker": h["ticker"], "val": h.get("div_yield", 0)} for h in holdings], key=lambda x: x["val"], reverse=True)
+        yield_data = [x for x in yield_data if x["val"] > 0]
+        max_yield = max([x["val"] for x in yield_data]) if yield_data else 0
+        n_yield = len(yield_data)
+        yield_rows = [
+            progress_row(x["ticker"], x["val"], max_yield, suffix="%", color=interpolate_color(C_START, C_END, i / (n_yield - 1)) if n_yield > 1 else C_START)
+            for i, x in enumerate(yield_data)
+        ]
+
+        # 2. Recent Distributions Table (Max 20)
+        if df_full.empty:
+            table = html.Div("No dividend history found.", className="c-muted", style={"padding": "40px", "textAlign": "center"})
+        else:
+            rows = []
+            for _, row in df_full.head(20).iterrows():
+                rows.append(html.Tr([
+                    html.Td(row["date"].strftime("%Y-%m-%d"), style=_TD),
+                    html.Td(row["pay_date"] if row["pay_date"] else "—", style={**_TD, "color": T_SEC}),
+                    html.Td(row["ticker"], style={**_TD, "fontWeight": "600"}),
+                    html.Td(f"${row['amount']:.4f}", style=_TD),
+                    html.Td(f"{row['shares']:g}", style=_TD),
+                    html.Td(f"${row['total']:,.2f}", style={**_TD, "color": GREEN, "fontWeight": "600"}),
+                ]))
+            table = html.Table([
+                html.Thead(html.Tr([html.Th(c, style=_TH) for c in ["Ex-Date", "Pay-Date", "Ticker", "Per Share", "Shares Held", "Total Amount"]])),
+                html.Tbody(rows)
+            ], style={"width": "100%", "borderCollapse": "collapse"})
+            
+        return income_rows, yield_rows, table
 

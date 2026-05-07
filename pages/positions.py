@@ -52,32 +52,51 @@ def layout() -> html.Div:
                 section(None, html.Div(id="positions-card-grid", className="holding-card-grid")),
 
                 # ── ETF Detail Panel ────────────────────────────────────────────
-                # FIX: wrap chart_title() in an id'd container so the callback can target positions-detail-title
+                # The section remains visible, but children are populated by callbacks.
+                # Titles are moved into children to prevent empty headers on load.
                 section(
-                    html.Div(chart_title("Select a position to view details", "positions-detail"), id="positions-detail-title"),
+                    html.Div(id="positions-detail-title"),
                     html.Div([
                         html.Div(id="etf-detail-cards", className="etf-detail-grid"),
                         html.Div(id="positions-tech-signals-container"),
                         html.Div(id="ai-insight-container"),
                         
-                        # Price Chart Section
-                        html.Div([
-                            html.Div([
-                                chart_title("Price history", "positions-price"),
-                                html.Div(id="positions-period-btns", className="flex-row-gap", style={"marginLeft": "auto"})
-                            ], className="flex-row flex-center", style={"marginBottom": "12px"}),
-                            dcc.Graph(id="positions-price-chart", config={"displayModeBar": False}),
-                        ]),
+                        # Price Chart Section (Dynamic)
+                        html.Div(id="positions-price-chart-container"),
 
-                        # Transaction Table
-                        html.Div([
-                            chart_title("Transaction history", "positions-txns"),
-                            html.Div(id="positions-txn-table", className="overflow-table", style={"marginTop": "10px"}),
-                        ], style={"marginTop": "24px"}),
+                        # Ticker-Specific Dividend History (Dynamic)
+                        html.Div(id="positions-ticker-dividend-container"),
+
+                        # Transaction Table (Dynamic)
+                        html.Div(id="positions-txn-table-container"),
 
                     ], id="etf-detail-panel")
                 ),
-            ], className="page-container")
+
+                # ── Portfolio Dividend Insights (Global) ─────────────────────────
+                section(
+                    None,
+                    html.Details([
+                        html.Summary("Portfolio Dividend Insights", className="txn-history-summary"),
+                        html.Div([
+                            html.Div([
+                                html.Div([
+                                    chart_title("Annual estimated income"),
+                                    html.Div(id="positions-dividend-income-chart", className="dividend-progress-container"),
+                                ], className="grid-item-1"),
+                                html.Div([
+                                    chart_title("Yield comparison (%)"),
+                                    html.Div(id="positions-dividend-yield-chart", className="dividend-progress-container"),
+                                ], className="grid-item-1"),
+                            ], className="charts-grid-row", style={"marginTop": "20px"}),
+                            html.Div([
+                                chart_title("Recent global distributions"),
+                                html.Div(id="positions-dividend-table", className="overflow-table", style={"marginTop": "10px"}),
+                            ], style={"marginTop": "24px"}),
+                        ], id="positions-dividend-insights-container")
+                    ], id="positions-dividend-details")
+                ),
+            ])
         ],
         className="page-root"
     )
