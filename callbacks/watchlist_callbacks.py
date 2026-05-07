@@ -9,6 +9,7 @@ from config.constants import GREEN, RED
 
 import pandas as pd
 logger = logging.getLogger(__name__)
+from components.ui_helpers import tech_signal_badges
 repo = WatchlistRepository()
 
 def register_callbacks(app) -> None:
@@ -364,7 +365,9 @@ def register_callbacks(app) -> None:
         ]
 
     @app.callback(
-        [Output("watchlist-stat-cards", "children"), Output("watchlist-ai-insight-container", "children")],
+        [Output("watchlist-stat-cards", "children"), 
+         Output("watchlist-tech-signals-container", "children"),
+         Output("watchlist-ai-insight-container", "children")],
         Input("watchlist-selected-ticker", "data"),
         State("watchlist-store", "data"),
         Input("watchlist-signals-store", "data"),
@@ -372,14 +375,14 @@ def register_callbacks(app) -> None:
     def render_watchlist_stat_cards(selected_ticker, data, signals_store):
         from components.ui_helpers import stat_card
         if not selected_ticker or not data or "holdings" not in data:
-            return [], None
+            return [], None, None
 
         h = next(
             (x for x in data["holdings"] if x["ticker"] == selected_ticker),
             None
         )
         if not h:
-            return [], None
+            return [], None, None
 
         price      = h.get("last_price", 0)
         day_chg    = h.get("day_chg", 0)
@@ -449,9 +452,15 @@ def register_callbacks(app) -> None:
                              style={"marginTop": "4px", "color": "var(--t-sec)", "fontSize": "12px"})
                 ]))
 
-            ai_card = html.Div(ai_children, className="etf-detail-card", style={"marginTop": "10px"})
+            ai_card = html.Div(ai_children, className="etf-detail-card", style={"marginTop": "10px", "marginBottom": "24px", "width": "100%"})
 
-        return cards, ai_card
+        # Generate Tech Signals
+        tech_signals = None
+        history = data.get("histories", {}).get(selected_ticker, [])
+        if history:
+            tech_signals = tech_signal_badges(selected_ticker, history)
+
+        return cards, tech_signals, ai_card
 
     @app.callback(
         Output("watchlist-notes-input", "value"),

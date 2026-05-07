@@ -179,3 +179,46 @@ def progress_row(ticker: str, value: float, max_val: float, prefix: str = "", su
         ),
         html.Div(f"{prefix}{value:{fmt}}{suffix}", className="progress-value"),
     ], className="progress-row")
+
+def tech_signal_badges(ticker: str, history: list[dict]) -> html.Div:
+    """Renders a row of technical signal badges for a given ticker."""
+    from services.technical_indicators import compute_signals
+    
+    if not history:
+        return html.Div("Insufficient history for technicals.", style={"color": "var(--t-sec)", "fontSize": "12px", "padding": "8px 0"})
+        
+    sig = compute_signals(ticker, history)
+    if "error" in sig:
+        return html.Div("Error computing technicals.", style={"color": "var(--t-sec)", "fontSize": "12px", "padding": "8px 0"})
+        
+    # Styling for badges
+    rsi_color = (
+        "var(--green)" if sig["rsi_label"] == "Oversold"
+        else "var(--red)" if sig["rsi_label"] == "Overbought"
+        else "var(--t-sec)"
+    )
+    macd_color = (
+        "var(--green)" if sig["macd_label"] == "Bullish"
+        else "var(--red)" if sig["macd_label"] == "Bearish"
+        else "var(--t-sec)"
+    )
+    bb_color = "var(--t-sec)"
+    
+    def badge(label, value, color):
+        return html.Div([
+            html.Span(f"{label}: ", style={"color": "var(--t-sec)", "fontWeight": "normal"}),
+            html.Span(value, style={"color": color, "fontWeight": "bold"})
+        ], style={
+            "display": "inline-block", 
+            "padding": "4px 8px", 
+            "borderRadius": "4px", 
+            "border": f"0.5px solid {color}",
+            "backgroundColor": "var(--surface-2)",
+            "fontSize": "11px"
+        })
+        
+    return html.Div([
+        badge("RSI", f"{sig['rsi']:.1f} ({sig['rsi_label']})", rsi_color),
+        badge("MACD", sig["macd_label"], macd_color),
+        badge("BB", sig["bb_label"], bb_color),
+    ], style={"display": "flex", "flexWrap": "wrap", "gap": "8px", "margin": "12px 0"})

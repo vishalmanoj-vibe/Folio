@@ -112,7 +112,7 @@ def layout():
                                 html.Div([
                                     chart_title("Volatility by ETF", "vol-desc"),
                                     dcc.Loading(
-                                        dcc.Graph(id="analytics-vol-chart", config={"displayModeBar": False}),
+                                        html.Div(id="analytics-vol-chart", className="dividend-progress-container"),
                                         type="circle", color=COLORS[2]
                                     )
                                 ], className="grid-item-1"),

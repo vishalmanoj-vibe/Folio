@@ -3,19 +3,19 @@ from dash import html, dcc
 import dash_mantine_components as dmc
 from components.ui_helpers import section, chart_title
 
-dash.register_page(__name__, path="/research", title="Research")
+dash.register_page(__name__, path="/ai-analyst", title="AI Analyst")
 
 def layout():
     return html.Div([
         # 1. Page header row
         html.Div([
-            html.H1("Research Assistant", className="header-title"),
-            html.P("AI-powered portfolio analysis · Not financial advice", className="header-subtitle"),
+            html.H1("AI Analyst", className="header-title"),
+            html.P("AI-powered portfolio research & weekly reports · Not financial advice", className="header-subtitle"),
         ], className="page-header-row"),
-        
+
         # 2. Research layout
         html.Div([
-            
+
             # LEFT PANEL
             html.Div([
                 html.P("Your Portfolio", className="research-context-heading"),
@@ -35,7 +35,7 @@ def layout():
                     className="research-disclaimer"
                 )
             ], className="research-context-panel"),
-            
+
             # RIGHT PANEL
             html.Div([
                 html.Div(id="research-chat-display", className="research-chat-display"),
@@ -60,6 +60,8 @@ def layout():
                     html.Button("What are the risks?", id="qp-2", className="quick-prompt-chip btn-sm", n_clicks=0),
                     html.Button("Compare to what I own", id="qp-3", className="quick-prompt-chip btn-sm", n_clicks=0),
                     html.Button("What am I missing?", id="qp-4", className="quick-prompt-chip btn-sm", n_clicks=0),
+                    html.Button("Generate Weekly Report", id="qp-report", className="quick-prompt-chip btn-sm", n_clicks=0,
+                                style={"borderColor": "var(--cyan)", "color": "var(--cyan)"}),
                 ], className="quick-prompt-chips"),
 
                 html.Div([
@@ -84,10 +86,14 @@ def layout():
                             )
                         ]
                     )
-                ], className="research-input-row")
+                ], className="research-input-row"),
+
+                # Hidden report infrastructure (no visible UI)
+                dcc.Download(id="report-download"),
+                dcc.Store(id="report-cache-store", storage_type="session"),
 
             ], className="research-chat-panel")
-            
+
         ], className="research-layout")
-        
+
     ], className="page-root")

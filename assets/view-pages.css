@@ -100,14 +100,16 @@
 
 .etf-detail-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
   gap: 8px;
   margin-bottom: 14px;
 }
 
 .etf-detail-card {
-  background: var(--surface-3);
-  border-radius: 7px;
+  background: var(--surface-2);
+  border: 0.5px solid var(--border);
+  border-left: 2px solid var(--cyan);
+  border-radius: 0 10px 10px 0;
   padding: 9px 12px;
 }
 .etf-detail-label { font-size: 9.5px; color: var(--t-sec); margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.4px; }

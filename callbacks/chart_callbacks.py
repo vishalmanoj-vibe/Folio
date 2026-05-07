@@ -11,15 +11,14 @@ from dash import Input, Output, State, ALL, html
 import dash_mantine_components as dmc
 
 from config.constants import COLORS, get_theme
-from components.ui_helpers import chart_skeleton
 from components.charts import (
     build_pnl_history_figure,
     build_price_chart_figure,
     build_corr_figure,
     build_portfolio_treemap,
     build_performance_lollipops,
-    build_intel_volatility_chart,
 )
+from components.ui_helpers import chart_skeleton, progress_row, interpolate_color
 from components.charts.intel_helpers import create_empty_fig
 from services.intelligence_service import (
     compute_risk_metrics,
@@ -120,21 +119,59 @@ def register_callbacks(app) -> None:
 
     # ── Analytics Risk ────────────────────────────────────────────────────────
     @app.callback(
-        Output("analytics-vol-chart",    "figure"),
+        Output("analytics-vol-chart",    "children"),
         Input("portfolio-store",         "data"),
         Input("theme-store",             "data"),
         # FIX: change to State to prevent double-rendering
         State("analytics-period-store", "data"),
     )
     def update_analytics_volatility(data, theme, period):
-        t_ = get_theme(theme or "dark")
-        period = period or "max"
         if not data or "holdings" not in data or not data["holdings"]:
-            from components.charts.intel_helpers import create_empty_fig, _BAR_MIN_H
-            return create_empty_fig(height=_BAR_MIN_H, bar=True, theme_tokens=t_)
+            return html.P("No holdings data available", style={"color": "var(--t-sec)", "fontSize": "13px"})
 
         metrics = compute_risk_metrics(data, period=(period or "max"))
-        return build_intel_volatility_chart(metrics.get("ticker_vols", {}), t_)
+        ticker_vols = metrics.get("ticker_vols", {})
+        
+        if not ticker_vols:
+            return html.P("Insufficient data for this period", style={"color": "var(--t-sec)", "fontSize": "13px"})
+
+        # Sort descending (Highest volatility first)
+        tv = sorted(
+            [(t, v) for t, v in ticker_vols.items() if v is not None],
+            key=lambda x: x[1],
+            reverse=True
+        )
+        
+        if not tv:
+            return html.P("No volatility metrics available", style={"color": "var(--t-sec)", "fontSize": "13px"})
+
+        max_vol = max([v for _, v in tv]) if tv else 0
+        n_vols = len(tv)
+        
+        # Red (High) -> Yellow (Mid) -> Green (Low)
+        C_RED    = "#E24B4A"
+        C_YELLOW = "#EF9F27"
+        C_GREEN  = "#1D9E75"
+
+        rows = []
+        for i, (ticker, val) in enumerate(tv):
+            if n_vols > 1:
+                fraction = i / (n_vols - 1)
+                if fraction < 0.5:
+                    # Interpolate Red to Yellow (0.0 to 0.5)
+                    local_frac = fraction / 0.5
+                    color = interpolate_color(C_RED, C_YELLOW, local_frac)
+                else:
+                    # Interpolate Yellow to Green (0.5 to 1.0)
+                    local_frac = (fraction - 0.5) / 0.5
+                    color = interpolate_color(C_YELLOW, C_GREEN, local_frac)
+            else:
+                color = C_RED
+
+            rows.append(
+                progress_row(ticker, val, max_vol, suffix="%", color=color)
+            )
+        return rows
 
     # ── Correlation heatmap ───────────────────────────────────────────────────
     @app.callback(

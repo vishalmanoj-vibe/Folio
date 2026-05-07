@@ -17,9 +17,6 @@ from services.intelligence_service import (
     portfolio_returns,
 )
 from services.prediction_service import get_forecast
-from services.technical_indicators import (
-    compute_signals
-)
 
 from components.charts.intel_helpers import create_empty_fig, _BAR_MIN_H
 from components.charts.intel_equity import build_intel_equity_chart
@@ -36,7 +33,6 @@ def register_callbacks(app) -> None:
         Output("intel-drawdown-chart", "figure"),
         Output("intel-alerts",         "children"),
         Output("intel-data-note",      "children"),
-        Output("intel-signals-table",  "children"),
         Input("portfolio-store",       "data"),
         Input("intel-period-store",    "data"),
         Input("theme-store",           "data"),
@@ -49,7 +45,7 @@ def register_callbacks(app) -> None:
     def update_intelligence(port_data, period_st, theme, pred_st, url_pathname, pred_ui, period_ui):
         import dash
         # FIX: prevent background recalculation when not on Intelligence page
-        if url_pathname != "/intelligence": return tuple([dash.no_update] * 6)
+        if url_pathname != "/intelligence": return tuple([dash.no_update] * 5)
         t_ = get_theme(theme or "dark")
         period = period_st or period_ui or "3mo"
         
@@ -67,7 +63,6 @@ def register_callbacks(app) -> None:
                 "detail": "Portfolio data is loading — please wait.",
             })],
             "Waiting for portfolio data…",
-            html.P("No signal data available."),
         )
 
         try:
@@ -205,101 +200,18 @@ def register_callbacks(app) -> None:
             alert_cards = [alert_card(a)
                            for a in compute_smart_alerts(metrics, port_data)]
 
-            # Compute technical signals for all holdings
-            histories = port_data.get("histories", {})
-            signals_rows = []
-            for h in holdings:
-                ticker = h["ticker"]
-                history = histories.get(ticker, [])
-                sig = compute_signals(ticker, history)
-                
-                if "error" in sig:
-                    continue
-                
-                rsi_color = (
-                    "var(--green)" if sig["rsi_label"] == "Oversold"
-                    else "var(--red)" if sig["rsi_label"] == "Overbought"
-                    else "var(--t-sec)"
-                )
-                macd_color = (
-                    "var(--green)" if sig["macd_label"] == "Bullish"
-                    else "var(--red)"
-                )
-                
-                signals_rows.append(html.Tr([
-                    html.Td(
-                        ticker,
-                        style={"fontWeight": "600",
-                               "color": "var(--cyan)",
-                               "fontSize": "12px",
-                               "padding": "8px 12px"}
-                    ),
-                    html.Td(
-                        f"{sig['rsi']:.1f}",
-                        style={"color": rsi_color,
-                               "fontWeight": "500",
-                               "fontSize": "12px",
-                               "padding": "8px 12px"}
-                    ),
-                    html.Td(
-                        sig["rsi_label"],
-                        style={"color": rsi_color,
-                               "fontSize": "11px",
-                               "padding": "8px 12px"}
-                    ),
-                    html.Td(
-                        sig["macd_label"],
-                        style={"color": macd_color,
-                               "fontWeight": "500",
-                               "fontSize": "12px",
-                               "padding": "8px 12px"}
-                    ),
-                    html.Td(
-                        sig["bb_label"],
-                        style={"color": "var(--t-sec)",
-                               "fontSize": "11px",
-                               "padding": "8px 12px"}
-                    ),
-                ]))
-            
-            if signals_rows:
-                signals_table = html.Div([
-                    html.Table([
-                        html.Thead(html.Tr([
-                            html.Th("Ticker", style={"padding": "8px 12px", "fontSize": "10px", "color": "var(--t-sec)", "fontWeight": "600", "textTransform": "uppercase", "letterSpacing": "0.5px", "borderBottom": "0.5px solid var(--border)"}),
-                            html.Th("RSI", style={"padding": "8px 12px", "fontSize": "10px", "color": "var(--t-sec)", "fontWeight": "600", "textTransform": "uppercase", "letterSpacing": "0.5px", "borderBottom": "0.5px solid var(--border)"}),
-                            html.Th("Signal", style={"padding": "8px 12px", "fontSize": "10px", "color": "var(--t-sec)", "fontWeight": "600", "textTransform": "uppercase", "letterSpacing": "0.5px", "borderBottom": "0.5px solid var(--border)"}),
-                            html.Th("MACD", style={"padding": "8px 12px", "fontSize": "10px", "color": "var(--t-sec)", "fontWeight": "600", "textTransform": "uppercase", "letterSpacing": "0.5px", "borderBottom": "0.5px solid var(--border)"}),
-                            html.Th("Bollinger", style={"padding": "8px 12px", "fontSize": "10px", "color": "var(--t-sec)", "fontWeight": "600", "textTransform": "uppercase", "letterSpacing": "0.5px", "borderBottom": "0.5px solid var(--border)"}),
-                        ])),
-                        html.Tbody(signals_rows),
-                    ], style={"width": "100%", 
-                              "borderCollapse": "collapse"}),
-                ], style={"overflowX": "auto",
-                          "borderRadius": "8px",
-                          "border": "0.5px solid var(--border)"})
-            else:
-                signals_table = html.P(
-                    "Insufficient price history for signals.",
-                    style={"color": "var(--t-sec)", 
-                           "fontSize": "12px",
-                           "padding": "12px"}
-                )
-
             # ── 5. Final Output ───────────────────────────────────────────────────
-            # Return signature must match the 6 Outputs defined in the callback:
+            # Return signature must match the 5 Outputs defined in the callback:
             # 1. intel-risk-cards
             # 2. intel-equity-chart
             # 3. intel-drawdown-chart
             # 4. intel-alerts
             # 5. intel-data-note
-            # 6. intel-signals-table
             return (
                 risk_cards,
                 eq_fig, dd_fig,
                 alert_cards,
-                data_note,
-                signals_table
+                data_note
             )
         except Exception:
             logger.exception("Failed to update intelligence page")

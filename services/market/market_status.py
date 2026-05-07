@@ -15,19 +15,22 @@ from config.constants import SURFACE, BORDER, GREEN, T_SEC
 def is_market_open() -> bool:
     """
     Check if market is open based on configured timezone, weekdays, and hours.
-    
-    Configuration can be overridden via environment variables:
-      - MARKET_TIMEZONE: Default "Australia/Sydney"
-      - Market hours: Monday-Friday, 10:00-16:00 (configurable)
+    Now includes a 15-minute buffer for the closing auction.
     """
-    now_utc = datetime.now(pytz.utc)
-    now_market = now_utc.astimezone(pytz.timezone(MARKET_TIMEZONE))
+    import pandas as pd
+    try:
+        now_market = pd.Timestamp.now(tz=MARKET_TIMEZONE)
+    except:
+        return True
     
-    is_weekday = now_market.weekday() in MARKET_WEEKDAYS
-    hour_start, hour_end = MARKET_HOURS
-    is_trading_hours = hour_start <= now_market.hour < hour_end
+    if now_market.weekday() not in MARKET_WEEKDAYS:
+        return False
     
-    return is_weekday and is_trading_hours
+    current_time = now_market.time()
+    start_time = pd.Timestamp("10:00:00").time()
+    end_time   = pd.Timestamp("16:15:00").time()
+    
+    return start_time <= current_time <= end_time
 
 
 def market_badge() -> html.Span:

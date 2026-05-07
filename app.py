@@ -45,6 +45,7 @@ from data.repository import PortfolioRepository
 from core.validators import validate_transaction
 from config.settings import REFRESH_INTERVAL
 from data.watchlist_repository import WatchlistRepository
+from services.market.market_status import is_market_open
 
 # Callback modules
 import callbacks.portfolio_callbacks      as portfolio
@@ -57,7 +58,6 @@ import callbacks.positions_callbacks      as positions_cb
 import callbacks.dividend_callbacks       as dividends_cb
 import callbacks.watchlist_callbacks      as watchlist_cb
 import callbacks.research_callbacks  as research_cb
-import callbacks.report_callbacks as report_cb
 import callbacks.signals_callbacks        as signals_cb
 
 # ── Initial data load ─────────────────────────────────────────────────────────
@@ -274,6 +274,10 @@ def update_txn_store(n1, n2, n_submit, t_type, ticker, shares, price, date_str, 
 )
 def update_portfolio_store(txn_data, p1, p2, p3, p4, n1, n2):
     """Only place where portfolio-store is updated. Reacts to data or timeframe changes."""
+    # Skip live fetch if market is closed and it's a background interval update
+    if ctx.triggered_id == "live-interval" and not is_market_open():
+        return dash.no_update
+
     try:
         # Determine the maximum period requested across all pages to ensure history is available
         # Order of preference: 'max' > '1y' > 'ytd' > '3mo' > '1mo' > '1d'
@@ -368,7 +372,6 @@ dividends_cb.register_callbacks(app)
 intell_cb.register_callbacks(app)
 watchlist_cb.register_callbacks(app)
 research_cb.register_callbacks(app)
-report_cb.register_callbacks(app)
 signals_cb.register_callbacks(app)
 
 
@@ -425,10 +428,11 @@ if __name__ == "__main__":
     from config.settings import CSV_PATH
     print(f"  Main (Overview): http://127.0.0.1:8050/")
     print(f"  Positions:       http://127.0.0.1:8050/positions")
-    print(f"  Analytics:       http://127.0.0.1:8050/analytics")
+    print(f"  Watchlist:       http://127.0.0.1:8050/watchlist")
     print(f"  Intelligence:    http://127.0.0.1:8050/intelligence")
     print(f"  Dividends:       http://127.0.0.1:8050/dividends")
-    print(f"  Watchlist:       http://127.0.0.1:8050/watchlist\n")
+    print(f"  Analytics:       http://127.0.0.1:8050/analytics")
+    print(f"  AI Analyst:      http://127.0.0.1:8050/ai-analyst\n")
 
     # Register signals
     signal.signal(signal.SIGINT, handle_exit)
@@ -442,10 +446,10 @@ if __name__ == "__main__":
         """
         while True:
             try:
-                # We don't care about the UI period here; 
-                # we just want fetch_live to run and record_snapshot to trigger.
-                _perform_refresh("1d")
-                logger.debug("Background snapshot recorded.")
+                # Only record snapshots if market is open
+                if is_market_open():
+                    _perform_refresh("1d")
+                    logger.debug("Background snapshot recorded.")
             except Exception as e:
                 logger.error(f"Background refresh failed: {e}")
             time.sleep(60)

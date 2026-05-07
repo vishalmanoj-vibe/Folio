@@ -8,7 +8,7 @@ logger = logging.getLogger(__name__)
 from config.constants import (
     COLORS, BORDER, GREEN, RED, T_PRI, T_SEC, BG, SURFACE, NAMES, get_theme
 )
-from components.ui_helpers import stat_card
+from components.ui_helpers import stat_card, tech_signal_badges
 from components.charts.intel_helpers import create_empty_fig
 
 # ── Plotly layout base ────────────────────────────────────────────────────────
@@ -155,7 +155,9 @@ def register_callbacks(app) -> None:
 
     # ── 3. Detail Panel — Metrics Cards ──────────────────────────────────────
     @app.callback(
-        [Output("etf-detail-cards", "children"), Output("ai-insight-container", "children")],
+        [Output("etf-detail-cards", "children"), 
+         Output("positions-tech-signals-container", "children"),
+         Output("ai-insight-container", "children")],
         Input("positions-selected-ticker", "data"),
         Input("portfolio-store", "data"),
         Input("signals-store", "data"),
@@ -163,11 +165,11 @@ def register_callbacks(app) -> None:
     )
     def render_detail_metrics(ticker, port_data, signals_store):
         if not ticker or not port_data or "holdings" not in port_data:
-            return [], None
+            return [], None, None
 
         h = next((x for x in port_data["holdings"] if x["ticker"] == ticker), None)
         if not h:
-            return html.Div(f"Metrics for {ticker} are currently unavailable", className="c-muted"), None
+            return html.Div(f"Metrics for {ticker} are currently unavailable", className="c-muted"), None, None
 
         pnl = h["pnl"]; pc = GREEN if pnl >= 0 else RED
         day_pnl = h["day_pnl"]; dc = GREEN if day_pnl >= 0 else RED
@@ -219,9 +221,15 @@ def register_callbacks(app) -> None:
                     html.Div([html.Div(f"• {r}") for r in raw_sig.get("reasons", [])], style={"marginTop": "4px", "color": "var(--t-sec)", "fontSize": "12px"})
                 ]))
 
-            ai_card = html.Div(ai_children, className="etf-detail-card", style={"marginTop": "10px"})
+            ai_card = html.Div(ai_children, className="etf-detail-card", style={"marginTop": "10px", "marginBottom": "24px", "width": "100%"})
 
-        return cards_layout, ai_card
+        # Generate Tech Signals
+        tech_signals = None
+        history = port_data.get("histories", {}).get(ticker, [])
+        if history:
+            tech_signals = tech_signal_badges(ticker, history)
+
+        return cards_layout, tech_signals, ai_card
 
     # ── 4. Detail Panel — Price Chart ─────────────────────────────────────────
     @app.callback(
