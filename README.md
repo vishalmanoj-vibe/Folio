@@ -91,3 +91,11 @@ For a full breakdown of the data flow, callback architecture, and module respons
 This dashboard is for personal tracking only. Nothing it displays constitutes financial advice. Always verify with a licensed financial adviser before making investment decisions.
 
 If you plan to contribute or want to understand the data flow, please read the Developer Guide for a complete breakdown of the UI, Services, Data, and Core layers.
+
+## Data Source
+
+Market data is sourced from Yahoo Finance via [yfinance](https://github.com/ranaroussi/yfinance). 
+This data is intended for personal use only. Commercial use of Yahoo Finance 
+data requires a separate data agreement with Yahoo. See 
+[Yahoo Finance Terms of Service](https://legal.yahoo.com/us/en/yahoo/terms/otos/index.html) 
+for details.

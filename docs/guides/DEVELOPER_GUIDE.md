@@ -108,7 +108,7 @@ The application utilizes a sophisticated `dcc.Store` ecosystem to manage state a
 ### 1. The Portfolio Store (`portfolio-store`)
 - **Role**: The single source of truth for all holding data, histories, and metrics.
 - **Hydration**: Pre-seeded at startup in `app.py` to ensure instantaneous first-paint.
-- **Reactivity**: Updated every 60s (via `live-interval` defined in `config/settings.py`) or immediately upon transaction entry.
+- **Reactivity**: Updated every 300s (via `live-interval` defined in `config/settings.py`) or immediately upon transaction entry.
 
 ### 2. Preference & Session Stores
 - **`theme-store`**: Local storage persistence for light/dark mode preference.
@@ -118,6 +118,16 @@ The application utilizes a sophisticated `dcc.Store` ecosystem to manage state a
 ### 3. UI Context Stores
 - **`nav-link-store`**: Dynamically updates the header badges (Market Status, Last Refreshed) by listening to URL path changes.
 - **`compact-mode-store`**: Controls the density of the main portfolio table.
+- **`research-usage-store`**: Persistent counter for Gemini API usage, reset daily.
+
+---
+
+## Related Documentation
+
+For non-architectural details, please refer to:
+- **[CONTRIBUTING.md](../CONTRIBUTING.md)**: Setup instructions, environment configuration, and how to add new features.
+- **[TESTING.md](../improvements/TESTING.md)**: Manual verification steps and automated test suite status.
+- **[GEMINI.md](../../GEMINI.md)**: Coding rules, architecture constraints, and AI agent boundaries.
 
 ---
 
@@ -128,7 +138,7 @@ portfolio_dashboard/
 ├── app.py                          # Entry point (Seeds stores + defines refresh loop)
 │
 ├── config/                         # Configuration layer (Settings, Constants)
-│   ├── settings.py                 # Settings + env vars (Refresh rates, CSV paths)
+│   ├── settings.py                 # Settings + env vars (Refresh rates, cache TTLs, DB path)
 │   ├── constants.py                # Colors, static names, themes
 │   └── logging.py                  # Logging configuration
 │
@@ -155,7 +165,7 @@ portfolio_dashboard/
 │   ├── intelligence_service.py     # Hierarchical risk/allocation logic
 │   ├── prediction_service.py       # Prophet-based forecasting
 │   ├── report_service.py           # Weekly PDF generation
-│   ├── research_service.py         # AI Assistant (chat & web search)
+│   ├── research_service.py           # AI Assistant (chat & web search)
 │   └── research_memory.py          # Persistent AI memory summaries
 │
 ├── data/                           # Persistence layer
@@ -190,21 +200,22 @@ portfolio_dashboard/
 │   └── ai_analyst.py               # AI Research & Reports (/ai-analyst)
 │
 └── assets/                         # Static assets (Modular CSS)
-    ├── base.css                    # Resets & CSS Variables
-    ├── vendor.css                  # Overrides
-    └── layout.css                  # Standard grid padding
-    └── ...
+    ├── base-tokens.css             # Design Tokens (CSS Variables)
+    ├── base-reset.css              # Global resets
+    ├── ui-components.css           # Modular UI blocks (Stat cards, etc.)
+    ├── view-pages.css              # Page-specific layout overrides
+    └── vendor.css                  # High-specificity Radix/Dash overrides
 ```
 
-## Technical Constraints (GEMINI.md Rules)
+## Technical Constraints (GEMINI.md)
 
-To maintain performance and reliability, the following rules are strictly enforced:
+All technical development, math weights, and AI logic boundaries are governed by the **[GEMINI.md](../../GEMINI.md)** file. 
 
--   **No Network in Loops**: Never call `yf.Ticker` inside a loop. Use `yf.download()` for bulk fetches.
--   **Relational Persistence**: All core data (transactions, assets, watchlist) MUST be stored in `portfolio.db`.
--   **Timezones**: Use `pytz` or `zoneinfo` for AEST checks. Never hardcode offsets.
--   **CSS Priority**: All styling must use CSS variables from `base.css`. Hardcoded hex colors in Python layouts are prohibited.
--   **ID Persistence**: Never change Dash component IDs; they are hardcoded in modular callbacks.
+**Key Enforcements:**
+-   **No Network in Loops**: Bulk `yf.download()` only.
+-   **Relational Persistence**: Mandatory SQLite usage for all core state.
+-   **Modular CSS**: Strict use of design tokens over hardcoded hex.
+-   **Signal Integrity**: Strategy Engine is the source of truth, AI is for explanation only.
 
 ---
 
@@ -255,23 +266,34 @@ Metrics in `intelligence_service.py` are calculated using standard financial for
 To ensure high performance with multi-ticker portfolios, the `fetch_live` service utilizes concurrency:
 - **Parallel Workers**: Uses `ThreadPoolExecutor` (10 workers) to parallelize sequential I/O-bound requests (e.g., `ticker.info` for names and dividends).
 - **Metadata Caching**: Implements a simple in-memory TTL cache for Yahoo Finance metadata, avoiding redundant network calls for static data (ETF names, payout frequencies).
-- **Domain-Specific TTLs**: Separates heavy computations from the 60s live tick. Technical signals are cached for 24 hours (`TECHNICALS_CACHE_TTL`), and historical dividend processing is cached for 7 days (`DIVIDENDS_CACHE_TTL`).
+- **Domain-Specific TTLs**: Separates heavy computations from the 300s live tick. Technical signals are cached for 24 hours (`TECHNICALS_CACHE_TTL`), and historical dividend processing is cached for 7 days (`DIVIDENDS_CACHE_TTL`).
 - **Bulk Downloads**: Continues to use `yf.download()` for primary price history to minimize HTTP overhead.
 
 ## Styling & UI Architecture
 
+### CSS Token System
+
+The application uses a strictly themed design system defined in `assets/base-tokens.css`. Developers must use these variables instead of hardcoded hex values to ensure theme consistency.
+
+| Category | Tokens | Purpose |
+|----------|--------|---------|
+| **Theme** | `--bg`, `--surface`, `--surface-2` | Base layers & card backgrounds |
+| **Type** | `--t-pri`, `--t-sec`, `--t-muted` | Hierarchical typography colors |
+| **Brand** | `--cyan`, `--cyan-2` | Primary accents & active states |
+| **Status** | `--green`, `--red`, `--warning` | Semantic feedback (P&L, Alerts) |
+| **Lines** | `--border`, `--border-2` | Section dividers & accent borders |
+
 ### CSS Modularization & Loading
 
-1.  **`base.css`**: Defines CSS variables and global resets. Must load first to ensure theme availability.
-2.  **`components.css` / `forms.css` / `layout.css`**: Core UI logic.
-3.  **`vendor.css`**: Contains heavy overrides. This loads last alphabetically, allowing us to override hardcoded component styles effectively.
+1.  **`base-tokens.css`**: Defines CSS variables.
+2.  **`base-reset.css`**: Global resets and base typography.
+3.  **`ui-components.css`**: Shared component blocks.
+4.  **`vendor.css`**: High-specificity overrides for Radix/Dash components.
 
 ### Overriding Dash 2.16+ (Radix UI)
-Modern Dash components (like `dcc.Dropdown` and `dcc.DatePickerSingle`) use Radix UI primitives. These often render elements in "Portals" at the end of the document body, bypassing standard CSS nesting.
-
-**Technical Strategy**:
-- Use **Wildcard Attribute Selectors**: To catch dynamic or stubborn classes, we use selectors like `div[class*="dash-datepicker-content"]`.
-- **High Specificity**: Many Radix components use inline styles. Aggressive use of `!important` within the `vendor.css` layer is sanctioned for these specific overrides to ensure theme consistency.
+Modern Dash components often render elements in "Portals" at the end of the document body. 
+- Use **Wildcard Attribute Selectors** (e.g., `div[class*="dash-datepicker"]`).
+- Aggressive use of `!important` within the `vendor.css` layer is sanctioned for these overrides to ensure theme consistency across portal boundaries.
 
 ### Transaction Flow Migration
 The transaction entry system was migrated from a standard `dcc.Input` to a Mantine `dmc.DateInput` for a more polished UI.
@@ -289,8 +311,8 @@ The **Intelligence Page** provides a deep dive into portfolio risk.
 - **Metrics**: Annualized Volatility, Sharpe Ratio, and Max Drawdown are calculated using pure Python in `intelligence_service.py`. 
 - **Optimization**: To avoid double-calculating heavy return series (e.g. when forecasting is enabled), returns are pre-computed once and passed into the metrics engine.
 - **Robustness**: Safety checks ensure that missing ETF metadata (`funds_data`) doesn't crash the engine; it falls back to parsing the `info` category or symbol-based inference.
-- **Sunburst Charts**: Hierarchical allocation (Sector/Geography) is rendered using `Plotly Sunburst` traces.
-- **Drill-down**: Clicking a sector/region in the Sunburst triggers a modal displaying the exact ticker-level contribution.
+- **Treemap Charts**: Hierarchical allocation (Sector/Geography) is rendered using `Plotly Treemap` traces for high-density space efficiency.
+- **Drill-down**: Clicking a sector/region in the Treemap triggers a modal displaying the exact ticker-level contribution.
 - **Smart Alerts**: A rule-based engine evaluates the portfolio against `THRESHOLDS` (e.g., >40% in one sector) to generate actionable insights.
 
 ### 2. Portfolio Forecasting (Prophet)
@@ -306,7 +328,7 @@ Unlike standard yield calculations, the app computes **Realized Dividends** by m
 
 ### 4. Intraday Market Sessions (Today View)
 The "Today" P&L view utilizes a dedicated intraday tracking system to provide real-time updates without the limitations of standard daily-interval data.
-- **Data Source**: Every time the dashboard refreshes (default 60s), the current state is appended to a local JSON snapshot (`data/cache/intraday_YYYY-MM-DD.json`).
+- **Data Source**: Every time the dashboard refreshes (default 300s), the current state is appended to a local JSON snapshot (`data/cache/intraday_YYYY-MM-DD.json`).
 - **Bypass Strategy**: The P&L History chart reads this file directly when in "1d" mode. This bypasses the main `portfolio-store` for chart rendering, preventing "Timezone Concat" errors that occur when mixing historical daily data (often UTC-naive) with live intraday data (Sydney wall-clock).
 - **Window**: The chart is strictly pinned to the ASX trading window (10:00 AM – 4:15 PM Sydney Time).
 - **Persistence**: Snapshotting ensures that intraday progress is preserved even if the application is restarted during the trading day.
