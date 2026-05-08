@@ -82,6 +82,42 @@ class PortfolioRepository:
             )
         except Exception as e:
             logger.error(f"Failed to save transaction: {e}")
+            conn.rollback()
         finally:
             conn.close()
         return self.load_transactions()
+
+    # ── Asset (Ticker Master) Methods ──────────────────────────────────────────
+
+    def get_asset(self, ticker: str) -> dict | None:
+        """Retrieve a cached asset record (name, category, etc.)."""
+        conn = get_connection()
+        try:
+            row = conn.execute(
+                "SELECT * FROM assets WHERE ticker = ?", 
+                (ticker.upper(),)
+            ).fetchone()
+            return dict(row) if row else None
+        finally:
+            conn.close()
+
+    def upsert_asset(self, ticker: str, name: str = None, category: str = None, market: str = None) -> None:
+        """Insert or update a ticker master record."""
+        ticker = ticker.upper()
+        conn = get_connection()
+        try:
+            conn.execute(
+                """
+                INSERT INTO assets (ticker, name, category, market, updated_at)
+                VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)
+                ON CONFLICT(ticker) DO UPDATE SET
+                    name = COALESCE(?, name),
+                    category = COALESCE(?, category),
+                    market = COALESCE(?, market),
+                    updated_at = CURRENT_TIMESTAMP
+                """,
+                (ticker, name, category, market, name, category, market)
+            )
+            conn.commit()
+        finally:
+            conn.close()

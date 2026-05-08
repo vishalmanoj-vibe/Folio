@@ -27,7 +27,8 @@ env/
 # Personal financial data
 data/raw/stock_portfolio_transactions.csv
 data/raw/watchlist.csv
-data/portfolio.db
+data/*.db
+data/raw/*.db
 
 # Generated caches & logs
 data/cache/

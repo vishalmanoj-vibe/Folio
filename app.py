@@ -66,9 +66,9 @@ try:
     INITIAL_HISTORY: list[dict] = repo.load_transactions()
     logger.info(f"Loaded {len(INITIAL_HISTORY)} transactions from storage")
 except Exception as e:
-    logger.error(f"Failed to load initial CSV: {e}")
+    logger.error(f"Failed to load initial storage: {e}")
     INITIAL_HISTORY = []
-    logger.error(f"\nERROR loading CSV:\n{e}\n")
+    logger.error(f"\nERROR loading database:\n{e}\n")
 
 from data.portfolio_builder import build_holdings
 from services.market.data_fetcher import fetch_live
@@ -423,7 +423,7 @@ def handle_exit(sig, frame):
 
 # ── Run ───────────────────────────────────────────────────────────────────────
 if __name__ == "__main__":
-    from config.settings import CSV_PATH
+    from config.settings import DB_PATH
     print(f"  Main (Overview): http://127.0.0.1:8050/")
     print(f"  Positions:       http://127.0.0.1:8050/positions")
     print(f"  Watchlist:       http://127.0.0.1:8050/watchlist")

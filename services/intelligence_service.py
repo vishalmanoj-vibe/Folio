@@ -14,7 +14,6 @@ import os
 import pandas as pd
 import yfinance as yf
 
-from config.settings import METADATA_CSV_PATH
 from core import get_cache, set_cache
 from core.engine.utils import get_period_cutoff, normalise_tz, fmt_date_index
 from services.market.data_fetcher import get_ticker_cached
@@ -98,33 +97,65 @@ def _symbol_to_region(symbol: str) -> str:
 _SECTOR_TTL = 86_400
 _GEO_TTL    = 86_400
 
-_CSV_CACHE_STORE: dict[str, dict] = {}
-_CSV_LOADED = False
+# ── TTL settings ──────────────────────────────────────────────────────────────
+_METADATA_TTL_DAYS = 7
 
-def _load_metadata_csv():
-    global _CSV_LOADED, _CSV_CACHE_STORE
-    if _CSV_LOADED: return
-    _CSV_LOADED = True
-    if not os.path.exists(METADATA_CSV_PATH): return
+def _get_cached_metadata(ticker_yf: str, meta_type: str) -> dict[str, float] | None:
+    """Retrieve metadata from SQLite with stale-check."""
+    from data.database import get_connection
+    ticker_yf = ticker_yf.upper()
+    
+    conn = get_connection()
     try:
-        df = pd.read_csv(METADATA_CSV_PATH)
-        for (ticker, meta_type), group in df.groupby(["ticker", "type"]):
-            _CSV_CACHE_STORE[f"{meta_type}_{ticker}"] = dict(zip(group["category"], group["weight"]))
-    except Exception as exc:
-        logger.error(f"Failed to load metadata CSV: {exc}")
+        cursor = conn.execute(
+            """
+            SELECT category, weight, updated_at 
+            FROM etf_metadata 
+            WHERE ticker = ? AND meta_type = ?
+            """,
+            (ticker_yf, meta_type)
+        )
+        rows = cursor.fetchall()
+        if not rows:
+            return None
+            
+        # Check staleness (using first row's updated_at)
+        updated_at = pd.to_datetime(rows[0]["updated_at"])
+        age_days = (pd.Timestamp.now() - updated_at).days
+        if age_days >= _METADATA_TTL_DAYS:
+            return None
+            
+        return {row["category"]: row["weight"] for row in rows}
+    finally:
+        conn.close()
 
-def _append_metadata_csv(ticker: str, meta_type: str, data: dict):
-    file_exists = os.path.exists(METADATA_CSV_PATH)
+def _save_metadata(ticker_yf: str, meta_type: str, data: dict[str, float]) -> None:
+    """Save metadata to SQLite."""
+    from data.database import get_connection
+    ticker_yf = ticker_yf.upper()
+    
+    conn = get_connection()
     try:
-        os.makedirs(os.path.dirname(METADATA_CSV_PATH), exist_ok=True)
-        with open(METADATA_CSV_PATH, "a", newline="") as f:
-            writer = csv.writer(f)
-            if not file_exists:
-                writer.writerow(["ticker", "type", "category", "weight"])
-            for k, v in data.items():
-                writer.writerow([ticker, meta_type, k, v])
-    except Exception as exc:
-        logger.error(f"Failed to append to metadata CSV: {exc}")
+        # Delete old entries for this ticker+type
+        conn.execute(
+            "DELETE FROM etf_metadata WHERE ticker = ? AND meta_type = ?",
+            (ticker_yf, meta_type)
+        )
+        # Insert new entries
+        for category, weight in data.items():
+            conn.execute(
+                """
+                INSERT INTO etf_metadata (ticker, meta_type, category, weight, updated_at)
+                VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)
+                """,
+                (ticker_yf, meta_type, category, weight)
+            )
+        conn.commit()
+    except Exception as e:
+        logger.error(f"Failed to save {meta_type} metadata for {ticker_yf}: {e}")
+        conn.rollback()
+    finally:
+        conn.close()
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Live ETF metadata
@@ -133,30 +164,19 @@ def _append_metadata_csv(ticker: str, meta_type: str, data: dict):
 def fetch_etf_sector_weights(ticker_yf: str) -> dict[str, float]:
     """
     Retrieves the sector weightings for a given ETF.
-
-    Tiered Fetching Strategy:
-    1.  **Memory Cache**: Check volatile `get_cache` for recently fetched data.
-    2.  **Local CSV**: Check `data/metadata.csv` for persistent local storage (prevents yfinance bloat).
-    3.  **yfinance (funds_data)**: Attempt to fetch structured `funds_data.sector_weightings`.
-    4.  **yfinance (info)**: Fallback to the single `sector` field in the general info dict.
-    5.  **Fallback**: Return "Unclassified" if all else fails.
-
-    Args:
-        ticker_yf: The Yahoo Finance ticker symbol (e.g., "VAS.AX").
-
-    Returns:
-        dict: A mapping of {Sector Name: Percentage Weight}.
+    Strategy: Memory Cache -> SQLite (7-day stale check) -> yfinance API
     """
     key = f"sector_{ticker_yf}"
     cached = get_cache(key)
     if cached is not None: return cached
 
-    _load_metadata_csv()
-    if key in _CSV_CACHE_STORE:
-        result = _CSV_CACHE_STORE[key]
-        set_cache(key, result, _SECTOR_TTL)
-        return result
+    # 1. Check SQLite Persistent Cache
+    db_cached = _get_cached_metadata(ticker_yf, "sector")
+    if db_cached:
+        set_cache(key, db_cached, _SECTOR_TTL)
+        return db_cached
 
+    # 2. Fetch from Source (yfinance)
     try:
         tk = get_ticker_cached(ticker_yf)
         fd = getattr(tk, "funds_data", None)
@@ -164,10 +184,7 @@ def fetch_etf_sector_weights(ticker_yf: str) -> dict[str, float]:
         
         if not sw:
             s = tk.info.get("sector")
-            if s:
-                result = {s: 100.0}
-            else:
-                result = {"Unclassified": 100.0}
+            result = {s: 100.0} if s else {"Unclassified": 100.0}
         else:
             labelled: dict[str, float] = {}
             other = 0.0
@@ -183,8 +200,7 @@ def fetch_etf_sector_weights(ticker_yf: str) -> dict[str, float]:
             result = {k: round(v / total * 100, 2) for k, v in labelled.items()} if total > 0 else {"Unclassified": 100.0}
 
         set_cache(key, result, _SECTOR_TTL)
-        _CSV_CACHE_STORE[key] = result
-        _append_metadata_csv(ticker_yf, "sector", result)
+        _save_metadata(ticker_yf, "sector", result)
         return result
     except Exception:
         return {"Unclassified": 100.0}
@@ -192,58 +208,55 @@ def fetch_etf_sector_weights(ticker_yf: str) -> dict[str, float]:
 def fetch_etf_geo_weights(ticker_yf: str) -> dict[str, float]:
     """
     Retrieves the geographic weightings for a given ETF.
+    Strategy: Memory Cache -> SQLite (7-day stale check) -> yfinance API
     """
     key = f"geo_{ticker_yf}"
     cached = get_cache(key)
     if cached is not None: return cached
 
-    _load_metadata_csv()
-    if key in _CSV_CACHE_STORE:
-        result = _CSV_CACHE_STORE[key]
-        set_cache(key, result, _GEO_TTL)
-        return result
+    # 1. Check SQLite Persistent Cache
+    db_cached = _get_cached_metadata(ticker_yf, "geo")
+    if db_cached:
+        set_cache(key, db_cached, _GEO_TTL)
+        return db_cached
 
+    # 2. Fetch from Source (yfinance)
     try:
         tk = get_ticker_cached(ticker_yf)
         fd = getattr(tk, "funds_data", None)
         if fd is None:
-            # Fallback to info parsing if funds_data is missing
             cat = tk.info.get("category", "").lower()
-            if "australia" in cat:
-                result = {"Australia": 100.0}
-            elif "china" in cat:
-                result = {"China": 100.0}
-            elif "japan" in cat:
-                result = {"Japan": 100.0}
-            elif "us" in cat or "america" in cat:
-                result = {"USA": 100.0}
-            else:
-                fallback_region = _symbol_to_region(ticker_yf)
-                result = {fallback_region: 100.0}
+            if "australia" in cat: result = {"Australia": 100.0}
+            elif "china" in cat: result = {"China": 100.0}
+            elif "japan" in cat: result = {"Japan": 100.0}
+            elif "us" in cat or "america" in cat: result = {"USA": 100.0}
+            else: result = {_symbol_to_region(ticker_yf): 100.0}
+            
             set_cache(key, result, _GEO_TTL)
+            _save_metadata(ticker_yf, "geo", result)
             return result
         
-        # ── 1. Check for structured regional exposure (Best source) ──
+        # Regional Exposure
         try:
             re = fd.regional_exposure
             if re and isinstance(re, dict) and len(re) > 0:
                 result = {k: round(float(v) * 100, 1) for k, v in re.items()}
                 set_cache(key, result, _GEO_TTL)
+                _save_metadata(ticker_yf, "geo", result)
                 return result
-        except Exception:
-            pass
+        except Exception: pass
 
-        # ── 2. Check for country exposure ──
+        # Country Exposure
         try:
             ce = fd.country_exposure
             if ce and isinstance(ce, dict) and len(ce) > 0:
                 result = {k: round(float(v) * 100, 1) for k, v in ce.items()}
                 set_cache(key, result, _GEO_TTL)
+                _save_metadata(ticker_yf, "geo", result)
                 return result
-        except Exception:
-            pass
+        except Exception: pass
 
-        # ── 3. Fallback to top_holdings parse ──
+        # Fallback to top_holdings
         df = fd.top_holdings
         if df is not None and not df.empty:
             region_weights: dict[str, float] = {}
@@ -256,28 +269,18 @@ def fetch_etf_geo_weights(ticker_yf: str) -> dict[str, float]:
                 accounted += pct
 
             if accounted < 15.0:
-                info = tk.info
-                cat = info.get("category", "").lower()
-                if "australia" in cat:
-                    result = {"Australia": 100.0}
-                elif "china" in cat:
-                    result = {"China": 100.0}
-                elif "japan" in cat:
-                    result = {"Japan": 100.0}
-                elif "us" in cat or "america" in cat:
-                    result = {"USA": 100.0}
-                else:
-                    fallback_region = _symbol_to_region(ticker_yf)
-                    result = {fallback_region: 100.0}
+                cat = tk.info.get("category", "").lower()
+                if "australia" in cat: result = {"Australia": 100.0}
+                elif "china" in cat: result = {"China": 100.0}
+                elif "japan" in cat: result = {"Japan": 100.0}
+                elif "us" in cat or "america" in cat: result = {"USA": 100.0}
+                else: result = {_symbol_to_region(ticker_yf): 100.0}
             else:
                 residual = 100.0 - accounted
                 if residual > 0:
                     dominant = next((r for r, w in region_weights.items() if w / accounted > 0.65), None)
-                    if dominant:
-                        region_weights[dominant] += residual
-                    else:
-                        region_weights["Other"] = region_weights.get("Other", 0) + residual
-                
+                    if dominant: region_weights[dominant] += residual
+                    else: region_weights["Other"] = region_weights.get("Other", 0) + residual
                 total = sum(region_weights.values())
                 result = {k: round(v / total * 100, 1) for k, v in region_weights.items()} if total > 0 else {"Unclassified": 100.0}
         else:
@@ -285,8 +288,7 @@ def fetch_etf_geo_weights(ticker_yf: str) -> dict[str, float]:
 
         result = dict(sorted(result.items(), key=lambda x: x[1], reverse=True))
         set_cache(key, result, _GEO_TTL)
-        _CSV_CACHE_STORE[key] = result
-        _append_metadata_csv(ticker_yf, "geo", result)
+        _save_metadata(ticker_yf, "geo", result)
         return result
     except Exception:
         return {"Unclassified": 100.0}

@@ -3,7 +3,7 @@
 ## Stack
 - Python 3.11, Dash (multi-page), Plotly, yfinance, pandas
 - Entry: app.py → pages/ (portfolio.py, etf_detail.py, intelligence.py)
-- Data: CSV → csv_handler.py → portfolio_builder.py → fetch_live()
+- Data: SQLite (`portfolio.db`) → `database.py` → `repository.py` → `fetch_live()`
 - All chart figures live in components/charts/ and return go.Figure
 - Callbacks are modular: core, chart, transaction, alert, ui, positions, dividend, intelligence, watchlist, research, report, signals
 ## Architecture — never break these
@@ -18,6 +18,9 @@
 - Never hardcode hex colors in Python layout code
 - Modular CSS: New styles must be added to appropriate assets/ files (base, components, vendor, etc.). Monolithic styles.css is prohibited.
 - Asset Loading: Dash loads assets alphabetically. Variables and resets (base.css) must load before overrides (vendor.css).
+- **Relational Persistence**: All core data (transactions, assets, watchlist, metadata) MUST be stored in `portfolio.db`. Never use CSVs for production state.
+- **SQLite Concurrency**: Always enable `PRAGMA journal_mode = WAL` and `busy_timeout = 5000` in `get_connection()`.
+- **Explicit Closure**: Every database connection MUST be explicitly closed using `finally: conn.close()` or equivalent to prevent resource leaks.
 
 ## Data conventions
 - Tickers stored without .AX in CSV; ticker_yf = ticker + ".AX" for yfinance
@@ -75,7 +78,7 @@
 ## Current Build Tasks Archive
 
 ### Refresh Intervals & Caching Architecture (Complete)
-- Live Price / P&L: Updates globally every 60s.
+- Live Price / P&L: Updates globally every 300s (5 minutes).
 - Technical Signals (RSI/MACD): 24h cache (`TECHNICALS_CACHE_TTL`).
 - Dividend Data: 7d cache (`DIVIDENDS_CACHE_TTL`).
 - AI Weekly Report: Manual trigger only via Reports page.
@@ -112,4 +115,4 @@
 - `pages/positions.py` — Merged the "Dividend Dashboard" into the Positions page. Redundant top-level summary strips and standalone dividend pages were removed.
 - `assets/layout.css` — Standardized global page-header and section padding to a uniform `16px 24px` grid.
 - **Dynamic Container Pattern**: Refactored the Positions and Watchlist pages to use dynamic containers (`positions-price-chart-container`, etc.) that hide headers and empty states until a ticker is selected, ensuring a clean "Day 1" UI.
-- `components/ui_helpers.py` — Established `section()` as the primary structural wrapper for all dashboard content to enforce consistent margins and borders.
+- `components/ui_helpers.py` — Established `section()` as the primary structural wrapper for all dashboard content to enforce consistent margins and borders.- **Relational Migration (Complete)**: Transitioned from CSV/JSON to SQLite for all identity and state data. Implemented WAL mode for concurrency and a 7-day persistent cache for ETF metadata.

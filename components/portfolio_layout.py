@@ -9,7 +9,7 @@ from dash import dcc, html
 import dash_mantine_components as dmc
 from datetime import datetime
 from components.ui_helpers import chart_title, section
-from config.settings import CSV_PATH
+from config.settings import DB_PATH
 
 # ── CSS injected into <head> ───────────────────────────────────────────────────
 INDEX_STRING = '''
@@ -214,7 +214,7 @@ def create_layout(initial_history: list[dict] | None = None) -> html.Div:
                                     html.Div(id="txn-log", className="txn-history-log"),
                                 ], id="txn-history-details"),
                                 
-                                html.P(f"Storage: {CSV_PATH}", className="txn-path"),
+                                html.P(f"Storage: {DB_PATH}", className="txn-path"),
                             ], className="card-inset", style={"marginBottom": "16px", "padding": "16px"}),
                         ]
                     ),

@@ -43,38 +43,55 @@ def get_ticker_cached(ticker_yf: str) -> yf.Ticker:
 def get_etf_name(ticker: str) -> str:
     """
     Retrieve the long name for an ETF with multi-layer caching.
+    Hierarchy: Memory Cache -> SQLite Assets Table -> yfinance API
     """
     from config.constants import NAMES
+    from data.repository import PortfolioRepository
+    
     ticker_upper = ticker.strip().upper()
     cache_key = f"name_{ticker_upper}"
     
-    # 1. Check local name cache
+    # 1. Check local memory cache (Hot)
     cached = _NAME_CACHE.get(cache_key)
     if cached and time.time() < cached[1]:
         return cached[0]
     
+    # 2. Check SQLite Assets Table (Persistent)
+    repo = PortfolioRepository()
+    asset = repo.get_asset(ticker_upper)
+    if asset and asset.get("name"):
+        name = asset["name"]
+        _NAME_CACHE[cache_key] = (name, time.time() + _NAME_CACHE_TTL)
+        return name
+
     fallback = NAMES.get(ticker_upper, ticker_upper)
     try:
         yf_ticker = f"{ticker_upper}.AX" if "." not in ticker_upper else ticker_upper
         
-        # 2. Check info cache for name
+        # 3. Check info cache (Session)
         now = time.time()
         if yf_ticker in _INFO_CACHE:
             info, expiry = _INFO_CACHE[yf_ticker]
             if now < expiry:
                 name = info.get("longName") or info.get("shortName") or fallback
                 _NAME_CACHE[cache_key] = (name, now + _NAME_CACHE_TTL)
+                repo.upsert_asset(ticker_upper, name=name)
                 return name
 
+        # 4. Fetch from yfinance (Source)
         tk = get_ticker_cached(yf_ticker)
         info = tk.info or {}
         
-        # Update info cache while we're at it
+        # Update info cache
         _INFO_CACHE[yf_ticker] = (info, now + _INFO_CACHE_TTL)
         
         name = info.get("longName") or info.get("shortName") or fallback
         result = name.strip() if (isinstance(name, str) and len(name) > 3) else fallback
+        
+        # Update both caches
         _NAME_CACHE[cache_key] = (result, now + _NAME_CACHE_TTL)
+        repo.upsert_asset(ticker_upper, name=result)
+        
         return result
     except Exception as e:
         logger.warning("Name fetch failed for %s: %s", ticker_upper, e)

@@ -24,11 +24,12 @@ def register_callbacks(app) -> None:
         Input("watchlist-add-btn", "n_clicks"),
         Input({"type": "watchlist-remove-btn", "index": ALL}, "n_clicks"),
         Input("watchlist-input", "n_submit"),
+        Input("live-interval", "n_intervals"),
         State("watchlist-input", "value"),
         State("watchlist-store", "data"),
         prevent_initial_call=True,
     )
-    def update_watchlist_store(n_add, n_remove_list, n_submit, ticker_input, current_data):
+    def update_watchlist_store(n_add, n_remove_list, n_submit, n_interval, ticker_input, current_data):
         triggered_id = ctx.triggered_id
 
         # 1. Add Ticker

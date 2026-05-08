@@ -12,18 +12,7 @@ import os
 SCRIPT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DATA_CACHE_DIR = os.path.join(SCRIPT_DIR, "data", "cache")
 
-CSV_PATH = os.getenv(
-    "PORTFOLIO_CSV",
-    os.path.join(SCRIPT_DIR, "data", "raw", "stock_portfolio_transactions.csv")
-)
-METADATA_CSV_PATH = os.getenv(
-    "METADATA_CSV",
-    os.path.join(DATA_CACHE_DIR, "etf_metadata_cache.csv")
-)
-WATCHLIST_CSV_PATH = os.getenv(
-    "WATCHLIST_CSV",
-    os.path.join(SCRIPT_DIR, "data", "raw", "watchlist.csv")
-)
+DB_PATH = os.path.join(SCRIPT_DIR, "data", "portfolio.db")
 
 # ── Intervals ─────────────────────────────────────────────────────────────────
 REFRESH_INTERVAL = int(os.getenv("REFRESH_INTERVAL_MS", 300_000))  # 5 minutes in ms
