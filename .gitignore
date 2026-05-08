@@ -1,4 +1,4 @@
-# Python
+# ── Python ────────────────────────────────────────────────────────────────────
 __pycache__/
 *.py[cod]
 *.pyo
@@ -8,46 +8,52 @@ __pycache__/
 .coverage
 htmlcov/
 
-# Virtual environment
+# ── Virtual environment ───────────────────────────────────────────────────────
 portfolio-env/
 venv/
 env/
 .venv/
 
-# Secrets
-.env
-
-# macOS
+# ── OS & editor ───────────────────────────────────────────────────────────────
 .DS_Store
-
-# Editor
 .vscode/
 .idea/
 
-# Personal financial data
-data/raw/stock_portfolio_transactions.csv
-data/raw/watchlist.csv
-data/*.db
-data/raw/*.db
+# ── Secrets ───────────────────────────────────────────────────────────────────
+.env
 
-# Generated caches & logs
+# ── Personal financial data ───────────────────────────────────────────────────
+data/raw/
 data/cache/
-!data/cache/.gitkeep
-!data/raw/.gitkeep
-*.log
+data/*.db
+*.csv
 *.bak
-repo_audit_2_20260508_145955.md
-app_output.txt
 
-# One-off scripts (not part of the project)
+# ── Logs ─────────────────────────────────────────────────────────────────────
+*.log
+
+# ── Archives & generated outputs ─────────────────────────────────────────────
+*.zip
+*.tar.gz
+*.txt
+*.md
+!README.md
+!GEMINI.md
+!docs/**/*.md
+
+# ── One-off / scratch scripts ─────────────────────────────────────────────────
+scratch/
+archive/
+test codes/
 test_gemini.py
 test_pnl.py
 dump_project.sh
 generate_code_md.py
-project_dump.md
-scratch/
+audit_repo*.sh
 
-# Archives
-*.zip
-*.tar.gz
-*.sh
+# ── Agent / IDE internals ─────────────────────────────────────────────────────
+.agent/
+.agents/
+.cursor/
+.cursorrules
+startcycle.md

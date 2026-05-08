@@ -70,7 +70,7 @@ except Exception as e:
     INITIAL_HISTORY = []
     logger.error(f"\nERROR loading database:\n{e}\n")
 
-from data.portfolio_builder import build_holdings
+from core.engine import build_holdings
 from services.market.data_fetcher import fetch_live
 from services.market.session_cache import clear_old_caches
 from services.research_memory import run_startup_maintenance
