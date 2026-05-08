@@ -438,7 +438,7 @@ if __name__ == "__main__":
     # ── Background Snapshot Thread ─────────────────
     def background_refresh():
         """
-        Independent thread that records snapshots every 60s.
+        Independent thread that records snapshots every 300s (5m).
         Ensures 'Today' chart has continuous data even if browser is closed.
         """
         while True:
@@ -449,7 +449,7 @@ if __name__ == "__main__":
                     logger.debug("Background snapshot recorded.")
             except Exception as e:
                 logger.error(f"Background refresh failed: {e}")
-            time.sleep(60)
+            time.sleep(300)
 
     threading.Thread(target=background_refresh, daemon=True).start()
 

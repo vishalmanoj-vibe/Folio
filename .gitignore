@@ -26,7 +26,6 @@ env/
 
 # Personal financial data
 data/raw/stock_portfolio_transactions.csv
-data/raw/etf_metadata_cache.csv
 data/raw/watchlist.csv
 data/portfolio.db
 

@@ -3,7 +3,7 @@ import logging
 import os
 import pandas as pd
 from datetime import datetime
-from config.settings import WATCHLIST_CSV_PATH
+from config.settings import WATCHLIST_CSV_PATH, DATA_CACHE_DIR
 
 logger = logging.getLogger(__name__)
 
@@ -59,7 +59,7 @@ class WatchlistRepository:
             logger.error(f"CRITICAL: Failed to save watchlist to {WATCHLIST_CSV_PATH}: {e}")
 
     def _get_history_path(self, ticker: str) -> str:
-        cache_dir = os.path.join(os.path.dirname(WATCHLIST_CSV_PATH), "cache", "watchlist_histories")
+        cache_dir = os.path.join(DATA_CACHE_DIR, "watchlist_histories")
         os.makedirs(cache_dir, exist_ok=True)
         return os.path.join(cache_dir, f"{ticker}_history.json")
 
@@ -172,9 +172,7 @@ class WatchlistRepository:
 
     def load_notes(self) -> dict:
         import json
-        path = os.path.join(
-            os.path.dirname(WATCHLIST_CSV_PATH), "cache", "watchlist_notes.json"
-        )
+        path = os.path.join(DATA_CACHE_DIR, "watchlist_notes.json")
         if os.path.exists(path):
             try:
                 with open(path) as f:
@@ -185,9 +183,7 @@ class WatchlistRepository:
 
     def save_note(self, ticker: str, note: str) -> None:
         import json
-        path = os.path.join(
-            os.path.dirname(WATCHLIST_CSV_PATH), "cache", "watchlist_notes.json"
-        )
+        path = os.path.join(DATA_CACHE_DIR, "watchlist_notes.json")
         notes = self.load_notes()
         notes[ticker] = note
         os.makedirs(os.path.dirname(path), exist_ok=True)
