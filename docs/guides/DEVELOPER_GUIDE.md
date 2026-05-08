@@ -16,7 +16,8 @@ The application follows a strictly decoupled layered architecture to ensure sepa
 ┌───────────────────────┐   ┌───────────────────────┐   ┌───────────────────────┐
 │     SERVICE LAYER     │   │      ENGINE LAYER     │   │    DATA ACCESS LAYER  │
 │ (market, intelligence,│   │ (core/engine/         │   │ (data/repository.py,  │
-│  research, prediction)│   │  portfolio_engine.py) │   │  data/database.py)    │
+│  research, strategy)  │   │  portfolio_engine.py, │   │  data/database.py)    │
+│                       │   │  stats_engine.py)     │   │                       │
 └──────────┬────────────┘   └───────────┬───────────┘   └───────────┬───────────┘
            │                            │                           │
            └───────────────┬────────────┴───────────────┬───────────┘
@@ -38,8 +39,11 @@ The application follows a strictly decoupled layered architecture to ensure sepa
     - **Memory Service**: Persistent state management with rolling 7-day logs and long-term summaries.
     - **Intelligence Service**: Risk analysis (Sharpe, Volatility) and rule-based allocation alerts.
     - **Prediction Service**: Forecasting using Facebook Prophet with continuity correction.
-3.  **Engine (Logic)**: The "Mathematical Core". Pure Python logic for P&L computation, tranche aggregation, and performance metrics. It has **zero dependencies on Network, I/O, or Dash.**
-4.  **Data (Persistence)**: The `PortfolioRepository` and `WatchlistRepository` provide a clean abstraction for data operations. The system uses a **Relational SQLite** backend (`portfolio.db`) for transactions, membership, and metadata, while retaining JSON for large-scale time-series (price histories).
+3.  **Engine (Logic)**: The "Mathematical Core". Pure Python logic for P&L computation, tranche aggregation, and performance metrics.
+    - **Portfolio Engine**: Core aggregation and tranche history logic.
+    - **Stats Engine**: High-performance formatting and summary aggregation for UI consumption.
+    - **Zero dependencies** on Network, I/O, or Dash.
+4.  **Data (Persistence)**: The `PortfolioRepository` and `WatchlistRepository` provide a clean abstraction for data operations. The system uses a **Relational SQLite** backend (`portfolio.db`) for all state data (Transactions, Watchlist, Metadata), utilizing WAL mode for concurrency. JSON is retained only for transient intraday snapshots.
 5.  **Domain (Models)**: Typed definitions (Pydantic/TypedDict) that enforce data contracts across all layers.
 6.  **Foundation (Core/Config)**: System-wide utilities (Validators, TTL Caching, Logging) and environment configuration.
 
@@ -121,19 +125,20 @@ The application utilizes a sophisticated `dcc.Store` ecosystem to manage state a
 
 ```
 portfolio_dashboard/
-├── app.py                          # Entry point (Seeds stores + defines refresh loop + Browser Mgmt)
+├── app.py                          # Entry point (Seeds stores + defines refresh loop)
 │
-├── config/                         # Configuration layer
+├── config/                         # Configuration layer (Settings, Constants)
 │   ├── settings.py                 # Settings + env vars (Refresh rates, CSV paths)
 │   ├── constants.py                # Colors, static names, themes
 │   └── logging.py                  # Logging configuration
 │
 ├── core/                           # Foundation layer
 │   ├── engine/                     # Pure logic (Math, Aggregation)
-│   │   └── portfolio_engine.py     # The "Brain" of the app
+│   │   ├── portfolio_engine.py     # Aggregation & Tranche history
+│   │   ├── stats_engine.py         # Summary metrics & UI formatting
+│   │   └── utils.py                # Math helpers
 │   ├── cache.py                    # TTL cache for API responses
-│   ├── validators.py               # Transaction schema validation
-│   └── exceptions.py               # Custom error types
+│   └── validators.py               # Transaction schema validation
 │
 ├── models/                         # Domain layer
 │   └── transaction.py              # Holding & Transaction schemas
@@ -142,45 +147,52 @@ portfolio_dashboard/
 │   ├── market/                     # Network calls (yfinance)
 │   │   ├── data_fetcher.py         # Enrichment logic (Bulk Fetch)
 │   │   ├── dividend_service.py     # Realized Dividends & Trend logic
+│   │   ├── session_cache.py        # Intraday snapshot management
 │   │   └── market_status.py        # ASX timezone/status logic
+│   ├── ai_engine.py                # LLM orchestration & signal critique
+│   ├── strategy_engine.py          # Deterministic rule-based scoring
 │   ├── alert_service.py            # Price/Target monitoring
 │   ├── intelligence_service.py     # Hierarchical risk/allocation logic
-│   ├── prediction_service.py       # Prophet-based forecasting with disk-caching
-│   ├── research_service.py         # Gemini-powered analysis & portfolio reasoning
-│   └── research_memory.py          # Persistent chat logs & rolling AI summaries
+│   ├── prediction_service.py       # Prophet-based forecasting
+│   ├── report_service.py           # Weekly PDF generation
+│   ├── research_service.py         # AI Assistant (chat & web search)
+│   └── research_memory.py          # Persistent AI memory summaries
 │
 ├── data/                           # Persistence layer
 │   ├── database.py                 # SQLite connection & schema (WAL enabled)
 │   ├── repository.py               # Transaction & Asset Repository
 │   ├── watchlist_repository.py     # Watchlist & History Repository
-│   ├── portfolio_builder.py        # Legacy shim for engine imports
-│   ├── portfolio.db                # Main relational store (Ignored by Git)
-│   └── cache/                      # Persistent disk cache (e.g., predictions.json)
+│   ├── portfolio.db                # Main relational store
+│   └── cache/                      # Persistent disk cache (intraday snapshots)
 │
 ├── components/                     # UI components
-│   ├── charts/                     # go.Figure factories (Pure UI functions)
-│   │   ├── intel_helpers.py        # Sunburst & Risk charts
+│   ├── charts/                     # go.Figure factories
+│   │   ├── pnl_history.py          # Today view (resampled)
+│   │   ├── price_history.py        # Candlestick/Line charts
 │   │   └── ...
 │   ├── header.py                   # Shared navigation header
-│   └── portfolio_layout.py         # Main HTML structure
+│   └── ui_helpers.py               # Stat cards & section wrappers
 │
 ├── callbacks/                      # Dash interactivity
-│   ├── chart_callbacks.py          # Dashboard graph updates
 │   ├── portfolio_callbacks.py      # Table/Metric updates
+│   ├── positions_callbacks.py      # Ticker deep-dive logic
+│   ├── watchlist_callbacks.py      # Watchlist logic
+│   ├── signals_callbacks.py        # Manual signal generation
 │   ├── intelligence_callbacks.py   # Modal & Drill-down logic
-│   └── research_callbacks.py       # AI chat interaction & memory status
+│   └── research_callbacks.py       # AI chat interaction
 │
 ├── pages/                          # Multi-page routing
 │   ├── portfolio.py                # Main Dashboard (/)
-│   ├── analytics.py                # Secondary Metrics (/analytics)
+│   ├── positions.py                # Ticker deep-dive (/positions)
+│   ├── watchlist.py                # Watchlist (/watchlist)
 │   ├── intelligence.py             # Risk Analysis (/intelligence)
-│   ├── watchlist.py                # Future tracker (/watchlist)
-│   ├── research.py                 # AI Assistant (/research)
-│   └── positions.py                # Ticker deep-dive (/positions)
+│   ├── analytics.py                # Allocation Treemaps (/analytics)
+│   └── ai_analyst.py               # AI Research & Reports (/ai-analyst)
 │
 └── assets/                         # Static assets (Modular CSS)
-    ├── base.css                    # Resets & CSS Variables (Loads 1st)
-    ├── vendor.css                  # Radix/Dash Overrides (Loads last)
+    ├── base.css                    # Resets & CSS Variables
+    ├── vendor.css                  # Overrides
+    └── layout.css                  # Standard grid padding
     └── ...
 ```
 
@@ -189,7 +201,7 @@ portfolio_dashboard/
 To maintain performance and reliability, the following rules are strictly enforced:
 
 -   **No Network in Loops**: Never call `yf.Ticker` inside a loop. Use `yf.download()` for bulk fetches.
--   **Ticker Normalization**: Tickers in CSV are raw (e.g., `VAS`). The data layer appends `.AX` only for market fetches.
+-   **Relational Persistence**: All core data (transactions, assets, watchlist) MUST be stored in `portfolio.db`.
 -   **Timezones**: Use `pytz` or `zoneinfo` for AEST checks. Never hardcode offsets.
 -   **CSS Priority**: All styling must use CSS variables from `base.css`. Hardcoded hex colors in Python layouts are prohibited.
 -   **ID Persistence**: Never change Dash component IDs; they are hardcoded in modular callbacks.
@@ -346,3 +358,15 @@ To eliminate visual inconsistencies and "compactness" issues, the dashboard foll
 - **Header Standard**: `.page-header-row` is fixed at `padding: 16px 24px`.
 - **Structural Wrappers**: All major content blocks must be wrapped in the `section()` helper from `components.ui_helpers`. This enforces a `0.5px` bottom border and a uniform `16px 24px` padding.
 - **Dynamic Rendering**: To prevent "empty dashboard syndrome", pages use dynamic containers (e.g., `positions-price-chart-container`) that hide headers and empty plots until a ticker is selected, ensuring the initial state is clean and professional.
+
+### 12. Deterministic Strategy Engine & AI Critique
+The dashboard includes a hybrid decision-support system:
+- **Strategy Engine** (`services/strategy_engine.py`): Pure, rule-based logic that generates BUY/SELL/HOLD signals based on five weighted dimensions (Trend, Momentum, Price vs 200MA, Price vs Cost, and Risk).
+- **AI Analyst Overlay** (`services/ai_engine.py`): Gemini critiques the deterministic signals, providing human-readable context and risk flags without overriding the engine's verdict.
+- **Hysteresis**: To prevent signal flickering on volatile days, the engine implements a "flip-prevention" logic where a signal change is only accepted if the new score exceeds a 0.7 confidence threshold.
+
+### 13. Intraday Resampling & Resiliency
+To ensure the "Today" P&L chart remains professional and readable:
+- **5-Minute Resampling**: Live data is resampled to 5-minute intervals (`resample('5min').last().ffill()`) to eliminate jagged visual artifacts.
+- **Trading Session Stitching**: Plotly `rangebreaks` are applied to the X-axis to hide overnight sessions and weekends, creating a continuous trading timeline.
+- **Background Snapshotting**: A dedicated thread in `app.py` records market snapshots every 5 minutes while the market is open, ensuring chart continuity even if the dashboard is closed.

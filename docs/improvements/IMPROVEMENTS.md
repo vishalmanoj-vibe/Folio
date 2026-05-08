@@ -5,13 +5,13 @@ This document summarizes all improvements implemented to the Portfolio Dashboard
 ## Changes Overview
 
 ### 1. **Input Validation Pipeline** ✅
-**Files Modified:** `data/portfolio_builder.py`
+**Files Modified:** `core/validators.py`
 
 **What Was Added:**
-- New `validate_transaction()` function to validate transaction structure before aggregation
-- Validates required keys, numeric types, positive values, transaction types ("buy"/"sell"), and date formats
-- Returns tuple `(is_valid: bool, error_message: str)` for clear error reporting
-- Invalid transactions are logged and filtered out before processing
+- Centralized `validate_transaction()` logic to validate structure before persistence.
+- Validates required keys, numeric types, positive values, and YYYY-MM-DD date formats.
+- Used by the Repository layer to ensure database integrity.
+- Returns tuple `(is_valid: bool, error_message: str)` for clear error reporting.
 
 **Benefits:**
 - Prevents data corruption from malformed transactions
@@ -60,17 +60,17 @@ API_RETRY_BACKOFF_BASE=2.0     # Exponential backoff multiplier (default 2.0)
 
 **Environment Variables:**
 ```bash
-PORTFOLIO_CSV                          # CSV file path
-REFRESH_INTERVAL_MS                    # Screen refresh interval (default 60000ms)
+DB_PATH                                # SQLite database path (default data/portfolio.db)
+REFRESH_INTERVAL_MS                    # Screen refresh interval (default 300000ms / 5m)
 MARKET_TIMEZONE                        # Market timezone (default Australia/Sydney)
 API_MAX_RETRIES                        # API retry attempts (default 3)
 API_RETRY_BACKOFF_BASE                 # Retry backoff base (default 2.0)
-CACHE_TTL_SECONDS                      # Cache TTL (default 60s)
+TECHNICALS_CACHE_TTL                   # RSI/MACD cache (default 24h)
+DIVIDENDS_CACHE_TTL                    # Dividend cache (default 7d)
 ALERT_INDIVIDUAL_DRAWDOWN_PCT          # Individual alert threshold (default -20%)
 ALERT_PORTFOLIO_DRAWDOWN_PCT           # Portfolio alert threshold (default -15%)
 LOG_LEVEL                              # Logging level (default INFO)
-LOG_FILE                               # Log file path (default portfolio.log)
-LOG_FILE_ENABLED                       # Enable file logging (default true)
+GEMINI_API_KEY                         # Required for AI Analyst & Research
 ```
 
 **Benefits:**
@@ -110,11 +110,11 @@ MARKET_TIMEZONE=America/New_York
 ---
 
 ### 5. **Dividend Refetching Optimization** ✅
-**Files Modified:** `services/market/data_fetcher.py`
+**Files Modified:** `services/market/dividend_service.py`
 
 **What Was Added:**
-- Refactored to use configurable cache TTL from config
-- Dividend fetching still per-ticker (unchanged) but with better error handling
+- Refactored to use centralized `DIVIDENDS_CACHE_TTL` (7-day persistent cache).
+- Consolidated distribution logic from ex-dividend date matching to trend projections.
 
 **Current State:**
 - Dividends fetched per ticker (unavoidable limitation of yfinance bulk API)
@@ -201,67 +201,33 @@ alerts = check_alerts(holdings, thresholds={
 
 ---
 
-### 8. **CSV Write Recovery with Backup** ✅
-**Files Modified:** `data/csv_handler.py`
+### 8. **Relational Transaction Integrity (SQLite)** ✅
+**Files Modified:** `data/database.py`, `data/repository.py`
 
 **What Was Added:**
-- Automatic backup creation before every write (filename.csv.bak)
-- Automatic restoration from backup if write fails
-- Better error handling and logging
-
-**Process:**
-1. Before writing new CSV, backup existing file → `filename.csv.bak`
-2. Write new CSV to target path
-3. If write fails, restore from backup automatically
-4. Log success/failure clearly
+- Migrated from CSV to SQLite for all core persistence.
+- **WAL Mode**: Enabled Write-Ahead Logging for safe concurrent access between UI and background fetchers.
+- **Atomic Transactions**: Full rollback support on database write failures.
+- **Implicit Relationships**: Tickers in transactions are normalized and linked to the `assets` metadata table.
 
 **Benefits:**
-- Prevents data loss on write failures
-- Automatic recovery from corruption
-- Clear error logging for debugging
-
-**Example Error Handling:**
-```
-[ERROR   ] data.csv_handler      : Failed to write CSV: Permission denied
-[INFO    ] data.csv_handler      : Restored previous CSV from backup
-```
+- Eliminates CSV corruption and file-locking issues.
+- Drastically faster data retrieval for large histories.
+- Robust state management across multiple pages and background threads.
 
 ---
 
-### 9. **Comprehensive Unit Test Suite** ✅
-**Files Created:**
-- `test/__init__.py`
-- `test/test_portfolio_builder.py` (20 test cases)
-- `test/test_alert_service.py` (11 test cases)
-- `test/test_csv_handler.py` (12 test cases)
-- `test/test_market_status.py` (6 test cases)
-- `conftest.py` (pytest fixtures)
-- `pytest.ini` (pytest configuration)
-- `TESTING.md` (testing guide)
+### 9. **Modular Architecture & Testing Framework** ⚠️
+**Status:** Refactoring in Progress
 
-**Total Test Coverage:**
-- 49+ unit tests covering core functionality
-- Edge cases, error conditions, and boundary tests
-- Mocking for external dependencies (datetime, file I/O)
+**Recent Changes:**
+- Unit tests for legacy CSV logic have been decommissioned.
+- **New Target**: Comprehensive testing for `PortfolioRepository`, `StrategyEngine`, and `PortfolioEngine`.
+- **Manual Verification**: Established standard walkthroughs for AI and UI components (see `TESTING.md`).
 
-**Test Areas:**
-1. **Portfolio Builder** - Transaction validation, aggregation, edge cases
-2. **Alert Service** - Configurable thresholds, multiple alert conditions
-3. **CSV Handler** - Loading, parsing, validation, recovery
-4. **Market Status** - Timezone handling, market hours detection
-
-**Running Tests:**
-```bash
-pytest                                    # Run all tests
-pytest test/test_portfolio_builder.py -v  # Run specific module
-pytest --cov=. --cov-report=html          # Generate coverage report
-```
-
-**Benefits:**
-- Catch regressions early
-- Safe refactoring with confidence
-- Clear test documentation of expected behavior
-- 80%+ code coverage for critical modules
+**Planned:**
+- Integration tests for the Single Refresh Owner loop.
+- Mocked API testing for `data_fetcher` resiliency.
 
 ---
 
@@ -493,11 +459,11 @@ All changes are **fully backwards compatible**:
 **What Was Added:**
 - Introduced `PortfolioRepository` class to abstract data access from storage format.
 - Methods: `load_transactions()`, `save_transactions()`, `append_transaction()`.
-- Decoupled `app.py` logic from direct CSV file handling.
+- Decoupled presentation logic from persistence via `PortfolioRepository`.
+- Fully migrated from legacy CSV storage to production-ready SQLite with WAL support.
 
 **Benefits:**
 - Improved architectural modularity.
-- Prepared the codebase for future database migration (e.g., SQLite/PostgreSQL) with zero changes to application logic.
 
 ---
 
@@ -507,10 +473,9 @@ All changes are **fully backwards compatible**:
 Modified:
   app.py                          ← Consolidated refresh logic & Repo integration
   services/market/data_fetcher.py  ← Parallel fetching & Meta caching
-  callbacks/transaction_callbacks.py ← Removed redundant store updates
- 
-Created:
-  data/repository.py               ← New Data Abstraction Layer
+  core/engine/portfolio_engine.py  ← Aggregation & Tranche history
+  data/database.py                 ← Relational schema & SQLite config
+  data/repository.py               ← Production Data Abstraction Layer
 ```
 
 ---
@@ -530,20 +495,21 @@ Total: 8 modified + 12 new files = **20 files changed**
 
 ## Verification Checklist
 
-- [x] Fix "fully red" chart issue on Positions page (enabled auto_adjust=True for OHLC consistency)
-- [x] Technical signals integrated into Research Assistant
-- [ ] Alert system integration for RSI/MACD signals
-- [x] API retry logic implemented with exponential backoff
-- [x] All hardcoded config values support env vars
-- [x] Market hours configuration flexible
-- [x] Logging configuration centralized and customizable
-- [x] Alert thresholds configurable
-- [x] CSV write recovery with backup
-- [x] 49+ comprehensive unit tests created
-- [x] Documentation updated (guides and examples)
-- [x] All changes backwards compatible
-- [x] No breaking changes to user interface
-- [x] Tested syntax and imports
+- [x] Relational migration complete (SQLite WAL mode)
+- [x] Signal Engine & AI Analyst integration (Hybrid support)
+- [x] Metadata Caching (Long names, Sector, Country)
+- [x] Technical analysis engine (Pure Pandas)
+- [x] Centralized logging & Error fallback
+- [x] Market hours configuration (ASX closing auction support)
+- [x] Parallel fetching for metadata (ThreadPool)
+- [x] Multi-page period synchronization
+- [x] Verified 100% backwards compatibility on transaction ingestion
+- [ ] Automated test suite refactor for SQLite repository layer
+- [x] Modular CSS architecture implemented
+- [x] AI analysis layout isolation (Grid stability)
+- [x] Dividend dashboard consolidation into Positions page
+- [x] Standardized 16px/24px UI grid across all pages
+- [x] Verified syntax and imports (Modular safety)
 
 ### 21. **Technical Analysis Engine (Pure Pandas)** ✅
 **Files Modified:** `services/technical_indicators.py` (New), `callbacks/intelligence_callbacks.py`

@@ -6,35 +6,29 @@ This project includes comprehensive unit tests for core modules.
 
 ### Setup
 
-First, install test dependencies:
+First, install dependencies:
 
 ```bash
 pip install -r requirements.txt
 ```
 
-Tests require `pytest` and `pytest-cov` (included in requirements.txt).
+### Automated Testing Status ⚠️
 
-### Run All Tests
+The automated test suite is currently being refactored to align with the new **SQLite Relational Architecture** and **Single Refresh Owner** pattern. Legacy tests for CSV handlers and older portfolio builders have been decommissioned.
 
+**Planned Test Suite:**
+- `test/test_repository.py`: CRUD operations for transactions and asset metadata.
+- `test/test_engine.py`: Aggregation logic and P&L math.
+- `test/test_signals.py`: Technical indicator accuracy and strategy engine scoring.
+
+To run the (pending) new suite:
 ```bash
 pytest
 ```
 
-### Run Specific Test File
+### Manual Verification (Core Features)
 
-```bash
-pytest test/test_portfolio_builder.py -v
-```
-
-### Run Specific Test Class or Function
-
-```bash
-# Run single test class
-pytest test/test_portfolio_builder.py::TestBuildHoldings -v
-
-# Run single test function
-pytest test/test_portfolio_builder.py::TestBuildHoldings::test_single_buy_creates_holding -v
-```
+For features with complex UI interactions or AI components, follow these manual verification steps to ensure system integrity:
 
 ### Run with Coverage Report
 
@@ -44,57 +38,17 @@ pytest --cov=. --cov-report=html test/
 
 This generates an HTML coverage report in `htmlcov/index.html`.
 
-## Test Modules
+1. **SQLite Integrity**:
+   - Add a transaction via the UI (Intelligence Modal).
+   - Verify it appears in the Portfolio table immediately.
+   - Restart the app and verify the transaction persisted in `portfolio.db`.
 
-### test_portfolio_builder.py
+2. **Technical Indicators**:
+   - Navigate to the **Positions** page and verify technical badges (RSI/MACD) match expected trends.
+   - Verify color coding: RSI < 30 (Teal/Bullish), RSI > 70 (Red/Bearish).
 
-Tests for:
-- `validate_transaction()` — Transaction validation with edge cases
-- `build_holdings()` — Holdings aggregation from buy/sell transactions
-
-**Key test cases:**
-- Valid buy/sell transactions
-- Type validation (numeric checks, date formats)
-- Buy/sell aggregation logic
-- Fully-sold position exclusion
-- Invalid transaction filtering
-
-### test_alert_service.py
-
-Tests for:
-- `check_alerts()` — Alert condition detection
-- Configurable thresholds
-- Individual and portfolio-level alerts
-
-**Key test cases:**
-- Alert triggering at threshold
-- Custom threshold handling
-- Multiple alerts from same portfolio
-- Edge cases (zero cost basis, missing fields)
-
-### test_csv_handler.py
-
-Tests for:
-- `load_csv()` — CSV loading and parsing
-- `save_csv()` — CSV writing with backup
-
-**Key test cases:**
-- Column name normalization
-- Date format auto-detection (YYYY-MM-DD and DD.MM.YYYY)
-- Type defaulting to 'buy'
-- Error handling (missing files, invalid data)
-- Backup creation on write
-
-### test_market_status.py
-
-Tests for:
-- `is_market_open()` — Configurable market hours detection
-- `market_badge()` — UI status display
-
-**Key test cases:**
-- Trading hours detection (10:00-16:00 AET)
-- Weekend/holiday handling
-- Boundary time cases (exactly at open/close)
+3. **Market Status**:
+   - Verify the "Market Open/Closed" badge correctly reflects AEST time (taking into account the ASX closing auction until 16:15).
 
 ## Manual Verification (UI Features)
 
