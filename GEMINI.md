@@ -21,11 +21,17 @@
 - **Relational Persistence**: All core data (transactions, assets, watchlist, metadata) MUST be stored in `portfolio.db`. Never use CSVs for production state.
 - **SQLite Concurrency**: Always enable `PRAGMA journal_mode = WAL` and `busy_timeout = 5000` in `get_connection()`.
 - **Explicit Closure**: Every database connection MUST be explicitly closed using `finally: conn.close()` or equivalent to prevent resource leaks.
+- **Intraday Stability**: 
+  - 290s cooldown enforced in `session_cache.py` to prevent jagged data from frequent fetch triggers.
+  - All intraday charts (`pnl_history.py`) MUST apply 5-minute resampling (`resample('5min').last().ffill()`) to ensure visual uniformity.
+  - X-axis `rangebreaks` MUST be used to hide non-trading hours (16:15 - 10:00) and weekends for seamless session stitching.
 
 ## Data conventions
 - Tickers stored without .AX in CSV; ticker_yf = ticker + ".AX" for yfinance
 - Price fallback: use historical close when fast_info returns 0.0 (ASX off-hours)
 - yfinance: always use yf.download() bulk — never per-ticker calls in a loop
+- **Intraday Lookback**: Daily (1d) charts fetch `period="2d"` at `interval="5m"` to include the final hour (15:00 onwards) of the previous trading session for trend context.
+- **Market Status**: `is_market_open` supports `include_auction=True` (16:15 close) for backend data collection and `include_auction=False` (16:00 close) for UI status badges.
 - All MultiIndex column extraction must use public helpers — never import private `_extract_col` from other service files:
   - `extract_close(df, ticker_yf)` → returns a `pd.Series` of Close prices for one ticker
   - `get_full_history_cache(holdings)` → returns the full bulk MultiIndex DataFrame from cache
@@ -116,3 +122,9 @@
 - `assets/layout.css` — Standardized global page-header and section padding to a uniform `16px 24px` grid.
 - **Dynamic Container Pattern**: Refactored the Positions and Watchlist pages to use dynamic containers (`positions-price-chart-container`, etc.) that hide headers and empty states until a ticker is selected, ensuring a clean "Day 1" UI.
 - `components/ui_helpers.py` — Established `section()` as the primary structural wrapper for all dashboard content to enforce consistent margins and borders.- **Relational Migration (Complete)**: Transitioned from CSV/JSON to SQLite for all identity and state data. Implemented WAL mode for concurrency and a 7-day persistent cache for ETF metadata.
+
+### Intraday Chart Refinement (Complete)
+- `services/market/market_status.py` — Added `get_previous_trading_session_start()` to calculate a 15:00 lookback window (skipping weekends).
+- `services/market/session_cache.py` — Implemented 290s cooldown for snapshots and backfill logic with timezone-aware alignment.
+- `components/charts/pnl_history.py` — Implemented 5-minute resampling and Plotly `rangebreaks` to hide overnight sessions. Updated hover labels to include full date context.
+- `services/market/data_fetcher.py` — Updated `fetch_live` to request 2-day windows and ensure snapshots/backfills occur even on internal cache hits.

@@ -13,6 +13,9 @@ from config.settings import API_MAX_RETRIES, API_RETRY_BACKOFF_BASE, CACHE_TTL_S
 from services.market.session_cache import (
     record_snapshot, get_session_history, clear_old_caches, backfill_session_cache
 )
+from services.market.market_status import (
+    is_market_open, get_previous_trading_session_start
+)
 
 logger = logging.getLogger(__name__)
 
@@ -355,8 +358,11 @@ def _enrich_single_holding(h: dict, multi_live: pd.DataFrame, multi_full: pd.Dat
             if not yf_1d.empty:
                 yf_1d = yf_1d[yf_1d > 0]
                 yf_1d.index = normalise_tz(yf_1d.index)
-                cutoff = get_period_cutoff("1d")
-                yf_1d = yf_1d[yf_1d.index >= cutoff]
+                
+                # Allow data from the previous trading session (15:00 onwards)
+                cutoff = get_previous_trading_session_start()
+                cutoff_utc = normalise_tz(pd.DatetimeIndex([cutoff]))[0]
+                yf_1d = yf_1d[yf_1d.index >= cutoff_utc]
             
             sess_1d = get_session_history(ticker)
             if not sess_1d.empty:
@@ -371,9 +377,19 @@ def _enrich_single_holding(h: dict, multi_live: pd.DataFrame, multi_full: pd.Dat
                 close_p = sess_1d if not sess_1d.empty else yf_1d
             
             if not close_p.empty:
-                close_p.index = normalise_tz(pd.to_datetime(close_p.index))
-                df_p = close_p.reset_index()
+                # Prepare history_data for export/backfill (must use Sydney time)
+                # Note: close_p itself stays normalized (UTC) for P&L calculations
+                exp_p = close_p.copy()
+                # Ensure it's in Sydney time for the string representation
+                try:
+                    exp_p.index = pd.to_datetime(exp_p.index).tz_localize("UTC").tz_convert("Australia/Sydney")
+                except Exception:
+                    pass
+                
+                df_p = exp_p.reset_index()
                 df_p.columns = ["Date", "Close"]
+                # Format as string for JSON/dict serialization
+                df_p["Date"] = df_p["Date"].dt.strftime("%Y-%m-%d %H:%M:%S")
                 history_data = df_p.to_dict("records")
         else:
             # ── 1b. OHLC Extraction (Extended History) ───────────────────
@@ -556,9 +572,26 @@ def fetch_live(holdings: list[dict], hist_period: str = "max", record_snapshots:
         for h in sorted(holdings, key=lambda x: x['ticker'])
     )
     # FIX: include share counts in cache key to bust on new transactions
-    cache_key = f"market_data_{hist_period}_{holdings_sig}"
+    cache_key = f"market_data_v2_{hist_period}_{holdings_sig}"
     cached = get_cache(cache_key)
     if cached:
+        # ── Record snapshots even on cache hits for continuity ────────────────
+        if record_snapshots:
+            try:
+                record_snapshot(cached["holdings"])
+                if hist_period == "1d":
+                    backfill_map = {}
+                    for ticker, hist_list in cached.get("histories", {}).items():
+                        if hist_list:
+                            df_h = pd.DataFrame(hist_list)
+                            if not df_h.empty and "Date" in df_h.columns and "Close" in df_h.columns:
+                                backfill_map[ticker] = df_h.set_index("Date")["Close"]
+                    if backfill_map:
+                        start_limit = get_previous_trading_session_start()
+                        backfill_session_cache(backfill_map, start_limit=start_limit)
+            except Exception as e:
+                logger.error("Cached snapshot recording failed: %s", e)
+
         # Return a copy with fresh timestamp so Dash detects the change
         res = cached.copy()
         res["fetched_at"] = datetime.now().strftime("%H:%M:%S")
@@ -588,9 +621,8 @@ def fetch_live(holdings: list[dict], hist_period: str = "max", record_snapshots:
         # Reuse multi_full if possible to save a redundant network call
         multi_period = multi_full
     elif hist_period == "1d":
-        # Use 5d window to ensure we get today's intraday data reliably 
-        # (yfinance '1d' period can sometimes be empty for ASX tickers in the morning).
-        multi_period = _download_with_retry(tickers_yf, period="5d", interval="5m")
+        # Request 2d to include the final hour of the previous trading day
+        multi_period = _download_with_retry(tickers_yf, period="2d", interval="5m")
     else:
         if use_disk_history:
             multi_period = pd.DataFrame()
@@ -660,7 +692,9 @@ def fetch_live(holdings: list[dict], hist_period: str = "max", record_snapshots:
                             backfill_map[ticker] = df_h.set_index("Date")["Close"]
                 
                 if backfill_map:
-                    backfill_session_cache(backfill_map)
+                    # Capture from the last hour of the previous trading day
+                    start_limit = get_previous_trading_session_start()
+                    backfill_session_cache(backfill_map, start_limit=start_limit)
         except Exception as PERSIST_EXC:
             logger.error("Snapshot/Backfill recording failed: %s", PERSIST_EXC)
     

@@ -37,12 +37,16 @@ def record_snapshot(enriched_holdings: list[dict]):
             logger.warning("Failed to read session cache: %s", e)
 
     # Use Sydney time for the recorded timestamp
-    now_str = pd.Timestamp.now(tz="Australia/Sydney").strftime("%Y-%m-%d %H:%M:%S")
+    now = pd.Timestamp.now(tz="Australia/Sydney")
+    now_str = now.strftime("%Y-%m-%d %H:%M:%S")
     updated = False
+    
+    # Snapshot cooldown (seconds). 290s allows for a 300s interval with slight jitter.
+    COOLDOWN_SEC = 290
     
     for h in enriched_holdings:
         ticker = h["ticker"]
-        price = h["last_price"]
+        price = round(h["last_price"], 4)
         
         # Don't record if price is 0 (fetch failure)
         if price <= 0:
@@ -51,9 +55,21 @@ def record_snapshot(enriched_holdings: list[dict]):
         if ticker not in session_data:
             session_data[ticker] = []
             
-        # Only add if the price is different (avoid bloat)
         history = session_data[ticker]
-        if not history or history[-1]["Close"] != price:
+        
+        # Check cooldown since last recorded point
+        should_record = False
+        if not history:
+            should_record = True
+        else:
+            last_date_str = history[-1]["Date"]
+            last_date = pd.to_datetime(last_date_str).tz_localize("Australia/Sydney")
+            seconds_since = (now - last_date).total_seconds()
+            
+            if seconds_since >= COOLDOWN_SEC:
+                should_record = True
+        
+        if should_record:
             history.append({"Date": now_str, "Close": price})
             updated = True
             
@@ -64,12 +80,13 @@ def record_snapshot(enriched_holdings: list[dict]):
         except Exception as e:
             logger.error("Failed to write session cache: %s", e)
 
-def backfill_session_cache(tickers_data: dict[str, pd.Series]):
+def backfill_session_cache(tickers_data: dict[str, pd.Series], start_limit: pd.Timestamp = None):
     """
     Backfill the session cache with historical intraday data (e.g. from yfinance).
     
     Args:
         tickers_data: Dict mapping ticker strings to pandas Series of Close prices.
+        start_limit: Optional start time for backfill (e.g. 15:00 previous day).
     """
     filename = _get_filename()
     session_data = {}
@@ -84,7 +101,12 @@ def backfill_session_cache(tickers_data: dict[str, pd.Series]):
     updated = False
     now_syd = pd.Timestamp.now(tz="Australia/Sydney")
     today_str = now_syd.strftime("%Y-%m-%d")
-    market_open = pd.Timestamp(f"{today_str} 10:00:00", tz="Australia/Sydney")
+    
+    # Default start limit is 10:00 AM today if not provided
+    if start_limit is None:
+        start_limit = pd.Timestamp(f"{today_str} 10:00:00", tz="Australia/Sydney")
+    elif start_limit.tzinfo is None:
+        start_limit = start_limit.tz_localize("Australia/Sydney")
 
     for ticker, series in tickers_data.items():
         if series.empty:
@@ -97,29 +119,39 @@ def backfill_session_cache(tickers_data: dict[str, pd.Series]):
         existing_times = {p["Date"] for p in existing_points}
         
         new_points = []
+        skipped_limit = 0
+        skipped_exists = 0
+        
         for ts, price in series.items():
             # Ensure timestamp is in Sydney time
             try:
-                if ts.tzinfo is None:
-                    ts_syd = pd.Timestamp(ts).tz_localize("UTC").tz_convert("Australia/Sydney")
+                ts_ts = pd.Timestamp(ts)
+                if ts_ts.tzinfo is None:
+                    # History strings from histories.items() are already in Sydney time
+                    ts_syd = ts_ts.tz_localize("Australia/Sydney")
                 else:
-                    ts_syd = pd.Timestamp(ts).tz_convert("Australia/Sydney")
+                    ts_syd = ts_ts.tz_convert("Australia/Sydney")
             except Exception:
                 ts_syd = pd.Timestamp(ts)
 
-            # Only include points from today's market session
-            if ts_syd.strftime("%Y-%m-%d") != today_str or ts_syd < market_open:
+            # Only include points after the start limit
+            if ts_syd < start_limit:
+                skipped_limit += 1
                 continue
                 
             time_str = ts_syd.strftime("%Y-%m-%d %H:%M:%S")
             if time_str not in existing_times and price > 0:
                 new_points.append({"Date": time_str, "Close": round(float(price), 4)})
+            else:
+                skipped_exists += 1
         
         if new_points:
             session_data[ticker].extend(new_points)
             # Re-sort to ensure chart continuity
             session_data[ticker].sort(key=lambda x: x["Date"])
             updated = True
+            logger.debug("Backfill: %s added %d points (skipped %d limit, %d exists)", 
+                         ticker, len(new_points), skipped_limit, skipped_exists)
             
     if updated:
         try:

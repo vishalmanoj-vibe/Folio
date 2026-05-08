@@ -36,6 +36,7 @@ data/cache/
 !data/raw/.gitkeep
 *.log
 *.bak
+repo_audit_2_20260508_145955.md
 app_output.txt
 
 # One-off scripts (not part of the project)
@@ -49,3 +50,4 @@ scratch/
 # Archives
 *.zip
 *.tar.gz
+*.sh

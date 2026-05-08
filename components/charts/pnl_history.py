@@ -30,6 +30,7 @@ def _build_intraday_figure(
     """
     import json as _json, os as _os
     from datetime import datetime as _dt
+    from services.market.market_status import get_previous_trading_session_start
 
     BORDER  = theme_tokens["BORDER"]
     T_SEC   = theme_tokens["T_SEC"]
@@ -38,7 +39,8 @@ def _build_intraday_figure(
 
     now_syd      = pd.Timestamp.now(tz="Australia/Sydney")
     today_str    = now_syd.strftime("%Y-%m-%d")
-    market_open  = pd.Timestamp(f"{today_str} 10:00:00", tz="Australia/Sydney")
+    # Extended window: from previous day's last hour to today's close
+    chart_start  = get_previous_trading_session_start()
     market_close = pd.Timestamp(f"{today_str} 16:15:00", tz="Australia/Sydney")
 
     # ── Load session cache directly from disk ─────────────────────────────────
@@ -77,17 +79,20 @@ def _build_intraday_figure(
         df = pd.DataFrame(points)
         df["Date"] = pd.to_datetime(df["Date"]).dt.tz_localize("Australia/Sydney")
         df = df.sort_values("Date").drop_duplicates("Date")
-        df = df[(df["Date"] >= market_open) & (df["Date"] <= market_close)]
+        # Filter to extended window
+        df = df[(df["Date"] >= chart_start) & (df["Date"] <= market_close)]
 
         if df.empty:
             continue
 
         price_s = df.set_index("Date")["Close"]
         
-        # ── Data Sanitization ─────────────────────────────────────────────────
-        # Filter out spurious zero-prices and forward-fill gaps to prevent 
-        # sudden "cliff" drops in the chart during session gaps.
-        price_s = price_s[price_s > 0].ffill()
+        # ── Data Sanitization & Uniformity ────────────────────────────────────
+        # Resample to a uniform 5-minute grid. This cleans up 'haphazard' points
+        # by taking the last known price in each bucket and filling gaps.
+        price_s = price_s[price_s > 0]
+        if not price_s.empty:
+            price_s = price_s.resample('5min').last().ffill()
 
         if price_s.empty:
             continue
@@ -97,12 +102,11 @@ def _build_intraday_figure(
         else:
             day_s = ((price_s - prev_close) * total_shares).round(2)
 
-        # ── Anchor at 10:00 AM ────────────────────────────────────────────────
-        # If the series doesn't start exactly at 10:00 AM, we prepend a zero point
-        # to ensure the chart line starts at the y=0 axis for all tickers.
-        if market_open not in day_s.index:
-            day_s.loc[market_open] = 0.0
-            day_s = day_s.sort_index()
+        # ── Anchor at Start of Window ─────────────────────────────────────────
+        # Ensure the series starts at the axis zero-line relative to the previous close
+        # (Since we are showing the actual drop from the previous day, we don't force a zero here
+        # unless it's the very first point of the session).
+        # We removed the hard 10:00 AM anchor to allow the natural trend from yesterday.
 
         all_series.append(day_s)
 
@@ -149,13 +153,11 @@ def _build_intraday_figure(
         line=dict(color=line_color, width=2.5),
         marker=dict(size=5, color=line_color),
         hovertemplate=(
-            "<b>%{x|%H:%M}</b><br>"
+            "<b>%{x|%a %d %b, %H:%M}</b><br>"
             + ("%{y:+.2f}%<extra>Day change</extra>" if mode == "pct"
                else "$%{y:+,.2f}<extra>Day P&L</extra>")
         ),
     ))
-
-    fig.add_hline(y=0, line_color=BORDER, line_width=0.8)
 
     # Corner annotation with latest value
     sign  = "+" if last_val >= 0 else ""
@@ -231,14 +233,25 @@ def build_pnl_history_figure(
             dtick=30 * 60 * 1000,  # 30-minute ticks in milliseconds
             tickangle=0,
         ))
-        # Fix x-axis to ASX session window 10:00–16:15 Sydney wall-clock
-        now_syd   = pd.Timestamp.now(tz="Australia/Sydney")
-        today_str = now_syd.strftime("%Y-%m-%d")
-        # Use ISO format with timezone offset to ensure Plotly respects Sydney time
-        range_start = f"{today_str}T10:00:00"
-        range_end   = f"{today_str}T16:15:00"
+        # Fix x-axis to extended session window
+        from services.market.market_status import get_previous_trading_session_start
+        chart_start = get_previous_trading_session_start()
+        
+        # Use ISO format for Plotly
+        range_start = chart_start.isoformat()
+        # Ensure we cover the full session end
+        range_end   = pd.Timestamp.now(tz="Australia/Sydney").replace(hour=16, minute=15, second=0).isoformat()
+        
         layout["xaxis"].update(dict(
             range=[range_start, range_end],
+            # Rangebreaks hide the "dead time" between sessions and over weekends
+            rangebreaks=[
+                dict(bounds=["sat", "mon"]), # hide weekends
+                dict(bounds=[16.25, 10], pattern="hour"), # hide overnight (16:15 to 10:00)
+            ],
+            # Remove hardcoded dtick to prevent label overlapping over multi-day span
+            dtick=None,
+            nticks=10,
         ))
     else:
         layout["xaxis"].update(dict(
