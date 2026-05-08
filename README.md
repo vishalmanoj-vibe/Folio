@@ -1,25 +1,23 @@
 # Portfolio Dashboard — Live P&L
 
-A local web dashboard for tracking an ASX ETF portfolio with live prices,
-P&L history, dividends, and correlation analysis.
+A local web dashboard for tracking an ASX ETF portfolio with live prices, P&L history, dividends, and AI-powered analysis.
 
-Built with Dash, Plotly, and yfinance.
+Built with Dash, Plotly, yfinance, and Gemini.
 
 ![Dashboard](screenshot.png)
 
 ## Features
-- **Live Tracking**: Real-time prices via Yahoo Finance (yfinance) with ASX-specific bulk optimizations.
-- **Intraday Monitoring**: Dedicated "Today" P&L tracking with high-frequency session caching and persistent daily snapshots.
-- **Positions Deep-Dive**: Granular view of each holding with interactive candlestick charts, transaction history, live sparklines, and integrated **Dividend Analysis**.
-- **Intelligence Dashboard**: Institutional-grade risk metrics including **Sharpe Ratio**, **Annualized Volatility**, and **Max Drawdown**.
-- **Portfolio Forecasting**: Forward-looking return projections powered by **Facebook Prophet** with Australian holiday awareness and continuity correction.
-- **Allocation Analysis**: Hierarchical Sector and Geographic allocation with Sunburst drill-downs and smart risk alerts.
-- **Dividend Tracking**: Unified dividend engine calculating **Realized Income** (tranche-level accuracy) vs. projected annual distributions, now integrated directly into the ticker deep-dive panel.
-- **Interactive UI**: Modern, responsive interface with buy/sell entry, calendar-based tracking, and global state persistence.
-- **Research Assistant**: AI-powered chat interface with **Gemini 2.5 Flash Lite** for deep portfolio analysis, ticker research, and persistent conversation memory.
-- **Trading Signal Engine**: Deterministic, rule-based BUY/SELL/HOLD signals for both **portfolio holdings** and **watchlist tickers** using a weighted scoring model (Trend, Momentum, Price vs 200MA, Cost basis, Drawdown). An AI Analyst overlay explains each signal without overriding it. Available on the Portfolio, Positions, and Watchlist pages — triggered manually, never auto-runs.
-- **Modular Architecture**: Strictly decoupled layer model (Presentation, Service, Engine, Data) with a **PortfolioRepository** abstraction and a pre-seeded store pattern.
-- **Premium Aesthetics**: "Aura Ledger" dark-themed design with glassmorphism, Radix UI overrides, and smooth transitions.
+
+- **Live Tracking** — Real-time prices via Yahoo Finance with ASX-specific bulk optimisations and 5-minute refresh.
+- **Intraday Monitoring** — "Today" P&L chart with high-frequency session caching and persistent daily snapshots across restarts.
+- **Positions Deep-Dive** — Candlestick charts, transaction history, live sparklines, and integrated dividend analysis per holding.
+- **Intelligence Dashboard** — Sharpe Ratio, Annualised Volatility, Max Drawdown, and equity curve with optional Prophet forecasting.
+- **Allocation Analysis** — Hierarchical Sector and Geographic treemaps with smart concentration alerts.
+- **Dividend Tracking** — Tranche-accurate realized income engine matched against actual ex-dividend dates, not just yield estimates.
+- **Trading Signals** — Deterministic BUY/SELL/HOLD signals using a weighted scoring model (Trend, Momentum, Price vs 200MA, Cost basis, Drawdown). An AI Analyst overlay explains each signal. Available on Portfolio, Positions, and Watchlist pages — manual trigger only.
+- **Watchlist** — Track tickers you don't own yet with live pricing, signals, and research notes.
+- **AI Research Assistant** — Chat interface powered by Gemini 2.5 Flash Lite for portfolio analysis and ticker research, with persistent conversation memory and optional web search.
+- **Weekly PDF Report** — AI-generated portfolio summary with holdings breakdown, technical signals, dividend calendar, and market news.
 
 ## Setup
 
@@ -27,7 +25,7 @@ Built with Dash, Plotly, and yfinance.
 
 ```bash
 # 1. Clone the repo
-git clone https://github.com/YOUR_USERNAME/portfolio_dashboard.git
+git clone https://github.com/vishalmanoj1998-tech/portfolio_dashboard.git
 cd portfolio_dashboard
 
 # 2. Create and activate a virtual environment
@@ -38,21 +36,58 @@ portfolio-env\Scripts\activate         # Windows
 # 3. Install dependencies
 pip install -r requirements.txt
 
-# 4. Add your transactions to the CSV
-# Edit stock_portfolio_transactions.csv — see format below
+# 4. Add a .env file for AI features (optional)
+echo "GEMINI_API_KEY=your_key_here" > .env
 
 # 5. Run
 python app.py
-# Open http://127.0.0.1:8050
+# Opens automatically at http://127.0.0.1:8050
 ```
 
-## CSV Format
+The database is created automatically on first run. Add your transactions directly from the UI — no CSV or manual setup required.
 
-The file `stock_portfolio_transactions.csv` holds all your transactions.
-Do not include `.AX` — the app adds it automatically.
+## AI Features
 
-## Architecture & Documentation
+The Research Assistant and Trading Signal AI overlay both require a Gemini API key. Get one free at [aistudio.google.com](https://aistudio.google.com).
 
-This project has been heavily refactored for maintainability and scalability. All core modules are thoroughly commented with Google-style docstrings. 
+All other features (live prices, P&L tracking, dividends, signals engine, forecasting) work without an API key.
 
-If you plan to contribute or want to understand the data flow, please read the [Developer Guide](docs/guides/DEVELOPER_GUIDE.md) for a complete breakdown of the UI, Services, Data, and Core layers.
+## Pages
+
+| Page | Route | Description |
+|---|---|---|
+| Overview | `/` | Live positions table, P&L chart, stat cards |
+| Positions | `/positions` | Per-holding deep-dive with candlestick charts and dividends |
+| Watchlist | `/watchlist` | Track tickers you are considering buying |
+| Intelligence | `/intelligence` | Risk metrics, equity curve, drawdown, forecasting |
+| Analytics | `/analytics` | Allocation treemaps, correlation matrix, volatility |
+| AI Analyst | `/ai-analyst` | Chat-based portfolio research and weekly PDF report |
+
+## Architecture
+
+Strictly decoupled four-layer model:
+Presentation  →  callbacks/, pages/, components/, assets/
+Service       →  services/market/, services/intelligence_service.py, etc.
+Engine        →  core/engine/portfolio_engine.py  (pure Python, no network)
+Data          →  data/repository.py, data/database.py  (SQLite, WAL mode)
+
+All market data fetches use `yf.download()` bulk calls — never per-ticker loops. The database uses WAL mode for safe concurrent writes from the background snapshot thread.
+
+For a full breakdown of the data flow, callback architecture, and module responsibilities see the [Developer Guide](docs/guides/DEVELOPER_GUIDE.md).
+
+## Tech Stack
+
+| Layer | Libraries |
+|---|---|
+| UI | Dash, Dash Mantine Components, Dash Bootstrap Components, Plotly |
+| Data | yfinance, pandas, SQLite |
+| AI | Google Gemini 2.5 Flash Lite (google-genai) |
+| Forecasting | Facebook Prophet |
+| Reports | ReportLab, Matplotlib |
+| Search | DuckDuckGo Search (ddgs) |
+
+## Disclaimer
+
+This dashboard is for personal tracking only. Nothing it displays constitutes financial advice. Always verify with a licensed financial adviser before making investment decisions.
+
+If you plan to contribute or want to understand the data flow, please read the Developer Guide for a complete breakdown of the UI, Services, Data, and Core layers.
