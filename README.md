@@ -1,4 +1,4 @@
-# Portfolio Dashboard — Live P&L
+# Folio
 
 A local web dashboard for tracking an ASX ETF portfolio with live prices, P&L history, dividends, and AI-powered analysis.
 
