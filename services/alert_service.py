@@ -1,6 +1,6 @@
 # services/alert_service.py
 """
-Alert service for Portfolio Dashboard.
+Alert service for Folio.
 
 Detects portfolio and position drawdown conditions.
 """

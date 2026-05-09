@@ -1,6 +1,6 @@
 # models/transaction.py
 """
-Data models for Portfolio Dashboard.
+Data models for Folio.
 
 Type definitions and data schemas.
 """

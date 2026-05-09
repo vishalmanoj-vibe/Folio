@@ -1,6 +1,6 @@
 # callbacks/alert_callbacks.py
 """
-Alert Callbacks for Portfolio Dashboard.
+Alert Callbacks for Folio.
 
 Handles the rendering of the alert banner based on portfolio logic.
 """

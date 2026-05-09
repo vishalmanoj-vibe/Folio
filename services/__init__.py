@@ -1,6 +1,6 @@
 # services/__init__.py
 """
-Services layer for Portfolio Dashboard.
+Services layer for Folio.
 
 Business logic for market data, alerts, and portfolio operations.
 """

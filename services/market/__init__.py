@@ -1,6 +1,6 @@
 # services/market/__init__.py
 """
-Market services for Portfolio Dashboard.
+Market services for Folio.
 
 Market data fetching and status checking.
 """

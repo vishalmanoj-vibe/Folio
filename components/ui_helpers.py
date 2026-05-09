@@ -2,7 +2,7 @@
 """
 components/ui_helpers.py
 =========================
-Refined UI helpers for the Portfolio Dashboard.
+Refined UI helpers for the Folio Dashboard.
 """
 
 from dash import html

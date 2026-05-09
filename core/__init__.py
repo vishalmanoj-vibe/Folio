@@ -1,6 +1,6 @@
 # core/__init__.py
 """
-Core utilities for Portfolio Dashboard.
+Core utilities for Folio.
 
 Cache, validators, and custom exceptions.
 """

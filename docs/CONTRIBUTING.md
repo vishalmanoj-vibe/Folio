@@ -1,4 +1,4 @@
-# Contributing to Portfolio Dashboard
+# Contributing to Folio
 
 This guide covers local setup, development conventions, and how to extend the app.
 
@@ -7,7 +7,7 @@ This guide covers local setup, development conventions, and how to extend the ap
 1. **Clone the Repository**:
    ```bash
    git clone <repo-url>
-   cd portfolio_dashboard
+   cd folio
    ```
 
 2. **Environment Setup**:

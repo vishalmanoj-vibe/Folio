@@ -1,6 +1,6 @@
 # config/__init__.py
 """
-Configuration package for Portfolio Dashboard.
+Configuration package for Folio.
 
 Exports all settings, constants, and logging configuration.
 Maintains backward compatibility with existing imports.

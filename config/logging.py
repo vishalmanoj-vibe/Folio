@@ -1,6 +1,6 @@
 # config/logging.py
 """
-Logging configuration for Portfolio Dashboard.
+Logging configuration for Folio.
 
 Centralized logging with console and file handlers.
 Configure via environment variables:

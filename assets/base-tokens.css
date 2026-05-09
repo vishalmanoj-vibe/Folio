@@ -1,6 +1,6 @@
 /* assets/base-tokens.css */
 /* ============================================================
-   base-tokens.css — Portfolio Dashboard Design Tokens
+   base-tokens.css — Folio Design Tokens
    Token-first, theme-aware, teal-black palette.
    ============================================================ */
 
@@ -42,7 +42,7 @@ body[data-theme="dark"] {
   --bench-1: #6b8fcc;
   --bench-2: #cc8f6b;
 
-  /* Aliases kept for backward compat */
+  /* Aliases kept for Folio compat */
   --danger: var(--red);
 
   color-scheme: dark;

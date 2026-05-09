@@ -2,7 +2,7 @@
 """
 components/header.py
 ====================
-Global navigation bar for the Sovereign Ledger dashboard.
+Global navigation bar for the Folio dashboard.
 """
 
 from dash import html, dcc
@@ -19,7 +19,7 @@ def create_header(
     # ── Left: Logo & Links ──────────────────────────────────────────────────
     nav_left = [
         html.Div(
-            ["Portfolio"], 
+            ["Folio"], 
             className="nav-logo"
         ),
         html.Div([

@@ -1,4 +1,4 @@
-# Project Rules — portfolio_dashboard
+# Project Rules — Folio
 
 ## Stack
 - Python 3.11, Dash (multi-page), Plotly, yfinance, pandas

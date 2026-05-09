@@ -1,6 +1,6 @@
 # callbacks/ui_callbacks.py
 """
-UI Callbacks for Portfolio Dashboard.
+UI Callbacks for Folio.
 
 Handles general UI interactions such as theme toggling and printing.
 """

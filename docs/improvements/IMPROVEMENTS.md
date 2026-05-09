@@ -1,6 +1,6 @@
 # Implementation Summary - Code Improvements
 
-This document summarizes all improvements implemented to the Portfolio Dashboard project.
+This document summarizes all improvements implemented to the Folio project.
 
 ## Changes Overview
 

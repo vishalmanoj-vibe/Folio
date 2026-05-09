@@ -1,6 +1,6 @@
 # Project Evolution & Build History
 
-This document chronicles the technical evolution of the Portfolio Dashboard, transitioning from a basic tracking tool into a sophisticated, AI-driven market intelligence platform.
+This document chronicles the technical evolution of Folio, transitioning from a basic tracking tool into a sophisticated, AI-driven market intelligence platform.
 
 ---
 

@@ -1,6 +1,6 @@
 # config/constants.py
 """
-Constants for Portfolio Dashboard.
+Constants for Folio.
 
 Colors, theme definitions, ETF names, and chart information.
 """

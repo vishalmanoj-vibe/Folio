@@ -1,6 +1,6 @@
 # app.py
 """
-Portfolio Dashboard — modular entry point
+Folio — modular entry point
 ==========================================
 Run:   python app.py
 Open:  http://127.0.0.1:8050
@@ -145,7 +145,7 @@ app = dash.Dash(
     suppress_callback_exceptions=True,
 )
 
-app.title = "Portfolio — Live"
+app.title = "Folio — Live"
 app.index_string = INDEX_STRING
 
 # Pages are loaded automatically via use_pages=True

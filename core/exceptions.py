@@ -1,13 +1,13 @@
 # core/exceptions.py
 """
-Custom exceptions for Portfolio Dashboard.
+Custom exceptions for Folio.
 
 Domain-specific exceptions for better error handling.
 """
 
 
 class PortfolioDashboardError(Exception):
-    """Base exception for Portfolio Dashboard."""
+    """Base exception for Folio."""
     pass
 
 

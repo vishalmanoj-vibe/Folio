@@ -1,6 +1,6 @@
 # models/__init__.py
 """
-Portfolio models for Portfolio Dashboard.
+Portfolio models for Folio.
 
 Portfolio and aggregated holding structures.
 """

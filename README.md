@@ -1,6 +1,6 @@
 # Folio
 
-A local web dashboard for tracking an ASX ETF portfolio with live prices, P&L history, dividends, and AI-powered analysis.
+A local portfolio dashboard for tracking ASX ETFs with live prices, P&L history, dividends, analytics, and AI-powered insights.
 
 Built with Dash, Plotly, yfinance, and Gemini.
 
@@ -14,7 +14,7 @@ Built with Dash, Plotly, yfinance, and Gemini.
 - **Intelligence Dashboard** — Sharpe Ratio, Annualised Volatility, Max Drawdown, and equity curve with optional Prophet forecasting.
 - **Allocation Analysis** — Hierarchical Sector and Geographic treemaps with smart concentration alerts.
 - **Dividend Tracking** — Tranche-accurate realized income engine matched against actual ex-dividend dates, not just yield estimates.
-- **Trading Signals** — Deterministic BUY/SELL/HOLD signals using a weighted scoring model (Trend, Momentum, Price vs 200MA, Cost basis, Drawdown). An AI Analyst overlay explains each signal. Available on Portfolio, Positions, and Watchlist pages — manual trigger only.
+- **Trading Signals** — Weighted BUY/SELL/HOLD engine using trend, momentum, drawdown, moving averages, and cost basis analysis. Includes optional AI-generated explanations.
 - **Watchlist** — Track tickers you don't own yet with live pricing, signals, and research notes.
 - **AI Research Assistant** — Chat interface powered by Gemini 2.5 Flash Lite for portfolio analysis and ticker research, with persistent conversation memory and optional web search.
 - **Weekly PDF Report** — AI-generated portfolio summary with holdings breakdown, technical signals, dividend calendar, and market news.
@@ -25,13 +25,13 @@ Built with Dash, Plotly, yfinance, and Gemini.
 
 ```bash
 # 1. Clone the repo
-git clone https://github.com/vishalmanoj1998-tech/portfolio_dashboard.git
-cd portfolio_dashboard
+git clone https://github.com/vishalmanoj-vibe/folio.git
+cd folio
 
 # 2. Create and activate a virtual environment
-python -m venv portfolio-env
-source portfolio-env/bin/activate      # Mac/Linux
-portfolio-env\Scripts\activate         # Windows
+python -m venv folio-env
+source folio-env/bin/activate      # Mac/Linux
+folio-env\Scripts\activate         # Windows
 
 # 3. Install dependencies
 pip install -r requirements.txt
@@ -65,11 +65,10 @@ All other features (live prices, P&L tracking, dividends, signals engine, foreca
 
 ## Architecture
 
-Strictly decoupled four-layer model:
-Presentation  →  callbacks/, pages/, components/, assets/
-Service       →  services/market/, services/intelligence_service.py, etc.
-Engine        →  core/engine/portfolio_engine.py  (pure Python, no network)
-Data          →  data/repository.py, data/database.py  (SQLite, WAL mode)
+- **Presentation**  →  `callbacks/`, `pages/`, `components/`, `assets/`
+- **Service**       →  `services/market/`, `services/ai_engine.py`, `services/strategy_engine.py`, `services/intelligence_service.py`
+- **Engine**        →  `core/engine/portfolio_engine.py`, `core/engine/stats_engine.py`
+- **Data**          →  `data/repository.py`, `data/database.py`, `data/watchlist_repository.py`
 
 All market data fetches use `yf.download()` bulk calls — never per-ticker loops. The database uses WAL mode for safe concurrent writes from the background snapshot thread.
 
@@ -88,6 +87,8 @@ For a full breakdown of the data flow, callback architecture, and module respons
 
 ## Disclaimer
 
+Folio started as a personal project to solve real portfolio tracking problems while experimenting with modern AI-assisted development tools.
+
 This dashboard is for personal tracking only. Nothing it displays constitutes financial advice. Always verify with a licensed financial adviser before making investment decisions.
 
 If you plan to contribute or want to understand the data flow, please read the Developer Guide for a complete breakdown of the UI, Services, Data, and Core layers.
@@ -99,3 +100,7 @@ This data is intended for personal use only. Commercial use of Yahoo Finance
 data requires a separate data agreement with Yahoo. See 
 [Yahoo Finance Terms of Service](https://legal.yahoo.com/us/en/yahoo/terms/otos/index.html) 
 for details.
+
+## License
+
+MIT License © 2026 Vishal Manoj Kumar

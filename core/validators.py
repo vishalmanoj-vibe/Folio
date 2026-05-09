@@ -1,6 +1,6 @@
 # core/validators.py
 """
-Validators for Portfolio Dashboard.
+Validators for Folio.
 
 Transaction validation and data checking utilities.
 """

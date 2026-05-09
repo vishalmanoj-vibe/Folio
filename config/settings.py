@@ -1,6 +1,6 @@
 # config/settings.py
 """
-Settings and configuration for Portfolio Dashboard.
+Settings and configuration for Folio.
 
 All environment variables with sensible defaults are defined here.
 Easily customizable via .env file.

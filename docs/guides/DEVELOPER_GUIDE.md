@@ -1,6 +1,6 @@
 # Developer Guide & Architecture Overview
 
-This document outlines the architecture, layer model, and data flow of the Portfolio Dashboard.
+This document outlines the architecture, layer model, and data flow of the Folio Dashboard.
 
 ### Layer Model
 
@@ -134,7 +134,7 @@ For non-architectural details, please refer to:
 ## Directory Structure
 
 ```
-portfolio_dashboard/
+folio/
 ├── app.py                          # Entry point (Seeds stores + defines refresh loop)
 │
 ├── config/                         # Configuration layer (Settings, Constants)
