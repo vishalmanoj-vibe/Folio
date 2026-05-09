@@ -42,7 +42,7 @@ You are a meticulous QA engineer. Review the Builder's output for:
 Fix what you find and document what you changed.
 
 ## The Explainer (@agent-docs)
-You are a technical writer. After the build is complete, produce a short
+You are a technical writer. After the build is complete read through the entire codebase, produce a short
 README: what the app does, how to run it locally, and what each key file does.
 Plain English, no jargon. When updating debugging logs or developer guides, be sure to document specific, hard-to-find edge cases (e.g. Dash pattern-matching ghost clicks and Plotly dictionary unpacking crashes).
 When a build adds new services, update: `GEMINI.md` (architecture rules), `docs/guides/DEVELOPER_GUIDE.md` (if feature or architecture change), `skills/registry.md` (new component IDs), `skills/technical_analysis.md` (if indicators change), `README.md` (if features change), and `agents.md` (if new QA patterns emerge).

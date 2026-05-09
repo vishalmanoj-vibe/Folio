@@ -54,31 +54,53 @@ def build_corr_figure(histories: dict, period: str, theme_tokens: dict) -> go.Fi
     corr  = pd.DataFrame(dfs).corr(min_periods=10).round(2)
     ticks = list(corr.columns)
     
-    fig.add_trace(go.Heatmap(
-        z=corr.values.tolist(), 
-        x=ticks, 
-        y=ticks,
-        colorscale=[
-            [0, theme_tokens["GREEN"]],    # -1.0
-            [0.5, theme_tokens["WARNING"]], # 0.0
-            [1, theme_tokens["RED"]]       # +1.0
-        ],
-        zmin=-1, zmax=1,
-        xgap=6, ygap=6, # Creates the "tiled" look
-        text=[[f"{v:.2f}" for v in row] for row in corr.values.tolist()],
-        texttemplate="%{text}",
-        textfont=dict(size=11, color="white", family="Inter, sans-serif"),
-        showscale=True,
-        colorbar=dict(
-            thickness=10,
-            len=0.4,
-            y=0.5,
-            x=1.1,
-            tickmode="array",
-            tickvals=[-1, 0, 1],
-            ticktext=["-1", "0", "+1"],
-            tickfont=dict(color=theme_tokens["T_SEC"], size=10),
-            outlinecolor="rgba(0,0,0,0)",
+    # Filter for lower triangle (j < i)
+    x_data = []
+    y_data = []
+    size_data = []
+    color_data = []
+    text_data = []
+    
+    for i in range(len(ticks)):
+        for j in range(i):
+            val = corr.iloc[i, j]
+            if pd.isna(val):
+                continue
+            x_data.append(ticks[j])
+            y_data.append(ticks[i])
+            size_data.append(abs(val) * 40)
+            color_data.append(val)
+            text_data.append(f"{val:.2f}")
+
+    fig.add_trace(go.Scatter(
+        x=x_data,
+        y=y_data,
+        mode="markers+text",
+        text=text_data,
+        textfont=dict(size=10, color="white", family="Inter, sans-serif"),
+        marker=dict(
+            size=size_data,
+            color=color_data,
+            colorscale=[
+                [0.0, theme_tokens["GREEN"]],
+                [0.5, theme_tokens["WARNING"]], 
+                [1.0, theme_tokens["RED"]]
+            ],
+            cmin=-1,
+            cmax=1,
+            showscale=True,
+            colorbar=dict(
+                thickness=10,
+                len=0.4,
+                y=0.5,
+                x=1.1,
+                tickmode="array",
+                tickvals=[-1, 0, 1],
+                ticktext=["-1", "0", "+1"],
+                tickfont=dict(color=theme_tokens["T_SEC"], size=10),
+                outlinecolor="rgba(0,0,0,0)",
+            ),
+            line=dict(width=0.5, color="rgba(255,255,255,0.1)")
         ),
         hoverinfo="none",
     ))
@@ -86,19 +108,22 @@ def build_corr_figure(histories: dict, period: str, theme_tokens: dict) -> go.Fi
     fig.update_layout(
         paper_bgcolor="rgba(0,0,0,0)",
         plot_bgcolor="rgba(0,0,0,0)",
-        margin=dict(t=10, b=40, l=40, r=60),
-        height=380,
+        margin=dict(t=10, b=60, l=80, r=80),
+        height=420,
         xaxis=dict(
             showgrid=False, 
             tickfont=dict(size=11, color=theme_tokens["T_SEC"]),
             side="bottom",
-            zeroline=False
+            zeroline=False,
+            categoryorder="array",
+            categoryarray=ticks[:-1]
         ),
         yaxis=dict(
             showgrid=False, 
             tickfont=dict(size=11, color=theme_tokens["T_SEC"]), 
-            autorange="reversed",
-            zeroline=False
+            zeroline=False,
+            categoryorder="array",
+            categoryarray=ticks[::-1]
         ),
         uirevision=True,
     )

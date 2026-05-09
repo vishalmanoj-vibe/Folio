@@ -55,3 +55,14 @@ This document chronicles the technical evolution of the Portfolio Dashboard, tra
     2.  **Service (Business Logic)**: Data fetching and formatting.
     3.  **Engine (Math/AI)**: Quantitative and qualitative intelligence.
     4.  **Data (Repository)**: SQLite persistence.
+
+---
+
+## Phase 6: Professionalization & UI Refinement (v3.1.0 – v3.5.0)
+**Theme**: Polishing the visual experience and ensuring system-wide compliance.
+
+*   **Analytics Visualization Fix**: Solved persistent "grey canvas" artifacts in Treemaps by harmonizing Plotly backgrounds with CSS surface tokens and implementing theme-aware typography for hierarchical data.
+*   **Portfolio Suggestions**: Integrated the Strategy Engine directly into the main Overview table, providing instant BUY/SELL/HOLD signals alongside live P&L data.
+*   **UI Standardization**: Enforced a strict **16px/24px global grid** and centralized all content wrappers into a single `section()` helper to ensure layout consistency across all pages.
+*   **Intraday Resiliency**: Refined the "Today" view with 5-minute resampling, Plotly `rangebreaks` to hide non-trading hours, and a 15:00 lookback window for cross-session continuity.
+*   **Compliance Audit**: Executed a 100% precision audit of the codebase, standardizing logging to use `logger.debug()` (replacing `print`) and verifying `prevent_initial_call=True` for all page-specific callbacks.

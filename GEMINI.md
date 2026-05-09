@@ -128,3 +128,9 @@
 - `services/market/session_cache.py` — Implemented 290s cooldown for snapshots and backfill logic with timezone-aware alignment.
 - `components/charts/pnl_history.py` — Implemented 5-minute resampling and Plotly `rangebreaks` to hide overnight sessions. Updated hover labels to include full date context.
 - `services/market/data_fetcher.py` — Updated `fetch_live` to request 2-day windows and ensure snapshots/backfills occur even on internal cache hits.
+
+### Analytics & Audit Stabilization (Complete)
+- `pages/analytics.py` — Harmonized Treemap backgrounds with `var(--surface)` tokens.
+- `components/charts/treemap.py` — Implemented theme-aware typography and stripped legacy template defaults.
+- `callbacks/portfolio_callbacks.py` — Integrated signals-store as State to inject Suggestion badges into the holdings table.
+- **Project-wide Audit**: Standardized all services to use `logger.debug()` and verified `prevent_initial_call=True` for multi-page safety.

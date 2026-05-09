@@ -6,8 +6,8 @@ Colors, theme definitions, ETF names, and chart information.
 """
 
 # ── Dark theme tokens (defaults) ──────────────────────────────────────────────
-BG      = "#111110"
-SURFACE = "#1c1c1a"
+BG      = "#0a0a0a"
+SURFACE = "#111a1a"
 BORDER  = "rgba(255,255,255,0.08)"
 T_PRI   = "#f0ede8"
 T_SEC   = "#8a8880"
@@ -48,8 +48,8 @@ def get_theme(theme: str) -> dict:
         warning = "#EF9F27"
         info    = "#378ADD"
     else:  # dark (default)
-        bg      = "#111110"
-        surface = "#1c1c1a"
+        bg      = "#0a0a0a"
+        surface = "#111a1a"
         border  = "rgba(255,255,255,0.08)"
         t_pri   = "#f0ede8"
         t_sec   = "#8a8880"

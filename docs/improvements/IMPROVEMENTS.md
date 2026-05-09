@@ -327,7 +327,6 @@ All changes are **fully backwards compatible**:
 | Input validation | Negligible (+1-2ms) | Only on transaction add |
 | API retry wrapper | Positive (fewer duplicate calls) | Exponential backoff prevents thundering herd |
 | Logging | Small overhead | Can disable file logging with env var |
-| CSV backup | Fast (file copy) | ~10-50ms depending on CSV size |
 | Tests | N/A (development only) | Not included in production runs |
 
 ---
@@ -353,7 +352,7 @@ All changes are **fully backwards compatible**:
 
 **What Was Added:**
 - Unified risk engine calculating Annualized Volatility, Sharpe Ratio, and Max Drawdown.
-- Sunburst allocation charts (Sector/Geography) with modal drill-downs for ticker exposure.
+- Treemap allocation charts (Sector/Geography) with modal drill-downs for ticker exposure.
 - Hierarchical risk analysis logic with automated "Others" category aggregation.
 - Rule-based "Smart Alerts" system for portfolio concentration and risk monitoring.
 
@@ -636,26 +635,64 @@ Total: 8 modified + 12 new files = **20 files changed**
 
 ---
 
-### Summary of Recent Milestones (Final Update)
-| Milestone | Status | Impact |
-|-----------|--------|--------|
-| AI Engine Stabilization | ✅ Done | High (Cost & Stability) |
-| UI Layout Isolation | ✅ Done | Medium (UX/Visuals) |
-| Dynamic Chart Scaling | ✅ Done | Medium (Data Visibility) |
-| Dividend Consolidation | ✅ Done | High (UX/Navigation) |
-| UI Standardization | ✅ Done | Medium (Visual Consistency) |
+### 29. **Portfolio Suggestion Integration** ✅
+**Files Modified:** `callbacks/portfolio_callbacks.py`
+
+**What Was Added:**
+- **Signal Badge Column**: Injected a "Suggestion" column into the main Portfolio Overview table.
+- **Hybrid Data Flow**: Consumers signals from the `signals-store` (populated on the Positions page) to display BUY/SELL/HOLD status for each holding.
+- **Performance Optimization**: Uses `State` for signal data to prevent table re-renders when the store updates in the background.
+
+**Benefits:**
+- **Immediate Actionability**: See market signals directly alongside current P&L.
+- **Unified Logic**: Reuses the same strategy engine scoring across both deep-dive and overview pages.
 
 ---
 
-## Verification Checklist (Final Final Update)
+### 30. **Analytics Visualization & Theming** ✅
+**Files Modified:** `pages/analytics.py`, `components/charts/treemap.py`
 
-- [x] AI analysis successfully restores "Confident/Mixed" verdicts
-- [x] Cache hits verified (sub-second load on second click)
-- [x] Metric cards maintain width when AI content loads
-- [x] Watchlist charts zoom to period lows
-- [x] All Dash callback return signatures verified
-- [x] Positions page displays integrated dividend history
-- [x] Global layout grid is consistent across all pages
-- [x] "Select a position" empty states are clean and header-free
+**What Was Added:**
+- **Surface Harmonization**: Eliminated grey canvas artifacts by setting Plotly background transparency to blend with CSS `--surface` tokens.
+- **Theme-Aware Text**: Mapped chart labels to `--t-pri` variables for contrast in both light and dark modes.
+- **Clean Layouts**: Stripped default Plotly templates to remove redundant grid lines and ensure a modern, premium aesthetic.
+
+**Benefits:**
+- **Professional UI**: Charts look like native application components rather than embedded "iframe" style plots.
+- **Readability**: High contrast text ensures data is legible regardless of the active theme.
+
+---
+
+### 31. **Architecture Compliance Audit** ✅
+**Files Modified:** Project-wide
+
+**What Was Added:**
+- **Logging Standardization**: Replaced all remaining `print()` statements in `services/` and `core/` with `logger.debug()` for better production observability.
+- **Callback Verification**: Confirmed `prevent_initial_call=True` for all page-specific callbacks to eliminate race conditions during navigation.
+- **Aura Design Compliance**: Verified that all new UI blocks use standard `section()` helpers and CSS variables.
+
+**Benefits:**
+- **System Stability**: Fewer navigation crashes and silent errors.
+- **Operational Excellence**: Clean logs and consistent design patterns across the entire codebase.
+
+---
+
+### Summary of Final Milestones
+| Milestone | Status | Impact |
+|-----------|--------|--------|
+| Dividend Consolidation | ✅ Done | High (UX/Navigation) |
+| Portfolio Suggestions | ✅ Done | High (Actionability) |
+| Analytics Theming | ✅ Done | Medium (Visual Quality) |
+| Architecture Audit | ✅ Done | Medium (Stability) |
+
+---
+
+## Verification Checklist (Final Version)
+
+- [x] All 6 pages verify the new 16px/24px padding standard
+- [x] Portfolio Suggestions appear correctly in the main table
+- [x] Analytics Treemaps are theme-aware and artifact-free
+- [x] No `print()` statements remain in core service logic
+- [x] Multi-page navigation verified stable and race-condition free
 
 All improvements are production-ready and documented.

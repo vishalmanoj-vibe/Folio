@@ -21,6 +21,7 @@ def build_portfolio_treemap(
     colors = []
     hover_texts = []
     custom_data_list = []
+    font_colors = []
 
     # 1. Prepare hierarchy mapping
     # ─────────────────────────────────────────────────────────────────────────
@@ -42,9 +43,10 @@ def build_portfolio_treemap(
             labels.append(s)
             parents.append("")
             values.append(parent_sums[s])
-            colors.append(0) 
+            colors.append(-10) 
             hover_texts.append(f"<b>Sector: {s}</b><br>Total Value: ${parent_sums[s]:,.2f}")
             custom_data_list.append("")
+            font_colors.append(theme_tokens["T_PRI"])
 
         for s, t, val, h in child_nodes:
             node_id = f"{s}_{t}"
@@ -52,10 +54,11 @@ def build_portfolio_treemap(
             labels.append(t)
             parents.append(s)
             values.append(val)
-            colors.append(h["pnl_pct"])
+            
+            pct_of_parent = (val / parent_sums[s]) * 100
+            colors.append(pct_of_parent)
             
             sign = "+" if h["pnl"] >= 0 else ""
-            pct_of_parent = (val / parent_sums[s]) * 100
             custom_data_list.append(f"{pct_of_parent:.1f}%")
             hover_texts.append(
                 f"<b>{t} ({s})</b><br>"
@@ -63,6 +66,7 @@ def build_portfolio_treemap(
                 f"Weight in Sector: {pct_of_parent:.1f}%<br>"
                 f"P&L: {sign}${h['pnl']:,.2f} ({h['pnl_pct']:+.2f}%)"
             )
+            font_colors.append("white")
 
     elif mode == "geo" and geo_data:
         child_nodes = []
@@ -82,9 +86,10 @@ def build_portfolio_treemap(
             labels.append(r)
             parents.append("")
             values.append(parent_sums[r])
-            colors.append(0)
+            colors.append(-10)
             hover_texts.append(f"<b>Region: {r}</b><br>Total Value: ${parent_sums[r]:,.2f}")
             custom_data_list.append("")
+            font_colors.append(theme_tokens["T_PRI"])
 
         for r, t, val, h in child_nodes:
             node_id = f"{r}_{t}"
@@ -92,10 +97,11 @@ def build_portfolio_treemap(
             labels.append(t)
             parents.append(r)
             values.append(val)
-            colors.append(h["pnl_pct"])
+            
+            pct_of_parent = (val / parent_sums[r]) * 100
+            colors.append(pct_of_parent)
             
             sign = "+" if h["pnl"] >= 0 else ""
-            pct_of_parent = (val / parent_sums[r]) * 100
             custom_data_list.append(f"{pct_of_parent:.1f}%")
             hover_texts.append(
                 f"<b>{t} ({r})</b><br>"
@@ -103,15 +109,19 @@ def build_portfolio_treemap(
                 f"Weight in Region: {pct_of_parent:.1f}%<br>"
                 f"P&L: {sign}${h['pnl']:,.2f} ({h['pnl_pct']:+.2f}%)"
             )
+            font_colors.append("white")
 
     else:
+        total_val = sum(h["mkt_value"] for h in holdings)
         for h in holdings:
             val = round(h["mkt_value"], 2)
             ids.append(h["ticker"])
             labels.append(h["ticker"])
             parents.append("")
             values.append(val)
-            colors.append(h["pnl_pct"])
+            
+            weight = (val / total_val) * 100 if total_val > 0 else 0
+            colors.append(weight)
             
             sign = "+" if h["pnl"] >= 0 else ""
             custom_data_list.append(f"{sign}${h['pnl']:,.2f}")
@@ -120,12 +130,10 @@ def build_portfolio_treemap(
                 f"Market Value: ${val:,.2f}<br>"
                 f"P&L: {sign}${h['pnl']:,.2f} ({h['pnl_pct']:+.2f}%)"
             )
+            font_colors.append("white")
 
     # 2. Build Figure
     # ─────────────────────────────────────────────────────────────────────────
-    valid_colors = [c for c in colors if c is not None and c != 0]
-    max_perf = max([abs(c) for c in valid_colors] + [10]) if valid_colors else 10
-    
     fig = go.Figure(go.Treemap(
         ids=ids,
         labels=labels,
@@ -133,31 +141,36 @@ def build_portfolio_treemap(
         values=values,
         customdata=custom_data_list,
         branchvalues="total",
+        maxdepth=2,
         marker=dict(
             colors=colors,
             colorscale=[
-                [0.0, "#E24B4A"], 
-                [0.48, "#662222"],
-                [0.5, "#2D2D2D"],  # Slightly lighter grey for neutral
-                [0.52, "#226622"],
-                [1.0, "#1D9E75"]  
+                [0.0, theme_tokens["BG"]],
+                [0.09, theme_tokens["BG"]],
+                [0.091, theme_tokens["RED"]],
+                [0.36, theme_tokens["WARNING"]], 
+                [0.63, theme_tokens["GREEN"]],
+                [1.0, theme_tokens["CYAN"]]
             ],
-            cmid=0,
-            cmin=-max_perf,
-            cmax=max_perf,
-            line=dict(color="rgba(255,255,255,0.1)", width=2), # Visible borders
-            pad=dict(b=5, l=5, r=5, t=5),
+            cauto=False,
+            cmid=None, # Disabled to allow the custom offset
+            cmin=-10,
+            cmax=100,
+            line=dict(color=theme_tokens["BORDER"], width=1), 
+            pad=dict(b=8, l=8, r=8, t=20),
         ),
         textinfo="label+text",
         texttemplate="<b>%{label}</b><br>%{customdata}",
-        textfont=dict(size=14, color="white"),
+        textfont=dict(size=14, color=font_colors),
         hoverinfo="text",
         hovertext=hover_texts,
     ))
 
     fig.update_layout(
-        paper_bgcolor=theme_tokens["BG"],
-        plot_bgcolor=theme_tokens["BG"],
+        template="none",
+        paper_bgcolor="rgba(0,0,0,0)",
+        plot_bgcolor="rgba(0,0,0,0)",
+        treemapcolorway=None,
         margin=dict(t=0, b=0, l=0, r=0),
         height=600,
         uirevision=True,

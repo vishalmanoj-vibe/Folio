@@ -386,9 +386,21 @@ The dashboard includes a hybrid decision-support system:
 - **Strategy Engine** (`services/strategy_engine.py`): Pure, rule-based logic that generates BUY/SELL/HOLD signals based on five weighted dimensions (Trend, Momentum, Price vs 200MA, Price vs Cost, and Risk).
 - **AI Analyst Overlay** (`services/ai_engine.py`): Gemini critiques the deterministic signals, providing human-readable context and risk flags without overriding the engine's verdict.
 - **Hysteresis**: To prevent signal flickering on volatile days, the engine implements a "flip-prevention" logic where a signal change is only accepted if the new score exceeds a 0.7 confidence threshold.
+- **Overview Integration**: Signals from the engine are automatically injected into the main Portfolio Overview table as a "Suggestion" badge, allowing users to see actionable insights alongside live performance data.
 
 ### 13. Intraday Resampling & Resiliency
 To ensure the "Today" P&L chart remains professional and readable:
 - **5-Minute Resampling**: Live data is resampled to 5-minute intervals (`resample('5min').last().ffill()`) to eliminate jagged visual artifacts.
 - **Trading Session Stitching**: Plotly `rangebreaks` are applied to the X-axis to hide overnight sessions and weekends, creating a continuous trading timeline.
 - **Background Snapshotting**: A dedicated thread in `app.py` records market snapshots every 5 minutes while the market is open, ensuring chart continuity even if the dashboard is closed.
+
+### 14. Analytics Visualization & Theme Integration
+To provide a seamless visual experience, the Allocation and Performance charts in the Analytics page are deeply integrated with the design system.
+- **Background Harmonization**: All Plotly figures utilize `paper_bgcolor="rgba(0,0,0,0)"` and `plot_bgcolor="rgba(0,0,0,0)"`, ensuring they blend perfectly with the CSS `var(--surface)` layer without grey "canvas" artifacts.
+- **Theme-Aware Typography**: Labels and titles are dynamically mapped to CSS variables (e.g., `var(--t-pri)`), ensuring high contrast and readability across both light and dark modes.
+- **Template Stripping**: Standard Plotly templates are disabled to prevent legacy styling (like default grid lines or grey backgrounds) from leaking into the modern dashboard aesthetic.
+
+### 15. Standardized Architecture Compliance
+Following a project-wide audit, the application adheres to strict operational standards:
+- **Logging Purity**: All `print()` statements in the service and data layers have been replaced with `logger.debug()` or `logger.info()` to ensure a clean production console and detailed file-based troubleshooting.
+- **Callback Safety**: The `prevent_initial_call=True` flag is mandatory for all page-specific callbacks to prevent race conditions and "empty data" rendering glitches during multi-page navigation.

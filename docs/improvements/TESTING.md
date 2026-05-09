@@ -39,26 +39,32 @@ pytest --cov=. --cov-report=html test/
 This generates an HTML coverage report in `htmlcov/index.html`.
 
 1. **SQLite Integrity**:
-   - Add a transaction via the UI (Intelligence Modal).
+   - Add a transaction via the UI (Portfolio page transaction form).
    - Verify it appears in the Portfolio table immediately.
    - Restart the app and verify the transaction persisted in `portfolio.db`.
 
-2. **Technical Indicators**:
-   - Navigate to the **Positions** page and verify technical badges (RSI/MACD) match expected trends.
-   - Verify color coding: RSI < 30 (Teal/Bullish), RSI > 70 (Red/Bearish).
+2. **Technical Indicators & Signals**:
+   - Navigate to the **Positions** page, select a ticker, and click "Generate Signals".
+   - Verify that the signal badge (BUY/SELL/HOLD) and the AI Analyst insight card appear.
+   - Navigate back to the **Overview** page and verify the "Suggestion" column in the main table matches the signal.
 
-3. **Market Status**:
+3. **Analytics Visualization**:
+   - Navigate to the **Analytics** page.
+   - Verify that Treemap charts (Sector/Geography) blend seamlessly with the background (no grey canvas).
+   - Toggle between Light and Dark modes and verify text contrast on all charts.
+
+4. **Market Status & Intraday**:
    - Verify the "Market Open/Closed" badge correctly reflects AEST time (taking into account the ASX closing auction until 16:15).
+   - Check the "Today" (1d) chart and verify it displays 5-minute resampled data with no overnight gaps.
 
 ## Manual Verification (UI Features)
 
 For features with complex UI interactions or AI components, follow these manual verification steps:
 
-### Technical Indicators (Intelligence Page)
+### Technical Signals (Intelligence Page)
 1. Navigate to the **Intelligence** page.
 2. Verify the "Technical Signals" table renders for all holdings.
 3. Cross-check the RSI values against a third-party source (e.g., Yahoo Finance or TradingView) to ensure Wilder's smoothing is accurate.
-4. Verify color coding: RSI < 30 (Green), RSI > 70 (Red).
 
 ### Candlestick Charts (Positions Page)
 1. Navigate to the **Positions** page and select an ETF.
@@ -66,11 +72,11 @@ For features with complex UI interactions or AI components, follow these manual 
 3. Verify that the Candlestick chart renders correctly for periods > 1d.
 4. Verify that for the **1d** period, the chart gracefully falls back to a Scatter (Line) chart to handle missing OHLC data.
 
-### AI Research Context (Research Page)
-1. Navigate to the **Research** page.
-2. Enter a ticker in the input field.
-3. Send a query (e.g., "Analyze my portfolio").
-4. Verify the AI response incorporates technical status (e.g., "I see VAS is currently in an oversold state with an RSI of 28").
+### AI Analyst Context (AI Analyst Page)
+1. Navigate to the **AI Analyst** page.
+2. Enter a ticker in the research input or use a quick prompt chip.
+3. Verify the AI response incorporates technical status and portfolio context.
+4. Click "Generate Weekly Report" and verify the PDF download starts.
 
 ## Future Test Coverage
 1. **test_technical_indicators.py** (Planned): Unit tests for RSI, MACD, and BB math using fixed price series.

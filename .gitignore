@@ -52,8 +52,5 @@ generate_code_md.py
 audit_repo*.sh
 
 # ── Agent / IDE internals ─────────────────────────────────────────────────────
-.agent/
-.agents/
 .cursor/
 .cursorrules
-startcycle.md

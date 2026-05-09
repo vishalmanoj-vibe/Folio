@@ -484,3 +484,12 @@ button:active { transform: scale(0.97); }
   pointer-events: none;
   z-index: 5;
 }
+
+/* ── Plotly Transparency Fix ── */
+.js-plotly-plot .plotly, 
+.js-plotly-plot .plotly .main-svg,
+.dash-graph,
+.treemap-canvas {
+  background-color: transparent !important;
+  background: transparent !important;
+}

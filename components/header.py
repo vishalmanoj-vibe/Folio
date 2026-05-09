@@ -45,21 +45,51 @@ def create_header(
     )
 
     # Settings Menu
-    settings_dropdown = html.Details([
-        html.Summary(
-            html.Span("⚙", id="settings-icon-text"), # Settings gear
-            className="settings-summary"
-        ),
-        html.Div([
-            html.Div("Settings", style={"fontSize": "10px", "fontWeight": "700", "color": "var(--t-sec)", "marginBottom": "8px", "textTransform": "uppercase"}),
-            html.Button([
-                html.Span("☾", id="theme-icon-indicator", style={"marginRight": "8px"}),
-                "Switch Theme"
-            ], id="theme-toggle", n_clicks=0, className="btn-sm", style={"width": "100%", "justifyContent": "flex-start"}),
-            html.Button("↻ Refresh Data", id="refresh-btn",  n_clicks=0, className="btn-sm", style={"width": "100%", "justifyContent": "flex-start"}),
-            html.Button("⬇ Export PDF",   id="pdf-btn",      n_clicks=0, className="btn-sm", style={"width": "100%", "justifyContent": "flex-start"}),
-        ], className="settings-menu")
-    ], className="settings-details")
+    settings_dropdown = dmc.Menu(
+        [
+            dmc.MenuTarget(
+                html.Div(
+                    html.Span("⚙", id="settings-icon-text"), 
+                    className="settings-summary"
+                )
+            ),
+            dmc.MenuDropdown(
+                [
+                    dmc.MenuLabel("Settings", style={"fontSize": "10px", "fontWeight": "700", "color": "var(--t-sec)", "textTransform": "uppercase"}),
+                    dmc.MenuItem(
+                        "Switch Theme",
+                        id="theme-toggle",
+                        leftSection=html.Span("☾", id="theme-icon-indicator"),
+                        style={"fontSize": "11px"}
+                    ),
+                    dmc.MenuItem(
+                        "Refresh Data",
+                        id="refresh-btn",
+                        leftSection=html.Span("↻"),
+                        style={"fontSize": "11px"}
+                    ),
+                    dmc.MenuItem(
+                        "Export PDF",
+                        id="pdf-btn",
+                        leftSection=html.Span("⬇"),
+                        style={"fontSize": "11px"}
+                    ),
+                ],
+                style={
+                    "background": "var(--surface)",
+                    "border": "0.5px solid var(--border)",
+                    "borderRadius": "10px",
+                    "boxShadow": "0 12px 32px rgba(0,0,0,0.45)",
+                    "padding": "10px",
+                    "minWidth": "175px"
+                }
+            ),
+        ],
+        trigger="click",
+        position="bottom-end",
+        offset=8,
+        transitionProps={"transition": "fade", "duration": 150}
+    )
 
     nav_right = html.Div([
         html.Div(id="market-status", children=market_status) if market_status else html.Div(id="market-status"),

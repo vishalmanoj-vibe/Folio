@@ -89,13 +89,6 @@ Prevent "Duplicate ID" errors and callback collisions by maintaining a central m
 - `intel-data-note`: Data source annotation strip.
 - `intel-signals-table`: Technical indicator signals table (RSI, MACD, Bollinger Bands).
 
-### Dividends Page (`/dividends`)
-- `dividend-stats-cards`: Annual income, yield, realized total KPI cards.
-- `dividend-calendar`: Upcoming payment calendar card grid.
-- `dividend-income-chart`: Annual income by holding progress rows.
-- `dividend-yield-chart`: Yield by holding progress rows.
-- `dividend-table`: Full ex-date / pay-date dividend log table.
-
 ### Positions Page (`/positions`)
 - `positions-card-grid`: Ticker card selection grid.
 - `positions-selected-ticker`: Store — currently active card.
@@ -129,7 +122,7 @@ Prevent "Duplicate ID" errors and callback collisions by maintaining a central m
 - `watchlist-signals-status-label`: Status span showing "Updated HH:MM" or error text after signal run.
 - `wl-period-btn-row`: Watchlist chart period button row.
 
-### Research Assistant Page (`/research`)
+### AI Analyst Page (`/ai-analyst`)
 - `research-portfolio-summary`: Left panel live holdings display.
 - `research-chat-display`: Scrollable chat message area.
 - `research-ticker-input`: Free-text ticker to research.
@@ -143,13 +136,7 @@ Prevent "Duplicate ID" errors and callback collisions by maintaining a central m
 - `qp-2`: Quick prompt chip — "What are the risks?"
 - `qp-3`: Quick prompt chip — "Compare to what I own"
 - `qp-4`: Quick prompt chip — "What am I missing?"
-
-### Reports Page (`/reports`)
-- `generate-report-btn`: Main "Generate Weekly Report" button.
-- `report-status-msg`: Status message / feedback text area.
-- `report-download-area`: Wrapper for the ready download link (hidden until ready).
-- `report-pdf-link`: Link to open/download the base64 encoded PDF.
-- `last-report-date`: Text showing when the last report was generated.
+- `qp-report`: Special chip to trigger weekly report generation.
 - `report-download`: dcc.Download component for file exports.
 - `report-cache-store`: dcc.Store for session-based report caching.
 

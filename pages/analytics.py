@@ -63,7 +63,12 @@ def layout():
                             ], style={"display": "flex", "alignItems": "center", "marginBottom": "20px"}),
                             html.Div([
                                 dcc.Loading(
-                                    dcc.Graph(id="portfolio-treemap", config={"displayModeBar": False}, style={"height": "600px"}),
+                                    dcc.Graph(
+                                        id="portfolio-treemap", 
+                                        config={"displayModeBar": False, "doubleClick": "reset"}, 
+                                        style={"height": "600px"},
+                                        className="treemap-canvas"
+                                    ),
                                     type="circle", color=COLORS[0]
                                 ),
                                 html.Div(

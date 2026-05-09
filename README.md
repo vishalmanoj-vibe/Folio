@@ -56,7 +56,7 @@ All other features (live prices, P&L tracking, dividends, signals engine, foreca
 
 | Page | Route | Description |
 |---|---|---|
-| Overview | `/portfolio` | Live positions table, P&L chart, stat cards |
+| Overview | `/` | Live positions table, P&L chart, stat cards |
 | Positions | `/positions` | Per-holding deep-dive with candlestick charts and dividends |
 | Watchlist | `/watchlist` | Track tickers you are considering buying |
 | Intelligence | `/intelligence` | Risk metrics, equity curve, drawdown, forecasting |
