@@ -72,7 +72,7 @@ def layout():
                                     type="circle", color=COLORS[0]
                                 ),
                                 html.Div(
-                                    "Colour encodes P&L performance. Size encodes market value.",
+                                    "Colour encodes allocation concentration. Size encodes market value.",
                                     style={"fontSize": "11px", "color": "var(--t-muted)", "marginTop": "12px", "textAlign": "center"}
                                 )
                             ])
