@@ -14,11 +14,6 @@ def build_performance_lollipops(
 ) -> go.Figure:
     """
     Build a horizontal lollipop chart for portfolio performance.
-    
-    Args:
-        data: List of dicts with {"ticker": str, "value": float}
-        theme_tokens: Dictionary of UI theme colors.
-        mode: "pct" or "dollar"
     """
     fig = go.Figure()
     
