@@ -10,7 +10,7 @@ import pandas as pd
 import plotly.graph_objects as go
 from config.constants import GREEN, RED, COLORS
 from core.engine.utils import get_period_cutoff
-from components.charts.helpers import build_benchmark_traces, hex_to_rgba
+from components.charts.helpers import build_benchmark_traces, hex_to_rgba, apply_standard_layout
 
 def _build_intraday_figure(
     fig: "go.Figure",
@@ -20,30 +20,19 @@ def _build_intraday_figure(
 ) -> "go.Figure":
     """
     Build the 'Today' intraday P&L chart.
-
-    Data source : session_cache JSON file (direct read) — bypasses the dcc.Store
-                  entirely so stale max-period tranche data never causes an empty chart.
-    Zero line   : prev_close from the enriched holding (yesterday's close via yfinance).
-    Window      : ASX session 10:00–16:15 Sydney wall-clock.
-    X-axis ticks: every 30 minutes.
-    Updates     : every live-interval tick appends a new snapshot to the cache file.
     """
     import json as _json, os as _os
     from datetime import datetime as _dt
     from services.market.market_status import get_previous_trading_session_start
 
-    BORDER  = theme_tokens["BORDER"]
-    T_SEC   = theme_tokens["T_SEC"]
     GREEN_C = theme_tokens.get("GREEN", "#1D9E75")
     RED_C   = theme_tokens.get("RED",   "#E24B4A")
 
     now_syd      = pd.Timestamp.now(tz="Australia/Sydney")
     today_str    = now_syd.strftime("%Y-%m-%d")
-    # Extended window: from previous day's last hour to today's close
     chart_start  = get_previous_trading_session_start()
     market_close = pd.Timestamp(f"{today_str} 16:15:00", tz="Australia/Sydney")
 
-    # ── Load session cache directly from disk ─────────────────────────────────
     cache_path = _os.path.join("data", "cache", f"intraday_{today_str}.json")
     session_data: dict = {}
     try:
@@ -57,12 +46,9 @@ def _build_intraday_figure(
         from components.charts.helpers import create_empty_fig
         return create_empty_fig("Waiting for market session data (ASX opens 10:00 Sydney Time) …", height=380, theme_tokens=theme_tokens)
 
-    # Build a lookup: ticker -> prev_close from the enriched holdings in the store.
-    # prev_close is always up-to-date regardless of which period was used for the store.
     prev_close_map  = {h["ticker"]: h.get("prev_close", 0.0) for h in holdings}
     total_shares_map = {h["ticker"]: h.get("total_shares", 0.0) for h in holdings}
 
-    # ── Compute day P&L series per holding ────────────────────────────────────
     all_series: list[pd.Series] = []
 
     for ticker, points in session_data.items():
@@ -74,17 +60,12 @@ def _build_intraday_figure(
         df = pd.DataFrame(points)
         df["Date"] = pd.to_datetime(df["Date"]).dt.tz_localize("Australia/Sydney")
         df = df.sort_values("Date").drop_duplicates("Date")
-        # Filter to extended window
         df = df[(df["Date"] >= chart_start) & (df["Date"] <= market_close)]
 
         if df.empty:
             continue
 
         price_s = df.set_index("Date")["Close"]
-        
-        # ── Data Sanitization & Uniformity ────────────────────────────────────
-        # Resample to a uniform 5-minute grid. This cleans up 'haphazard' points
-        # by taking the last known price in each bucket and filling gaps.
         price_s = price_s[price_s > 0]
         if not price_s.empty:
             price_s = price_s.resample('5min').last().ffill()
@@ -97,25 +78,15 @@ def _build_intraday_figure(
         else:
             day_s = ((price_s - prev_close) * total_shares).round(2)
 
-        # ── Anchor at Start of Window ─────────────────────────────────────────
-        # Ensure the series starts at the axis zero-line relative to the previous close
-        # (Since we are showing the actual drop from the previous day, we don't force a zero here
-        # unless it's the very first point of the session).
-        # We removed the hard 10:00 AM anchor to allow the natural trend from yesterday.
-
         all_series.append(day_s)
 
     if not all_series:
         from components.charts.helpers import create_empty_fig
         return create_empty_fig("Intraday data unavailable for this selection", height=380, theme_tokens=theme_tokens)
 
-    # ── Portfolio aggregate ───────────────────────────────────────────────────
-    # Use ffill to propagate last known price. Fillna(0) for the start of day 
-    # where some tickers might not have traded yet.
     combined = pd.concat(all_series, axis=1, sort=True).sort_index().ffill().fillna(0)
 
     if mode == "pct":
-        # Weight by cost basis so larger positions contribute more
         weights = []
         for h in holdings:
             if h["ticker"] in session_data and h.get("prev_close", 0) > 0:
@@ -149,7 +120,6 @@ def _build_intraday_figure(
         ),
     ))
 
-    # Corner annotation with latest value
     sign  = "+" if last_val >= 0 else ""
     label = f"{sign}{last_val:.2f}%" if mode == "pct" else f"{sign}${last_val:,.2f}"
     fig.add_annotation(
@@ -178,95 +148,52 @@ def build_pnl_history_figure(
 ) -> go.Figure:
     """
     Build a Plotly line chart for P&L history over a given period.
-
-    Args:
-        holdings: List of enriched holding dictionaries.
-        mode: Display mode, either "abs" (absolute $) or "pct" (percentage).
-        period: Time period to display (e.g., "1M", "YTD", "max").
-        theme_tokens: Dictionary of UI theme colors and base layouts.
-        selected: The ticker to highlight, or "Portfolio" for the aggregate.
-
-    Returns:
-        A Plotly go.Figure object.
     """
-    BORDER      = theme_tokens["BORDER"]
-    T_SEC       = theme_tokens["T_SEC"]
-    PLOTLY_BASE = theme_tokens["PLOTLY_BASE"]
+    fig = go.Figure()
+    apply_standard_layout(fig, theme_tokens, height=380)
 
-    # Merge theme base with local overrides
-    layout = PLOTLY_BASE.copy()
-    layout.update(dict(
-        xaxis=dict(
-            showgrid=False, type="date",
-            showspikes=True, spikecolor=T_SEC, spikethickness=1, spikedash="dash",
-            tickfont=dict(size=10, color=T_SEC),
-            automargin=True,
-        ),
+    # Custom P&L overrides
+    fig.update_layout(
+        margin=dict(t=30, b=30, l=60, r=20),
+        xaxis=dict(type="date", showspikes=True, spikecolor=theme_tokens["T_SEC"], spikethickness=1, spikedash="dash"),
         yaxis=dict(
-            gridcolor=BORDER,
             ticksuffix="%" if mode == "pct" else "",
             tickprefix="" if mode == "pct" else "$",
-            zeroline=True,
-            zerolinecolor=BORDER,
-            tickfont=dict(size=11, color=T_SEC),
-            automargin=True,
-        ),
-        hovermode="x unified",
-        height=380,
-        showlegend=False,
-        margin=dict(t=30, b=30, l=60, r=20),
-    ))
+        )
+    )
     
-    fig = go.Figure()
-    
-    # ── Intraday vs Historical Axis Tuning ────────────────────────────────────
     if period == "1d":
-        layout["xaxis"].update(dict(
+        fig.update_layout(xaxis=dict(
             tickformat="%H:%M",
-            dtick=30 * 60 * 1000,  # 30-minute ticks in milliseconds
+            dtick=30 * 60 * 1000,
             tickangle=0,
         ))
-        # Fix x-axis to extended session window
         from services.market.market_status import get_previous_trading_session_start
         chart_start = get_previous_trading_session_start()
-        
-        # Use ISO format for Plotly
         range_start = chart_start.isoformat()
-        # Ensure we cover the full session end
         range_end   = pd.Timestamp.now(tz="Australia/Sydney").replace(hour=16, minute=15, second=0).isoformat()
         
-        layout["xaxis"].update(dict(
+        fig.update_xaxes(
             range=[range_start, range_end],
-            # Rangebreaks hide the "dead time" between sessions and over weekends
             rangebreaks=[
-                dict(bounds=["sat", "mon"]), # hide weekends
-                dict(bounds=[16.25, 10], pattern="hour"), # hide overnight (16:15 to 10:00)
+                dict(bounds=["sat", "mon"]),
+                dict(bounds=[16.25, 10], pattern="hour"),
             ],
-            # Remove hardcoded dtick to prevent label overlapping over multi-day span
             dtick=None,
             nticks=10,
-        ))
+        )
     else:
-        layout["xaxis"].update(dict(
-            tickformat=None,
-        ))
+        fig.update_xaxes(tickformat=None)
 
-    fig.update_layout(layout)
-
-    color_map = {h["ticker"]: COLORS[i % len(COLORS)] for i, h in enumerate(holdings)}
-    cutoff    = get_period_cutoff(period)
-
-    # ── Intraday 'Today' chart — dedicated rendering path ────────────────────
     if period == "1d":
         return _build_intraday_figure(fig, holdings, mode, theme_tokens)
+
+    cutoff = get_period_cutoff(period)
 
     def build_series(tr):
         idx        = pd.to_datetime(tr["dates"])
         pnl_series = pd.Series(tr["pnl"], index=idx)
         buy_dt     = pd.to_datetime(tr["buy_date"])
-        # Only inject a zero-value anchor at buy_dt for historical (daily) periods.
-        # For intraday ("1d") the buy date is always in the past, so injecting it
-        # would add an out-of-window point that distorts the series after sorting.
         if period != "1d" and buy_dt not in pnl_series.index:
             pnl_series.loc[buy_dt] = 0.0
         pnl_series = pnl_series.sort_index()
@@ -277,7 +204,8 @@ def build_pnl_history_figure(
             cost_series = cost_series[cost_series.index >= effective]
         return pnl_series, cost_series, buy_dt
 
-    # ── Portfolio view ────────────────────────────────────────────────────
+    color_map = {h["ticker"]: COLORS[i % len(COLORS)] for i, h in enumerate(holdings)}
+
     if selected == "Portfolio":
         pnl_all, cost_all, purchase_pts = [], [], []
 
@@ -300,22 +228,16 @@ def build_pnl_history_figure(
         ccost    = all_cost.sum(axis=1)
 
         if mode == "pct":
-            # For pct mode we show % return from the start of the selected window.
-            # When a cutoff is active, cpnl at the cutoff date is already some
-            # non-zero $ value (since the underlying buy dates precede the cutoff).
-            # Re-zero it so the portfolio line and benchmark both start at 0%.
             pnl_at_start = float(cpnl.iloc[0]) if len(cpnl) else 0.0
             y = ((cpnl - pnl_at_start) / ccost * 100).round(2)
         else:
             y = cpnl.round(2)
+        
         fig.update_xaxes(range=[cpnl.index.min(), cpnl.index.max()])
-            
-        y = y.round(2)
         lv = float(y.iloc[-1]) if len(y) else 0
 
         fig.add_trace(go.Scatter(
-            x=cpnl.index,
-            y=y,
+            x=cpnl.index, y=y,
             name="Portfolio",
             mode="lines",
             fill="tozeroy",
@@ -328,20 +250,17 @@ def build_pnl_history_figure(
             ),
         ))
 
-        # ── Benchmark overlays — % mode only, not for intraday ──────────
         if mode == "pct" and period != "1d":
             for trace in build_benchmark_traces(period, theme_tokens=theme_tokens, portfolio_start=cpnl.index.min()):
                 fig.add_trace(trace)
             fig.add_annotation(
                 text="Benchmarks normalised to period start",
                 xref="paper", yref="paper",
-                x=1.0, y=1.02,
-                xanchor="right", yanchor="bottom",
+                x=1.0, y=1.02, xanchor="right", yanchor="bottom",
                 showarrow=False,
-                font=dict(size=10, color=T_SEC),
+                font=dict(size=10, color=theme_tokens["T_SEC"]),
             )
 
-        # ── Buy markers ───────────────────────────────────────────────────
         for buy_dt, ticker, tr in purchase_pts:
             if buy_dt in y.index:
                 marker_y = float(y.loc[buy_dt])
@@ -368,8 +287,6 @@ def build_pnl_history_figure(
                             line=dict(width=1.5, color=theme_tokens["BG"])),
                 hovertemplate=tip, showlegend=False,
             ))
-
-    # ── Individual ticker view ─────────────────────────────────────────────
     else:
         hm = next((h for h in holdings if h["ticker"] == selected), None)
         if not hm:
@@ -442,7 +359,7 @@ def build_pnl_history_figure(
                 name=f"{selected} (combined)",
                 mode="lines",
                 fill="tozeroy",
-                fillcolor=hex_to_rgba(theme_tokens.get("INFO", "#378ADD"), 0.1), # ~10% opacity
+                fillcolor=hex_to_rgba(theme_tokens.get("INFO", "#378ADD"), 0.1),
                 line=dict(color=bc, width=2.5),
                 hovertemplate=(
                     "%{y:+.2f}%<extra>" + selected + " combined</extra>"
@@ -457,11 +374,10 @@ def build_pnl_history_figure(
                 fig.add_annotation(
                     text="Benchmarks normalised to period start",
                     xref="paper", yref="paper",
-                    x=1.0, y=1.02,
-                    xanchor="right", yanchor="bottom",
+                    x=1.0, y=1.02, xanchor="right", yanchor="bottom",
                     showarrow=False,
-                    font=dict(size=10, color=T_SEC),
+                    font=dict(size=10, color=theme_tokens["T_SEC"]),
                 )
 
-    fig.add_hline(y=0, line_color=BORDER, line_width=0.8)
+    fig.add_hline(y=0, line_color=theme_tokens["BORDER"], line_width=0.8)
     return fig

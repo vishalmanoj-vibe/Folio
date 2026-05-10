@@ -40,7 +40,10 @@ def create_header(
     # Last updated chip
     last_updated_chip = html.Span(
         id="last-updated", 
-        children=last_updated if last_updated else "", 
+        children=[
+            html.Div(id="status-indicator-dot", className="pulse-dot"),
+            html.Span(last_updated if last_updated else "", id="last-updated-text")
+        ], 
         className="last-updated"
     )
 

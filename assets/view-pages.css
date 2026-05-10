@@ -84,11 +84,12 @@
   border-radius: 0 10px 10px 0;
   padding: 14px 16px;
   cursor: pointer;
-  transition: border-color 0.15s, transform 0.15s;
+  transition: border-color 0.2s, transform 0.2s, box-shadow 0.2s;
 }
 .holding-card:hover {
   border-color: var(--cyan);
-  transform: translateY(-1px);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 32px var(--glow);
 }
 .holding-card.selected { border-color: var(--cyan); background: var(--surface); box-shadow: 0 0 15px rgba(0, 201, 167, 0.35); }
 
@@ -111,6 +112,12 @@
   border-left: 2px solid var(--cyan);
   border-radius: 0 10px 10px 0;
   padding: 9px 12px;
+  transition: transform 0.2s ease, border-color 0.2s, box-shadow 0.2s;
+}
+.etf-detail-card:hover {
+  transform: translateY(-2px);
+  border-color: var(--border-2);
+  box-shadow: 0 8px 32px var(--glow);
 }
 .etf-detail-label { font-size: 9.5px; color: var(--t-sec); margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.4px; }
 .etf-detail-value { font-size: 13px; font-weight: 500; color: var(--t-pri); transition: all 0.3s ease; }
@@ -433,6 +440,12 @@
   padding: 14px 24px;
   margin-bottom: 24px;
   gap: 20px;
+  transition: transform 0.2s ease, border-color 0.2s, box-shadow 0.2s;
+}
+.dividend-summary-strip:hover {
+  transform: translateY(-2px);
+  border-color: var(--border-2);
+  box-shadow: 0 8px 32px var(--glow);
 }
 
 .summary-item {

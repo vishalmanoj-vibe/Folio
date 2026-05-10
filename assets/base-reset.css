@@ -16,10 +16,11 @@ body {
   margin: 0;
   background-color: var(--bg) !important;
   color: var(--t-pri);
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Inter", sans-serif;
+  font-family: "Inter", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  font-variant-numeric: tabular-nums;
   font-size: 13px;
   line-height: 1.5;
-  transition: background-color 0.2s ease, color 0.2s ease;
+  transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
   -webkit-font-smoothing: antialiased;
 }
 
@@ -47,6 +48,9 @@ select,
   border-radius: 6px !important;
   height: 34px !important;
   box-sizing: border-box !important;
+  padding: 0 10px !important;
+  line-height: 32px !important;
+  font-size: 12px !important;
   padding: 0 10px !important;
   line-height: 32px !important;
   font-size: 12px !important;

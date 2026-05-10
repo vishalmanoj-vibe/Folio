@@ -18,6 +18,7 @@ logger = logging.getLogger(__name__)
 from config.constants import GREEN, RED
 from core.engine.stats_engine import compute_portfolio_stats, build_live_table_rows
 from components.market_badge import market_badge
+from services.market.market_status import is_market_open
 from components.ui_helpers import stat_card, stat_card_skeleton, table_skeleton
 
 
@@ -35,16 +36,21 @@ def register_callbacks(app) -> None:
     def update_market_status(_, __):
         return market_badge()
 
-    # ── Last updated timestamp ────────────────────────────────────────────────
     @app.callback(
-        Output("last-updated",   "children"),
+        Output("status-indicator-dot", "className"),
+        Output("last-updated-text",   "children"),
         Input("portfolio-store", "data"),
         Input("url",             "pathname"),  # Ensure refresh on page change
     )
     def update_last_refreshed(portfolio_data, _):
+        # Pulse dot class
+        is_open = is_market_open(include_auction=False)
+        dot_class = "pulse-dot active" if is_open else "pulse-dot"
+        
         if not portfolio_data or "fetched_at" not in portfolio_data:
-            return "Last refreshed: just now"
-        return f"Last refreshed: {portfolio_data['fetched_at']}"
+            return dot_class, "Last refreshed: just now"
+            
+        return dot_class, f"Last refreshed: {portfolio_data['fetched_at']}"
 
     # ── Stat cards ────────────────────────────────────────────────────────────
     @app.callback(

@@ -117,3 +117,48 @@ def build_benchmark_traces(period: str, theme_tokens: dict | None = None, portfo
             logger.warning("Benchmark trace failed for %s: %s", label, exc)
 
     return traces
+
+def apply_standard_layout(
+    fig: go.Figure,
+    theme_tokens: dict,
+    height: int = 280,
+    show_legend: bool = False,
+    chart_type: str = "line",
+    title: str | None = None
+) -> go.Figure:
+    """
+    Applies the standardized layout to any go.Figure.
+    
+    Args:
+        fig: The Plotly Figure to style.
+        theme_tokens: The dictionary returned by get_theme().
+        height: Height of the chart in pixels.
+        show_legend: Whether to show the legend.
+        chart_type: "line", "bar", or "other".
+        title: Optional title string.
+    """
+    base = theme_tokens["PLOTLY_BASE"].copy()
+    
+    # Standard margins
+    if chart_type == "bar":
+        margin = dict(l=110, r=60, t=16, b=16)
+    else:
+        margin = base.get("margin", dict(l=50, r=20, t=30, b=30))
+
+    layout_updates = {
+        "height": height,
+        "showlegend": show_legend,
+        "margin": margin,
+    }
+    
+    if title:
+        layout_updates["title"] = dict(
+            text=title,
+            font=dict(size=14, color=theme_tokens["T_PRI"]),
+            x=0, y=0.98, xanchor="left", yanchor="top"
+        )
+
+    fig.update_layout(**base)
+    fig.update_layout(**layout_updates)
+    
+    return fig

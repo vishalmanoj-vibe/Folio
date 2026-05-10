@@ -4,29 +4,18 @@ components/charts/intel_drawdown.py
 """
 import plotly.graph_objects as go
 from config.constants import BORDER, RED
-from components.charts.intel_helpers import _LINE_MARGIN
 
 def build_intel_drawdown_chart(dd_dates: list, dd_values: list, theme_tokens: dict) -> go.Figure:
     fig = go.Figure()
-    base = theme_tokens["PLOTLY_BASE"].copy()
-    base["margin"] = _LINE_MARGIN
 
-    layout = base.copy()
-    layout.update(dict(
-        height=300,
-        showlegend=False,
-        margin=dict(l=16, r=16, t=36, b=16),
-        xaxis=dict(showgrid=False),
-        yaxis=dict(gridcolor=theme_tokens["BORDER"], ticksuffix="%",
-                   zeroline=True, zerolinecolor=theme_tokens["BORDER"], zerolinewidth=1),
-        hovermode="x unified",
-        uirevision=True,
-    ))
     if not dd_dates or not dd_values:
         from components.charts.helpers import create_empty_fig
         return create_empty_fig("No drawdown history available", height=300, theme_tokens=theme_tokens)
 
-    fig.update_layout(layout)
+    from components.charts.helpers import apply_standard_layout
+    apply_standard_layout(fig, theme_tokens, height=300)
+    fig.update_yaxes(ticksuffix="%")
+
     fig.add_trace(go.Scatter(
         x=dd_dates, y=dd_values,
         mode="lines", name="Drawdown",
@@ -35,6 +24,7 @@ def build_intel_drawdown_chart(dd_dates: list, dd_values: list, theme_tokens: di
         hovertemplate="%{y:.2f}%<extra></extra>",
     ))
     fig.add_hline(y=0, line_color=theme_tokens["BORDER"], line_width=0.8)
+    
     # Annotate max drawdown point
     min_v   = min(dd_values)
     min_idx = dd_values.index(min_v)

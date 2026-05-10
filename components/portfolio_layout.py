@@ -15,7 +15,11 @@ from config.settings import DB_PATH
 INDEX_STRING = '''
 <!DOCTYPE html>
 <html>
-<head>{%metas%}<title>{%title%}</title>{%favicon%}{%css%}
+<head>{%metas%}<title>{%title%}</title>{%favicon%}
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    {%css%}
     <script>
         (function() {
             try {

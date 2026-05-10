@@ -10,7 +10,7 @@ import pandas as pd
 import plotly.graph_objects as go
 from config.constants import COLORS
 from core.engine.utils import get_period_cutoff
-
+from components.charts.helpers import apply_standard_layout
 
 def build_price_chart_figure(
     histories: dict,
@@ -20,54 +20,21 @@ def build_price_chart_figure(
 ) -> go.Figure:
     """
     Build a Plotly line chart of normalized price histories.
-
-    For period="max", each ticker's series is trimmed to start from its
-    first purchase date so the chart shows 'since purchase' not full history.
-    For all other periods, a calendar cutoff is applied uniformly.
-
-    Args:
-        histories: Dictionary mapping tickers to their historical price DataFrames.
-        period: Time period string (e.g., "1mo", "max").
-        theme_tokens: Dictionary of UI theme colors and base layouts.
-        holdings: List of holding dicts (used to find first_purchase per ticker).
-
-    Returns:
-        A Plotly go.Figure object.
     """
-    T_SEC = theme_tokens["T_SEC"]
-    T_PRI = theme_tokens["T_PRI"]
-    
-    layout = theme_tokens["PLOTLY_BASE"].copy()
-    layout.update(dict(
-        xaxis=dict(
-            showgrid=False, 
-            tickfont=dict(size=11, color=T_SEC),
-            zeroline=False,
-            tickformat="%b %y",
-            nticks=6,
-        ),
-        yaxis=dict(
-            gridcolor="rgba(255,255,255,0.05)", 
-            tickfont=dict(size=11, color=T_SEC),
-            zeroline=False,
-            side="right", # Values on right as in mockup
-            fixedrange=True,
-        ),
-        legend=dict(
-            orientation="h",
-            yanchor="bottom",
-            y=1.1,
-            xanchor="right",
-            x=1,
-            font=dict(size=10, color=T_SEC),
-        ),
-        hovermode="x unified",
-        margin=dict(t=60, b=30, l=10, r=40), # Space for legend and right-axis
-        height=400,
-    ))
-    
     fig = go.Figure()
-    fig.update_layout(layout)
+    
+    apply_standard_layout(fig, theme_tokens, height=400, show_legend=True)
+    
+    # Custom tweaks for price chart
+    fig.update_layout(
+        margin=dict(t=60, b=30, l=10, r=40),
+        legend=dict(
+            orientation="h", yanchor="bottom", y=1.1, xanchor="right", x=1,
+            font=dict(size=10, color=theme_tokens["T_SEC"]),
+        )
+    )
+    fig.update_xaxes(tickformat="%b %y", nticks=6)
+    fig.update_yaxes(side="right", fixedrange=True)
 
     # Build a lookup of ticker → first_purchase date for "max" (since purchase) mode
     purchase_map: dict[str, pd.Timestamp] = {}
@@ -107,13 +74,13 @@ def build_price_chart_figure(
             y=(df["Close"] / base * 100).round(2),
             name=t, 
             mode="lines",
-            line=dict(color=COLORS[i % len(COLORS)], width=2.0, shape='spline'), # Spline for smoother look
-            hovertemplate=f"{t}: %{{y:.2f}}<extra></extra>"
+            line=dict(color=COLORS[i % len(COLORS)], width=2.0, shape='spline'),
+            hovertemplate=f"%{{y:.2f}}<extra>{t}</extra>"
         ))
 
     if not fig.data:
         from components.charts.helpers import create_empty_fig
         return create_empty_fig("No price history available", height=400, theme_tokens=theme_tokens)
         
-    fig.add_hline(y=100, line_dash="dot", line_color="rgba(255,255,255,0.2)", line_width=1)
+    fig.add_hline(y=100, line_dash="dot", line_color=theme_tokens["BORDER"], line_width=1)
     return fig

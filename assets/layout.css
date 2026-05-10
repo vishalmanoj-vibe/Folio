@@ -22,7 +22,9 @@
 
 /* ── Top navigation bar ── */
 .nav-bar {
-  background: var(--surface);
+  background: var(--nav-bg);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
   border-bottom: 0.5px solid var(--border);
   padding: 0 24px;
   display: flex;
@@ -32,6 +34,7 @@
   position: sticky;
   top: 0;
   z-index: 100;
+  transition: background-color 0.2s, border-color 0.2s;
 }
 
 .nav-links-container {
@@ -112,6 +115,43 @@
   padding: 3px 9px;
   border-radius: 5px;
   border: 0.5px solid var(--border);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: background-color 0.2s, border-color 0.2s;
+}
+
+.status-indicator {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.pulse-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background-color: var(--t-sec);
+  position: relative;
+  transition: background-color 0.3s ease;
+}
+
+.pulse-dot.active {
+  background-color: var(--green);
+  box-shadow: 0 0 0 rgba(0, 232, 122, 0.4);
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(0, 232, 122, 0.7);
+  }
+  70% {
+    box-shadow: 0 0 0 6px rgba(0, 232, 122, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(0, 232, 122, 0);
+  }
 }
 
 .settings-details  { position: relative; display: inline-block; }
@@ -189,6 +229,7 @@
 .section-container {
   padding: 16px 24px;
   border-bottom: 0.5px solid var(--border);
+  transition: background-color 0.2s, border-color 0.2s;
 }
 
 .chart-title-container {

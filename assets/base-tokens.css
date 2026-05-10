@@ -11,6 +11,7 @@ body[data-theme="dark"] {
   --surface:    #111a1a;   /* card / panel background */
   --surface-2:  #0f1414;   /* slightly lighter card variant */
   --surface-3:  #0a1010;   /* input / inset background */
+  --nav-bg:     rgba(17, 26, 26, 0.8);
 
   /* Borders */
   --border:     rgba(255, 255, 255, 0.07);
@@ -44,6 +45,7 @@ body[data-theme="dark"] {
 
   /* Aliases kept for Folio compat */
   --danger: var(--red);
+  --glow:   rgba(0, 201, 167, 0.06);
 
   color-scheme: dark;
 }
@@ -54,6 +56,7 @@ body[data-theme="light"] {
   --surface:    #ffffff;
   --surface-2:  #f8fafa;
   --surface-3:  #eef3f3;
+  --nav-bg:     rgba(255, 255, 255, 0.8);
 
   --border:     rgba(0, 0, 0, 0.08);
   --border-2:   rgba(0, 150, 120, 0.15);
@@ -80,6 +83,7 @@ body[data-theme="light"] {
   --bench-1: #4a90e2;
   --bench-2: #d0021b;
   --danger: var(--red);
+  --glow:   rgba(0, 150, 120, 0.04);
 
   color-scheme: light;
 }

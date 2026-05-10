@@ -172,6 +172,7 @@ folio/
 │
 ├── components/                     # UI components
 │   ├── charts/                     # go.Figure factories
+│   │   ├── helpers.py              # Centralized layout & empty state builders
 │   │   ├── pnl_history.py          # Today view (resampled)
 │   │   ├── price_history.py        # Candlestick/Line charts
 │   │   └── ...
@@ -283,7 +284,24 @@ The application uses a strictly themed design system defined in `assets/base-tok
 1.  **`base-tokens.css`**: Defines CSS variables.
 2.  **`base-reset.css`**: Global resets and base typography.
 3.  **`ui-components.css`**: Shared component blocks.
-4.  **`vendor.css`**: High-specificity overrides for Radix/Dash components.
+4.  **`layout.css`**: Structural layout, navigation, and glassmorphism.
+5.  **`vendor.css`**: High-specificity overrides for Radix/Dash components.
+
+### Premium UI Standards
+
+To maintain a "Linear-inspired" aesthetic, the dashboard implements several high-end UI patterns:
+- **Glassmorphism**: The navigation bar utilizes `backdrop-filter: blur(12px)` and semi-transparent backgrounds (`var(--nav-bg)`) to create a frosted-glass effect.
+- **Smooth Transitions**: All theme-aware layout shifts use a `0.2s ease` transition duration for background and border colors.
+- **Interactive Depth**: Dashboard cards and stat containers implement a `translateY(-2px)` lift on hover, combined with a subtle teal glow (`var(--glow)`) to provide tactile feedback.
+- **Data Vitality**: A real-time pulse indicator in the header provides at-a-glance evidence of live market monitoring, with a CSS-animated "heartbeat" synchronized with the ASX trading session.
+
+### Chart Standardization (`apply_standard_layout`)
+
+All Plotly visualizations must be routed through the `apply_standard_layout()` helper in `components/charts/helpers.py`. This ensures:
+- **Typography**: Unified **Inter 10px** styling for all axes, legends, and annotations.
+- **Grid Consistency**: Standardized grid line opacities and subtle border treatments across all pages.
+- **Hover UX**: Enforced `hovermode="x unified"` for professional, multi-trace data inspection.
+- **Theme Awareness**: Dynamic mapping of axis and tick colors to current design tokens (`var(--t-sec)`).
 
 ### Overriding Dash 2.16+ (Radix UI)
 Modern Dash components often render elements in "Portals" at the end of the document body. 

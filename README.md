@@ -18,6 +18,8 @@ Built with Dash, Plotly, yfinance, and Gemini.
 - **Watchlist** — Track tickers you don't own yet with live pricing, signals, and research notes.
 - **AI Research Assistant** — Chat interface powered by Gemini 2.5 Flash Lite for portfolio analysis and ticker research, with persistent conversation memory and optional web search.
 - **Weekly PDF Report** — AI-generated portfolio summary with holdings breakdown, technical signals, dividend calendar, and market news.
+- **Premium Aesthetics** — High-fidelity UI with glassmorphism navigation, smooth 200ms theme transitions, Inter typography (tabular numerals), and interactive hover depth.
+- **Data Freshness Heartbeat** — Real-time animated status indicator in the header synchronized with ASX trading sessions.
 
 ## Setup
 

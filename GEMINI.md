@@ -27,6 +27,7 @@
   - All intraday charts (`pnl_history.py`) MUST apply 5-minute resampling (`resample('5min').last().ffill()`) to ensure visual uniformity.
   - X-axis `rangebreaks` MUST be used to hide non-trading hours (16:15 - 10:00) and weekends for seamless session stitching.
 - **Chart Fallbacks**: Every chart figure builder MUST implement a fallback to `create_empty_fig()` from `components.charts.helpers` if data is missing or invalid. AX axes/grid artifacts are prohibited.
+- **Chart Standardization**: All charts MUST use the `apply_standard_layout()` helper to ensure unified typography (Inter 10px), grid opacity, and hover label consistency.
 - **Fast Startup**: `app.py` MUST NOT perform blocking yfinance fetches during initialization. It must seed stores with disk snapshots and defer the first live refresh to a `startup-interval`.
 
 ## Data conventions
@@ -61,6 +62,8 @@
 - Never call yfinance per-ticker in a loop — use bulk download
 - Never hardcode AEST offset — use pytz or zoneinfo for timezone checks
 - **Hex in Callbacks**: Never pass CSS `var()` strings to Python functions that perform math on colors (like `interpolate_color`). Use hardcoded hex values from `config/constants.py` for these cases.
+- **UI Transitions**: All theme-aware elements (body, cards, nav) MUST have a 200ms CSS transition on `background-color`, `color`, and `border-color` to prevent jarring theme snaps.
+- **Data Freshness**: The header status indicator MUST accurately reflect `is_market_open(include_auction=False)` with a pulsing green dot during trading and a static grey dot otherwise.
 
 ## Self-Improvement
 - After every task, evaluate if a new Rule or Skill should be added to the `.agent/` directory to prevent repeating mistakes or to codify successful new patterns.
@@ -142,3 +145,7 @@
 - **Callback Prioritization**: Implemented `pathname` awareness across all rendering callbacks in `chart_callbacks.py`, `positions_callbacks.py`, and `watchlist_callbacks.py` to prevent off-page DOM thrashing.
 - **Fast Startup**: Refactored `app.py` to seed `portfolio-store` and `watchlist-store` with disk cached data, removing blocking `fetch_live` calls from the startup sequence.
 - **Standardized Fallbacks**: Integrated `create_empty_fig` across all chart components to ensure professional empty states.
+- **Aesthetic Excellence & Chart Standardization (Complete)**:
+  - Unified all charts via `apply_standard_layout()` for consistent typography and hover UX.
+  - Implemented glassmorphism nav bar and 200ms theme transitions.
+  - Added real-time animated market status heartbeat to the header.

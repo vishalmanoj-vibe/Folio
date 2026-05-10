@@ -69,7 +69,7 @@ This document chronicles the technical evolution of Folio, transitioning from a 
 
 ---
 
-## Phase 7: Rendering Prioritization & UX Polish (v3.6.0 – Current)
+## Phase 7: Rendering Prioritization & UX Polish (v3.6.0 – v3.7.0)
 **Theme**: Optimizing for extreme responsiveness, visual stability, and aesthetic excellence.
 
 *   **Fast Startup Architecture**: Refactored the core application lifecycle to eliminate blocking market data fetches during initialization. The dashboard now boots instantly (<1s) using disk-cached state, with live data refreshing in the background after the UI is interactive.
@@ -78,3 +78,14 @@ This document chronicles the technical evolution of Folio, transitioning from a 
 *   **Persistent Chart State (uirevision)**: Implemented stable `uirevision` keys across all major visualizations. This ensures that 5-minute background data refreshes do NOT reset user zoom, pan, or toggles, creating a seamless "tracking" experience.
 *   **Live Tracking Aesthetics**: Applied 300ms CSS transitions to all key financial metrics. Data updates now smoothly ease into place, mimicking the fluid feel of high-end fintech dashboards.
 *   **Standardized Empty States**: Introduced a centralized chart fallback system (`create_empty_fig`) to ensure all visualizations maintain a professional aesthetic during loading or error states.
+
+---
+
+## Phase 8: Aesthetic Excellence & Chart Standardization (v3.8.0 – Current)
+**Theme**: Standardizing the visual language and achieving "Linear-grade" UI polish.
+
+*   **Unified Chart Architecture**: Refactored the entire charting library to use a centralized `apply_standard_layout` helper. This enforced a single source of truth for **Inter 10px** typography, unified hover models, and grid opacities across all 15+ dashboard visualizations.
+*   **Glassmorphism Navigation**: Implemented a frosted-glass navigation bar with `backdrop-filter: blur(12px)` and semi-transparent layers, optimized for high-performance rendering in WebKit (Safari).
+*   **Theme Transition Smoothness**: Eliminated jarring visual snaps by implementing **200ms CSS transitions** on all theme-aware properties (background-color, color, border-color) across the entire application shell.
+*   **Data Freshness Pulse**: Introduced a live "heartbeat" indicator in the header. The animated status dot pulses green during market hours and remains static grey otherwise, providing at-a-glance evidence of live monitoring.
+*   **Interactive Depth & Typography**: Standardized on **Inter with tabular numerals** for financial accuracy and added interactive hover states (lift + teal glow) to all dashboard cards.

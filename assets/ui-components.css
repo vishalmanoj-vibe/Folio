@@ -60,11 +60,12 @@ button:active { transform: scale(0.97); }
   border-radius: 8px;
   padding: 12px 14px;
   border: 0.5px solid var(--border);
-  transition: transform 0.15s ease, border-color 0.15s;
+  transition: transform 0.2s ease, border-color 0.2s, box-shadow 0.2s, background-color 0.2s;
 }
 .stat-card-container:hover {
-  transform: translateY(-1px);
+  transform: translateY(-2px);
   border-color: var(--border-2);
+  box-shadow: 0 8px 32px var(--glow);
 }
 
 .stat-card-label-row {
@@ -103,6 +104,12 @@ button:active { transform: scale(0.97); }
   border: 0.5px solid var(--border);
   border-radius: 10px;
   padding: 16px 18px;
+  transition: transform 0.2s ease, border-color 0.2s, box-shadow 0.2s, background-color 0.2s;
+}
+.card:hover {
+  transform: translateY(-2px);
+  border-color: var(--border-2);
+  box-shadow: 0 8px 32px var(--glow);
 }
 
 .card-accent {

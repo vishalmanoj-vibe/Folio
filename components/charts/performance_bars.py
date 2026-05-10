@@ -6,6 +6,7 @@ High-density horizontal lollipop chart for performance metrics.
 """
 
 import plotly.graph_objects as go
+from components.charts.helpers import apply_standard_layout
 
 def build_performance_lollipops(
     data: list[dict], 
@@ -16,15 +17,6 @@ def build_performance_lollipops(
     Build a horizontal lollipop chart for portfolio performance.
     """
     fig = go.Figure()
-    
-    # Base Layout (Standard for both empty and populated states)
-    base_layout = dict(
-        paper_bgcolor=theme_tokens["BG"],
-        plot_bgcolor=theme_tokens["BG"],
-        font=dict(color=theme_tokens["T_PRI"], family="Inter, sans-serif"),
-        margin=dict(t=10, b=10, l=40, r=20),
-        uirevision=True,
-    )
     
     if not data:
         from components.charts.helpers import create_empty_fig
@@ -62,15 +54,13 @@ def build_performance_lollipops(
         hovertemplate="<b>%{text}</b><br>Amount: $%{customdata:,.2f}<extra></extra>"
     ))
 
-    # Layout configuration
+    # Apply Standard Layout
+    chart_h = max(400, len(data) * 35)
+    apply_standard_layout(fig, theme_tokens, height=chart_h, chart_type="bar")
+    
     fig.update_layout(
-        **base_layout,
-        showlegend=False,
         xaxis=dict(
-            title=dict(text="Amount ($)", font=dict(size=10, color="#8a8880")),
-            tickfont=dict(color=theme_tokens["T_SEC"], size=10),
-            gridcolor=theme_tokens["BORDER"],
-            zerolinecolor=theme_tokens["BORDER"],
+            title=dict(text="Amount ($)", font=dict(size=10, color=theme_tokens["T_SEC"])),
         ),
         yaxis=dict(
             tickmode="array",
@@ -80,8 +70,7 @@ def build_performance_lollipops(
             autorange="reversed",
             showgrid=False,
             zeroline=False
-        ),
-        height=max(400, len(data) * 35)
+        )
     )
 
     return fig
