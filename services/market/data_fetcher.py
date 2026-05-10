@@ -1,4 +1,5 @@
-# services/market/data_fetcher.py
+import os
+import json
 import logging
 import time
 import pandas as pd
@@ -9,7 +10,10 @@ from concurrent.futures import ThreadPoolExecutor
 from core import get_cache, set_cache
 from core.engine.portfolio_engine import compute_tranche_pnl, compute_holding_pnl
 from core.engine.utils import normalise_tz, get_period_cutoff
-from config.settings import API_MAX_RETRIES, API_RETRY_BACKOFF_BASE, CACHE_TTL_SECONDS
+from config.settings import (
+    API_MAX_RETRIES, API_RETRY_BACKOFF_BASE, CACHE_TTL_SECONDS,
+    DATA_CACHE_DIR
+)
 from services.market.session_cache import (
     record_snapshot, get_session_history, clear_old_caches, backfill_session_cache
 )
@@ -18,6 +22,8 @@ from services.market.market_status import (
 )
 
 logger = logging.getLogger(__name__)
+
+SNAPSHOT_PATH = os.path.join(DATA_CACHE_DIR, "portfolio_snapshot.json")
 
 _NAME_CACHE: dict = {}
 _NAME_CACHE_TTL = 86400
@@ -99,6 +105,35 @@ def get_etf_name(ticker: str) -> str:
     except Exception as e:
         logger.warning("Name fetch failed for %s: %s", ticker_upper, e)
         return fallback
+
+
+def save_portfolio_snapshot(data: dict) -> None:
+    """Save the full portfolio state to a disk snapshot for fast startup."""
+    if not data or "holdings" not in data:
+        return
+        
+    try:
+        os.makedirs(os.path.dirname(SNAPSHOT_PATH), exist_ok=True)
+        with open(SNAPSHOT_PATH, "w") as f:
+            json.dump(data, f, default=str)
+        logger.info("Portfolio snapshot saved to disk")
+    except Exception as e:
+        logger.error("Failed to save portfolio snapshot: %s", e)
+
+
+def load_portfolio_snapshot() -> dict | None:
+    """Load the portfolio state from a disk snapshot."""
+    if not os.path.exists(SNAPSHOT_PATH):
+        return None
+        
+    try:
+        with open(SNAPSHOT_PATH, "r") as f:
+            data = json.load(f)
+        logger.info("Portfolio snapshot loaded from disk")
+        return data
+    except Exception as e:
+        logger.error("Failed to load portfolio snapshot: %s", e)
+        return None
 
 
 def _download_with_retry(
@@ -702,5 +737,10 @@ def fetch_live(holdings: list[dict], hist_period: str = "max", record_snapshots:
 
     ttl = 5 if hist_period == "1d" else 10
     set_cache(cache_key, result, ttl=ttl)
+    
+    # ── Save snapshot for fast startup ───────────────────────────────────────
+    if hist_period == "max" and result.get("holdings"):
+        save_portfolio_snapshot(result)
+        
     logger.info("Done — %d enriched, %d with history", len(enriched), len(histories))
     return result

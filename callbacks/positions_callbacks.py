@@ -9,7 +9,7 @@ from config.constants import (
     COLORS, BORDER, GREEN, RED, T_PRI, T_SEC, BG, SURFACE, NAMES, get_theme
 )
 from components.ui_helpers import stat_card, tech_signal_badges, progress_row, interpolate_color
-from components.charts.intel_helpers import create_empty_fig
+from components.charts.helpers import create_empty_fig
 from services.market.dividend_service import calculate_portfolio_dividend_stats, get_ticker_dividend_data
 import pandas as pd
 
@@ -161,9 +161,12 @@ def register_callbacks(app) -> None:
          Output("positions-tech-signals-container", "children")],
         Input("positions-selected-ticker", "data"),
         Input("portfolio-store", "data"),
+        Input("url", "pathname"),
         prevent_initial_call=True,
     )
-    def render_detail_metrics(ticker, port_data):
+    def render_detail_metrics(ticker, port_data, url_pathname):
+        import dash
+        if url_pathname != "/positions": return dash.no_update, dash.no_update
         if not ticker or not port_data or "holdings" not in port_data:
             return [], None
 
@@ -216,9 +219,12 @@ def register_callbacks(app) -> None:
         Output("ai-insight-container", "children"),
         Input("positions-selected-ticker", "data"),
         Input("signals-store", "data"),
+        Input("url", "pathname"),
         prevent_initial_call=False,
     )
-    def render_ai_insight(ticker, signals_store):
+    def render_ai_insight(ticker, signals_store, url_pathname):
+        import dash
+        if url_pathname != "/positions": return dash.no_update
         if not ticker or not signals_store or "ai" not in signals_store:
             return None
 
@@ -260,8 +266,11 @@ def register_callbacks(app) -> None:
         Input("positions-period-store", "data"),
         Input("portfolio-store", "data"),
         Input("theme-store", "data"),
+        Input("url", "pathname"),
     )
-    def render_price_chart(ticker, period, port_data, theme):
+    def render_price_chart(ticker, period, port_data, theme, url_pathname):
+        import dash
+        if url_pathname != "/positions": return dash.no_update
         t_ = get_theme(theme or "dark")
         if not ticker: 
             return None
@@ -281,63 +290,62 @@ def register_callbacks(app) -> None:
             # FIX: use pre-fetched histories from portfolio-store
             history_records = port_data.get("histories", {}).get(ticker, [])
             if not history_records:
-                return html.Div(f"No price history for {ticker}", className="c-muted", style={"padding": "40px", "textAlign": "center"})
-            
-            import pandas as pd
-            df = pd.DataFrame(history_records)
-            df["Date"] = pd.to_datetime(df["Date"])
-            df = df.set_index("Date").sort_index()
-            
-            # Apply period filter
-            from datetime import timedelta
-            period_map = {
-                "1mo": timedelta(days=30),
-                "3mo": timedelta(days=90),
-                "1y":  timedelta(days=365),
-                "ytd": None,
-                "max": None,
-            }
-            if period in period_map and period_map[period]:
-                cutoff = pd.Timestamp.now() - period_map[period]
-                df = df[df.index >= cutoff]
-            elif period == "ytd":
-                df = df[df.index >= pd.Timestamp(pd.Timestamp.now().year, 1, 1)]
-            
-            if not df.empty:
-                if df.index.tz is not None: 
-                    df.index = df.index.tz_convert(None)
-                
-                if all(col in df.columns for col in ["Open", "High", "Low", "Close"]):
-                    fig.add_trace(go.Candlestick(
-                        x=df.index, open=df["Open"], high=df["High"], low=df["Low"], close=df["Close"],
-                        increasing_line_color=GREEN, decreasing_line_color=RED,
-                        increasing_fillcolor=GREEN, decreasing_fillcolor=RED, 
-                        name=ticker,
-                        opacity=0.9
-                    ))
-                else:
-                    # Fallback to line chart if OHLC is missing (e.g. for intraday 1d)
-                    fig.add_trace(go.Scatter(
-                        x=df.index, y=df["Close"], mode="lines",
-                        line=dict(color=GREEN if df["Close"].iloc[-1] >= df["Close"].iloc[0] else RED, width=2),
-                        name=ticker,
-                        hovertemplate="$%{y:,.3f}<extra></extra>"
-                    ))
-                
-                if holding and holding.get("avg_cost"):
-                    fig.add_hline(
-                        y=holding["avg_cost"], 
-                        line_dash="dot", 
-                        line_color="rgba(255,255,255,0.4)",
-                        annotation_text=f"Avg cost ${holding['avg_cost']:,.3f}", 
-                        annotation_position="top left"
-                    )
+                fig = create_empty_fig(f"No price history for {ticker}", height=350, theme_tokens=t_)
             else:
-                fig.add_annotation(text=f"No price history available for {ticker}", 
-                                  showarrow=False, font=dict(size=14, color="var(--t-sec)"))
+                import pandas as pd
+                df = pd.DataFrame(history_records)
+                df["Date"] = pd.to_datetime(df["Date"])
+                df = df.set_index("Date").sort_index()
+                
+                # Apply period filter
+                from datetime import timedelta
+                period_map = {
+                    "1mo": timedelta(days=30),
+                    "3mo": timedelta(days=90),
+                    "1y":  timedelta(days=365),
+                    "ytd": None,
+                    "max": None,
+                }
+                if period in period_map and period_map[period]:
+                    cutoff = pd.Timestamp.now() - period_map[period]
+                    df = df[df.index >= cutoff]
+                elif period == "ytd":
+                    df = df[df.index >= pd.Timestamp(pd.Timestamp.now().year, 1, 1)]
+                
+                if not df.empty:
+                    if df.index.tz is not None: 
+                        df.index = df.index.tz_convert(None)
+                    
+                    if all(col in df.columns for col in ["Open", "High", "Low", "Close"]):
+                        fig.add_trace(go.Candlestick(
+                            x=df.index, open=df["Open"], high=df["High"], low=df["Low"], close=df["Close"],
+                            increasing_line_color=GREEN, decreasing_line_color=RED,
+                            increasing_fillcolor=GREEN, decreasing_fillcolor=RED, 
+                            name=ticker,
+                            opacity=0.9
+                        ))
+                    else:
+                        # Fallback to line chart if OHLC is missing (e.g. for intraday 1d)
+                        fig.add_trace(go.Scatter(
+                            x=df.index, y=df["Close"], mode="lines",
+                            line=dict(color=GREEN if df["Close"].iloc[-1] >= df["Close"].iloc[0] else RED, width=2),
+                            name=ticker,
+                            hovertemplate="$%{y:,.3f}<extra></extra>"
+                        ))
+                    
+                    if holding and holding.get("avg_cost"):
+                        fig.add_hline(
+                            y=holding["avg_cost"], 
+                            line_dash="dot", 
+                            line_color="rgba(255,255,255,0.4)",
+                            annotation_text=f"Avg cost ${holding['avg_cost']:,.3f}", 
+                            annotation_position="top left"
+                        )
+                else:
+                    fig = create_empty_fig(f"No price history available for {ticker}", height=350, theme_tokens=t_)
         except Exception as e:
             logger.error(f"Failed to fetch history for {ticker}: {e}")
-            return html.Div("Error loading chart data", className="c-neg", style={"padding": "20px"})
+            fig = create_empty_fig("Error loading chart data", height=350, theme_tokens=t_)
 
         from components.ui_helpers import chart_title
         return html.Div([
@@ -353,8 +361,11 @@ def register_callbacks(app) -> None:
         Output("positions-txn-table-container", "children"),
         Input("positions-selected-ticker", "data"),
         Input("txn-store", "data"),
+        Input("url", "pathname"),
     )
-    def render_txn_table(ticker, history):
+    def render_txn_table(ticker, history, url_pathname):
+        import dash
+        if url_pathname != "/positions": return dash.no_update
         if not ticker or not history: return None
         txns = sorted([t for t in history if t["ticker"].upper() == ticker], key=lambda x: x["date"], reverse=True)
         if not txns:
@@ -383,9 +394,12 @@ def register_callbacks(app) -> None:
     # ── 6. Period Selection Buttons ──────────────────────────────────────────
     @app.callback(
         Output("positions-period-btns", "children"),
-        Input("positions-period-store", "data")
+        Input("positions-period-store", "data"),
+        Input("url", "pathname"),
     )
-    def render_period_btns(current_period):
+    def render_period_btns(current_period, url_pathname):
+        import dash
+        if url_pathname != "/positions": return dash.no_update
         periods = [
             ("1M", "1mo"),
             ("3M", "3mo"),
@@ -413,9 +427,12 @@ def register_callbacks(app) -> None:
     # ── 7. Detail Title ──────────────────────────────────────────────────────
     @app.callback(
         Output("positions-detail-title", "children"),
-        Input("positions-selected-ticker", "data")
+        Input("positions-selected-ticker", "data"),
+        Input("url", "pathname"),
     )
-    def update_detail_title(ticker):
+    def update_detail_title(ticker, url_pathname):
+        import dash
+        if url_pathname != "/positions": return dash.no_update
         if not ticker:
             return "Select a position to view details"
         return f"Details for {ticker}"
@@ -425,9 +442,12 @@ def register_callbacks(app) -> None:
         Output("positions-ticker-dividend-container", "children"),
         Input("positions-selected-ticker", "data"),
         Input("portfolio-store", "data"),
+        Input("url", "pathname"),
         prevent_initial_call=True
     )
-    def render_ticker_dividends(ticker, port_data):
+    def render_ticker_dividends(ticker, port_data, url_pathname):
+        import dash
+        if url_pathname != "/positions": return dash.no_update
         if not ticker or not port_data or "holdings" not in port_data:
             return None
             
@@ -491,9 +511,12 @@ def register_callbacks(app) -> None:
          Output("positions-dividend-yield-chart", "children"),
          Output("positions-dividend-table", "children")],
         Input("portfolio-store", "data"),
+        Input("url", "pathname"),
         prevent_initial_call=True
     )
-    def render_portfolio_dividend_insights(port_data):
+    def render_portfolio_dividend_insights(port_data, url_pathname):
+        import dash
+        if url_pathname != "/positions": return [dash.no_update]*3
         if not port_data or "holdings" not in port_data:
             return [None]*3
             

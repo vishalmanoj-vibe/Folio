@@ -11,6 +11,7 @@
 - All new chart callbacks go in callbacks/chart_callbacks.py
 - New pages must register_callbacks(app) and be imported in app.py after app creation
 - **Multi-page Safety**: ALL callbacks targeting page-specific elements MUST use `prevent_initial_call=True`.
+- **Prioritized Rendering**: Every rendering callback MUST include `Input("url", "pathname")` and return `dash.no_update` if the pathname does not match the callback's target page. This prevents background re-render flicker.
 - **Dynamic Layouts**: All pages MUST define layout as a callable function (`def layout():`) rather than a static variable to ensure proper component ID registration on every page load.
 - **Period Sync**: The `portfolio-store` refresh callback in `app.py` must sync with page-specific period stores (`positions-period-store`, `watchlist-period-store`, etc.) to ensure the global data fetch covers the maximum requested period.
 - All pages MUST use the `create_header` component for navigation consistency
@@ -25,6 +26,8 @@
   - 290s cooldown enforced in `session_cache.py` to prevent jagged data from frequent fetch triggers.
   - All intraday charts (`pnl_history.py`) MUST apply 5-minute resampling (`resample('5min').last().ffill()`) to ensure visual uniformity.
   - X-axis `rangebreaks` MUST be used to hide non-trading hours (16:15 - 10:00) and weekends for seamless session stitching.
+- **Chart Fallbacks**: Every chart figure builder MUST implement a fallback to `create_empty_fig()` from `components.charts.helpers` if data is missing or invalid. AX axes/grid artifacts are prohibited.
+- **Fast Startup**: `app.py` MUST NOT perform blocking yfinance fetches during initialization. It must seed stores with disk snapshots and defer the first live refresh to a `startup-interval`.
 
 ## Data conventions
 - Tickers stored without .AX in CSV; ticker_yf = ticker + ".AX" for yfinance
@@ -134,3 +137,8 @@
 - `components/charts/treemap.py` — Implemented theme-aware typography and stripped legacy template defaults.
 - `callbacks/portfolio_callbacks.py` — Integrated signals-store as State to inject Suggestion badges into the holdings table.
 - **Project-wide Audit**: Standardized all services to use `logger.debug()` and verified `prevent_initial_call=True` for multi-page safety.
+
+### Rendering Prioritization & Fast Startup (Complete)
+- **Callback Prioritization**: Implemented `pathname` awareness across all rendering callbacks in `chart_callbacks.py`, `positions_callbacks.py`, and `watchlist_callbacks.py` to prevent off-page DOM thrashing.
+- **Fast Startup**: Refactored `app.py` to seed `portfolio-store` and `watchlist-store` with disk cached data, removing blocking `fetch_live` calls from the startup sequence.
+- **Standardized Fallbacks**: Integrated `create_empty_fig` across all chart components to ensure professional empty states.

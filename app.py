@@ -13,12 +13,15 @@ Pages
   /intelligence   → pages/intelligence.py
   /ai-analyst     → pages/ai_analyst.py
 
-Responsiveness fix (Pre-seeded Stores)
-----------------------------------
-To avoid "layout shifts" or empty charts on first load, the `portfolio-store` and `txn-store` 
-are seeded with `data=` at startup. The server performs a blocking market fetch BEFORE 
-the app becomes available. This ensures the first paint contains live data without 
-waiting for the first `dcc.Interval` cycle.
+Responsiveness fix (Instant Load + Background Refresh)
+--------------------------------------------------
+To ensure a premium "Day 1" experience, the server does NOT perform blocking 
+yfinance fetches on startup. Instead:
+1. Stores (portfolio-store, txn-store, watchlist-store) are seeded with 
+   persistent disk snapshots (load_portfolio_snapshot).
+2. The UI paints immediately (under 1s) with cached data.
+3. A 'startup-interval' fires 1.5s after load to trigger the first live fetch.
+4. Background threads maintain snapshots during market hours.
 """
 
 # Setup logging first
@@ -71,7 +74,7 @@ except Exception as e:
     logger.error(f"\nERROR loading database:\n{e}\n")
 
 from core.engine import build_holdings
-from services.market.data_fetcher import fetch_live
+from services.market.data_fetcher import fetch_live, load_portfolio_snapshot
 from services.market.session_cache import clear_old_caches
 from services.research_memory import run_startup_maintenance
 
@@ -79,15 +82,26 @@ from services.research_memory import run_startup_maintenance
 clear_old_caches(keep_days=1)  # Aggressive cleanup on startup
 
 INITIAL_HOLDINGS = build_holdings(INITIAL_HISTORY)
-INITIAL_PORTFOLIO_DATA: dict = {}
+INITIAL_PORTFOLIO_DATA: dict = load_portfolio_snapshot()
 
-if INITIAL_HOLDINGS:
-    try:
-        INITIAL_PORTFOLIO_DATA = fetch_live(INITIAL_HOLDINGS, "max")
-        logger.info("Initial portfolio data loaded successfully")
-    except Exception as e:
-        logger.warning(f"Initial market fetch failed: {e}")
-        INITIAL_PORTFOLIO_DATA = {"holdings": INITIAL_HOLDINGS, "histories": {}}
+if not INITIAL_PORTFOLIO_DATA:
+    logger.info("No disk snapshot found. Starting with skeleton data.")
+    skeleton_holdings = []
+    for h in INITIAL_HOLDINGS:
+        skeleton_holdings.append({
+            **h,
+            "last_price": h["avg_cost"],
+            "prev_close": h["avg_cost"],
+            "mkt_value": h["total_cost"],
+            "pnl": 0.0, "pnl_pct": 0.0,
+            "day_pnl": 0.0, "day_chg": 0.0, "day_chg_pct": 0.0,
+            "day_high": h["avg_cost"], "day_low": h["avg_cost"],
+            "annual_div": 0.0, "realized_div": 0.0, "div_yield": 0.0,
+            "div_frequency": "Unknown", "last_div_amount": 0.0,
+        })
+    INITIAL_PORTFOLIO_DATA = {"holdings": skeleton_holdings, "histories": {}}
+else:
+    logger.info("Fast-loaded portfolio from disk snapshot.")
 
 # ── Initial watchlist load ───────────────────────────────────────────────────
 watchlist_repo = WatchlistRepository()
@@ -100,7 +114,7 @@ if INITIAL_WATCHLIST:
             {"ticker": i["ticker"], "ticker_yf": i["ticker"] + ".AX", "total_shares": 0, "avg_cost": 0, "total_cost": 0, "buy_tranches": []}
             for i in INITIAL_WATCHLIST
         ]
-        # Load histories from disk cache first — avoids yfinance fetch on every restart
+        # Fast load from disk cache - zero network calls
         disk_histories = {}
         for item in INITIAL_WATCHLIST:
             ticker = item["ticker"]
@@ -108,26 +122,14 @@ if INITIAL_WATCHLIST:
             if cached:
                 disk_histories[ticker] = cached
 
-        # Only fetch live prices (5d), not full history
-        live_data = fetch_live(
-            watchlist_holdings, "1y",
-            record_snapshots=False,
-            use_disk_history=True
-        )
-
-        # Merge disk histories into result
-        # use_disk_history=True already handles this in fetch_live,
-        # but ensure any ticker missing from live result gets disk data
-        if "histories" not in live_data:
-            live_data["histories"] = {}
-        for ticker, hist in disk_histories.items():
-            if ticker not in live_data["histories"] or not live_data["histories"][ticker]:
-                live_data["histories"][ticker] = hist
-
-        INITIAL_WATCHLIST_DATA = live_data
+        # Initialize with disk data; the background interval will populate live prices
+        INITIAL_WATCHLIST_DATA = {
+            "holdings": [{"ticker": h["ticker"], "last_price": 0.0} for h in watchlist_holdings],
+            "histories": disk_histories,
+            "fetched_at": "Loading..."
+        }
         watchlist_repo.refresh_all_histories()
-        run_startup_maintenance(os.getenv("GEMINI_API_KEY", ""))
-        logger.info(f"Watchlist loaded from cache ({len(disk_histories)} tickers from disk)")
+        logger.info(f"Watchlist seeded from cache ({len(disk_histories)} tickers)")
     except Exception as e:
         logger.warning(f"Initial watchlist fetch failed: {e}")
         INITIAL_WATCHLIST_DATA = {"holdings": [], "histories": {}}
@@ -173,6 +175,7 @@ app.layout = dmc.MantineProvider(
             dcc.Store(id="compact-mode-store",   data=True),
             dcc.Store(id="table-state-store",     data={"search": "", "sort_col": "mkt_value", "sort_dir": "desc"}, storage_type='local'),
             dcc.Interval(id="live-interval", interval=REFRESH_INTERVAL, n_intervals=0),
+            dcc.Interval(id="startup-interval", interval=1500, n_intervals=0, max_intervals=1),
             dcc.Store(id="nav-link-store"),
 
             # ── Picker Stores (Session persistence) ────────────────────────────────
@@ -268,10 +271,11 @@ def update_txn_store(n1, n2, n_submit, t_type, ticker, shares, price, date_str, 
     Input("positions-period-store", "data"),
     Input("watchlist-period-store", "data"),
     Input("live-interval",          "n_intervals"),
+    Input("startup-interval",       "n_intervals"),
     Input("refresh-btn",            "n_clicks"),
     prevent_initial_call=True,
 )
-def update_portfolio_store(txn_data, p1, p2, p3, p4, n1, n2):
+def update_portfolio_store(txn_data, p1, p2, p3, p4, n1, n_startup, n2):
     """Only place where portfolio-store is updated. Reacts to data or timeframe changes."""
     # Skip live fetch if market is closed and it's a background interval update
     if ctx.triggered_id == "live-interval" and not is_market_open():

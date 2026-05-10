@@ -19,7 +19,7 @@ from components.charts import (
     build_performance_lollipops,
 )
 from components.ui_helpers import chart_skeleton, progress_row, interpolate_color
-from components.charts.intel_helpers import create_empty_fig
+from components.charts.helpers import create_empty_fig
 from services.intelligence_service import (
     compute_risk_metrics,
     fetch_etf_sector_weights,
@@ -37,8 +37,11 @@ def register_callbacks(app) -> None:
     @app.callback(
         Output("ticker-selector", "data"),
         Input("portfolio-store",  "data"),
+        Input("url","pathname"),
     )
-    def update_ticker_options(data):
+    def update_ticker_options(data, pathname):
+        import dash
+        if pathname != "/": return dash.no_update
         if not data or "holdings" not in data or not data["holdings"]:
             return ["Portfolio"]
         
@@ -55,8 +58,11 @@ def register_callbacks(app) -> None:
         State("period-store",       "data"),
         Input("pnl-mode-store",     "data"),
         Input("ticker-store",       "data"),
+        Input("url",                "pathname"),
     )
-    def pnl_history_chart(data, theme, period, mode, selected):
+    def pnl_history_chart(data, theme, period, mode, selected, pathname):
+        import dash
+        if pathname != "/": return dash.no_update
         t_       = get_theme(theme or "dark")
         period   = period or "max"
         mode     = mode or "pct"
@@ -74,8 +80,11 @@ def register_callbacks(app) -> None:
         Input("theme-store",     "data"),
         # FIX: change to State to prevent double-rendering
         State("analytics-period-store", "data"),
+        Input("url",             "pathname"),
     )
-    def price_chart(data, theme, period):
+    def price_chart(data, theme, period, pathname):
+        import dash
+        if pathname != "/analytics": return dash.no_update
         t_ = get_theme(theme or "dark")
         period = period or "max"
         if not data or "histories" not in data:
@@ -89,8 +98,11 @@ def register_callbacks(app) -> None:
         Input("portfolio-store",    "data"),
         Input("theme-store",        "data"),
         Input("treemap-mode-store", "data"),
+        Input("url",                "pathname"),
     )
-    def portfolio_treemap(data, theme, mode):
+    def portfolio_treemap(data, theme, mode, pathname):
+        import dash
+        if pathname != "/analytics": return dash.no_update
         t_ = get_theme(theme or "dark")
         mode = mode or "sector"
         if not data or "holdings" not in data or not data["holdings"]:
@@ -124,8 +136,11 @@ def register_callbacks(app) -> None:
         Input("theme-store",             "data"),
         # FIX: change to State to prevent double-rendering
         State("analytics-period-store", "data"),
+        Input("url",                     "pathname"),
     )
-    def update_analytics_volatility(data, theme, period):
+    def update_analytics_volatility(data, theme, period, pathname):
+        import dash
+        if pathname != "/analytics": return dash.no_update
         if not data or "holdings" not in data or not data["holdings"]:
             return html.P("No holdings data available", style={"color": "var(--t-sec)", "fontSize": "13px"})
 
@@ -180,8 +195,11 @@ def register_callbacks(app) -> None:
         Input("theme-store",     "data"),
         # FIX: change to State to prevent double-rendering
         State("analytics-period-store", "data"),
+        Input("url",             "pathname"),
     )
-    def update_corr_chart(data, theme, period):
+    def update_corr_chart(data, theme, period, pathname):
+        import dash
+        if pathname != "/analytics": return dash.no_update
         t_ = get_theme(theme or "dark")
         period = period or "max"
         if not data or "histories" not in data:

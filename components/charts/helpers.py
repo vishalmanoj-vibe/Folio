@@ -25,6 +25,42 @@ def hex_to_rgba(hex_color: str, alpha: float) -> str:
     except Exception:
         return f"rgba(128, 128, 128, {alpha})"
 
+# Plotly base margins
+_LINE_MARGIN = dict(l=16, r=24, t=36, b=16)
+_BAR_MARGIN  = dict(l=110, r=60, t=16, b=16)
+
+def create_empty_fig(msg: str = "Waiting for data…",
+                     height: int = 280,
+                     bar: bool = False,
+                     theme_tokens: dict | None = None) -> go.Figure:
+    """
+    Return a clean, annotated empty Plotly figure for loading/empty states.
+    """
+    if theme_tokens:
+        base = theme_tokens["PLOTLY_BASE"].copy()
+        t_sec = theme_tokens.get("T_SEC", base["font"]["color"])
+    else:
+        from config.constants import PLOTLY_BASE, T_SEC
+        base = PLOTLY_BASE.copy()
+        t_sec = T_SEC
+    
+    base["margin"] = _BAR_MARGIN if bar else _LINE_MARGIN
+    
+    f = go.Figure()
+    f.update_layout(
+        **base, height=height,
+        annotations=[dict(
+            text=msg, 
+            showarrow=False,
+            xref="paper", yref="paper",
+            x=0.5, y=0.5,
+            font=dict(color=t_sec, size=13)
+        )],
+        xaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
+        yaxis=dict(showgrid=False, zeroline=False, showticklabels=False)
+    )
+    return f
+
 def build_benchmark_traces(period: str, theme_tokens: dict | None = None, portfolio_start: pd.Timestamp | None = None) -> list:
     """
     Return Plotly Scatter traces for S&P 500 and ASX 200 normalised to

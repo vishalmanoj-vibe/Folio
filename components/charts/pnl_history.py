@@ -54,13 +54,8 @@ def _build_intraday_figure(
         pass
 
     if not session_data:
-        fig.add_annotation(
-            text="Waiting for market session data (ASX opens 10:00 Sydney Time) …",
-            xref="paper", yref="paper",
-            x=0.5, y=0.5, showarrow=False,
-            font=dict(size=13, color=T_SEC),
-        )
-        return fig
+        from components.charts.helpers import create_empty_fig
+        return create_empty_fig("Waiting for market session data (ASX opens 10:00 Sydney Time) …", height=380, theme_tokens=theme_tokens)
 
     # Build a lookup: ticker -> prev_close from the enriched holdings in the store.
     # prev_close is always up-to-date regardless of which period was used for the store.
@@ -111,13 +106,8 @@ def _build_intraday_figure(
         all_series.append(day_s)
 
     if not all_series:
-        fig.add_annotation(
-            text="Intraday data unavailable for this selection",
-            xref="paper", yref="paper",
-            x=0.5, y=0.5, showarrow=False,
-            font=dict(size=13, color=T_SEC),
-        )
-        return fig
+        from components.charts.helpers import create_empty_fig
+        return create_empty_fig("Intraday data unavailable for this selection", height=380, theme_tokens=theme_tokens)
 
     # ── Portfolio aggregate ───────────────────────────────────────────────────
     # Use ffill to propagate last known price. Fillna(0) for the start of day 
@@ -173,6 +163,9 @@ def _build_intraday_figure(
         borderpad=4,
     )
 
+    if not fig.data:
+        from components.charts.helpers import create_empty_fig
+        return create_empty_fig("No intraday data found for this selection", height=380, theme_tokens=theme_tokens)
     return fig
 
 
@@ -298,7 +291,8 @@ def build_pnl_history_figure(
                 purchase_pts.append((buy_dt, h["ticker"], tr))
 
         if not pnl_all:
-            return fig
+            from components.charts.helpers import create_empty_fig
+            return create_empty_fig("No history data found for this selection", height=380, theme_tokens=theme_tokens)
 
         all_pnl  = pd.concat(pnl_all,  axis=1).sort_index().ffill().fillna(0)
         all_cost = pd.concat(cost_all, axis=1).sort_index().ffill().fillna(0)
@@ -379,7 +373,8 @@ def build_pnl_history_figure(
     else:
         hm = next((h for h in holdings if h["ticker"] == selected), None)
         if not hm:
-            return fig
+            from components.charts.helpers import create_empty_fig
+            return create_empty_fig(f"Ticker {selected} not found in holdings", height=380, theme_tokens=theme_tokens)
 
         bc = color_map.get(selected, COLORS[0])
         pnl_all, cost_all = [], []

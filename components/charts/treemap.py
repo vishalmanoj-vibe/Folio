@@ -12,7 +12,8 @@ def build_portfolio_treemap(
     Build a unified portfolio treemap with optional hierarchical grouping.
     """
     if not holdings:
-        return go.Figure()
+        from components.charts.helpers import create_empty_fig
+        return create_empty_fig("No holdings data available for treemap", height=600, theme_tokens=theme_tokens)
 
     ids = []
     labels = []

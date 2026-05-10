@@ -21,26 +21,29 @@ def build_intel_drawdown_chart(dd_dates: list, dd_values: list, theme_tokens: di
                    zeroline=True, zerolinecolor=theme_tokens["BORDER"], zerolinewidth=1),
         hovermode="x unified",
     ))
+    if not dd_dates or not dd_values:
+        from components.charts.helpers import create_empty_fig
+        return create_empty_fig("No drawdown history available", height=300, theme_tokens=theme_tokens)
+
     fig.update_layout(layout)
-    if dd_dates and dd_values:
-        fig.add_trace(go.Scatter(
-            x=dd_dates, y=dd_values,
-            mode="lines", name="Drawdown",
-            fill="tozeroy", fillcolor="rgba(226,75,74,0.15)",
-            line=dict(color=RED, width=1.5),
-            hovertemplate="%{y:.2f}%<extra></extra>",
-        ))
-        fig.add_hline(y=0, line_color=theme_tokens["BORDER"], line_width=0.8)
-        # Annotate max drawdown point
-        min_v   = min(dd_values)
-        min_idx = dd_values.index(min_v)
-        fig.add_trace(go.Scatter(
-            x=[dd_dates[min_idx]], y=[min_v],
-            mode="markers+text",
-            marker=dict(color=RED, size=8),
-            text=[f"Max {min_v:.1f}%"],
-            textposition="top right",
-            textfont=dict(size=10, color=RED),
-            showlegend=False, hoverinfo="skip",
-        ))
+    fig.add_trace(go.Scatter(
+        x=dd_dates, y=dd_values,
+        mode="lines", name="Drawdown",
+        fill="tozeroy", fillcolor="rgba(226,75,74,0.15)",
+        line=dict(color=RED, width=1.5),
+        hovertemplate="%{y:.2f}%<extra></extra>",
+    ))
+    fig.add_hline(y=0, line_color=theme_tokens["BORDER"], line_width=0.8)
+    # Annotate max drawdown point
+    min_v   = min(dd_values)
+    min_idx = dd_values.index(min_v)
+    fig.add_trace(go.Scatter(
+        x=[dd_dates[min_idx]], y=[min_v],
+        mode="markers+text",
+        marker=dict(color=RED, size=8),
+        text=[f"Max {min_v:.1f}%"],
+        textposition="top right",
+        textfont=dict(size=10, color=RED),
+        showlegend=False, hoverinfo="skip",
+    ))
     return fig

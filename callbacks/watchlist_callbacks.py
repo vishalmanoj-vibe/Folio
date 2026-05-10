@@ -10,6 +10,7 @@ from config.constants import GREEN, RED
 import pandas as pd
 logger = logging.getLogger(__name__)
 from components.ui_helpers import tech_signal_badges
+from components.charts.helpers import create_empty_fig
 repo = WatchlistRepository()
 
 def register_callbacks(app) -> None:
@@ -249,7 +250,6 @@ def register_callbacks(app) -> None:
     def update_watchlist_chart(selected_ticker, data, pathname, theme, period):
         # Resolve theme tokens
         from config.constants import get_theme
-        from components.charts.intel_helpers import create_empty_fig
         t_ = get_theme(theme or "dark")
         T_SEC = t_["T_SEC"]
         CYAN = t_["CYAN"]
@@ -260,21 +260,15 @@ def register_callbacks(app) -> None:
             return create_empty_fig("", height=300, theme_tokens=t_), "Price Performance"
 
         if not data or "histories" not in data or not data["histories"]:
-            fig = create_empty_fig("Fetching price history...", height=300, theme_tokens=t_)
-            fig.update_layout(paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)")
-            return fig, "Price Performance"
+            return create_empty_fig("Fetching price history...", height=300, theme_tokens=t_), "Price Performance"
 
         if not selected_ticker or selected_ticker not in data["histories"]:
-            fig = create_empty_fig("Select a ticker to view history", height=300, theme_tokens=t_)
-            fig.update_layout(paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)")
-            return fig, "Price Performance"
+            return create_empty_fig("Select a ticker to view history", height=300, theme_tokens=t_), "Price Performance"
 
         history = data["histories"][selected_ticker]
         
         if not history:
-            fig = create_empty_fig(f"No historical data available for {selected_ticker}", height=300, theme_tokens=t_)
-            fig.update_layout(paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)")
-            return fig, "Price Performance"
+            return create_empty_fig(f"No historical data available for {selected_ticker}", height=300, theme_tokens=t_), "Price Performance"
 
         df = pd.DataFrame(history)
         df["Date"] = pd.to_datetime(df["Date"])
@@ -294,12 +288,7 @@ def register_callbacks(app) -> None:
         # "max" falls through with no filter — all records shown
 
         if df.empty:
-            from components.charts.intel_helpers import create_empty_fig
-            fig = create_empty_fig(
-                f"No data for {selected_ticker} in this period",
-                height=300, theme_tokens=t_
-            )
-            return fig, f"Price Performance: {selected_ticker}"
+            return create_empty_fig(f"No data for {selected_ticker} in this period", height=300, theme_tokens=t_), f"Price Performance: {selected_ticker}"
         
         fig = go.Figure()
         fig.add_trace(go.Scatter(

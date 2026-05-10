@@ -57,23 +57,18 @@ To ensure visual and mathematical consistency across the dashboard, the system u
 
 ---
 
-## Data Lifecycle & Hydration
-
-The dashboard uses a "Pre-seeded Store" pattern to ensure the first paint is instantaneous even before the first interval callback fires.
-
 ### 1. Startup Hydration (app.py)
-When the server starts, it performs a blocking load to prepare the initial state:
-1.  **Load**: `repo.load_transactions()` reads raw data via the `PortfolioRepository`.
-2.  **Build**: `portfolio_engine.build_holdings()` aggregates transactions into `Holdings`.
-3.  **Enrich**: `market_service.fetch_live()` pulls current prices using parallel workers.
-4.  **Seed**: `dcc.Store(id="portfolio-store", data=INITIAL_DATA)` is rendered into the layout.
+To ensure a premium "instant-on" experience, the dashboard uses a **Fast-Startup** pattern:
+1.  **Fast Load**: `load_portfolio_snapshot()` reads the last known good state from disk.
+2.  **Seed**: `dcc.Store` is initialized with this cached data. The app becomes interactive in <1s.
+3.  **Deferred Refresh**: A `startup-interval` (1.5s delay) triggers the first live fetch.
+4.  **Background Maintenance**: A background thread maintains 5-minute snapshots in `data/cache/` during market hours to ensure chart continuity.
 
 ### 2. Reactivity Loop
 Once running, the dashboard follows a **Single Refresh Owner** pattern:
-- **`update_txn_store`**: The exclusive writer for transaction data. It handles additions and periodic disk syncs.
+- **`update_txn_store`**: The exclusive writer for transaction data.
 - **`update_portfolio_store`**: The exclusive caller of `fetch_live()`. It reacts to transaction changes or interval ticks.
-- All charts and metrics across all pages are decorated with `@callback(Input("portfolio-store", "data"))`, causing them to re-render automatically.
-- This ensures only one market fetch occurs per cycle, even with multiple disparate triggers.
+- **Prioritized Rendering**: To prevent UI flicker, callbacks check `pathname` and return `dash.no_update` if their page is not visible. (See Section 16).
 
 ---
 
@@ -404,3 +399,15 @@ To provide a seamless visual experience, the Allocation and Performance charts i
 Following a project-wide audit, the application adheres to strict operational standards:
 - **Logging Purity**: All `print()` statements in the service and data layers have been replaced with `logger.debug()` or `logger.info()` to ensure a clean production console and detailed file-based troubleshooting.
 - **Callback Safety**: The `prevent_initial_call=True` flag is mandatory for all page-specific callbacks to prevent race conditions and "empty data" rendering glitches during multi-page navigation.
+
+
+### 16. Callback Prioritization & Rendering Efficiency
+To maintain 60FPS UI responsiveness even when global stores update frequently, the dashboard implements **URL-Aware Prioritization**:
+- **Guard Clause**: Every page-specific rendering callback includes `Input("url", "pathname")`.
+- **Logic**: If the current `pathname` does not match the callback's page, it returns `dash.no_update` immediately.
+- **Benefit**: This eliminates "DOM thrashing" where off-screen charts attempt to re-render in the background, significantly reducing CPU spikes during market hours.
+
+### 17. Standardized Chart Fallbacks
+To prevent the appearance of broken "empty grid" charts during data loading or error states:
+- **Centralized Helper**: All charts must use `create_empty_fig()` from `components.charts.helpers`.
+- **Visual Consistency**: This ensures that even without data, the dashboard remains professional and provides user-friendly "Waiting for data..." annotations.

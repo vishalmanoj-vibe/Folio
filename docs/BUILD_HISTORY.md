@@ -66,3 +66,12 @@ This document chronicles the technical evolution of Folio, transitioning from a 
 *   **UI Standardization**: Enforced a strict **16px/24px global grid** and centralized all content wrappers into a single `section()` helper to ensure layout consistency across all pages.
 *   **Intraday Resiliency**: Refined the "Today" view with 5-minute resampling, Plotly `rangebreaks` to hide non-trading hours, and a 15:00 lookback window for cross-session continuity.
 *   **Compliance Audit**: Executed a 100% precision audit of the codebase, standardizing logging to use `logger.debug()` (replacing `print`) and verifying `prevent_initial_call=True` for all page-specific callbacks.
+
+---
+
+## Phase 7: Rendering Prioritization & Fast Startup (v3.6.0 – Current)
+**Theme**: Optimizing for extreme responsiveness and zero-latency user experiences.
+
+*   **Fast Startup Architecture**: Refactored the core application lifecycle to eliminate blocking market data fetches during initialization. The dashboard now boots instantly (<1s) using disk-cached state, with live data refreshing in the background after the UI is interactive.
+*   **Rendering Prioritization**: Implemented a URL-aware callback strategy that eliminates "DOM thrashing" and UI flicker. By making rendering callbacks aware of the active page, the browser only updates visible components, significantly reducing CPU load during high-frequency market updates.
+*   **Standardized Empty States**: Introduced a centralized chart fallback system (`create_empty_fig`) to ensure all visualizations maintain a professional aesthetic during loading or error states, replacing broken axes artifacts with user-friendly annotations.

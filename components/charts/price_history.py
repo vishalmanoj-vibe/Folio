@@ -111,5 +111,9 @@ def build_price_chart_figure(
             hovertemplate=f"{t}: %{{y:.2f}}<extra></extra>"
         ))
 
+    if not fig.data:
+        from components.charts.helpers import create_empty_fig
+        return create_empty_fig("No price history available", height=400, theme_tokens=theme_tokens)
+        
     fig.add_hline(y=100, line_dash="dot", line_color="rgba(255,255,255,0.2)", line_width=1)
     return fig

@@ -30,7 +30,7 @@ def build_corr_figure(histories: dict, period: str, theme_tokens: dict) -> go.Fi
     cutoff = get_period_cutoff(period)
     
     if not histories or len(histories) < 2:
-        from components.charts.intel_helpers import create_empty_fig
+        from components.charts.helpers import create_empty_fig
         return create_empty_fig("Need at least 2 holdings with shared history to compute correlation", height=380, theme_tokens=theme_tokens)
         
     dfs = {}
@@ -48,7 +48,7 @@ def build_corr_figure(histories: dict, period: str, theme_tokens: dict) -> go.Fi
             dfs[t] = s
             
     if len(dfs) < 2:
-        from components.charts.intel_helpers import create_empty_fig
+        from components.charts.helpers import create_empty_fig
         return create_empty_fig("Need at least 2 holdings with shared history to compute correlation", height=380, theme_tokens=theme_tokens)
         
     corr  = pd.DataFrame(dfs).corr(min_periods=10).round(2)

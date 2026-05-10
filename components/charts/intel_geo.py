@@ -25,19 +25,22 @@ def build_intel_geo_chart(geo_data: dict, theme_tokens: dict) -> go.Figure:
         xaxis=dict(gridcolor=theme_tokens["BORDER"], ticksuffix="%", range=[0, 115]),
         yaxis=dict(showgrid=False),
     ))
+    if not geo_s:
+        from components.charts.helpers import create_empty_fig
+        return create_empty_fig("Geographic exposure data unavailable", height=200, bar=True, theme_tokens=theme_tokens)
+
     fig.update_layout(layout)
-    if geo_s:
-        fig.add_trace(go.Bar(
-            x=[v for _, v in geo_s],
-            y=[k for k, _ in geo_s],
-            orientation="h",
-            marker_color=[
-                RED if v >= 60 else COLORS[2] if v >= 40 else COLORS[4]
-                for _, v in geo_s
-            ],
-            text=[f"{v:.1f}%" for _, v in geo_s],
-            textposition="outside",
-            textfont=dict(size=11),
-            cliponaxis=False,
-        ))
+    fig.add_trace(go.Bar(
+        x=[v for _, v in geo_s],
+        y=[k for k, _ in geo_s],
+        orientation="h",
+        marker_color=[
+            RED if v >= 60 else COLORS[2] if v >= 40 else COLORS[4]
+            for _, v in geo_s
+        ],
+        text=[f"{v:.1f}%" for _, v in geo_s],
+        textposition="outside",
+        textfont=dict(size=11),
+        cliponaxis=False,
+    ))
     return fig

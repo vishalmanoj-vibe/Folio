@@ -32,13 +32,8 @@ def build_performance_lollipops(
     )
     
     if not data:
-        fig.update_layout(
-            **base_layout,
-            xaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
-            yaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
-            height=300
-        )
-        return fig
+        from components.charts.helpers import create_empty_fig
+        return create_empty_fig("No performance data available", height=300, theme_tokens=theme_tokens)
 
     # Sort by value (Best performers at top)
     data = sorted(data, key=lambda x: x["value"], reverse=True)
