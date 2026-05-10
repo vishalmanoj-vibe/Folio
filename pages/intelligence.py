@@ -10,7 +10,7 @@ import dash_bootstrap_components as dbc
 import dash_mantine_components as dmc
 from dash import dcc, html, register_page
 from config.constants import COLORS, RED
-from components.ui_helpers import section, chart_title
+from components.ui_helpers import section, chart_title, risk_card_skeleton, chart_skeleton
 
 register_page(__name__, path="/intelligence", title="Intelligence")
 
@@ -39,7 +39,14 @@ def layout() -> html.Div:
                         "Key risk stats calculated from the price history window. "
                         "Hover each card for an explanation of what the number means.",
                     ),
-                    html.Div(id="intel-risk-cards", className="metrics-row"),
+                    dcc.Loading(
+                        html.Div(id="intel-risk-cards", className="metrics-row"),
+                        custom_spinner=html.Div(
+                            [risk_card_skeleton() for _ in range(5)], 
+                            className="metrics-row",
+                            style={"display": "grid", "gridTemplateColumns": "repeat(5, 1fr)", "gap": "8px", "width": "100%"}
+                        )
+                    ),
                 ),
 
                 # ── B. Equity curve ───────────────────────────────────────────────
@@ -93,8 +100,8 @@ def layout() -> html.Div:
                         className="pnl-header-row"
                     ),
                     dcc.Loading(
-                        dcc.Graph(id="intel-equity-chart", config={"displayModeBar": False}),
-                        type="circle", color=COLORS[0],
+                        html.Div(id="intel-equity-chart-container", children=dcc.Graph(id="intel-equity-chart", config={"displayModeBar": False})),
+                        custom_spinner=chart_skeleton(400)
                     ),
                 ),
 
@@ -105,8 +112,8 @@ def layout() -> html.Div:
                         "How far your portfolio has fallen from its peak at any point in time.",
                     ),
                     dcc.Loading(
-                        dcc.Graph(id="intel-drawdown-chart", config={"displayModeBar": False}),
-                        type="circle", color=RED,
+                        html.Div(id="intel-drawdown-chart-container", children=dcc.Graph(id="intel-drawdown-chart", config={"displayModeBar": False})),
+                        custom_spinner=chart_skeleton(300)
                     ),
                 ),
 
@@ -116,7 +123,10 @@ def layout() -> html.Div:
                         "Smart alerts",
                         "Rule-based insights from holdings, allocation weights, and risk metrics.",
                     ),
-                    html.Div(id="intel-alerts", style={"marginTop": "10px"}),
+                    dcc.Loading(
+                        html.Div(id="intel-alerts", style={"marginTop": "10px"}),
+                        custom_spinner=html.Div([html.Div(className="skeleton", style={"height": "60px", "width": "100%", "marginBottom": "10px", "borderRadius": "8px"}) for _ in range(3)])
+                    ),
                 ),
 
             ])

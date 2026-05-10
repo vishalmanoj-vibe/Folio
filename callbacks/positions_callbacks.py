@@ -162,7 +162,7 @@ def register_callbacks(app) -> None:
         Input("positions-selected-ticker", "data"),
         Input("portfolio-store", "data"),
         Input("url", "pathname"),
-        prevent_initial_call=True,
+        prevent_initial_call=False,
     )
     def render_detail_metrics(ticker, port_data, url_pathname):
         import dash
@@ -280,11 +280,16 @@ def register_callbacks(app) -> None:
             return None
 
         fig = go.Figure()
-        fig.update_layout(
+        
+        # Merge theme base with local overrides
+        layout = _CHART_LAYOUT.copy()
+        layout.update(dict(
             xaxis=dict(showgrid=False, rangeslider_visible=False),
             yaxis=dict(gridcolor="rgba(255,255,255,0.05)", tickprefix="$"),
-            hovermode="x unified", height=350, **_CHART_LAYOUT
-        )
+            hovermode="x unified", height=350,
+            uirevision=ticker
+        ))
+        fig.update_layout(layout)
 
         try:
             # FIX: use pre-fetched histories from portfolio-store
@@ -443,7 +448,7 @@ def register_callbacks(app) -> None:
         Input("positions-selected-ticker", "data"),
         Input("portfolio-store", "data"),
         Input("url", "pathname"),
-        prevent_initial_call=True
+        prevent_initial_call=False
     )
     def render_ticker_dividends(ticker, port_data, url_pathname):
         import dash
@@ -512,7 +517,7 @@ def register_callbacks(app) -> None:
          Output("positions-dividend-table", "children")],
         Input("portfolio-store", "data"),
         Input("url", "pathname"),
-        prevent_initial_call=True
+        prevent_initial_call=False
     )
     def render_portfolio_dividend_insights(port_data, url_pathname):
         import dash

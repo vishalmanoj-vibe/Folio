@@ -86,7 +86,9 @@ button:active { transform: scale(0.97); }
   font-weight: 500;
   margin: 0;
   letter-spacing: -0.03em;
+  letter-spacing: -0.03em;
   color: var(--t-pri);
+  transition: all 0.3s ease;
 }
 
 .stat-card-sub {
@@ -465,6 +467,7 @@ button:active { transform: scale(0.97); }
   font-size: 13px;
   font-weight: 500;
   color: var(--t-pri);
+  transition: all 0.3s ease;
   font-family: 'JetBrains Mono', 'Roboto Mono', monospace;
 }
 

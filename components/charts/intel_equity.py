@@ -19,6 +19,7 @@ def build_intel_equity_chart(ret_dates: list, ret_values: list, theme_tokens: di
         yaxis=dict(gridcolor=theme_tokens["BORDER"], ticksuffix="%",
                    zeroline=True, zerolinecolor=theme_tokens["BORDER"], zerolinewidth=1),
         hovermode="x unified",
+        uirevision=True,
     ))
     if not ret_dates or not ret_values:
         from components.charts.helpers import create_empty_fig

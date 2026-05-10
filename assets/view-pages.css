@@ -94,8 +94,8 @@
 
 .holding-card-ticker  { font-size: 15px; font-weight: 500; color: var(--t-pri); }
 .holding-card-name    { font-size: 9.5px; color: var(--t-sec); margin-top: 2px; }
-.holding-card-value   { font-size: 14px; font-weight: 500; color: var(--t-pri); margin-top: 8px; }
-.holding-card-pnl     { font-size: 10px; margin-top: 3px; }
+.holding-card-value   { font-size: 14px; font-weight: 500; color: var(--t-pri); margin-top: 8px; transition: all 0.3s ease; }
+.holding-card-pnl     { font-size: 10px; margin-top: 3px; transition: all 0.3s ease; }
 .holding-card-sparkline { height: 28px; margin-top: 8px; }
 
 .etf-detail-grid {
@@ -113,8 +113,8 @@
   padding: 9px 12px;
 }
 .etf-detail-label { font-size: 9.5px; color: var(--t-sec); margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.4px; }
-.etf-detail-value { font-size: 13px; font-weight: 500; color: var(--t-pri); }
-.etf-detail-sub   { font-size: 9px; color: var(--t-sec); margin-top: 2px; }
+.etf-detail-value { font-size: 13px; font-weight: 500; color: var(--t-pri); transition: all 0.3s ease; }
+.etf-detail-sub   { font-size: 9px; color: var(--t-sec); margin-top: 2px; transition: all 0.3s ease; }
 
 /* ── Intelligence Page ── */
 .intel-data-note {

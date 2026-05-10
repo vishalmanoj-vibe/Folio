@@ -9,7 +9,7 @@ Route: /positions
 import dash
 from dash import html, dcc
 import dash_mantine_components as dmc
-from components.ui_helpers import section, chart_title
+from components.ui_helpers import section, chart_title, stat_card_skeleton, chart_skeleton, table_skeleton
 
 dash.register_page(__name__, path="/positions", title="Positions")
 
@@ -57,18 +57,40 @@ def layout() -> html.Div:
                 section(
                     html.Div(id="positions-detail-title"),
                     html.Div([
-                        html.Div(id="etf-detail-cards", className="etf-detail-grid"),
-                        html.Div(id="positions-tech-signals-container"),
-                        html.Div(id="ai-insight-container"),
+                        dcc.Loading(
+                            html.Div(id="etf-detail-cards", className="etf-detail-grid"),
+                            custom_spinner=html.Div(
+                                [stat_card_skeleton() for _ in range(6)], 
+                                className="etf-detail-grid",
+                                style={"display": "grid", "gridTemplateColumns": "repeat(6, 1fr)", "gap": "8px", "width": "100%"}
+                            )
+                        ),
+                        dcc.Loading(
+                            html.Div(id="positions-tech-signals-container"),
+                            custom_spinner=html.Div(className="skeleton", style={"height": "30px", "width": "300px", "margin": "12px 0", "borderRadius": "4px"})
+                        ),
+                        dcc.Loading(
+                            html.Div(id="ai-insight-container"),
+                            custom_spinner=html.Div(className="skeleton", style={"height": "120px", "width": "100%", "marginTop": "10px", "marginBottom": "24px", "borderRadius": "8px"})
+                        ),
                         
                         # Price Chart Section (Dynamic)
-                        html.Div(id="positions-price-chart-container"),
+                        dcc.Loading(
+                            html.Div(id="positions-price-chart-container"),
+                            custom_spinner=chart_skeleton(350)
+                        ),
 
                         # Ticker-Specific Dividend History (Dynamic)
-                        html.Div(id="positions-ticker-dividend-container"),
+                        dcc.Loading(
+                            html.Div(id="positions-ticker-dividend-container"),
+                            custom_spinner=html.Div(className="skeleton", style={"height": "180px", "width": "100%", "marginTop": "24px", "borderRadius": "8px"})
+                        ),
 
                         # Transaction Table (Dynamic)
-                        html.Div(id="positions-txn-table-container"),
+                        dcc.Loading(
+                            html.Div(id="positions-txn-table-container"),
+                            custom_spinner=table_skeleton(3)
+                        ),
 
                     ], id="etf-detail-panel")
                 ),

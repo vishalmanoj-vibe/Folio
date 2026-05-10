@@ -135,28 +135,40 @@ def stat_card_skeleton() -> html.Div:
     """Pulsing placeholder for a stat card"""
     return html.Div(
         [
-            html.Div(dmc.Skeleton(height=10, width="40%", radius="sm"), className="stat-card-label-row"),
-            dmc.Skeleton(height=24, width="80%", radius="sm", style={"marginTop": "6px"}),
-            dmc.Skeleton(height=10, width="60%", radius="sm", style={"marginTop": "10px"}),
+            html.Div(html.Div(className="skeleton", style={"height": "10px", "width": "40%"}), className="stat-card-label-row"),
+            html.Div(className="skeleton", style={"height": "28px", "width": "80%", "marginTop": "6px"}),
+            html.Div(className="skeleton", style={"height": "12px", "width": "60%", "marginTop": "10px"}),
         ],
         className="stat-card-container",
     )
 
-def table_skeleton(rows: int = 5, cols: int = 6) -> html.Div:
+def risk_card_skeleton() -> html.Div:
+    """Pulsing placeholder for a risk card in Intelligence page"""
+    return html.Div(
+        [
+            html.Div(className="skeleton", style={"height": "10px", "width": "50%", "marginBottom": "8px"}),
+            html.Div(className="skeleton", style={"height": "24px", "width": "70%"}),
+            html.Div(className="skeleton", style={"height": "10px", "width": "40%", "marginTop": "8px"}),
+        ],
+        className="etf-detail-card", # Using same class as metrics for consistency
+        style={"minWidth": "140px"}
+    )
+
+def table_skeleton(rows: int = 5) -> html.Div:
     """Pulsing placeholder for a table"""
     return html.Div(
         [
-            html.Div(
-                [dmc.Skeleton(height=32, radius="sm", style={"marginBottom": "8px"}) for _ in range(rows + 1)],
-                style={"padding": "12px"}
-            )
+            # Header
+            html.Div(className="skeleton", style={"height": "32px", "width": "100%", "marginBottom": "8px", "opacity": "0.6"}),
+            # Rows
+            *[html.Div(className="skeleton", style={"height": "32px", "width": "100%", "marginBottom": "4px"}) for _ in range(rows)]
         ],
-        className="overflow-table",
+        style={"padding": "12px", "background": "var(--surface-2)", "borderRadius": "8px", "border": "0.5px solid var(--border)"}
     )
 
-def chart_skeleton(height: int = 300) -> dmc.Skeleton:
+def chart_skeleton(height: int = 300) -> html.Div:
     """Pulsing placeholder for a chart"""
-    return dmc.Skeleton(height=height, radius="sm", style={"width": "100%"})
+    return html.Div(className="skeleton", style={"height": f"{height}px", "width": "100%", "borderRadius": "10px"})
 
 def progress_row(ticker: str, value: float, max_val: float, prefix: str = "", suffix: str = "", color: str = "var(--cyan)") -> html.Div:
     """

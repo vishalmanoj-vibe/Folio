@@ -411,3 +411,14 @@ To maintain 60FPS UI responsiveness even when global stores update frequently, t
 To prevent the appearance of broken "empty grid" charts during data loading or error states:
 - **Centralized Helper**: All charts must use `create_empty_fig()` from `components.charts.helpers`.
 - **Visual Consistency**: This ensures that even without data, the dashboard remains professional and provides user-friendly "Waiting for data..." annotations.
+
+### 18. UI Aesthetics & Live Tracking
+To create a premium, "live" feel similar to modern fintech applications, the dashboard implements smooth value transitions:
+- **CSS Transitions**: Major numeric values (Portfolio P&L, Card Metrics, Summary Strips) utilize `transition: all 0.3s ease`.
+- **UX Impact**: When the 300s background refresh fires, numbers smoothly ease into their new values rather than snapping instantly, making the app feel alive and responsive.
+
+### 19. Loading Experience (Skeletons & uirevision)
+To ensure a professional "Day 1" experience and prevent UI flicker during updates:
+- **Fixed-Column Skeletons**: To prevent layout shift (vertical stacking) during loading, `custom_spinner` containers utilize fixed-column grids (e.g., `repeat(6, 1fr)`) with explicit `width: 100%`. This ensures skeletons occupy the exact same space as the final data.
+- **Stable Charts (uirevision)**: All major Plotly figures implement `uirevision=True` (or a context-stable string like `ticker`). This ensures that background data updates do NOT reset the user's zoom or pan position, allowing for seamless background refreshes.
+- **Skeleton Helpers**: Standard placeholders are available in `components/ui_helpers.py` (`stat_card_skeleton`, `chart_skeleton`, `table_skeleton`) and should be used as the `custom_spinner` for all `dcc.Loading` wrappers.

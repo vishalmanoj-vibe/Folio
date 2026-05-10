@@ -20,6 +20,7 @@ def build_intel_drawdown_chart(dd_dates: list, dd_values: list, theme_tokens: di
         yaxis=dict(gridcolor=theme_tokens["BORDER"], ticksuffix="%",
                    zeroline=True, zerolinecolor=theme_tokens["BORDER"], zerolinewidth=1),
         hovermode="x unified",
+        uirevision=True,
     ))
     if not dd_dates or not dd_values:
         from components.charts.helpers import create_empty_fig

@@ -69,9 +69,12 @@ This document chronicles the technical evolution of Folio, transitioning from a 
 
 ---
 
-## Phase 7: Rendering Prioritization & Fast Startup (v3.6.0 – Current)
-**Theme**: Optimizing for extreme responsiveness and zero-latency user experiences.
+## Phase 7: Rendering Prioritization & UX Polish (v3.6.0 – Current)
+**Theme**: Optimizing for extreme responsiveness, visual stability, and aesthetic excellence.
 
 *   **Fast Startup Architecture**: Refactored the core application lifecycle to eliminate blocking market data fetches during initialization. The dashboard now boots instantly (<1s) using disk-cached state, with live data refreshing in the background after the UI is interactive.
 *   **Rendering Prioritization**: Implemented a URL-aware callback strategy that eliminates "DOM thrashing" and UI flicker. By making rendering callbacks aware of the active page, the browser only updates visible components, significantly reducing CPU load during high-frequency market updates.
-*   **Standardized Empty States**: Introduced a centralized chart fallback system (`create_empty_fig`) to ensure all visualizations maintain a professional aesthetic during loading or error states, replacing broken axes artifacts with user-friendly annotations.
+*   **UI Stabilization & Skeletons**: Integrated brand-aligned, pulsing skeleton loaders across all data-bound containers. Developed **fixed-column grid skeletons** to eliminate "layout shift" where the UI would jump or stack vertically before data arrived.
+*   **Persistent Chart State (uirevision)**: Implemented stable `uirevision` keys across all major visualizations. This ensures that 5-minute background data refreshes do NOT reset user zoom, pan, or toggles, creating a seamless "tracking" experience.
+*   **Live Tracking Aesthetics**: Applied 300ms CSS transitions to all key financial metrics. Data updates now smoothly ease into place, mimicking the fluid feel of high-end fintech dashboards.
+*   **Standardized Empty States**: Introduced a centralized chart fallback system (`create_empty_fig`) to ensure all visualizations maintain a professional aesthetic during loading or error states.

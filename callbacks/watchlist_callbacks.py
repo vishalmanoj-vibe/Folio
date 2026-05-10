@@ -26,11 +26,12 @@ def register_callbacks(app) -> None:
         Input({"type": "watchlist-remove-btn", "index": ALL}, "n_clicks"),
         Input("watchlist-input", "n_submit"),
         Input("live-interval", "n_intervals"),
+        Input("startup-interval", "n_intervals"),
         State("watchlist-input", "value"),
         State("watchlist-store", "data"),
         prevent_initial_call=True,
     )
-    def update_watchlist_store(n_add, n_remove_list, n_submit, n_interval, ticker_input, current_data):
+    def update_watchlist_store(n_add, n_remove_list, n_submit, n_interval, n_startup, ticker_input, current_data):
         triggered_id = ctx.triggered_id
 
         # 1. Add Ticker
@@ -361,7 +362,7 @@ def register_callbacks(app) -> None:
         Input("watchlist-selected-ticker", "data"),
         State("watchlist-store", "data"),
         Input("watchlist-signals-store", "data"),
-        prevent_initial_call=True,
+        prevent_initial_call=False,
     )
     def render_watchlist_stat_cards(selected_ticker, data, signals_store):
         from components.ui_helpers import stat_card

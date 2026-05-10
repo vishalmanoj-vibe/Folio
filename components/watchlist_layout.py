@@ -7,7 +7,7 @@ Layout for the Watchlist page.
 
 from dash import dcc, html
 import dash_mantine_components as dmc
-from components.ui_helpers import chart_title, section
+from components.ui_helpers import chart_title, section, stat_card_skeleton, chart_skeleton, table_skeleton
 
 def create_watchlist_layout() -> html.Div:
     """
@@ -82,7 +82,10 @@ def create_watchlist_layout() -> html.Div:
                         html.Div(
                             [
                                 chart_title("Watched Assets"),
-                                html.Div(id="watchlist-table-container"),
+                                dcc.Loading(
+                                    html.Div(id="watchlist-table-container"),
+                                    custom_spinner=table_skeleton(5)
+                                ),
                             ],
                             style={"flex": "1.5", "marginRight": "24px"}
                         ),
@@ -117,18 +120,30 @@ def create_watchlist_layout() -> html.Div:
                                     style={"display": "flex", "alignItems": "center", 
                                            "marginBottom": "12px"},
                                 ),
-                                dcc.Graph(id="watchlist-chart", config={"displayModeBar": False}),
-                                html.Div(
-                                    id="watchlist-stat-cards",
-                                    style={
-                                        "display": "grid",
-                                        "gridTemplateColumns": "repeat(4, 1fr)",
-                                        "gap": "8px",
-                                        "marginTop": "14px",
-                                    }
+                                dcc.Loading(
+                                    html.Div(id="watchlist-chart-container", children=dcc.Graph(id="watchlist-chart", config={"displayModeBar": False})),
+                                    custom_spinner=chart_skeleton(300)
                                 ),
-                                html.Div(id="watchlist-tech-signals-container"),
-                                html.Div(id="watchlist-ai-insight-container"),
+                                dcc.Loading(
+                                    html.Div(
+                                        id="watchlist-stat-cards",
+                                        style={
+                                            "display": "grid",
+                                            "gridTemplateColumns": "repeat(4, 1fr)",
+                                            "gap": "8px",
+                                            "marginTop": "14px",
+                                        }
+                                    ),
+                                    custom_spinner=html.Div([stat_card_skeleton() for _ in range(4)], style={"display": "grid", "gridTemplateColumns": "repeat(4, 1fr)", "gap": "8px", "marginTop": "14px"})
+                                ),
+                                dcc.Loading(
+                                    html.Div(id="watchlist-tech-signals-container"),
+                                    custom_spinner=html.Div(className="skeleton", style={"height": "30px", "width": "300px", "margin": "12px 0", "borderRadius": "4px"})
+                                ),
+                                dcc.Loading(
+                                    html.Div(id="watchlist-ai-insight-container"),
+                                    custom_spinner=html.Div(className="skeleton", style={"height": "100px", "width": "100%", "marginTop": "10px", "borderRadius": "8px"})
+                                ),
                                 html.Div([
                                     html.P(
                                         "Research notes",

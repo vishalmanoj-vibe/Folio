@@ -195,6 +195,7 @@ def register_callbacks(app) -> None:
                 metrics.get("dd_values", []),
                 t_
             )
+            dd_fig.update_layout(uirevision=period)
 
             # ── G. Smart alerts ───────────────────────────────────────────────────
             alert_cards = [alert_card(a)

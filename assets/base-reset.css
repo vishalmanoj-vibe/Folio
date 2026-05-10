@@ -68,11 +68,26 @@ input[type="number"] { -moz-appearance: textfield !important; }
 
 /* Skeleton placeholders */
 .skeleton {
-  background: var(--surface-2);
-  border-radius: 4px;
-  animation: pulse 1.6s ease-in-out infinite;
+  background: var(--surface-3);
+  border-radius: 6px;
+  position: relative;
+  overflow: hidden;
 }
-@keyframes pulse {
-  0%, 100% { opacity: 1; }
-  50%       { opacity: 0.5; }
+
+.skeleton::after {
+  content: "";
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    var(--cyan-bg),
+    transparent
+  );
+  animation: skeleton-pulse 1.8s infinite;
+}
+
+@keyframes skeleton-pulse {
+  0%   { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
 }

@@ -9,7 +9,7 @@ Route: /analytics
 import dash
 from dash import html, dcc
 import dash_mantine_components as dmc
-from components.ui_helpers import chart_title, section
+from components.ui_helpers import chart_title, section, chart_skeleton
 from config.constants import COLORS
 
 dash.register_page(__name__, path="/analytics", title="Analytics")
@@ -69,7 +69,7 @@ def layout():
                                         style={"height": "600px"},
                                         className="treemap-canvas"
                                     ),
-                                    type="circle", color=COLORS[0]
+                                    custom_spinner=chart_skeleton(600)
                                 ),
                                 html.Div(
                                     "Colour encodes allocation concentration. Size encodes market value.",
@@ -103,7 +103,10 @@ def layout():
                                     className="period-segmented-control"
                                 ),
                             ], style={"display": "flex", "alignItems": "center", "marginBottom": "10px"}),
-                            dcc.Graph(id="price-chart", config={"displayModeBar": False}, style={"height": "400px"})
+                            dcc.Loading(
+                                dcc.Graph(id="price-chart", config={"displayModeBar": False}, style={"height": "400px"}),
+                                custom_spinner=chart_skeleton(400)
+                            )
                         ),
 
                         # Row for Correlation & Volatility
@@ -112,13 +115,16 @@ def layout():
                             html.Div([
                                 html.Div([
                                     chart_title("Return Correlation Matrix", "corr-desc"),
-                                    dcc.Graph(id="corr-chart", config={"displayModeBar": False})
+                                    dcc.Loading(
+                                        dcc.Graph(id="corr-chart", config={"displayModeBar": False}),
+                                        custom_spinner=chart_skeleton(300)
+                                    )
                                 ], className="grid-item-1"),
                                 html.Div([
                                     chart_title("Volatility by ETF", "vol-desc"),
                                     dcc.Loading(
                                         html.Div(id="analytics-vol-chart", className="dividend-progress-container"),
-                                        type="circle", color=COLORS[2]
+                                        custom_spinner=html.Div([html.Div(className="skeleton", style={"height": "20px", "width": "100%", "marginBottom": "8px"}) for _ in range(5)])
                                     )
                                 ], className="grid-item-1"),
                             ], className="charts-grid-row")
