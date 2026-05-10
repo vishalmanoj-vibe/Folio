@@ -287,7 +287,8 @@ def register_callbacks(app) -> None:
             xaxis=dict(showgrid=False, rangeslider_visible=False),
             yaxis=dict(gridcolor="rgba(255,255,255,0.05)", tickprefix="$"),
             hovermode="x unified", height=350,
-            uirevision=ticker
+            uirevision=ticker,
+            hoverlabel=t_["PLOTLY_BASE"].get("hoverlabel")
         ))
         fig.update_layout(layout)
 
