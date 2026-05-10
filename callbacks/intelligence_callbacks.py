@@ -44,8 +44,8 @@ def register_callbacks(app) -> None:
     )
     def update_intelligence(port_data, period_st, theme, pred_st, url_pathname, pred_ui, period_ui):
         import dash
-        # FIX: prevent background recalculation when not on Intelligence page
-        if url_pathname != "/intelligence": return tuple([dash.no_update] * 5)
+        # FIX: prevent background recalculation when not on Intelligence page (robust to trailing slashes)
+        if url_pathname.rstrip("/") != "/intelligence": return tuple([dash.no_update] * 5)
         t_ = get_theme(theme or "dark")
         period = period_st or period_ui or "3mo"
         

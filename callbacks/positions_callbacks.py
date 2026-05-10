@@ -49,7 +49,7 @@ def register_callbacks(app) -> None:
     def render_card_grid(port_data, selected_ticker, url_pathname, signals_store):
         import dash
         # FIX: prevent background recalculation when not on Positions page
-        if url_pathname != "/positions": return dash.no_update
+        if url_pathname.rstrip("/") != "/positions": return dash.no_update
         if not port_data or "holdings" not in port_data:
             return []
 
@@ -166,7 +166,7 @@ def register_callbacks(app) -> None:
     )
     def render_detail_metrics(ticker, port_data, url_pathname):
         import dash
-        if url_pathname != "/positions": return dash.no_update, dash.no_update
+        if url_pathname.rstrip("/") != "/positions": return dash.no_update, dash.no_update
         if not ticker or not port_data or "holdings" not in port_data:
             return [], None
 
@@ -224,7 +224,7 @@ def register_callbacks(app) -> None:
     )
     def render_ai_insight(ticker, signals_store, url_pathname):
         import dash
-        if url_pathname != "/positions": return dash.no_update
+        if url_pathname.rstrip("/") != "/positions": return dash.no_update
         if not ticker or not signals_store or "ai" not in signals_store:
             return None
 
@@ -270,7 +270,7 @@ def register_callbacks(app) -> None:
     )
     def render_price_chart(ticker, period, port_data, theme, url_pathname):
         import dash
-        if url_pathname != "/positions": return dash.no_update
+        if url_pathname.rstrip("/") != "/positions": return dash.no_update
         t_ = get_theme(theme or "dark")
         if not ticker: 
             return None
@@ -371,7 +371,7 @@ def register_callbacks(app) -> None:
     )
     def render_txn_table(ticker, history, url_pathname):
         import dash
-        if url_pathname != "/positions": return dash.no_update
+        if url_pathname.rstrip("/") != "/positions": return dash.no_update
         if not ticker or not history: return None
         txns = sorted([t for t in history if t["ticker"].upper() == ticker], key=lambda x: x["date"], reverse=True)
         if not txns:
@@ -405,7 +405,7 @@ def register_callbacks(app) -> None:
     )
     def render_period_btns(current_period, url_pathname):
         import dash
-        if url_pathname != "/positions": return dash.no_update
+        if url_pathname.rstrip("/") != "/positions": return dash.no_update
         periods = [
             ("1M", "1mo"),
             ("3M", "3mo"),
@@ -438,7 +438,7 @@ def register_callbacks(app) -> None:
     )
     def update_detail_title(ticker, url_pathname):
         import dash
-        if url_pathname != "/positions": return dash.no_update
+        if url_pathname.rstrip("/") != "/positions": return dash.no_update
         if not ticker:
             return "Select a position to view details"
         return f"Details for {ticker}"
@@ -453,7 +453,7 @@ def register_callbacks(app) -> None:
     )
     def render_ticker_dividends(ticker, port_data, url_pathname):
         import dash
-        if url_pathname != "/positions": return dash.no_update
+        if url_pathname.rstrip("/") != "/positions": return dash.no_update
         if not ticker or not port_data or "holdings" not in port_data:
             return None
             
@@ -522,7 +522,7 @@ def register_callbacks(app) -> None:
     )
     def render_portfolio_dividend_insights(port_data, url_pathname):
         import dash
-        if url_pathname != "/positions": return [dash.no_update]*3
+        if url_pathname.rstrip("/") != "/positions": return [dash.no_update]*3
         if not port_data or "holdings" not in port_data:
             return [None]*3
             

@@ -269,13 +269,14 @@ def update_txn_store(n1, n2, n_submit, t_type, ticker, shares, price, date_str, 
     Input("period-store",           "data"),
     Input("analytics-period-store", "data"),
     Input("positions-period-store", "data"),
+    Input("intel-period-store",     "data"),
     Input("watchlist-period-store", "data"),
     Input("live-interval",          "n_intervals"),
     Input("startup-interval",       "n_intervals"),
     Input("refresh-btn",            "n_clicks"),
     prevent_initial_call=True,
 )
-def update_portfolio_store(txn_data, p1, p2, p3, p4, n1, n_startup, n2):
+def update_portfolio_store(txn_data, p1, p2, p3, p4, p5, n1, n_startup, n2):
     """Only place where portfolio-store is updated. Reacts to data or timeframe changes."""
     # Skip live fetch if market is closed and it's a background interval update
     if ctx.triggered_id == "live-interval" and not is_market_open():
@@ -283,9 +284,12 @@ def update_portfolio_store(txn_data, p1, p2, p3, p4, n1, n_startup, n2):
 
     try:
         # Determine the maximum period requested across all pages to ensure history is available
-        # Order of preference: 'max' > '1y' > 'ytd' > '3mo' > '1mo' > '1d'
-        period_priority = {"max": 100, "1y": 80, "ytd": 70, "3mo": 60, "1mo": 40, "1d": 20}
-        requested = [p1, p2, p3, p4]
+        # Order of preference: 'max' > '5y' > '2y' > '1y' > 'ytd' > '6mo' > '3mo' > '1mo' > '1d'
+        period_priority = {
+            "max": 100, "5y": 95, "2y": 90, "1y": 80, 
+            "ytd": 70, "6mo": 65, "3mo": 60, "1mo": 40, "1d": 20
+        }
+        requested = [p1, p2, p3, p4, p5]
         
         # Filter None and get weights
         weights = [(period_priority.get(p, 0), p) for p in requested if p]

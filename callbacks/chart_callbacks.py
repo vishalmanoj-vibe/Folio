@@ -84,7 +84,7 @@ def register_callbacks(app) -> None:
     )
     def price_chart(data, theme, period, pathname):
         import dash
-        if pathname != "/analytics": return dash.no_update
+        if pathname.rstrip("/") != "/analytics": return dash.no_update
         t_ = get_theme(theme or "dark")
         period = period or "max"
         if not data or "histories" not in data:
@@ -102,7 +102,7 @@ def register_callbacks(app) -> None:
     )
     def portfolio_treemap(data, theme, mode, pathname):
         import dash
-        if pathname != "/analytics": return dash.no_update
+        if pathname.rstrip("/") != "/analytics": return dash.no_update
         t_ = get_theme(theme or "dark")
         mode = mode or "sector"
         if not data or "holdings" not in data or not data["holdings"]:
@@ -140,7 +140,7 @@ def register_callbacks(app) -> None:
     )
     def update_analytics_volatility(data, theme, period, pathname):
         import dash
-        if pathname != "/analytics": return dash.no_update
+        if pathname.rstrip("/") != "/analytics": return dash.no_update
         if not data or "holdings" not in data or not data["holdings"]:
             return html.P("No holdings data available", style={"color": "var(--t-sec)", "fontSize": "13px"})
 
@@ -199,7 +199,7 @@ def register_callbacks(app) -> None:
     )
     def update_corr_chart(data, theme, period, pathname):
         import dash
-        if pathname != "/analytics": return dash.no_update
+        if pathname.rstrip("/") != "/analytics": return dash.no_update
         t_ = get_theme(theme or "dark")
         period = period or "max"
         if not data or "histories" not in data:

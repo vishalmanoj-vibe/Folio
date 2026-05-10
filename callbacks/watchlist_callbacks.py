@@ -88,7 +88,7 @@ def register_callbacks(app) -> None:
     )
     def render_watchlist_table(data, pathname, selected_ticker, signals_store):
         # Multi-page safety: only render if on the watchlist page
-        if pathname != "/watchlist":
+        if pathname.rstrip("/") != "/watchlist":
             return dash.no_update, dash.no_update
 
         if not data or "holdings" not in data or not data["holdings"]:
@@ -257,7 +257,7 @@ def register_callbacks(app) -> None:
         BORDER_COL = t_["BORDER"]
 
         # Multi-page safety
-        if pathname != "/watchlist":
+        if pathname.rstrip("/") != "/watchlist":
             return create_empty_fig("", height=300, theme_tokens=t_), "Price Performance"
 
         if not data or "histories" not in data or not data["histories"]:

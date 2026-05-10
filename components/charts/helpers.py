@@ -45,6 +45,8 @@ def create_empty_fig(msg: str = "Waiting for data…",
         t_sec = T_SEC
     
     base["margin"] = _BAR_MARGIN if bar else _LINE_MARGIN
+    base.pop("xaxis", None)
+    base.pop("yaxis", None)
     
     f = go.Figure()
     f.update_layout(
