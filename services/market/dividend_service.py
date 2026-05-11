@@ -39,6 +39,11 @@ def get_ticker_dividend_data(ticker, ticker_yf):
             return df
 
         div_s = div_s[div_s > 0]
+        if div_s.empty:
+            df = pd.DataFrame()
+            set_cache(cache_key, df, ttl=DIVIDENDS_CACHE_TTL)
+            return df
+
         div_s.index = normalise_tz(div_s.index)
 
         div_list = []
@@ -52,6 +57,11 @@ def get_ticker_dividend_data(ticker, ticker_yf):
                 "ticker": ticker,
                 "amount": float(amount)
             })
+
+        if not div_list:
+            df = pd.DataFrame()
+            set_cache(cache_key, df, ttl=DIVIDENDS_CACHE_TTL)
+            return df
 
         df = pd.DataFrame(div_list).sort_values("date", ascending=False)
         set_cache(cache_key, df, ttl=DIVIDENDS_CACHE_TTL)
