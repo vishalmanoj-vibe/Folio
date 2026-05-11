@@ -242,7 +242,7 @@ def register_callbacks(app) -> None:
         Output("watchlist-chart", "figure"),
         Output("watchlist-chart-title", "children"),
         Input("watchlist-selected-ticker", "data"),
-        State("watchlist-store", "data"),
+        Input("watchlist-store", "data"),
         Input("url", "pathname"),
         Input("theme-store", "data"),
         Input("watchlist-period-store", "data"),
@@ -360,7 +360,7 @@ def register_callbacks(app) -> None:
          Output("watchlist-tech-signals-container", "children"),
          Output("watchlist-ai-insight-container", "children")],
         Input("watchlist-selected-ticker", "data"),
-        State("watchlist-store", "data"),
+        Input("watchlist-store", "data"),
         Input("watchlist-signals-store", "data"),
         prevent_initial_call=False,
     )

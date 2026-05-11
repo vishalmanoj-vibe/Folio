@@ -5,7 +5,7 @@
 - Entry: app.py → pages/ (portfolio.py, etf_detail.py, intelligence.py)
 - Data: SQLite (`portfolio.db`) → `database.py` → `repository.py` → `fetch_live()`
 - All chart figures live in components/charts/ and return go.Figure
-- Callbacks are modular: core, chart, transaction, alert, ui, positions, dividend, intelligence, watchlist, research, report, signals
+- Callbacks are modular: core, chart, transaction, alert, ui, positions, dividend, insights, watchlist, research, report, signals
 ## Architecture — never break these
 - Do NOT modify app.py layout or the two dcc.Store seeds (txn-store, portfolio-store)
 - All new chart callbacks go in callbacks/chart_callbacks.py
@@ -68,10 +68,8 @@
 ## Self-Improvement
 - After every task, evaluate if a new Rule or Skill should be added to the `.agent/` directory to prevent repeating mistakes or to codify successful new patterns.
 
-## Strategy Engine & AI Analyst Layer
-
 - **Rule-Based Engine** (`services/strategy_engine.py`): Single source of truth for signals. Never override with AI output.
-- **AI Analyst** (`services/ai_engine.py`): Sits *after* the engine. Explains and critiques signals only — does NOT generate them.
+- **AI Assistant** (`services/ai_engine.py`): Sits *after* the engine. Explains and critiques signals only — does NOT generate them.
 - **Signals Stores**: Two session-scoped `dcc.Store`s — one per context. Never cross-wire them.
   - `signals-store` — Portfolio holdings (Positions page). Triggered by `generate-signals-btn`.
   - `watchlist-signals-store` — Watchlist tickers. Triggered by `watchlist-generate-signals-btn`.
@@ -135,11 +133,8 @@
 - `components/charts/pnl_history.py` — Implemented 5-minute resampling and Plotly `rangebreaks` to hide overnight sessions. Updated hover labels to include full date context.
 - `services/market/data_fetcher.py` — Updated `fetch_live` to request 2-day windows and ensure snapshots/backfills occur even on internal cache hits.
 
-### Analytics & Audit Stabilization (Complete)
-- `pages/analytics.py` — Harmonized Treemap backgrounds with `var(--surface)` tokens.
-- `components/charts/treemap.py` — Implemented theme-aware typography and stripped legacy template defaults.
-- `callbacks/portfolio_callbacks.py` — Integrated signals-store as State to inject Suggestion badges into the holdings table.
 - **Project-wide Audit**: Standardized all services to use `logger.debug()` and verified `prevent_initial_call=True` for multi-page safety.
+- **Page Renaming**: Standardized page names to Holdings, Positions, Watchlist, Insights, Deep Dive, and Assistant.
 
 ### Rendering Prioritization & Fast Startup (Complete)
 - **Callback Prioritization**: Implemented `pathname` awareness across all rendering callbacks in `chart_callbacks.py`, `positions_callbacks.py`, and `watchlist_callbacks.py` to prevent off-page DOM thrashing.

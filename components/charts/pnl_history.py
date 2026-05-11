@@ -12,11 +12,15 @@ from config.constants import GREEN, RED, COLORS
 from core.engine.utils import get_period_cutoff
 from components.charts.helpers import build_benchmark_traces, hex_to_rgba, apply_standard_layout
 
+import logging
+logger = logging.getLogger(__name__)
+
 def _build_intraday_figure(
     fig: "go.Figure",
     holdings: list[dict],
     mode: str,
     theme_tokens: dict,
+    selected: str = "Portfolio",
 ) -> "go.Figure":
     """
     Build the 'Today' intraday P&L chart.
@@ -46,15 +50,21 @@ def _build_intraday_figure(
         from components.charts.helpers import create_empty_fig
         return create_empty_fig("Waiting for market session data (ASX opens 10:00 Sydney Time) …", height=380, theme_tokens=theme_tokens)
 
+    # Filter tickers if a specific one is selected
+    target_tickers = [selected] if selected != "Portfolio" else [h["ticker"] for h in holdings]
+    
     prev_close_map  = {h["ticker"]: h.get("prev_close", 0.0) for h in holdings}
     total_shares_map = {h["ticker"]: h.get("total_shares", 0.0) for h in holdings}
 
     all_series: list[pd.Series] = []
 
-    for ticker, points in session_data.items():
+    for ticker in target_tickers:
+        points = session_data.get(ticker)
+        if not points: continue
+        
         prev_close   = prev_close_map.get(ticker, 0.0)
         total_shares = total_shares_map.get(ticker, 0.0)
-        if prev_close <= 0 or total_shares <= 0 or not points:
+        if prev_close <= 0 or (selected == "Portfolio" and total_shares <= 0):
             continue
 
         df = pd.DataFrame(points)
@@ -76,59 +86,78 @@ def _build_intraday_figure(
         if mode == "pct":
             day_s = ((price_s - prev_close) / prev_close * 100).round(4)
         else:
-            day_s = ((price_s - prev_close) * total_shares).round(2)
+            day_s = ((price_s - prev_close) * (total_shares if selected == "Portfolio" else 1)).round(2)
 
+        day_s.name = ticker
         all_series.append(day_s)
 
     if not all_series:
         from components.charts.helpers import create_empty_fig
-        return create_empty_fig("Intraday data unavailable for this selection", height=380, theme_tokens=theme_tokens)
+        return create_empty_fig(f"Intraday data unavailable for {selected}", height=380, theme_tokens=theme_tokens)
 
     combined = pd.concat(all_series, axis=1, sort=True).sort_index().ffill().fillna(0)
 
-    if mode == "pct":
-        weights = []
-        for h in holdings:
-            if h["ticker"] in session_data and h.get("prev_close", 0) > 0:
+    if selected == "Portfolio":
+        if mode == "pct":
+            weights = []
+            for ticker in combined.columns:
+                h = next((x for x in holdings if x["ticker"] == ticker), {})
                 weights.append(h.get("total_cost", h.get("prev_close", 1) * h.get("total_shares", 1)))
-        if weights and len(weights) == combined.shape[1]:
-            total_w    = sum(weights)
-            weight_arr = [w / total_w for w in weights]
-            portfolio_s = (combined * weight_arr).sum(axis=1).round(4)
+            
+            if weights and len(weights) == combined.shape[1]:
+                total_w    = sum(weights)
+                weight_arr = [w / total_w for w in weights]
+                portfolio_s = (combined * weight_arr).sum(axis=1).round(4)
+            else:
+                portfolio_s = combined.mean(axis=1).round(4)
         else:
-            portfolio_s = combined.mean(axis=1).round(4)
+            portfolio_s = combined.sum(axis=1).round(2)
     else:
-        portfolio_s = combined.sum(axis=1).round(2)
+        # Single ticker
+        portfolio_s = combined.iloc[:, 0]
 
-    last_val   = float(portfolio_s.iloc[-1]) if len(portfolio_s) else 0.0
-    line_color = GREEN_C if last_val >= 0 else RED_C
-    fill_color = "rgba(29,158,117,0.12)" if last_val >= 0 else "rgba(226,75,74,0.10)"
+    # Split into Previous Session and Today for independent coloring
+    today_start = pd.Timestamp.now(tz="Australia/Sydney").normalize()
+    segments = [
+        ("Previous", portfolio_s[portfolio_s.index < today_start]),
+        ("Today",    portfolio_s[portfolio_s.index >= today_start])
+    ]
 
-    fig.add_trace(go.Scatter(
-        x=portfolio_s.index,
-        y=portfolio_s.values,
-        name="Portfolio Today",
-        mode="lines+markers",
-        fill="tozeroy",
-        fillcolor=fill_color,
-        line=dict(color=line_color, width=2.5),
-        marker=dict(size=5, color=line_color),
-        hovertemplate=(
-            "<b>%{x|%a %d %b, %H:%M}</b><br>"
-            + ("%{y:+.2f}%<extra>Day change</extra>" if mode == "pct"
-               else "$%{y:+,.2f}<extra>Day P&L</extra>")
-        ),
-    ))
+    for name, s in segments:
+        if s.empty: continue
+        
+        lv = float(s.iloc[-1])
+        line_color = GREEN_C if lv >= 0 else RED_C
+        fill_color = hex_to_rgba(line_color, 0.12)
 
-    sign  = "+" if last_val >= 0 else ""
-    label = f"{sign}{last_val:.2f}%" if mode == "pct" else f"{sign}${last_val:,.2f}"
+        fig.add_trace(go.Scatter(
+            x=s.index,
+            y=s.values,
+            name=f"{selected} {name}",
+            mode="lines",
+            fill="tozeroy",
+            fillcolor=fill_color,
+            line=dict(color=line_color, width=2.5),
+            hovertemplate=(
+                "<b>%{x|%a %d %b, %H:%M}</b><br>"
+                + ("%{y:+.2f}%<extra>Day change</extra>" if mode == "pct"
+                   else "$%{y:+,.2f}<extra>Day P&L</extra>")
+            ),
+        ))
+
+    # For the summary annotation, use the overall last value (Today's status)
+    overall_last = float(portfolio_s.iloc[-1]) if len(portfolio_s) else 0.0
+    anno_color = GREEN_C if overall_last >= 0 else RED_C
+
+    sign  = "+" if overall_last >= 0 else ""
+    label = f"{sign}{overall_last:.2f}%" if mode == "pct" else f"{sign}${overall_last:,.2f}"
     fig.add_annotation(
         text=f"<b>{label}</b>",
         xref="paper", yref="paper",
         x=0.01, y=0.97,
         xanchor="left", yanchor="top",
         showarrow=False,
-        font=dict(size=14, color=line_color),
+        font=dict(size=14, color=anno_color),
         bgcolor=theme_tokens.get("BG", "#1A1A2E"),
         borderpad=4,
     )
@@ -186,7 +215,7 @@ def build_pnl_history_figure(
         fig.update_xaxes(tickformat=None)
 
     if period == "1d":
-        return _build_intraday_figure(fig, holdings, mode, theme_tokens)
+        return _build_intraday_figure(fig, holdings, mode, theme_tokens, selected=selected)
 
     cutoff = get_period_cutoff(period)
 
@@ -241,7 +270,7 @@ def build_pnl_history_figure(
             name="Portfolio",
             mode="lines",
             fill="tozeroy",
-            fillcolor="rgba(29,158,117,0.12)" if lv >= 0 else "rgba(226,75,74,0.10)",
+            fillcolor=hex_to_rgba(GREEN, 0.12) if lv >= 0 else hex_to_rgba(RED, 0.10),
             line=dict(color=GREEN if lv >= 0 else RED, width=2.5),
             hovertemplate=(
                 "%{y:+.2f}%<extra>Portfolio</extra>"
@@ -353,14 +382,15 @@ def build_pnl_history_figure(
             else:
                 y = cpnl.round(2)
             fig.update_xaxes(range=[cpnl.index.min(), cpnl.index.max()])
+            lv = float(y.iloc[-1]) if len(y) else 0
 
             fig.add_trace(go.Scatter(
                 x=cpnl.index, y=y,
                 name=f"{selected} (combined)",
                 mode="lines",
                 fill="tozeroy",
-                fillcolor=hex_to_rgba(theme_tokens.get("INFO", "#378ADD"), 0.1),
-                line=dict(color=bc, width=2.5),
+                fillcolor=hex_to_rgba(GREEN, 0.12) if lv >= 0 else hex_to_rgba(RED, 0.10),
+                line=dict(color=GREEN if lv >= 0 else RED, width=2.5),
                 hovertemplate=(
                     "%{y:+.2f}%<extra>" + selected + " combined</extra>"
                     if mode == "pct"

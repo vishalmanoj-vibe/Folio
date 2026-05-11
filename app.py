@@ -220,10 +220,9 @@ def _perform_refresh(period):
 # ── SINGLE OWNER: txn-store ───────────────────────────────────────────────────
 @app.callback(
     Output("txn-store", "data", allow_duplicate=True),
-    Input("live-interval", "n_intervals"),
-    Input("refresh-btn",   "n_clicks"),
-    Input("txn-submit",    "n_clicks"),
-    State("txn-type", "value"),
+    Input("startup-interval",      "n_intervals"),
+    Input("txn-submit",           "n_clicks"),
+    State("txn-type",             "value"),
     State("txn-ticker", "value"),
     State("txn-shares", "value"),
     State("txn-price", "value"),
@@ -231,7 +230,7 @@ def _perform_refresh(period):
     State("txn-store", "data"),
     prevent_initial_call=True,
 )
-def update_txn_store(n1, n2, n_submit, t_type, ticker, shares, price, date_str, history):
+def update_txn_store(n_startup, n_submit, t_type, ticker, shares, price, date_str, history):
     """Only place where txn-store is updated. Handles interval sync and new additions."""
     if ctx.triggered_id == "txn-submit":
         if not all([t_type, ticker, shares is not None, price is not None, date_str]):
@@ -276,10 +275,11 @@ def update_txn_store(n1, n2, n_submit, t_type, ticker, shares, price, date_str, 
     Input("refresh-btn",            "n_clicks"),
     prevent_initial_call=True,
 )
-def update_portfolio_store(txn_data, p1, p2, p3, p4, p5, n1, n_startup, n2):
-    """Only place where portfolio-store is updated. Reacts to data or timeframe changes."""
-    # Skip live fetch if market is closed and it's a background interval update
-    if ctx.triggered_id == "live-interval" and not is_market_open():
+def update_portfolio_store(txn_data, p1, p2, p3, p4, p5, n_live, n_start, n_btn):
+    triggered_id = dash.callback_context.triggered_id
+    
+    # Skip live fetch if market is closed and it's a periodic interval update
+    if triggered_id == "live-interval" and not is_market_open():
         return dash.no_update
 
     try:
@@ -432,12 +432,12 @@ def handle_exit(sig, frame):
 # ── Run ───────────────────────────────────────────────────────────────────────
 if __name__ == "__main__":
     from config.settings import DB_PATH
-    print(f"  Main (Overview): http://127.0.0.1:8050/")
+    print(f"  Holdings:        http://127.0.0.1:8050/")
     print(f"  Positions:       http://127.0.0.1:8050/positions")
     print(f"  Watchlist:       http://127.0.0.1:8050/watchlist")
-    print(f"  Intelligence:    http://127.0.0.1:8050/intelligence")
-    print(f"  Analytics:       http://127.0.0.1:8050/analytics")
-    print(f"  AI Analyst:      http://127.0.0.1:8050/ai-analyst\n")
+    print(f"  Insights:        http://127.0.0.1:8050/intelligence")
+    print(f"  Deep Dive:       http://127.0.0.1:8050/analytics")
+    print(f"  Assistant:       http://127.0.0.1:8050/ai-analyst\n")
 
     # Register signals
     signal.signal(signal.SIGINT, handle_exit)

@@ -23,15 +23,15 @@ def create_header(
             className="nav-logo"
         ),
         html.Div([
-            html.A("Overview",     href="/",             className="nav-link"),
+            html.A("Holdings",     href="/",             className="nav-link"),
             html.A("Positions",    href="/positions",    className="nav-link"),
             html.A("Watchlist",    href="/watchlist",    className="nav-link"),
             html.Div([
-                html.A("Intelligence", href="/intelligence", className="nav-link"),
+                html.A("Insights", href="/intelligence", className="nav-link"),
                 html.Span(id="intel-alert-count", className="nav-badge", style={"display": "none"})
             ], style={"display": "flex", "alignItems": "center", "position": "relative"}),
-            html.A("Analytics",    href="/analytics",    className="nav-link"),
-            html.A("AI Analyst",   href="/ai-analyst",   className="nav-link"),
+            html.A("Deep Dive",    href="/analytics",    className="nav-link"),
+            html.A("Assistant",   href="/ai-analyst",   className="nav-link"),
         ], className="nav-links-container")
     ]
 

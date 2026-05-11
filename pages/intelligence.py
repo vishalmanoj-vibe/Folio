@@ -12,7 +12,7 @@ from dash import dcc, html, register_page
 from config.constants import COLORS, RED
 from components.ui_helpers import section, chart_title, risk_card_skeleton, chart_skeleton
 
-register_page(__name__, path="/intelligence", title="Intelligence")
+register_page(__name__, path="/intelligence", title="Insights")
 
 def layout() -> html.Div:
     return html.Div(
@@ -21,7 +21,7 @@ def layout() -> html.Div:
             html.Div(
                 [
                     html.Div([
-                        html.H1("Intelligence", className="header-title"),
+                        html.H1("Insights", className="header-title"),
                         html.P("Risk metrics, equity curve & smart alerts", className="header-subtitle"),
                     ], className="header-title-row"),
                 ],

@@ -48,8 +48,8 @@ def create_layout(initial_history: list[dict] | None = None) -> html.Div:
             html.Div(
                 [
                     html.Div([
-                        html.H1("Portfolio overview", className="header-title"),
-                        html.P("Live P&L · Yahoo Finance · ASX ETFs", className="header-subtitle"),
+                        html.H1("Holdings", className="header-title"),
+                        html.P("Portfolio overview · Live P&L · ASX ETFs", className="header-subtitle"),
                     ], className="header-title-row"),
                     html.Div([
                         # Header button removed to consolidate into table-level toggle

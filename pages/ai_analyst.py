@@ -3,13 +3,13 @@ from dash import html, dcc
 import dash_mantine_components as dmc
 from components.ui_helpers import section, chart_title
 
-dash.register_page(__name__, path="/ai-analyst", title="AI Analyst")
+dash.register_page(__name__, path="/ai-analyst", title="Assistant")
 
 def layout():
     return html.Div([
         # 1. Page header row
         html.Div([
-            html.H1("AI Analyst", className="header-title"),
+            html.H1("Assistant", className="header-title"),
             html.P("AI-powered portfolio research & weekly reports · Not financial advice", className="header-subtitle"),
         ], className="page-header-row"),
 

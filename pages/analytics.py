@@ -12,7 +12,7 @@ import dash_mantine_components as dmc
 from components.ui_helpers import chart_title, section, chart_skeleton
 from config.constants import COLORS
 
-dash.register_page(__name__, path="/analytics", title="Analytics")
+dash.register_page(__name__, path="/analytics", title="Deep Dive")
 
 def layout():
     return html.Div([
@@ -20,8 +20,8 @@ def layout():
         html.Div(
             [
                 html.Div([
-                    html.H1("Analytics", className="header-title"),
-                    html.P("Allocation, risk & performance deep-dive", className="header-subtitle"),
+                    html.H1("Deep Dive", className="header-title"),
+                    html.P("Allocation, risk & performance analysis", className="header-subtitle"),
                 ], className="header-title-row"),
                 html.Div([
                     # Standalone export button removed to avoid duplicate ID with global nav
