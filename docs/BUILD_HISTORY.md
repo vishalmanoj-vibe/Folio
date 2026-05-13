@@ -89,3 +89,18 @@ This document chronicles the technical evolution of Folio, transitioning from a 
 *   **Theme Transition Smoothness**: Eliminated jarring visual snaps by implementing **200ms CSS transitions** on all theme-aware properties (background-color, color, border-color) across the entire application shell.
 *   **Data Freshness Pulse**: Introduced a live "heartbeat" indicator in the header. The animated status dot pulses green during market hours and remains static grey otherwise, providing at-a-glance evidence of live monitoring.
 *   **Interactive Depth & Typography**: Standardized on **Inter with tabular numerals** for financial accuracy and added interactive hover states (lift + teal glow) to all dashboard cards.
+
+---
+
+## Phase 9: Performance Baseline & Multi-Tier Intervals (v3.9.0 – Current)
+**Theme**: Profiling the dashboard and optimizing network overhead.
+
+*   **Performance Baselines**: Integrated `memory_profiler` and `psutil` to establish and document memory and CPU baselines for all core rendering and fetch callbacks.
+*   **Multi-Tier Interval Strategy**: Replaced the unconditional 5-minute global refresh with a multi-tier interval strategy:
+    *   **UI Heartbeat (30s)**: A fast `live-interval` updates badges, statuses, and time-ago counters without network impact.
+    *   **Data Refresh (300s)**: A new `price-interval` exclusively orchestrates data fetches.
+    *   **Market Hours Gating**: The periodic `price-interval` is strictly gated to market hours, while manual refreshes, initialization, and transaction events continue to bypass the gate, ensuring 100% responsiveness during off-hours with zero redundant Yahoo Finance network calls.
+*   **Intelligent Background Snapshotting**: Upgraded the `background_refresh` daemon thread from naive polling to dynamic sleep durations. The thread now accurately calculates the time until the next market open (accounting for Daylight Savings and ASX Public Holidays) and sleeps deeply during off-hours, significantly reducing system resource usage.
+*   **Lazy Loading Prophet**: Implemented a lazy loading architecture for Facebook Prophet in the `prediction_service`. The heavy forecasting dependencies are now only loaded into memory when explicitly requested by the user, drastically reducing startup overhead and baseline memory consumption.
+*   **Bounded Memory Caching**: Refactored the core caching system (`core/cache.py`) to enforce a strict memory ceiling. Introduced dynamic eviction passes (`MAX_CACHE_ENTRIES`) to forcefully reap stale metrics and orphaned data segments, preventing unbounded memory creep during long-running sessions.
+*   **Automated Phase 1 Verification**: Built a deterministic testing pipeline (`scripts/verify_phase1.py`) using isolated AST parsing and dependency monkey-patching to systematically verify market gating, Prophet lazy-loading, cache evictions, and dynamic background sleep cycles without mutating source code.

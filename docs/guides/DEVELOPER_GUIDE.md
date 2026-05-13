@@ -70,6 +70,12 @@ Once running, the dashboard follows a **Single Refresh Owner** pattern:
 - **`update_portfolio_store`**: The exclusive caller of `fetch_live()`. It reacts to transaction changes or interval ticks.
 - **Prioritized Rendering**: To prevent UI flicker, callbacks check `pathname` and return `dash.no_update` if their page is not visible. (See Section 16).
 
+### 3. Multi-Tier Interval Strategy
+To balance UI responsiveness with network efficiency, the application uses multiple `dcc.Interval` components:
+- **Heartbeat (`live-interval` & `heartbeat-interval`, 30s)**: Drives UI-only updates like market status badges and time-ago counters without making network requests.
+- **Data Refresh (`price-interval`, 300s)**: Triggers periodic data fetches (e.g., `update_portfolio_store` and `update_watchlist_store`).
+- **Market Gating**: The `price-interval` is gated by `is_market_open()`. If the market is closed, periodic fetches are skipped, preventing redundant network calls while keeping the UI responsive to manual actions.
+
 ---
 
 ## Relational Database & Concurrency

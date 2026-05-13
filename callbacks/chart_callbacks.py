@@ -18,12 +18,14 @@ from components.charts import (
     build_portfolio_treemap,
     build_performance_lollipops,
 )
+from components.charts.intel_holdings import build_holdings_bubble_chart
 from components.ui_helpers import chart_skeleton, progress_row, interpolate_color
 from components.charts.helpers import create_empty_fig
 from services.intelligence_service import (
     compute_risk_metrics,
     fetch_etf_sector_weights,
     fetch_etf_geo_weights,
+    holdings_blended_data,
 )
 
 logger = logging.getLogger(__name__)
@@ -205,3 +207,29 @@ def register_callbacks(app) -> None:
         if not data or "histories" not in data:
             return create_empty_fig("No shared history found", height=380, theme_tokens=t_)
         return build_corr_figure(data["histories"], period, t_)
+
+    # ── ETF Holdings Bubble Chart ─────────────────────────────────────────────
+    @app.callback(
+        Output("holdings-bubble-chart", "figure"),
+        Output("holdings-freshness-note", "children"),
+        Input("portfolio-store", "data"),
+        Input("theme-store", "data"),
+        Input("url", "pathname"),
+        prevent_initial_call=True
+    )
+    def update_holdings_bubble_chart(data, theme, pathname):
+        import dash
+        if pathname.rstrip("/") != "/analytics": 
+            return dash.no_update, dash.no_update
+            
+        t_ = get_theme(theme or "dark")
+        
+        if not data or "holdings" not in data or not data["holdings"]:
+            return create_empty_fig("No portfolio data", height=600, theme_tokens=t_), ""
+            
+        blended_data = holdings_blended_data(data)
+        if not blended_data:
+            return create_empty_fig("No holdings data available", height=600, theme_tokens=t_), "No data available"
+            
+        fig = build_holdings_bubble_chart(blended_data, t_)
+        return fig, "Data updated recently"

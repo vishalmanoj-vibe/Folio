@@ -5,7 +5,7 @@ Core utilities for Folio.
 Cache, validators, and custom exceptions.
 """
 
-from core.cache import get_cache, set_cache, bust_cache, _CACHE as _cache
+from core.cache import get_cache, set_cache, bust_cache, cache_stats, evict_expired, _CACHE as _cache
 from core.validators import validate_transaction
 from core.exceptions import (
     ValidationError,
@@ -18,6 +18,8 @@ __all__ = [
     "get_cache",
     "set_cache",
     "bust_cache",
+    "cache_stats",
+    "evict_expired",
     "_cache",
     # Validators
     "validate_transaction",

@@ -100,7 +100,7 @@ _GEO_TTL    = 86_400
 # ── TTL settings ──────────────────────────────────────────────────────────────
 _METADATA_TTL_DAYS = 7
 
-def _get_cached_metadata(ticker_yf: str, meta_type: str) -> dict[str, float] | None:
+def _get_cached_metadata(ticker_yf: str, meta_type: str, ttl_days: int = _METADATA_TTL_DAYS) -> dict[str, float] | None:
     """Retrieve metadata from SQLite with stale-check."""
     from data.database import get_connection
     ticker_yf = ticker_yf.upper()
@@ -122,7 +122,7 @@ def _get_cached_metadata(ticker_yf: str, meta_type: str) -> dict[str, float] | N
         # Check staleness (using first row's updated_at)
         updated_at = pd.to_datetime(rows[0]["updated_at"])
         age_days = (pd.Timestamp.now() - updated_at).days
-        if age_days >= _METADATA_TTL_DAYS:
+        if age_days >= ttl_days:
             return None
             
         return {row["category"]: row["weight"] for row in rows}
@@ -608,3 +608,41 @@ def compute_smart_alerts(metrics: dict, port_data: dict) -> list[dict]:
         })
         
     return alerts
+
+def holdings_blended_data(port_data: dict) -> dict[str, dict]:
+    """
+    Returns aggregated ETF holdings with blended weights across the portfolio.
+    Output: { "Company Name": {"weight": 2.5, "sources": {"VHY": 1.5, "IOZ": 1.0}} }
+    """
+    from services.market.holdings_fetcher import fetch_holdings
+    holdings = port_data.get("holdings", [])
+    weights = _portfolio_weights(holdings)
+    
+    blended: dict[str, dict] = {}
+    
+    for h in holdings:
+        ticker = h["ticker"]
+        port_w = weights.get(ticker, 0)
+        if port_w <= 0: continue
+        
+        etf_holdings = fetch_holdings(ticker)
+        if not etf_holdings: continue
+        
+        for company, pct in etf_holdings.items():
+            contribution = port_w * pct  # Since pct is already a percentage (0-100) and port_w is a fraction (0-1)
+            if contribution <= 0: continue
+            
+            if company not in blended:
+                blended[company] = {"weight": 0.0, "sources": {}}
+            
+            blended[company]["weight"] += contribution
+            blended[company]["sources"][ticker] = contribution
+            
+    # Rounding
+    for comp in blended:
+        blended[comp]["weight"] = round(blended[comp]["weight"], 2)
+        for src in blended[comp]["sources"]:
+            blended[comp]["sources"][src] = round(blended[comp]["sources"][src], 2)
+            
+    # Sort by weight descending
+    return dict(sorted(blended.items(), key=lambda x: x[1]["weight"], reverse=True))

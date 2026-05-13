@@ -33,7 +33,7 @@ API_MAX_RETRIES = int(os.getenv("API_MAX_RETRIES", 3))
 API_RETRY_BACKOFF_BASE = float(os.getenv("API_RETRY_BACKOFF_BASE", 2.0))
 
 # ── Cache configuration ───────────────────────────────────────────────────────
-CACHE_TTL_SECONDS = int(os.getenv("CACHE_TTL_SECONDS", 25))
+CACHE_TTL_SECONDS = int(os.getenv("CACHE_TTL_SECONDS", 300))
 
 # ── Alert thresholds ─────────────────────────────────────────────────────────
 ALERT_THRESHOLDS = {

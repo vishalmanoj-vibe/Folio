@@ -174,7 +174,9 @@ app.layout = dmc.MantineProvider(
             dcc.Store(id="theme-store",          data="dark", storage_type='local'),
             dcc.Store(id="compact-mode-store",   data=True),
             dcc.Store(id="table-state-store",     data={"search": "", "sort_col": "mkt_value", "sort_dir": "desc"}, storage_type='local'),
-            dcc.Interval(id="live-interval", interval=REFRESH_INTERVAL, n_intervals=0),
+            dcc.Interval(id="live-interval", interval=30000, n_intervals=0),
+            dcc.Interval(id="heartbeat-interval", interval=30000, n_intervals=0),
+            dcc.Interval(id="price-interval", interval=300000, n_intervals=0),
             dcc.Interval(id="startup-interval", interval=1500, n_intervals=0, max_intervals=1),
             dcc.Store(id="nav-link-store"),
 
@@ -209,6 +211,8 @@ app.layout = dmc.MantineProvider(
         className="app-container",
     )
 )
+
+
 
 # ── Refresh logic helpers ─────────────────
 def _perform_refresh(period):
@@ -270,16 +274,16 @@ def update_txn_store(n_startup, n_submit, t_type, ticker, shares, price, date_st
     Input("positions-period-store", "data"),
     Input("intel-period-store",     "data"),
     Input("watchlist-period-store", "data"),
-    Input("live-interval",          "n_intervals"),
+    Input("price-interval",         "n_intervals"),
     Input("startup-interval",       "n_intervals"),
     Input("refresh-btn",            "n_clicks"),
     prevent_initial_call=True,
 )
-def update_portfolio_store(txn_data, p1, p2, p3, p4, p5, n_live, n_start, n_btn):
+def update_portfolio_store(txn_data, p1, p2, p3, p4, p5, n_price, n_start, n_btn):
     triggered_id = dash.callback_context.triggered_id
     
     # Skip live fetch if market is closed and it's a periodic interval update
-    if triggered_id == "live-interval" and not is_market_open():
+    if triggered_id == "price-interval" and not is_market_open():
         return dash.no_update
 
     try:
@@ -449,15 +453,24 @@ if __name__ == "__main__":
         Independent thread that records snapshots every 300s (5m).
         Ensures 'Today' chart has continuous data even if browser is closed.
         """
+        from services.market.market_status import is_market_open, time_until_market_open
         while True:
             try:
-                # Only record snapshots if market is open
-                if is_market_open():
+                seconds_until_open = time_until_market_open()
+                
+                # Fetch if market is open or we are in the 5-minute pre-market window
+                if is_market_open() or seconds_until_open <= 0:
                     _perform_refresh("1d")
                     logger.debug("Background snapshot recorded.")
+                    time.sleep(300)
+                else:
+                    # Sleep exactly until 09:55 on the next trading day
+                    sleep_time = seconds_until_open
+                    logger.debug(f"Market closed. Background thread sleeping for {sleep_time:.0f} seconds until next pre-market fetch.")
+                    time.sleep(sleep_time)
             except Exception as e:
                 logger.error(f"Background refresh failed: {e}")
-            time.sleep(300)
+                time.sleep(300)
 
     threading.Thread(target=background_refresh, daemon=True).start()
 

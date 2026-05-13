@@ -19,8 +19,14 @@ def get_connection():
     
     return conn
 
+_DB_INITIALIZED = False
+
 def init_db():
     """Initialises the database schema and logs the action."""
+    global _DB_INITIALIZED
+    if _DB_INITIALIZED:
+        return
+        
     conn = get_connection()
     try:
         # 1. Transactions (Legacy support)
@@ -72,14 +78,24 @@ def init_db():
             )
         ''')
         
-        # 5. Indexes
+        # 5. ETF Holdings Attempts
+        conn.execute('''
+            CREATE TABLE IF NOT EXISTS etf_holdings_attempts (
+                ticker       TEXT PRIMARY KEY,
+                last_attempt TEXT DEFAULT CURRENT_TIMESTAMP,
+                last_error   TEXT
+            )
+        ''')
+        
+        # 6. Indexes
         conn.execute("CREATE INDEX IF NOT EXISTS idx_etf_meta_ticker ON etf_metadata(ticker)")
         conn.execute("CREATE INDEX IF NOT EXISTS idx_watchlist_date ON watchlist(added_date)")
         
         conn.commit()
+        _DB_INITIALIZED = True
+        logger.info(f"Database initialised at {DB_PATH}")
     finally:
         conn.close()
-    logger.info(f"Database initialised at {DB_PATH}")
 
 def get_db_path():
     """Returns the absolute path to the database file."""

@@ -1,4 +1,5 @@
 import os
+import requests
 import json
 import logging
 import time
@@ -158,10 +159,38 @@ def _download_with_retry(
             df = yf.download(tickers, **kwargs)
             return df
         except Exception as e:
+            error_str = str(e)
+            is_401 = "401" in error_str
+            
+            if is_401:
+                logger.warning("yfinance 401 Unauthorized (crumb expired). Resetting session...")
+                try:
+                    # Clear session cache if available, otherwise reset the session
+                    if hasattr(yf.utils, "requests_cache"):
+                        try:
+                            yf.utils.requests_cache.clear()
+                        except:
+                            pass
+                    
+                    data_obj = yf.data.YfData()
+                    if hasattr(data_obj, "_session"):
+                        if data_obj._session:
+                            try:
+                                data_obj._session.close()
+                            except:
+                                pass
+                        # Assign a fresh session; yfinance will handle crumb re-acquisition
+                        data_obj._session = requests.Session()
+                except Exception as reset_err:
+                    logger.debug("Failed to reset yfinance session: %s", reset_err)
+
             if attempt == max_retries - 1:
                 logger.warning("Download failed after %d attempts (period=%s): %s", max_retries, period, e)
                 return pd.DataFrame()
-            time.sleep(backoff_base ** attempt)
+            
+            # Use 2s flat backoff for 401s, otherwise exponential
+            sleep_time = 2.0 if is_401 else (backoff_base ** attempt)
+            time.sleep(sleep_time)
     return pd.DataFrame()
 
 
@@ -581,6 +610,8 @@ def get_full_history_cache(holdings: list[dict]) -> pd.DataFrame:
     return pd.DataFrame()
 
 
+
+
 def fetch_live(holdings: list[dict], hist_period: str = "max", record_snapshots: bool = True, use_disk_history: bool = False) -> dict:
     """
     Fetch live prices, history, dividends and per-tranche P&L for all holdings.
@@ -735,8 +766,7 @@ def fetch_live(holdings: list[dict], hist_period: str = "max", record_snapshots:
     
     clear_old_caches()
 
-    ttl = 5 if hist_period == "1d" else 10
-    set_cache(cache_key, result, ttl=ttl)
+    set_cache(cache_key, result, ttl=CACHE_TTL_SECONDS)
     
     # ── Save snapshot for fast startup ───────────────────────────────────────
     if hist_period == "max" and result.get("holdings"):

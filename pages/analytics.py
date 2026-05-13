@@ -36,6 +36,7 @@ def layout():
                 dmc.TabsList(
                     [
                         dmc.TabsTab("Allocation", value="allocation"),
+                        dmc.TabsTab("ETF Holdings", value="holdings"),
                         dmc.TabsTab("Risk & Performance", value="performance"),
                     ],
                     className="tabs-list-custom"
@@ -79,6 +80,33 @@ def layout():
                         ),
                     ]),
                     value="allocation"
+                ),
+
+                # ── Tab 1.5: ETF Holdings ─────────────────────────────────────
+                dmc.TabsPanel(
+                    html.Div([
+                        section(
+                            html.Div([
+                                chart_title("ETF Holdings Exposure", "holdings-desc"),
+                                html.Div(id="holdings-freshness-note", style={"fontSize": "12px", "color": "var(--t-muted)"})
+                            ], style={"display": "flex", "justifyContent": "space-between", "alignItems": "center", "marginBottom": "20px"}),
+                            html.Div([
+                                dcc.Loading(
+                                    dcc.Graph(
+                                        id="holdings-bubble-chart",
+                                        config={"displayModeBar": False},
+                                        style={"height": "600px"}
+                                    ),
+                                    custom_spinner=chart_skeleton(600)
+                                ),
+                                html.Div(
+                                    "Bubble size represents the blended portfolio exposure to each underlying company.",
+                                    style={"fontSize": "11px", "color": "var(--t-muted)", "marginTop": "12px", "textAlign": "center"}
+                                )
+                            ])
+                        )
+                    ]),
+                    value="holdings"
                 ),
 
                 # ── Tab 2: Performance & Risk ─────────────────────────────────

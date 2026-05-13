@@ -25,7 +25,7 @@ def register_callbacks(app) -> None:
         Input("watchlist-add-btn", "n_clicks"),
         Input({"type": "watchlist-remove-btn", "index": ALL}, "n_clicks"),
         Input("watchlist-input", "n_submit"),
-        Input("live-interval", "n_intervals"),
+        Input("price-interval", "n_intervals"),
         Input("startup-interval", "n_intervals"),
         State("watchlist-input", "value"),
         State("watchlist-store", "data"),
@@ -33,6 +33,11 @@ def register_callbacks(app) -> None:
     )
     def update_watchlist_store(n_add, n_remove_list, n_submit, n_interval, n_startup, ticker_input, current_data):
         triggered_id = ctx.triggered_id
+
+        # Skip periodic fetch if market is closed
+        from services.market.market_status import is_market_open
+        if triggered_id == "price-interval" and not is_market_open():
+            return dash.no_update, dash.no_update
 
         # 1. Add Ticker
         if triggered_id in ("watchlist-add-btn", "watchlist-input"):

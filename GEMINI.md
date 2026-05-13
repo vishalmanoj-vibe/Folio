@@ -14,6 +14,10 @@
 - **Prioritized Rendering**: Every rendering callback MUST include `Input("url", "pathname")` and return `dash.no_update` if the pathname does not match the callback's target page. This prevents background re-render flicker.
 - **Dynamic Layouts**: All pages MUST define layout as a callable function (`def layout():`) rather than a static variable to ensure proper component ID registration on every page load.
 - **Period Sync**: The `portfolio-store` refresh callback in `app.py` must sync with page-specific period stores (`positions-period-store`, `watchlist-period-store`, etc.) to ensure the global data fetch covers the maximum requested period.
+- **Three-Interval Pattern**: Standardized for all pages to ensure responsiveness:
+  - `startup-interval` (1.5s): Triggers the first data fetch after page paint.
+  - `heartbeat-interval` (30s): Drives real-time UI badges and status indicators.
+  - `price-interval` (300s): Performs heavy market data refreshes (MUST be gated by `is_market_open()`).
 - All pages MUST use the `create_header` component for navigation consistency
 - CSS vars only: var(--t-pri), var(--t-sec), var(--bg), var(--surface), var(--border), var(--green), var(--red)
 - Never hardcode hex colors in Python layout code
@@ -29,6 +33,9 @@
 - **Chart Fallbacks**: Every chart figure builder MUST implement a fallback to `create_empty_fig()` from `components.charts.helpers` if data is missing or invalid. AX axes/grid artifacts are prohibited.
 - **Chart Standardization**: All charts MUST use the `apply_standard_layout()` helper to ensure unified typography (Inter 10px), grid opacity, and hover label consistency.
 - **Fast Startup**: `app.py` MUST NOT perform blocking yfinance fetches during initialization. It must seed stores with disk snapshots and defer the first live refresh to a `startup-interval`.
+- **Measurement Hygiene**: `@profile` decorators from `memory_profiler` are strictly PROHIBITED in application code outside of `scripts/`. They must be removed immediately after debugging.
+- **Lazy Dependencies**: Heavy libraries (e.g. `prophet`, `playwright`) MUST be imported lazily inside the function body that requires them, never at the module level, to ensure fast application startup.
+- **Dynamic Sleep**: Background threads must use `time_until_market_open()` for sleep scheduling to prevent idle CPU cycles during weekends and market off-hours.
 
 ## Data conventions
 - Tickers stored without .AX in CSV; ticker_yf = ticker + ".AX" for yfinance
@@ -49,12 +56,20 @@
 - Bollinger Bands: Returns `(upper, mid, lower)` as a tuple.
 - Signals: `compute_signals()` returns a standardized dict with 10 keys: `ticker`, `rsi`, `rsi_label`, `macd`, `macd_signal`, `macd_label`, `bb_upper`, `bb_lower`, `bb_label`, `last_price`.
 
+## Scraper Architecture
+- **Three-Tier Architecture**: The application uses a robust scraper for ETF Holdings data (`holdings_fetcher.py`).
+  - Tier 1: Direct CSV/JSON API calls (`requests`).
+  - Tier 1.5: DuckDuckGo Search (DDGS) URL discovery with a 5s timeout.
+  - Tier 2: Headless WebKit Playwright fallback.
+- **Manual Setup Required**: The host system MUST manually install Playwright via `pip install playwright && playwright install webkit`. The application will not automatically install it.
+- **Strict Process Management**: All browser sessions MUST be wrapped in `try/finally` blocks to guarantee `browser.close()` and prevent memory leaks.
 ## When making changes
 - Read the relevant callback file before touching it — don't guess at existing IDs
 - Preserve all existing Dash component IDs exactly
 - If adding a new chart: add figure builder in components/charts/, wire in chart_callbacks.py
 - If adding a store: seed it at startup in app.py alongside txn-store
 - Run python app.py to verify — never assume the app still starts
+- **Performance**: Always update `docs/performance/` templates after running performance measurement phases.
 
 ## Do not
 - Never use position: fixed in Dash layouts
@@ -66,7 +81,7 @@
 - **Data Freshness**: The header status indicator MUST accurately reflect `is_market_open(include_auction=False)` with a pulsing green dot during trading and a static grey dot otherwise.
 
 ## Self-Improvement
-- After every task, evaluate if a new Rule or Skill should be added to the `.agent/` directory to prevent repeating mistakes or to codify successful new patterns.
+- After every task, evaluate if a new Rule or Skill should be added to the `.agents/` directory to prevent repeating mistakes or to codify successful new patterns.
 
 - **Rule-Based Engine** (`services/strategy_engine.py`): Single source of truth for signals. Never override with AI output.
 - **AI Assistant** (`services/ai_engine.py`): Sits *after* the engine. Explains and critiques signals only — does NOT generate them.

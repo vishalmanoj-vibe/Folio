@@ -46,11 +46,12 @@ def register_callbacks(app) -> None:
         import dash
         # FIX: prevent background recalculation when not on Intelligence page (robust to trailing slashes)
         if url_pathname.rstrip("/") != "/intelligence": return tuple([dash.no_update] * 5)
-        t_ = get_theme(theme or "dark")
+        # Use the directly triggered toggle value
         period = period_st or period_ui or "3mo"
-        
+        t_ = get_theme(theme or "dark")
         # UI toggle takes precedence during interaction; store provides session persistence
         pred_on = pred_ui if pred_ui is not None else pred_st
+        logger.info(f"Intelligence update triggered. pred_on={pred_on}, period={period}, path={url_pathname}")
 
         # ── Empty / loading state ─────────────────────────────────────────────
         no_data = (
@@ -148,18 +149,23 @@ def register_callbacks(app) -> None:
                     period or "3mo"
                 )
                 if pred_data:
+                    logger.info(f"Adding forecast trace to equity chart. Points: {len(pred_data['dates'])}")
                     p_dates = pred_data["dates"]
                     yhat = pred_data["yhat"]
                     yhat_l = pred_data["yhat_lower"]
                     yhat_u = pred_data["yhat_upper"]
 
                     chart_last_v = metrics.get("ret_values", [])[-1] if metrics.get("ret_values") else 0
-                    full_last_v = full_metrics.get("ret_values", [])[-1] if full_metrics.get("ret_values") else 0
-                    offset = chart_last_v - full_last_v
-
-                    yhat = [v + offset for v in yhat]
-                    yhat_l = [v + offset for v in yhat_l]
-                    yhat_u = [v + offset for v in yhat_u]
+                    fitted_last  = pred_data.get("fitted_last", 0)
+                    
+                    # The 'correction' anchors the forecast to the exact last point of the 
+                    # visible chart. This eliminates vertical 'jumps' caused by 
+                    # intraday price movements occurring after the forecast was cached.
+                    correction = chart_last_v - fitted_last
+ 
+                    yhat   = [v + correction for v in yhat]
+                    yhat_l = [v + correction for v in yhat_l]
+                    yhat_u = [v + correction for v in yhat_u]
 
                     from datetime import datetime, timedelta
                     p_dates_dt = [datetime.strptime(d, "%Y-%m-%d") for d in p_dates]

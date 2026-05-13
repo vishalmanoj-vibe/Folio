@@ -15,6 +15,8 @@ from datetime import datetime, timedelta
 
 logger = logging.getLogger(__name__)
 
+_PROPHET_AVAILABLE = None
+
 # Cache configuration
 CACHE_DIR = "data/cache"
 PREDICTIONS_CACHE_FILE = os.path.join(CACHE_DIR, "predictions.json")
@@ -23,92 +25,98 @@ def _ensure_cache_dir():
     if not os.path.exists(CACHE_DIR):
         os.makedirs(CACHE_DIR, exist_ok=True)
 
-def _generate_cache_key(dates: list, values: list, horizon_days: int) -> str:
+def _generate_cache_key(dates: list, horizon_str: str) -> str:
     """
     Generates a unique MD5 hash for a given dataset and forecast horizon.
-    
-    This ensures that if the portfolio data changes (e.g., new transactions 
-    or market moves), the cache is invalidated and a fresh forecast is computed.
+    Includes the current date to ensure at least one re-computation per day.
     """
     if not dates:
         return ""
-    # Use the last date and a hash of the values to ensure the key changes if data updates
-    data_str = f"{dates[-1]}_{len(values)}_{values[-1]}_{horizon_days}"
+    today_str = datetime.now().strftime("%Y-%m-%d")
+    # Using first date, last date, and count for stability
+    data_str = f"{dates[0]}_{dates[-1]}_{len(dates)}_{horizon_str}_{today_str}"
     return hashlib.md5(data_str.encode()).hexdigest()
 
 def get_forecast(dates: list, values: list, horizon_str: str) -> dict:
     """
     Generates a forward-looking return forecast using Facebook Prophet.
-
-    Model Parameters:
-    - **Interval Width**: 80% (provides a balanced uncertainty band).
-    - **Holidays**: Australian trading holidays are incorporated to improve seasonal accuracy.
-    - **Seasonality**: Weekly and Yearly seasonality enabled; Daily disabled for stock data.
-
-    Caching:
-    - Results are stored in `data/cache/predictions.json`.
-    - Cache is limited to the 10 most recent requests to prevent disk bloat.
-
-    Args:
-        dates: List of historical date strings (YYYY-MM-DD).
-        values: List of historical cumulative return values.
-        horizon_str: Forecast horizon (e.g., '90d', '1y', '5y').
-
-    Returns:
-        dict: Forecasted dates, yhat (median), yhat_lower, and yhat_upper series.
+    Optimized with stable caching, 24h staleness checks, and data downsampling.
     """
-    horizon_map = {
-        "90d": 90,
-        "6m": 182,
-        "1y": 365,
-        "2y": 730,
-        "5y": 1825
-    }
-    days = horizon_map.get(horizon_str, 90)
-    
-    if not dates or not values:
+    global _PROPHET_AVAILABLE
+    if _PROPHET_AVAILABLE is False:
         return {}
 
-    cache_key = _generate_cache_key(dates, values, days)
+    # 1. Validate inputs
+    if not dates or not values:
+        logger.warning(f"get_forecast called with empty data: dates={len(dates)}, values={len(values)}")
+        return {}
+
+    # 2. Generate stable cache key (no prices included)
+    cache_key = _generate_cache_key(dates, horizon_str)
     
-    # Try to load from cache
+    # 3. Check disk cache + Staleness check (24 hours)
     _ensure_cache_dir()
     if os.path.exists(PREDICTIONS_CACHE_FILE):
         try:
             with open(PREDICTIONS_CACHE_FILE, "r") as f:
                 cache = json.load(f)
                 if cache_key in cache:
-                    logger.info(f"Prediction cache hit for key {cache_key}")
-                    return cache[cache_key]
+                    result = cache[cache_key]
+                    computed_at_str = result.get("computed_at")
+                    if computed_at_str:
+                        computed_at = datetime.strptime(computed_at_str, "%Y-%m-%d %H:%M")
+                        # Return immediately if valid hit found within 24 hours and includes required metadata
+                        if (datetime.now() - computed_at).total_seconds() < 86400 and "fitted_last" in result:
+                            logger.info("Stable prediction cache hit (within 24h).")
+                            return result
         except Exception as e:
-            logger.warning(f"Failed to read prediction cache: {e}")
+            logger.warning(f"Failed to read predictions cache: {e}")
 
-    # Not in cache, compute it
-    logger.info(f"Computing new prediction for horizon {horizon_str} ({days} days)")
-    try:
-        # Check if prophet is installed
+    # 4. Only after cache miss — attempt Prophet import
+    if _PROPHET_AVAILABLE is None:
         try:
             from prophet import Prophet
+            _PROPHET_AVAILABLE = True
         except ImportError:
-            logger.error("Prophet not installed. Cannot compute predictions.")
+            _PROPHET_AVAILABLE = False
+            logger.error("Prophet not installed. return forecasting disabled.")
             return {}
 
-        # Prepare data for Prophet
+    # 5. Fit and compute
+    try:
+        from prophet import Prophet
+        horizon_map = {
+            "90d": 90,
+            "3mo": 90,
+            "6m": 182,
+            "6mo": 182,
+            "1y": 365,
+            "2y": 730,
+            "5y": 1825,
+            "max": 90 # Default for max view
+        }
+        days = horizon_map.get(horizon_str, 90)
+        
+        logger.info(f"Computing new prediction for horizon {horizon_str} ({days} days)")
+        
+        # Prepare dataframe for Prophet
         df = pd.DataFrame({
             "ds": pd.to_datetime(dates),
             "y": values
         })
         
-        # Determine seasonality based on data density
-        total_days = (df["ds"].max() - df["ds"].min()).days
-        n_points = len(df)
+        # Problem 3 — Downsample to max 500 points for speed
+        original_count = len(df)
+        if original_count > 500:
+            step = original_count // 500
+            df = df.iloc[::step].copy()
+            logger.info(f"Downsampled data from {original_count} to {len(df)} points for faster fitting.")
         
-        # Defensive check: if we have very little data, seasonality is just noise
-        # Prophet needs at least 2 full cycles for meaningful seasonality
+        # Determine seasonality based on data density (using full original length for logic)
+        total_days = (df["ds"].max() - df["ds"].min()).days
         use_yearly = total_days > 730  # 2 years for yearly
-        use_weekly = n_points > 14    # 2 weeks for weekly
+        use_weekly = original_count > 14    # 2 weeks for weekly
 
-        # Initialize and fit model
         model = Prophet(
             daily_seasonality=False,
             weekly_seasonality=use_weekly,
@@ -125,20 +133,15 @@ def get_forecast(dates: list, values: list, horizon_str: str) -> dict:
         # ── Continuity correction ──
         # Prophet fits a global trend which may not align perfectly with the very 
         # last historical data point. This creates a vertical "jump" in the chart.
-        # We calculate the 'drift' to anchor the forecast to the actual last price.
+        # We return 'fitted_last' so the UI can anchor the forecast to the actual last price.
         last_hist_date = df["ds"].iloc[-1]
-        actual_last = df["y"].iloc[-1]
+        fitted_last = 0.0
         
         # Find the model's fitted value for the last historical date
         fitted_last_row = forecast[forecast["ds"] == last_hist_date]
         if not fitted_last_row.empty:
-            fitted_last = fitted_last_row["yhat"].iloc[0]
-            drift = actual_last - fitted_last
-            
-            # Apply the drift offset to the entire future forecast series
-            forecast["yhat"] += drift
-            forecast["yhat_lower"] += drift
-            forecast["yhat_upper"] += drift
+            fitted_last = float(fitted_last_row["yhat"].iloc[0])
+            logger.info(f"Fitted last point: {fitted_last:.2f} (actual was {df['y'].iloc[-1]:.2f})")
 
         # Only return the future portion
         future_mask = forecast["ds"] > last_hist_date
@@ -149,17 +152,19 @@ def get_forecast(dates: list, values: list, horizon_str: str) -> dict:
             "yhat": res["yhat"].round(2).tolist(),
             "yhat_lower": res["yhat_lower"].round(2).tolist(),
             "yhat_upper": res["yhat_upper"].round(2).tolist(),
+            "fitted_last": round(fitted_last, 2),
             "computed_at": datetime.now().strftime("%Y-%m-%d %H:%M")
         }
 
-        # Save to cache
+        # 6. Save to cache
         try:
             cache = {}
             if os.path.exists(PREDICTIONS_CACHE_FILE):
                 with open(PREDICTIONS_CACHE_FILE, "r") as f:
                     cache = json.load(f)
             
-            if len(cache) > 10:
+            # Limited to 20 most recent requests
+            if len(cache) > 20:
                 oldest_key = list(cache.keys())[0]
                 cache.pop(oldest_key)
                 
