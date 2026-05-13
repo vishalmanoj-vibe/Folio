@@ -45,7 +45,7 @@ def register_callbacks(app) -> None:
         Input("positions-selected-ticker", "data"),
         Input("url", "pathname"),
         Input("signals-store", "data"),
-        prevent_initial_call=False,
+        prevent_initial_call=True,
     )
     def render_card_grid(port_data, selected_ticker, url_pathname, signals_store):
         import dash
@@ -168,7 +168,7 @@ def register_callbacks(app) -> None:
         Input("positions-selected-ticker", "data"),
         Input("portfolio-store", "data"),
         Input("url", "pathname"),
-        prevent_initial_call=False,
+        prevent_initial_call=True,
     )
     def render_detail_metrics(ticker, port_data, url_pathname):
         import dash
@@ -227,7 +227,7 @@ def register_callbacks(app) -> None:
         Input("positions-selected-ticker", "data"),
         Input("signals-store", "data"),
         Input("url", "pathname"),
-        prevent_initial_call=False,
+        prevent_initial_call=True,
     )
     def render_ai_insight(ticker, signals_store, url_pathname):
         import dash
@@ -273,6 +273,7 @@ def register_callbacks(app) -> None:
         Input("portfolio-store", "data"),
         Input("theme-store", "data"),
         Input("url", "pathname"),
+        prevent_initial_call=True,
     )
     def render_price_chart(ticker, period, port_data, theme, url_pathname):
         import dash
@@ -362,6 +363,7 @@ def register_callbacks(app) -> None:
         Input("positions-selected-ticker", "data"),
         Input("txn-store", "data"),
         Input("url", "pathname"),
+        prevent_initial_call=True,
     )
     def render_txn_table(ticker, history, url_pathname):
         import dash
@@ -396,6 +398,7 @@ def register_callbacks(app) -> None:
         Output("positions-period-btns", "children"),
         Input("positions-period-store", "data"),
         Input("url", "pathname"),
+        prevent_initial_call=True,
     )
     def render_period_btns(current_period, url_pathname):
         import dash
@@ -429,6 +432,7 @@ def register_callbacks(app) -> None:
         Output("positions-detail-title", "children"),
         Input("positions-selected-ticker", "data"),
         Input("url", "pathname"),
+        prevent_initial_call=True,
     )
     def update_detail_title(ticker, url_pathname):
         import dash
@@ -443,7 +447,7 @@ def register_callbacks(app) -> None:
         Input("positions-selected-ticker", "data"),
         Input("portfolio-store", "data"),
         Input("url", "pathname"),
-        prevent_initial_call=False
+        prevent_initial_call=True
     )
     def render_ticker_dividends(ticker, port_data, url_pathname):
         import dash
@@ -512,7 +516,7 @@ def register_callbacks(app) -> None:
          Output("positions-dividend-table", "children")],
         Input("portfolio-store", "data"),
         Input("url", "pathname"),
-        prevent_initial_call=False
+        prevent_initial_call=True
     )
     def render_portfolio_dividend_insights(port_data, url_pathname):
         import dash
