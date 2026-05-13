@@ -25,6 +25,7 @@ from components.charts.intel_drawdown import build_intel_drawdown_chart
 import plotly.graph_objects as go
 from components.ui_helpers import stat_card, alert_card
 from config.constants import get_theme
+from services.history_cache import get_latest_histories
 
 def register_callbacks(app) -> None:
     @app.callback(
@@ -82,11 +83,11 @@ def register_callbacks(app) -> None:
 
             # ── A. Risk metrics ───────────────────────────────────────────────────
             # Pre-compute full returns once to avoid double processing in B2
-            histories = port_data.get("histories", {})
-            holdings_list = port_data.get("holdings", [])
-            full_returns = portfolio_returns(histories, holdings_list)
+            from services.market.data_fetcher import fetch_portfolio_history
+            histories = fetch_portfolio_history(holdings, "max")
+            full_returns = portfolio_returns(histories, holdings)
 
-            metrics = compute_risk_metrics(port_data, period=period, returns=full_returns)
+            metrics = compute_risk_metrics(port_data, period=period, returns=full_returns, histories=histories)
             vol     = metrics["vol"]
             sharpe  = metrics["sharpe"]
             max_dd  = metrics["max_dd"]

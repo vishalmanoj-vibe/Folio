@@ -11,6 +11,7 @@ from dash import Input, Output, State, ALL, html
 import dash_mantine_components as dmc
 
 from config.constants import COLORS, get_theme
+from services.history_cache import get_latest_histories
 from components.charts import (
     build_pnl_history_figure,
     build_price_chart_figure,
@@ -73,7 +74,27 @@ def register_callbacks(app) -> None:
         if not data or "holdings" not in data or not data["holdings"]:
             return create_empty_fig("No holdings data available", height=450, theme_tokens=t_)
 
-        return build_pnl_history_figure(data["holdings"], mode, period, t_, selected)
+        # ── Lazy Fetch & P&L Injection ──
+        from services.market.data_fetcher import fetch_portfolio_history, compute_tranche_pnl
+        import pandas as pd
+        
+        holdings = data["holdings"]
+        # Fetch histories for all tickers needed
+        histories = fetch_portfolio_history(holdings, period)
+        
+        # Populate tranches with P&L series for the chart builder
+        for h in holdings:
+            ticker = h["ticker"]
+            history_list = histories.get(ticker, [])
+            if history_list:
+                df_h = pd.DataFrame(history_list)
+                if not df_h.empty:
+                    df_h["Date"] = pd.to_datetime(df_h["Date"])
+                    close_s = df_h.set_index("Date")["Close"]
+                    # compute_tranche_pnl expects a Series with DatetimeIndex
+                    h["tranches"] = compute_tranche_pnl(close_s, h.get("buy_tranches", []))
+
+        return build_pnl_history_figure(holdings, mode, period, t_, selected)
 
     # ── Normalised price history ──────────────────────────────────────────────
     @app.callback(
@@ -89,10 +110,16 @@ def register_callbacks(app) -> None:
         if pathname.rstrip("/") != "/analytics": return dash.no_update
         t_ = get_theme(theme or "dark")
         period = period or "max"
-        if not data or "histories" not in data:
+        if not data or "holdings" not in data:
+            return create_empty_fig("No portfolio data available", height=400, theme_tokens=t_)
+            
+        from services.market.data_fetcher import fetch_portfolio_history
+        histories = fetch_portfolio_history(data["holdings"], period)
+        if not histories:
             return create_empty_fig("No price history available", height=400, theme_tokens=t_)
+            
         holdings = data.get("holdings", [])
-        return build_price_chart_figure(data["histories"], period, t_, holdings)
+        return build_price_chart_figure(histories, period, t_, holdings)
 
     # ── Portfolio Treemap ─────────────────────────────────────────────────────
     @app.callback(
@@ -146,7 +173,9 @@ def register_callbacks(app) -> None:
         if not data or "holdings" not in data or not data["holdings"]:
             return html.P("No holdings data available", style={"color": "var(--t-sec)", "fontSize": "13px"})
 
-        metrics = compute_risk_metrics(data, period=(period or "max"))
+        from services.market.data_fetcher import fetch_portfolio_history
+        histories = fetch_portfolio_history(data["holdings"], period or "max")
+        metrics = compute_risk_metrics(data, period=(period or "max"), histories=histories)
         ticker_vols = metrics.get("ticker_vols", {})
         
         if not ticker_vols:
@@ -204,9 +233,15 @@ def register_callbacks(app) -> None:
         if pathname.rstrip("/") != "/analytics": return dash.no_update
         t_ = get_theme(theme or "dark")
         period = period or "max"
-        if not data or "histories" not in data:
+        
+        if not data or "holdings" not in data:
+            return create_empty_fig("No holdings found", height=380, theme_tokens=t_)
+
+        from services.market.data_fetcher import fetch_portfolio_history
+        histories = fetch_portfolio_history(data["holdings"], period)
+        if not histories:
             return create_empty_fig("No shared history found", height=380, theme_tokens=t_)
-        return build_corr_figure(data["histories"], period, t_)
+        return build_corr_figure(histories, period, t_)
 
     # ── ETF Holdings Bubble Chart ─────────────────────────────────────────────
     @app.callback(

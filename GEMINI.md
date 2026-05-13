@@ -36,6 +36,11 @@
 - **Measurement Hygiene**: `@profile` decorators from `memory_profiler` are strictly PROHIBITED in application code outside of `scripts/`. They must be removed immediately after debugging.
 - **Lazy Dependencies**: Heavy libraries (e.g. `prophet`, `playwright`) MUST be imported lazily inside the function body that requires them, never at the module level, to ensure fast application startup.
 - **Dynamic Sleep**: Background threads must use `time_until_market_open()` for sleep scheduling to prevent idle CPU cycles during weekends and market off-hours.
+- **Memory Hygiene**: 
+  - `portfolio-store` MUST NEVER contain historical price arrays. It only stores holdings metadata and live metrics.
+  - `fetch_live()` returns only `{holdings, fetched_at}`. Histories are excluded to keep JSON payloads < 20KB.
+  - All history access MUST go through `HistoryRepository` (SQLite) or `fetch_ticker_history()` (Lazy).
+  - Heavy DataFrames (e.g. `multi_full` from yfinance) MUST NOT be stored in long-term cache. Extract compact `pd.Series` and discard the raw DataFrame immediately.
 
 ## Data conventions
 - Tickers stored without .AX in CSV; ticker_yf = ticker + ".AX" for yfinance

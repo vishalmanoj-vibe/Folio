@@ -386,16 +386,16 @@ def per_ticker_volatility(histories: dict) -> dict[str, float]:
         for col in ret_df.columns
     }
 
-def compute_risk_metrics(port_data: dict, period: str = "max", returns: pd.Series | None = None) -> dict:
+def compute_risk_metrics(port_data: dict, period: str = "max", returns: pd.Series | None = None, histories: dict | None = None) -> dict:
     empty = {
         "vol": None, "sharpe": None, "max_dd": None, "current_dd": None,
         "ticker_vols": {}, "dd_dates": [], "dd_values": [],
         "ret_dates": [], "ret_values": [], "n_days": 0,
     }
     if not port_data: return empty
-    histories = port_data.get("histories", {})
+    histories = histories or port_data.get("histories", {})
     holdings  = port_data.get("holdings",  [])
-    if not histories or not holdings: return empty
+    if (not histories and returns is None) or not holdings: return empty
     
     port_ret = returns if returns is not None else portfolio_returns(histories, holdings)
     if port_ret.empty: return empty

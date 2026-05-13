@@ -147,25 +147,29 @@ def compute_tranche_pnl(
         shares (float), buy_price (float), buy_date (str)
     """
     result: list[dict] = []
+    if close_series.empty:
+        return result
+
+    has_time = (close_series.index.hour != 0).any() or (close_series.index.minute != 0).any()
+    date_fmt = "%Y-%m-%d %H:%M:%S" if has_time else "%Y-%m-%d"
 
     for tr in buy_tranches:
         buy_date = pd.to_datetime(tr["date"])
-        mask = close_series.index >= buy_date
-        if not mask.any():
+        sub = close_series[close_series.index >= buy_date]
+        if sub.empty:
             logger.debug(
                 "Tranche %s @ %s: no history on or after buy date",
                 tr.get("ticker", "?"), tr["date"],
             )
             continue
 
-        sub   = close_series[mask].copy()
         pnl_s = (sub - tr["price"]) * tr["shares"]
         pct_s = (sub - tr["price"]) / tr["price"] * 100
 
         result.append({
-            "dates":     [d.strftime("%Y-%m-%d %H:%M:%S") if d.hour != 0 or d.minute != 0 else d.strftime("%Y-%m-%d") for d in sub.index],
-            "pnl":       [round(v, 2) for v in pnl_s.tolist()],
-            "pct":       [round(v, 2) for v in pct_s.tolist()],
+            "dates":     sub.index.strftime(date_fmt).tolist(),
+            "pnl":       pnl_s.round(2).tolist(),
+            "pct":       pct_s.round(2).tolist(),
             "shares":    float(tr["shares"]),
             "buy_price": float(tr["price"]),
             "buy_date":  tr["date"],

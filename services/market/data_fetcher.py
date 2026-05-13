@@ -224,6 +224,7 @@ def _extract_col(bulk_df: pd.DataFrame, ticker_yf: str, col_name: str) -> pd.Ser
     for cand in candidates:
         if cand in cols:
             return bulk_df[cand].dropna()
+    
 
     return pd.Series(dtype=float)
 
@@ -401,7 +402,7 @@ def fetch_benchmarks(period: str = "max") -> dict[str, list[dict]]:
     return result
 
 
-def _enrich_single_holding(h: dict, multi_live: pd.DataFrame, multi_full: pd.DataFrame, multi_period: pd.DataFrame, hist_period: str) -> tuple[dict, list[dict] | None]:
+def _enrich_single_holding(h: dict, multi_live: pd.DataFrame, multi_period: pd.DataFrame, hist_period: str) -> tuple[dict, list[dict] | None]:
     """
     Helper to enrich a single holding with market data, dividends, and P&L.
     Designed to run in a thread pool to parallelize I/O-bound metadata fetching.
@@ -477,8 +478,15 @@ def _enrich_single_holding(h: dict, multi_live: pd.DataFrame, multi_full: pd.Dat
                     close_p = df_combined["Close"]
 
         # 2. Market Metrics
-        close_f = _extract_col(multi_full, ticker_yf, "Close")
-        div_f   = _extract_col(multi_full, ticker_yf, "Dividends")
+        close_f = get_cache(f"close_series_{ticker_yf}")
+        div_f   = get_cache(f"dividends_{ticker_yf}")
+        
+        if close_f is None or div_f is None:
+            # Fallback for safety - should be rare if fetch_live is working correctly
+            logger.debug(f"Cache miss for {ticker_yf} Close/Div in enrich loop")
+            close_f = pd.Series(dtype=float)
+            div_f = pd.Series(dtype=float)
+
         if not close_f.empty:
             close_f.index = normalise_tz(pd.to_datetime(close_f.index))
 
@@ -517,12 +525,8 @@ def _enrich_single_holding(h: dict, multi_live: pd.DataFrame, multi_full: pd.Dat
         div_f_clean = div_f[div_f > 0]
         last_div_amount = float(div_f_clean.iloc[-1]) if not div_f_clean.empty else 0.0
 
-        tranche_data = []
-        if not close_p.empty:
-            tranche_data = compute_tranche_pnl(close_p, h.get("buy_tranches", []))
-        elif not close_f.empty and hist_period != "1d":
-            tranche_data = compute_tranche_pnl(close_f, h.get("buy_tranches", []))
-
+        # Tranche P&L lists are no longer returned by default to save memory.
+        # They should be computed lazily in the chart callbacks if needed.
         enriched_h = {
             **h,
             "last_price":     round(last_price, 3),
@@ -542,7 +546,7 @@ def _enrich_single_holding(h: dict, multi_live: pd.DataFrame, multi_full: pd.Dat
             "div_frequency":  div_frequency,
             "last_div_amount": round(last_div_amount, 4),
             "last_div_date":   div_f.index[-1].strftime("%Y-%m-%d") if not div_f.empty else None,
-            "tranches":       tranche_data,
+            "tranches":       h.get("buy_tranches", []), # Keep base tranche data
         }
         
         # 3. Upcoming Dividends (expensive I/O - using TTL cache)
@@ -594,9 +598,47 @@ def _enrich_single_holding(h: dict, multi_live: pd.DataFrame, multi_full: pd.Dat
 
 def get_full_history_cache(holdings: list[dict]) -> pd.DataFrame:
     """
-    Helper to reconstruct the exact cache key for the full OHLC history
-    and retrieve it from the server-side cache.
+    Helper to reconstruct a minimal DataFrame with 'Close' columns 
+    from the compact server-side cache.
+    Note: This is a reconstructed DataFrame, not the original bulk download.
     """
+    if not holdings:
+        return pd.DataFrame()
+        
+    series_dict = {}
+    for h in holdings:
+        ticker_yf = h["ticker_yf"]
+        s = get_cache(f"close_series_{ticker_yf}")
+        if s is not None and not s.empty:
+            # Reconstruct MultiIndex structure (Close, Ticker)
+            series_dict[("Close", ticker_yf)] = s
+            
+    if not series_dict:
+        return pd.DataFrame()
+        
+    df = pd.DataFrame(series_dict)
+    df.columns = pd.MultiIndex.from_tuples(df.columns)
+    return df
+
+
+def fetch_portfolio_history(holdings: list[dict], period: str) -> dict:
+    """
+    Fetch history for all holdings in a portfolio concurrently.
+    Returns a dict mapping ticker -> history list of dicts.
+    """
+    histories = {}
+    if not holdings:
+        return histories
+        
+    with ThreadPoolExecutor(max_workers=min(len(holdings), 10)) as executor:
+        futures = {executor.submit(fetch_ticker_history, h["ticker"], period): h["ticker"] for h in holdings}
+        for future in futures:
+            ticker = futures[future]
+            try:
+                histories[ticker] = future.result()
+            except Exception as e:
+                logger.error(f"Batch fetch failed for {ticker}: {e}")
+    return histories
     if not holdings:
         return pd.DataFrame()
         
@@ -612,165 +654,184 @@ def get_full_history_cache(holdings: list[dict]) -> pd.DataFrame:
 
 
 
-def fetch_live(holdings: list[dict], hist_period: str = "max", record_snapshots: bool = True, use_disk_history: bool = False) -> dict:
+def fetch_ticker_history(ticker: str, period: str) -> list[dict]:
     """
-    Fetch live prices, history, dividends and per-tranche P&L for all holdings.
+    Standalone lazy fetcher for ticker history.
+    Checks SQLite cache first; fetches from yfinance if stale or missing.
+    """
+    from data.repository import HistoryRepository
+    repo = HistoryRepository()
+    
+    ticker_upper = ticker.upper()
+    ticker_yf = f"{ticker_upper}.AX" if "." not in ticker_upper else ticker_upper
+    
+    # 1. Check if stale or missing (now depth-aware)
+    if repo.is_stale(ticker_upper, requested_period=period):
+        logger.info(f"History stale/missing for {ticker_upper} (period={period}). Fetching from yfinance.")
+        try:
+            # Normalize period for yfinance
+            yf_period = period if period != "Since purchase" else "max"
+            
+            # Fetch slightly more than needed to ensure overlap/continuity
+            df = _download_with_retry([ticker_yf], period=yf_period)
+            if not df.empty:
+                # Extract OHLC
+                ohlc_cols = ["Open", "High", "Low", "Close", "Volume"]
+                dfs = []
+                for col in ohlc_cols:
+                    s = _extract_col(df, ticker_yf, col)
+                    if not s.empty:
+                        s.name = col
+                        dfs.append(s)
+                
+                if dfs:
+                    df_combined = pd.concat(dfs, axis=1).dropna(subset=["Close"])
+                    if not df_combined.empty:
+                        df_combined.index = normalise_tz(pd.to_datetime(df_combined.index))
+                        df_combined.index.name = "Date"
+                        records = df_combined.reset_index().to_dict("records")
+                        # Format Date as string for repository
+                        for r in records:
+                            r["Date"] = r["Date"].strftime("%Y-%m-%d %H:%M:%S")
+                        
+                        repo.save_history(ticker_upper, records, period=yf_period)
+        except Exception as e:
+            logger.error(f"Lazy fetch failed for {ticker_upper}: {e}")
 
-    Live price strategy (no fast_info):
-    ─────────────────────────────────────
-    fast_info.last_price internally calls tk.history(period="1y") making it
-    slow and unreliable. Instead we do a single bulk yf.download(period="1d")
-    for all tickers which returns today's Open/High/Low/Close and yesterday's
-    Close (as the previous row) — cheap, accurate, and one network call.
+    # 2. Return from SQLite
+    from_date = get_period_cutoff(period)
+    from_date_str = from_date.strftime("%Y-%m-%d") if from_date else None
+        
+    return repo.load_history(ticker_upper, from_date=from_date_str)
+
+
+def fetch_live(holdings: list[dict], record_snapshots: bool = True) -> tuple[dict, dict, str]:
+    """
+    Fetch live prices, dividends and per-tranche P&L for all holdings.
+    History is no longer fetched globally; use fetch_ticker_history() lazily.
     """
     if not holdings:
-        return {}
+        return {}, {}, ""
 
     tickers_yf  = [h["ticker_yf"] for h in holdings]
     tickers_str = " ".join(sorted(tickers_yf))
-
-    # Normalize period string (yfinance is case-sensitive, prefers lowercase)
-    hist_period = hist_period.lower()
     
-    # Outer cache key includes tickers so adding/removing a holding busts it
+    # Outer cache key for the metrics (holdings, P&L)
     holdings_sig = "_".join(
         f"{h['ticker']}{h['total_shares']:.4f}" 
         for h in sorted(holdings, key=lambda x: x['ticker'])
     )
-    # FIX: include share counts in cache key to bust on new transactions
-    cache_key = f"market_data_v2_{hist_period}_{holdings_sig}"
+    cache_key = f"market_data_v3_{holdings_sig}"
     cached = get_cache(cache_key)
+    
     if cached:
-        # ── Record snapshots even on cache hits for continuity ────────────────
         if record_snapshots:
             try:
                 record_snapshot(cached["holdings"])
-                if hist_period == "1d":
-                    backfill_map = {}
-                    for ticker, hist_list in cached.get("histories", {}).items():
-                        if hist_list:
-                            df_h = pd.DataFrame(hist_list)
-                            if not df_h.empty and "Date" in df_h.columns and "Close" in df_h.columns:
-                                backfill_map[ticker] = df_h.set_index("Date")["Close"]
-                    if backfill_map:
-                        start_limit = get_previous_trading_session_start()
-                        backfill_session_cache(backfill_map, start_limit=start_limit)
             except Exception as e:
                 logger.error("Cached snapshot recording failed: %s", e)
 
-        # Return a copy with fresh timestamp so Dash detects the change
         res = cached.copy()
         res["fetched_at"] = datetime.now().strftime("%H:%M:%S")
-        return res
+        return res, {}, holdings_sig
 
     # ── A. Live quotes: single bulk 5-day download ────────────────────────────
-    # Strategy:
-    # Instead of slow per-ticker calls, we download the last 5 days for ALL tickers.
-    # - iloc[-1] = Today's current price (or most recent close).
-    # - iloc[-2] = Yesterday's close (prev_session).
-    # This ensures accuracy even during ASX off-hours and is significantly faster 
-    # than individual 'fast_info' calls which trigger separate network requests.
     logger.info("Fetching live quotes (5d) for %d tickers", len(tickers_yf))
     multi_live = _download_with_retry(tickers_yf, period="5d")
 
-    # ── B. Full history: cached 1 hour — used for dividends + tranche P&L ────
-    full_cache_key = f"bulk_full_{tickers_str.replace(' ', '_')}"
-    multi_full = get_cache(full_cache_key)
-    if multi_full is None:
+    # ── B. Full history: extracted to compact series ──────────────────────────
+    # We no longer cache the bulk DataFrame. We extract Close and Dividends 
+    # immediately and discard the rest.
+    needs_fetch = False
+    for t_yf in tickers_yf:
+        if get_cache(f"close_series_{t_yf}") is None or get_cache(f"dividends_{t_yf}") is None:
+            needs_fetch = True
+            break
+            
+    if needs_fetch:
         logger.info("Fetching full history (max) for %d tickers", len(tickers_yf))
         multi_full = _download_with_retry(tickers_yf, period="max", actions=True)
         if not multi_full.empty:
-            set_cache(full_cache_key, multi_full, ttl=3600)
+            for t_yf in tickers_yf:
+                close_s = extract_close(multi_full, t_yf)
+                div_s = extract_dividends(multi_full, t_yf)
+                
+                # Cache compact Series
+                if not close_s.empty:
+                    set_cache(f"close_series_{t_yf}", close_s, ttl=3600)
+                if not div_s.empty:
+                    # Filter for non-zero dividends to save even more space
+                    div_s = div_s[div_s > 0]
+                    set_cache(f"dividends_{t_yf}", div_s, ttl=21600) # 6 hours for dividends
+            
+            # Explicitly clear multi_full reference
+            del multi_full
 
-    # ── C. Chart history: the user-selected period ────────────────────────────
-    if hist_period == "max" and not multi_full.empty:
-        # Reuse multi_full if possible to save a redundant network call
-        multi_period = multi_full
-    elif hist_period == "1d":
-        # Request 2d to include the final hour of the previous trading day
-        multi_period = _download_with_retry(tickers_yf, period="2d", interval="5m")
-    else:
-        if use_disk_history:
-            multi_period = pd.DataFrame()
-        else:
-            multi_period = _download_with_retry(tickers_yf, period=hist_period)
-
-    enriched:  list[dict] = []
-    histories: dict       = {}
-
-    # Parallelize the enrichment process (I/O bound due to get_etf_name and tk.info)
+    # ── C. Enrichment ─────────────────────────────────────────────────────────
+    enriched: list[dict] = []
+    
+    # Side Effect: Persist 5-day live OHLC to SQLite
+    from data.repository import HistoryRepository
+    repo = HistoryRepository()
+    
     with ThreadPoolExecutor(max_workers=10) as executor:
+        # Pass multi_live as the period data for enrichment when period="1d" (dummy here)
         futures = [
-            executor.submit(_enrich_single_holding, h, multi_live, multi_full, multi_period, hist_period)
+            executor.submit(_enrich_single_holding, h, multi_live, pd.DataFrame(), "max")
             for h in holdings
         ]
         results = [f.result() for f in futures]
     
-    if use_disk_history:
-        from data.watchlist_repository import WatchlistRepository
-        repo = WatchlistRepository()
-        today_str = datetime.now().strftime("%Y-%m-%d")
-        for i, (h_enriched, _) in enumerate(results):
-            ticker = h_enriched["ticker"]
-            disk_history = repo.load_history(ticker)
-            
-            if not disk_history:
-                repo.fetch_and_save_history(ticker)
-                disk_history = repo.load_history(ticker)
-                
-            last_price = h_enriched.get("last_price")
-            
-            if disk_history and last_price:
-                last_entry_date = disk_history[-1]["Date"]
-                if last_entry_date != today_str:
-                    disk_history.append({"Date": today_str, "Close": last_price})
-                    repo.save_history(ticker, disk_history)
-                else:
-                    disk_history[-1]["Close"] = last_price
-                    repo.save_history(ticker, disk_history)
-            
-            results[i] = (h_enriched, disk_history)
-    
-    for h_enriched, history_data in results:
+    for h_enriched, _ in results:
         enriched.append(h_enriched)
-        if history_data:
-            histories[h_enriched["ticker"]] = history_data
+        
+        # Save live OHLC records as a side effect
+        try:
+            ticker_yf = h_enriched["ticker_yf"]
+            ticker_short = h_enriched["ticker"]
+            
+            # Extract OHLC for this ticker from multi_live
+            ohlc_cols = ["Open", "High", "Low", "Close", "Volume"]
+            ticker_dfs = []
+            for col in ohlc_cols:
+                s = _extract_col(multi_live, ticker_yf, col)
+                if not s.empty:
+                    s.name = col
+                    ticker_dfs.append(s)
+            
+            if ticker_dfs:
+                df_ticker = pd.concat(ticker_dfs, axis=1).dropna(subset=["Close"])
+                if not df_ticker.empty:
+                    # Convert index (Timestamp) to string for HistoryRepository
+                    df_ticker.index = pd.to_datetime(df_ticker.index)
+                    df_ticker.index.name = "Date"
+                    records = df_ticker.reset_index().to_dict("records")
+                    for r in records:
+                        if isinstance(r["Date"], pd.Timestamp):
+                            r["Date"] = r["Date"].strftime("%Y-%m-%d %H:%M:%S")
+                    # Save to SQLite
+                    repo.save_history(ticker_short, records, period="5d")
+        except Exception as e:
+            logger.error(f"Failed to save live side-effect history for {h_enriched['ticker']}: {e}")
 
     result = {
         "holdings":   enriched,
-        "histories":  histories,
         "fetched_at": datetime.now().strftime("%H:%M:%S"),
     }
     
-    # ── Record snapshots for 'Today' chart persistence ───────────────────────
+    # ── Record snapshot for P&L tracking ──────────────────────────────────────
     if record_snapshots:
         try:
-            # Always record the latest point for immediate continuity
             record_snapshot(enriched)
-            
-            # Additionally backfill if we have intraday history for the 'Today' chart
-            if hist_period == "1d":
-                backfill_map = {}
-                for ticker, hist_list in histories.items():
-                    if hist_list:
-                        df_h = pd.DataFrame(hist_list)
-                        if not df_h.empty and "Date" in df_h.columns and "Close" in df_h.columns:
-                            backfill_map[ticker] = df_h.set_index("Date")["Close"]
-                
-                if backfill_map:
-                    # Capture from the last hour of the previous trading day
-                    start_limit = get_previous_trading_session_start()
-                    backfill_session_cache(backfill_map, start_limit=start_limit)
         except Exception as PERSIST_EXC:
-            logger.error("Snapshot/Backfill recording failed: %s", PERSIST_EXC)
+            logger.error("Snapshot recording failed: %s", PERSIST_EXC)
     
     clear_old_caches()
-
     set_cache(cache_key, result, ttl=CACHE_TTL_SECONDS)
     
     # ── Save snapshot for fast startup ───────────────────────────────────────
-    if hist_period == "max" and result.get("holdings"):
+    if result.get("holdings"):
         save_portfolio_snapshot(result)
         
-    logger.info("Done — %d enriched, %d with history", len(enriched), len(histories))
-    return result
+    logger.info("Done — %d enriched (no global history)", len(enriched))
+    return result, {}, holdings_sig

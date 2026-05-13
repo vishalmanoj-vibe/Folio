@@ -76,6 +76,7 @@ except Exception as e:
 from core.engine import build_holdings
 from services.market.data_fetcher import fetch_live, load_portfolio_snapshot
 from services.market.session_cache import clear_old_caches
+from services.history_cache import set_histories
 from services.research_memory import run_startup_maintenance
 
 # ── Maintenance ──────────────────────────────────────────────────────────────
@@ -115,24 +116,27 @@ if INITIAL_WATCHLIST:
             for i in INITIAL_WATCHLIST
         ]
         # Fast load from disk cache - zero network calls
+        from data.repository import HistoryRepository
+        h_repo = HistoryRepository()
         disk_histories = {}
         for item in INITIAL_WATCHLIST:
             ticker = item["ticker"]
-            cached = watchlist_repo.load_history(ticker)
+            cached = h_repo.load_history(ticker)
             if cached:
                 disk_histories[ticker] = cached
 
         # Initialize with disk data; the background interval will populate live prices
         INITIAL_WATCHLIST_DATA = {
             "holdings": [{"ticker": h["ticker"], "last_price": 0.0} for h in watchlist_holdings],
-            "histories": disk_histories,
             "fetched_at": "Loading..."
         }
+        if disk_histories:
+            set_histories("startup_watchlist", disk_histories)
         watchlist_repo.refresh_all_histories()
         logger.info(f"Watchlist seeded from cache ({len(disk_histories)} tickers)")
     except Exception as e:
         logger.warning(f"Initial watchlist fetch failed: {e}")
-        INITIAL_WATCHLIST_DATA = {"holdings": [], "histories": {}}
+        INITIAL_WATCHLIST_DATA = {"holdings": [], "fetched_at": "Error"}
 
 # Note: Weekly report is now manually generated via the Reports page.
 
@@ -215,10 +219,15 @@ app.layout = dmc.MantineProvider(
 
 
 # ── Refresh logic helpers ─────────────────
-def _perform_refresh(period):
+def _perform_refresh(period="max"):
     history  = repo.load_transactions()
     holdings = build_holdings(history)
-    portfolio_data = fetch_live(holdings, period) if holdings else {"holdings": [], "histories": {}}
+    if holdings:
+        # fetch_live no longer returns histories or requires a period.
+        portfolio_data, histories, sig = fetch_live(holdings, record_snapshots=True)
+        set_histories(sig, histories)
+    else:
+        portfolio_data = {"holdings": [], "fetched_at": time.strftime("%H:%M:%S")}
     return history, portfolio_data
 
 # ── SINGLE OWNER: txn-store ───────────────────────────────────────────────────
@@ -288,21 +297,13 @@ def update_portfolio_store(txn_data, p1, p2, p3, p4, p5, n_price, n_start, n_btn
 
     try:
         # Determine the maximum period requested across all pages to ensure history is available
-        # Order of preference: 'max' > '5y' > '2y' > '1y' > 'ytd' > '6mo' > '3mo' > '1mo' > '1d'
         period_priority = {
             "max": 100, "5y": 95, "2y": 90, "1y": 80, 
             "ytd": 70, "6mo": 65, "3mo": 60, "1mo": 40, "1d": 20
         }
         requested = [p1, p2, p3, p4, p5]
-        
-        # Filter None and get weights
         weights = [(period_priority.get(p, 0), p) for p in requested if p]
-        
-        if weights:
-            # Sort by weight descending and pick the top period string
-            period = sorted(weights, key=lambda x: x[0], reverse=True)[0][1]
-        else:
-            period = "max"
+        period = sorted(weights, key=lambda x: x[0], reverse=True)[0][1] if weights else "max"
 
         _, data = _perform_refresh(period)
         return data

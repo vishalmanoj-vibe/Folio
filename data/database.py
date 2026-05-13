@@ -87,9 +87,36 @@ def init_db():
             )
         ''')
         
-        # 6. Indexes
+        # 6. Price History (OHLC)
+        conn.execute('''
+            CREATE TABLE IF NOT EXISTS price_history (
+                ticker      TEXT NOT NULL,
+                date        TEXT NOT NULL,
+                open_price  REAL,
+                high_price  REAL,
+                low_price   REAL,
+                close_price REAL NOT NULL,
+                volume      REAL,
+                fetched_at  TEXT NOT NULL,
+                PRIMARY KEY (ticker, date)
+            )
+        ''')
+        
+        # 7. History Metadata
+        conn.execute('''
+            CREATE TABLE IF NOT EXISTS history_meta (
+                ticker       TEXT PRIMARY KEY,
+                first_date   TEXT,
+                last_date    TEXT,
+                last_fetched TEXT,
+                period       TEXT
+            )
+        ''')
+        
+        # 8. Indexes
         conn.execute("CREATE INDEX IF NOT EXISTS idx_etf_meta_ticker ON etf_metadata(ticker)")
         conn.execute("CREATE INDEX IF NOT EXISTS idx_watchlist_date ON watchlist(added_date)")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_history_ticker_date ON price_history(ticker, date)")
         
         conn.commit()
         _DB_INITIALIZED = True

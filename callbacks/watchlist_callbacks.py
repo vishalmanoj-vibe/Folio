@@ -5,6 +5,7 @@ from dash import Input, Output, State, html, dcc, ctx, ALL
 import plotly.graph_objects as go
 from data.watchlist_repository import WatchlistRepository
 from services.market.data_fetcher import fetch_live, get_etf_name
+from services.history_cache import set_histories, get_latest_histories
 from config.constants import GREEN, RED
 
 import pandas as pd
@@ -73,7 +74,7 @@ def register_callbacks(app) -> None:
         ]
         
         try:
-            live_data = fetch_live(holdings, "1y", record_snapshots=False, use_disk_history=True)
+            live_data, _, _ = fetch_live(holdings, record_snapshots=False)
             triggered = ctx.triggered_id
             clear = "" if triggered in ("watchlist-add-btn", "watchlist-input") else dash.no_update
             return live_data, clear
@@ -265,33 +266,15 @@ def register_callbacks(app) -> None:
         if pathname.rstrip("/") != "/watchlist":
             return create_empty_fig("", height=300, theme_tokens=t_), "Price Performance"
 
-        if not data or "histories" not in data or not data["histories"]:
-            return create_empty_fig("Fetching price history...", height=300, theme_tokens=t_), "Price Performance"
-
-        if not selected_ticker or selected_ticker not in data["histories"]:
-            return create_empty_fig("Select a ticker to view history", height=300, theme_tokens=t_), "Price Performance"
-
-        history = data["histories"][selected_ticker]
+        # Lazy Fetch
+        from services.market.data_fetcher import fetch_ticker_history
+        history = fetch_ticker_history(selected_ticker, period or "1y")
         
         if not history:
             return create_empty_fig(f"No historical data available for {selected_ticker}", height=300, theme_tokens=t_), "Price Performance"
 
         df = pd.DataFrame(history)
         df["Date"] = pd.to_datetime(df["Date"])
-
-        # Filter by selected period
-        period = period or "1y"
-        from datetime import timedelta
-        period_map = {
-            "1mo": timedelta(days=30),
-            "6mo": timedelta(days=182),
-            "1y":  timedelta(days=365),
-            "5y":  timedelta(days=1825),
-        }
-        if period in period_map:
-            cutoff = pd.Timestamp.now() - period_map[period]
-            df = df[df["Date"] >= cutoff]
-        # "max" falls through with no filter — all records shown
 
         if df.empty:
             return create_empty_fig(f"No data for {selected_ticker} in this period", height=300, theme_tokens=t_), f"Price Performance: {selected_ticker}"
@@ -453,7 +436,8 @@ def register_callbacks(app) -> None:
 
         # Generate Tech Signals
         tech_signals = None
-        history = data.get("histories", {}).get(selected_ticker, [])
+        from services.market.data_fetcher import fetch_ticker_history
+        history = fetch_ticker_history(selected_ticker, "1y")
         if history:
             tech_signals = tech_signal_badges(selected_ticker, history)
 

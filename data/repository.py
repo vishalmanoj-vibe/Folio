@@ -1,5 +1,7 @@
 # data/repository.py
 import logging
+from datetime import datetime, timedelta
+import pandas as pd
 from data.database import get_connection, init_db
 
 logger = logging.getLogger(__name__)
@@ -119,5 +121,185 @@ class PortfolioRepository:
                 (ticker, name, category, market, name, category, market)
             )
             conn.commit()
+        finally:
+            conn.close()
+
+
+class HistoryRepository:
+    """
+    Manages persistence of OHLC price histories in SQLite.
+    """
+    def __init__(self):
+        init_db()
+
+    def save_history(self, ticker: str, records: list[dict], period: str = None) -> None:
+        """Bulk upsert OHLC records into price_history and update history_meta."""
+        if not records:
+            return
+            
+        ticker = ticker.upper()
+        conn = get_connection()
+        now_iso = datetime.now().isoformat()
+        
+        try:
+            # 1. Upsert price records
+            for r in records:
+                # Normalise keys (handle both yfinance and internal formats)
+                d = r.get("Date") or r.get("date")
+                o = r.get("Open") or r.get("open_price") or r.get("open")
+                h = r.get("High") or r.get("high_price") or r.get("high")
+                l = r.get("Low") or r.get("low_price") or r.get("low")
+                c = r.get("Close") or r.get("close_price") or r.get("close")
+                v = r.get("Volume") or r.get("volume")
+                
+                if not d or c is None:
+                    continue
+                
+                # Strip time if it's just a date string for consistency in historical charts
+                if len(d) > 10 and " " in d:
+                    d_clean = d.split(" ")[0]
+                else:
+                    d_clean = d
+                    
+                conn.execute('''
+                    INSERT INTO price_history (ticker, date, open_price, high_price, low_price, close_price, volume, fetched_at)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                    ON CONFLICT(ticker, date) DO UPDATE SET
+                        open_price = COALESCE(?, open_price),
+                        high_price = COALESCE(?, high_price),
+                        low_price = COALESCE(?, low_price),
+                        close_price = ?,
+                        volume = COALESCE(?, volume),
+                        fetched_at = ?
+                ''', (ticker, d_clean, o, h, l, c, v, now_iso, o, h, l, c, v, now_iso))
+            
+            # 2. Update metadata
+            valid_dates = [r.get("Date") or r.get("date") for r in records if (r.get("Date") or r.get("date"))]
+            if not valid_dates:
+                return
+
+            first_date = min(valid_dates).split(" ")[0]
+            last_date = max(valid_dates).split(" ")[0]
+            
+            conn.execute('''
+                INSERT INTO history_meta (ticker, first_date, last_date, last_fetched, period)
+                VALUES (?, ?, ?, ?, ?)
+                ON CONFLICT(ticker) DO UPDATE SET
+                    first_date = CASE WHEN ? < first_date THEN ? ELSE first_date END,
+                    last_date = CASE WHEN ? > last_date THEN ? ELSE last_date END,
+                    last_fetched = ?,
+                    period = COALESCE(?, period)
+            ''', (ticker, first_date, last_date, now_iso, period, first_date, first_date, last_date, last_date, now_iso, period))
+            
+            conn.commit()
+        except Exception as e:
+            logger.error(f"Failed to save history for {ticker}: {e}")
+            conn.rollback()
+        finally:
+            conn.close()
+
+    def load_history(self, ticker: str, from_date: str = None, to_date: str = None) -> list[dict]:
+        """Fetch historical records for a ticker within an optional date range."""
+        ticker = ticker.upper()
+        conn = get_connection()
+        try:
+            query = "SELECT * FROM price_history WHERE ticker = ?"
+            params = [ticker]
+            
+            if from_date:
+                query += " AND date >= ?"
+                params.append(from_date)
+            if to_date:
+                query += " AND date <= ?"
+                params.append(to_date)
+                
+            query += " ORDER BY date ASC"
+            
+            # Use read_sql_query for bulk loading (much faster than manual dictionary creation)
+            df = pd.read_sql_query(query, conn, params=params)
+            
+            if df.empty:
+                return []
+                
+            # Rename columns to CamelCase for downstream components
+            rename_map = {
+                "date": "Date",
+                "open_price": "Open",
+                "high_price": "High",
+                "low_price": "Low",
+                "close_price": "Close",
+                "volume": "Volume"
+            }
+            return df.rename(columns=rename_map).to_dict("records")
+        finally:
+            conn.close()
+
+    def get_meta(self, ticker: str) -> dict | None:
+        """Retrieve metadata for a ticker's history."""
+        ticker = ticker.upper()
+        conn = get_connection()
+        try:
+            row = conn.execute("SELECT * FROM history_meta WHERE ticker = ?", (ticker,)).fetchone()
+            return dict(row) if row else None
+        finally:
+            conn.close()
+
+    def is_stale(self, ticker: str, requested_period: str = "max") -> bool:
+        """
+        Determine if history needs a refresh based on market status and requested depth.
+        Threshold: 5 minutes if market is open, 24 hours if closed.
+        Also triggers if stored history does not cover the requested period.
+        """
+        from services.market.market_status import is_market_open
+        from core.engine.utils import get_period_cutoff
+        
+        meta = self.get_meta(ticker)
+        if not meta or not meta.get("last_fetched"):
+            return True
+            
+        # 1. Recency check
+        try:
+            last_fetched = datetime.fromisoformat(meta["last_fetched"])
+            age = datetime.now() - last_fetched
+            
+            # Recency threshold
+            recency_limit = 300 if is_market_open() else 86400
+            if age.total_seconds() > recency_limit:
+                return True
+        except Exception:
+            return True
+
+        # 2. Depth check
+        stored_first = meta.get("first_date")
+        if not stored_first:
+            return True
+            
+        cutoff = get_period_cutoff(requested_period)
+        if cutoff:
+            cutoff_str = cutoff.strftime("%Y-%m-%d")
+            if stored_first > cutoff_str:
+                logger.info(f"Depth stale for {ticker}: stored_first({stored_first}) > cutoff({cutoff_str})")
+                return True
+        else:
+            # Requested period is "max" (Since purchase)
+            # If we only have a short period (like 5d from fetch_live), we must fetch max
+            if meta.get("period") != "max":
+                logger.info(f"Depth stale for {ticker}: requested max but stored period is {meta.get('period')}")
+                return True
+                
+        return False
+
+    def delete_old_records(self, days_to_keep: int = 730) -> None:
+        """Cleanup price history records older than the retention limit."""
+        conn = get_connection()
+        try:
+            cutoff = (datetime.now() - timedelta(days=days_to_keep)).strftime("%Y-%m-%d")
+            cursor = conn.execute("DELETE FROM price_history WHERE date < ?", (cutoff,))
+            conn.commit()
+            if cursor.rowcount > 0:
+                logger.info(f"Cleaned up {cursor.rowcount} stale history records older than {cutoff}")
+        except Exception as e:
+            logger.error(f"History cleanup failed: {e}")
+            conn.rollback()
         finally:
             conn.close()

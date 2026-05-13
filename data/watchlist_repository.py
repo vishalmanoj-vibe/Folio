@@ -43,96 +43,24 @@ class WatchlistRepository:
         finally:
             conn.close()
 
-    # ── History Methods (Still JSON-based as requested) ─────────────────────────
-
-    def _get_history_path(self, ticker: str) -> str:
-        cache_dir = os.path.join(DATA_CACHE_DIR, "watchlist_histories")
-        os.makedirs(cache_dir, exist_ok=True)
-        return os.path.join(cache_dir, f"{ticker}_history.json")
-
-    def load_history(self, ticker: str) -> list[dict]:
-        import json
-        path = self._get_history_path(ticker)
-        if os.path.exists(path):
-            try:
-                with open(path, "r") as f:
-                    return json.load(f)
-            except Exception as e:
-                logger.warning(f"Failed to read history cache for {ticker}: {e}")
-        return []
-
-    def save_history(self, ticker: str, history: list[dict]) -> None:
-        import json
-        path = self._get_history_path(ticker)
-        try:
-            with open(path, "w") as f:
-                json.dump(history, f)
-        except Exception as e:
-            logger.warning(f"Failed to write history cache for {ticker}: {e}")
-
-    def delete_history(self, ticker: str) -> None:
-        path = self._get_history_path(ticker)
-        if os.path.exists(path):
-            try:
-                os.remove(path)
-            except Exception as e:
-                logger.warning(f"Failed to delete history cache for {ticker}: {e}")
-
-    # ── Refresh Logic ──────────────────────────────────────────────────────────
+    # ── History Methods (Relational) ───────────────────────────────────────────
 
     def fetch_and_save_history(self, ticker: str) -> None:
-        import yfinance as yf
-        try:
-            df = yf.download(f"{ticker}.AX", period="max")
-            if not df.empty:
-                close_col = df["Close"] if "Close" in df.columns else df.iloc[:, 0]
-                close_col.index = pd.to_datetime(close_col.index)
-                df_p = close_col.reset_index()
-                df_p.columns = ["Date", "Close"]
-                df_p["Date"] = df_p["Date"].dt.strftime("%Y-%m-%d")
-                history = df_p.to_dict("records")
-                self.save_history(ticker, history)
-                logger.info(f"Successfully saved 1y history for {ticker}")
-        except Exception as e:
-            logger.error(f"Failed to fetch history for {ticker}: {e}")
+        """Fetch and persist history to SQLite via data_fetcher."""
+        from services.market.data_fetcher import fetch_ticker_history
+        fetch_ticker_history(ticker, "max")
+        logger.info(f"Successfully ensured history for {ticker} in SQLite")
 
     def refresh_all_histories(self) -> None:
+        """Bulk refresh all watchlist histories if stale via data_fetcher."""
         watchlist = self.load_watchlist()
         if not watchlist: return
         
-        tickers_to_refresh = []
-        for item in watchlist:
-            ticker = item["ticker"]
-            existing = self.load_history(ticker)
-            if existing:
-                first_date = pd.to_datetime(existing[0]["Date"])
-                if (pd.Timestamp.now() - first_date).days < 1000:
-                    tickers_to_refresh.append(ticker)
-            else:
-                tickers_to_refresh.append(ticker)
-        
-        if not tickers_to_refresh: return
-        
-        import yfinance as yf
-        tickers_yf = [t + ".AX" for t in tickers_to_refresh]
-        bulk_df = yf.download(tickers_yf, period="max", auto_adjust=True, progress=False)
-        
-        if bulk_df.empty: return
-        
-        from services.market.data_fetcher import extract_close
-        for ticker in tickers_to_refresh:
-            ticker_yf = ticker + ".AX"
-            try:
-                close = extract_close(bulk_df, ticker_yf)
-                if close.empty: continue
-                records = [
-                    {"Date": d.strftime("%Y-%m-%d"), "Close": round(float(v), 4)}
-                    for d, v in close.items() if v > 0
-                ]
-                if records:
-                    self.save_history(ticker, records)
-            except Exception as e:
-                logger.warning(f"Failed to save history for {ticker}: {e}")
+        from services.market.data_fetcher import fetch_portfolio_history
+        # fetch_portfolio_history internally checks for staleness and performs bulk downloads
+        holdings_placeholders = [{"ticker": item["ticker"], "ticker_yf": item["ticker"] + ".AX"} for item in watchlist]
+        fetch_portfolio_history(holdings_placeholders, period="max")
+        logger.info("Watchlist bulk refresh completed via data_fetcher")
 
     # ── Notes Methods ──────────────────────────────────────────────────────────
 
@@ -185,5 +113,4 @@ class WatchlistRepository:
         finally:
             conn.close()
             
-        self.delete_history(ticker)
         return self.load_watchlist()

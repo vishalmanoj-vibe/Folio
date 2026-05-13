@@ -11,6 +11,7 @@ from config.constants import (
 from components.ui_helpers import stat_card, tech_signal_badges, progress_row, interpolate_color
 from components.charts.helpers import create_empty_fig
 from services.market.dividend_service import calculate_portfolio_dividend_stats, get_ticker_dividend_data
+from services.history_cache import get_latest_histories
 import pandas as pd
 
 # ── Plotly layout base ────────────────────────────────────────────────────────
@@ -53,6 +54,12 @@ def register_callbacks(app) -> None:
         if not port_data or "holdings" not in port_data:
             return []
 
+        # ── Mini Sparkline Generator ──
+        # Renders a high-density area chart of the last 20 price points 
+        # to provide quick visual context for each holding.
+        from services.market.data_fetcher import fetch_portfolio_history
+        histories_map = fetch_portfolio_history(port_data["holdings"], "1mo")
+        
         cards = []
         for h in port_data["holdings"]:
             try:
@@ -62,6 +69,7 @@ def register_callbacks(app) -> None:
                 pnl_cls = "c-pos" if pnl >= 0 else "c-neg"
                 is_selected = ticker == selected_ticker
                 
+                # Signal badge logic
                 signal_badge = None
                 if signals_store and "raw" in signals_store:
                     sig_data = signals_store["raw"].get(ticker)
@@ -80,13 +88,11 @@ def register_callbacks(app) -> None:
                             }
                         )
                 
-                # ── Mini Sparkline Generator ──
-                # Renders a high-density area chart of the last 20 price points 
-                # to provide quick visual context for each holding.
                 spark_fig = go.Figure()
-                history = port_data.get("histories", {}).get(ticker, [])
+                history = histories_map.get(ticker, [])
                 if history:
-                    prices = [x["Close"] for x in history[-20:]]
+                    # Repository now returns CamelCase keys (Date, Close)
+                    prices = [x.get("Close") for x in history[-20:]]
                     is_pos = pnl >= 0
                     line_color = GREEN if is_pos else RED
                     fill_color = "rgba(29,158,117,0.08)" if is_pos else "rgba(226,75,74,0.08)"
@@ -209,7 +215,8 @@ def register_callbacks(app) -> None:
         
         # Generate Tech Signals
         tech_signals = None
-        history = port_data.get("histories", {}).get(ticker, [])
+        from services.market.data_fetcher import fetch_ticker_history
+        history = fetch_ticker_history(ticker, "1y")
         if history:
             tech_signals = tech_signal_badges(ticker, history)
 
@@ -259,7 +266,6 @@ def register_callbacks(app) -> None:
 
         return html.Div(ai_children, className="etf-detail-card", style={"marginTop": "10px", "marginBottom": "24px", "width": "100%"})
 
-    # ── 4. Detail Panel — Price Chart ─────────────────────────────────────────
     @app.callback(
         Output("positions-price-chart-container", "children"),
         Input("positions-selected-ticker", "data"),
@@ -293,8 +299,11 @@ def register_callbacks(app) -> None:
         fig.update_layout(layout)
 
         try:
-            # FIX: use pre-fetched histories from portfolio-store
-            history_records = port_data.get("histories", {}).get(ticker, [])
+            # ── Lazy Fetch ──
+            # Replaces the global histories-store dependency with a targeted fetch.
+            from services.market.data_fetcher import fetch_ticker_history
+            history_records = fetch_ticker_history(ticker, period)
+            
             if not history_records:
                 fig = create_empty_fig(f"No price history for {ticker}", height=350, theme_tokens=t_)
             else:
@@ -302,21 +311,6 @@ def register_callbacks(app) -> None:
                 df = pd.DataFrame(history_records)
                 df["Date"] = pd.to_datetime(df["Date"])
                 df = df.set_index("Date").sort_index()
-                
-                # Apply period filter
-                from datetime import timedelta
-                period_map = {
-                    "1mo": timedelta(days=30),
-                    "3mo": timedelta(days=90),
-                    "1y":  timedelta(days=365),
-                    "ytd": None,
-                    "max": None,
-                }
-                if period in period_map and period_map[period]:
-                    cutoff = pd.Timestamp.now() - period_map[period]
-                    df = df[df.index >= cutoff]
-                elif period == "ytd":
-                    df = df[df.index >= pd.Timestamp(pd.Timestamp.now().year, 1, 1)]
                 
                 if not df.empty:
                     if df.index.tz is not None: 
@@ -331,7 +325,7 @@ def register_callbacks(app) -> None:
                             opacity=0.9
                         ))
                     else:
-                        # Fallback to line chart if OHLC is missing (e.g. for intraday 1d)
+                        # Fallback to line chart if OHLC is missing
                         fig.add_trace(go.Scatter(
                             x=df.index, y=df["Close"], mode="lines",
                             line=dict(color=GREEN if df["Close"].iloc[-1] >= df["Close"].iloc[0] else RED, width=2),
@@ -350,7 +344,7 @@ def register_callbacks(app) -> None:
                 else:
                     fig = create_empty_fig(f"No price history available for {ticker}", height=350, theme_tokens=t_)
         except Exception as e:
-            logger.error(f"Failed to fetch history for {ticker}: {e}")
+            logger.error(f"Failed to lazy fetch history for {ticker}: {e}")
             fig = create_empty_fig("Error loading chart data", height=350, theme_tokens=t_)
 
         from components.ui_helpers import chart_title

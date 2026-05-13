@@ -74,7 +74,7 @@ def compute_signals(ticker: str, history: list[dict]) -> dict:
             return {"ticker": ticker, "error": "Insufficient data"}
             
         # Check cache
-        last_date = history[-1].get("Date", "unknown")
+        last_date = history[-1].get("Date") or history[-1].get("date", "unknown")
         cache_key = f"technicals_{ticker}_{last_date}"
         cached = get_cache(cache_key)
         if cached:
@@ -83,6 +83,10 @@ def compute_signals(ticker: str, history: list[dict]) -> dict:
         
         # ── 1. Data Preparation ───────────────────────────────────────────
         df = pd.DataFrame(history)
+        
+        if "Date" not in df.columns or "Close" not in df.columns:
+            return {"ticker": ticker, "error": "Missing required columns (Date/Close)"}
+
         df["Date"] = pd.to_datetime(df["Date"])
         df = df.set_index("Date").sort_index()
         prices = df["Close"]
