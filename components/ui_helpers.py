@@ -216,14 +216,36 @@ def tech_signal_badges(ticker: str, history: list[dict]) -> html.Div:
     )
     bb_color = "var(--t-sec)"
     
-    def badge(label, value, color):
-        return html.Div([
-            html.Span(f"{label}: ", style={"color": "var(--t-sec)", "fontWeight": "normal"}),
-            html.Span(value, style={"color": color, "fontWeight": "bold"})
-        ], className="tech-badge", style={"border": f"0.5px solid {color}"})
+    # SMA 200 color
+    sma_color = "var(--green)" if sig["sma_label"] == "Bullish" else "var(--red)" if sig["sma_label"] == "Bearish" else "var(--t-sec)"
+    
+    # Volatility color
+    vol_color = "var(--green)" if sig["vol_label"] == "Low" else "var(--red)" if sig["vol_label"] == "High" else "var(--t-sec)"
+    
+    def badge(label, value, color, tip):
+        return dmc.Tooltip(
+            label=tip,
+            multiline=True,
+            w=240,
+            withArrow=True,
+            transitionProps={"transition": "fade", "duration": 200},
+            position="top",
+            zIndex=2000,
+            children=html.Div([
+                html.Span(f"{label}: ", style={"color": "var(--t-sec)", "fontWeight": "normal"}),
+                html.Span(value, style={"color": color, "fontWeight": "bold"})
+            ], className="tech-badge", style={"border": f"0.5px solid {color}"})
+        )
         
     return html.Div([
-        badge("RSI", f"{sig['rsi']:.1f} ({sig['rsi_label']})", rsi_color),
-        badge("MACD", sig["macd_label"], macd_color),
-        badge("BB", sig["bb_label"], bb_color),
+        badge("RSI", f"{sig['rsi']:.1f} ({sig['rsi_label']})", rsi_color, 
+              "Relative Strength Index (RSI): Measures price momentum. Values > 70 suggest 'Overbought' (potentially expensive), while < 30 suggest 'Oversold' (potentially undervalued)."),
+        badge("MACD", sig["macd_label"], macd_color,
+              "MACD: A momentum indicator that signals trend shifts. 'Bullish' means upward momentum is building; 'Bearish' warns of increasing downward pressure."),
+        badge("BB", sig["bb_label"], bb_color,
+              "Bollinger Bands (BB): Measures volatility relative to a 20-day average. Touching the upper band suggests price is overextended; the lower band suggests it is statistically cheap."),
+        badge("Trend", sig["sma_label"], sma_color,
+              "200-Day SMA: The 'Golden Line' for long-term trends. Staying above this line confirms a healthy Bull market; dropping below is a primary warning of a long-term Bear market."),
+        badge("Vol", sig["vol_label"], vol_color,
+              "Annualized Volatility: Measures daily price swings over the last 30 days. Low (<15%) is stable; High (>30%) warns of significant daily risk and large price fluctuations."),
     ], style={"display": "flex", "flexWrap": "wrap", "gap": "8px", "margin": "12px 0"})

@@ -1,7 +1,9 @@
 # callbacks/positions_callbacks.py
 import logging
 import plotly.graph_objects as go
+import dash
 from dash import Input, Output, State, ALL, html, dcc, ctx
+import dash_mantine_components as dmc
 
 logger = logging.getLogger(__name__)
 
@@ -267,7 +269,8 @@ def register_callbacks(app) -> None:
         return html.Div(ai_children, className="etf-detail-card", style={"marginTop": "10px", "marginBottom": "24px", "width": "100%"})
 
     @app.callback(
-        Output("positions-price-chart-container", "children"),
+        [Output("positions-price-chart-container", "children"),
+         Output("positions-price-chart-header", "style")],
         Input("positions-selected-ticker", "data"),
         Input("positions-period-store", "data"),
         Input("portfolio-store", "data"),
@@ -277,10 +280,10 @@ def register_callbacks(app) -> None:
     )
     def render_price_chart(ticker, period, port_data, theme, url_pathname):
         import dash
-        if url_pathname.rstrip("/") != "/positions": return dash.no_update
+        if url_pathname.rstrip("/") != "/positions": return dash.no_update, dash.no_update
         t_ = get_theme(theme or "dark")
         if not ticker: 
-            return None
+            return None, {"display": "none"}
 
         holding = next((h for h in port_data.get("holdings", []) if h["ticker"] == ticker), None)
         if not holding: 
@@ -348,14 +351,7 @@ def register_callbacks(app) -> None:
             logger.error(f"Failed to lazy fetch history for {ticker}: {e}")
             fig = create_empty_fig("Error loading chart data", height=350, theme_tokens=t_)
 
-        from components.ui_helpers import chart_title
-        return html.Div([
-            html.Div([
-                chart_title("Price history", "positions-price"),
-                html.Div(id="positions-period-btns", className="flex-row-gap", style={"marginLeft": "auto"})
-            ], className="flex-row flex-center", style={"marginBottom": "12px"}),
-            dcc.Graph(id="positions-price-chart", figure=fig, config={"displayModeBar": False}),
-        ], style={"marginTop": "24px"})
+        return dcc.Graph(id="positions-price-chart", figure=fig, config={"displayModeBar": False}), {"display": "flex"}
 
     # ── 5. Detail Panel — Transaction Table ──────────────────────────────────
     @app.callback(
@@ -395,14 +391,33 @@ def register_callbacks(app) -> None:
 
     # ── 6. Period Selection Buttons ──────────────────────────────────────────
     @app.callback(
+        Output("positions-period-store", "data"),
+        Input({"type": "pos-period-btn", "index": ALL}, "n_clicks"),
+        State("positions-period-store", "data"),
+        prevent_initial_call=True,
+    )
+    def update_positions_period(n_clicks, current_p):
+        if not ctx.triggered: return dash.no_update
+        # Find which button was clicked
+        triggered_id = ctx.triggered_id
+        if not isinstance(triggered_id, dict): return dash.no_update
+        
+        # Check if the click value is valid
+        if not ctx.triggered[0]["value"]: return dash.no_update
+        
+        return triggered_id["index"]
+
+    @app.callback(
         Output("positions-period-btns", "children"),
         Input("positions-period-store", "data"),
+        Input("positions-selected-ticker", "data"),
         Input("url", "pathname"),
         prevent_initial_call=True,
     )
-    def render_period_btns(current_period, url_pathname):
+    def render_period_btns(current_period, ticker, url_pathname):
         import dash
         if url_pathname.rstrip("/") != "/positions": return dash.no_update
+        
         periods = [
             ("1M", "1mo"),
             ("3M", "3mo"),
@@ -414,15 +429,15 @@ def register_callbacks(app) -> None:
         btns = []
         for label, val in periods:
             is_active = (current_period == val)
-            # Use btn-primary for the active selection, otherwise standard styling
-            btn_class = f"period-btn btn-sm {'btn-primary' if is_active else ''}"
-            
             btns.append(
-                html.Button(
+                dmc.Button(
                     label,
                     id={"type": "pos-period-btn", "index": val},
-                    className=btn_class,
-                    n_clicks=0
+                    variant="filled" if is_active else "subtle",
+                    color="cyan" if is_active else "gray",
+                    size="compact-xs",
+                    radius="xl",
+                    style={"fontWeight": "600"}
                 )
             )
         return btns

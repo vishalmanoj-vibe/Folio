@@ -14,8 +14,15 @@ def compute_indicators(price_df: pd.DataFrame) -> dict:
     if len(price_df) < 220:
         return {"error": "Insufficient data"}
     
-    # Ensure index is datetime and sorted
+    # Ensure index is datetime and sorted, and resample to daily to ensure 
+    # that indicators (like 200MA or 3mo high) are calculated on a consistent timeframe
+    # regardless of whether the input is intraday or daily history.
     price_df = price_df.sort_index()
+    if not price_df.empty:
+        # Resample to daily frequency (Business Day) to handle gaps and ensure consistency
+        # We use 'last' to get the close of each day and ffill to fill any missing trading days
+        price_df = price_df.resample('B').last().ffill()
+        
     prices = price_df["Close"]
     
     sma_50 = prices.rolling(window=50).mean().iloc[-1]

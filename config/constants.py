@@ -116,7 +116,8 @@ NAMES = {
     "SEMI": "Betashares Global Semis ETF",
     "IOO":  "iShares Global 100 ETF",
     "IOZ":  "iShares Core ASX 200 ETF",
-    "XMET": "BetaShares Energy Transition Metals ETF",   # fallback
+    "XMET": "BetaShares Energy Transition Metals ETF",
+    "QUAL": "VanEck MSCI World Quality ETF",
 }
 
 # ── Chart tooltip copy ────────────────────────────────────────────────────────

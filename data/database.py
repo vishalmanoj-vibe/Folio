@@ -113,12 +113,128 @@ def init_db():
             )
         ''')
         
-        # 8. Indexes
+        # 8. Market Prices (Computed Metrics Snapshot)
+        conn.execute('''
+            CREATE TABLE IF NOT EXISTS market_prices (
+                ticker           TEXT PRIMARY KEY,
+                day_chg          REAL,
+                day_chg_pct      REAL,
+                day_pnl          REAL,
+                mkt_value        REAL,
+                pnl              REAL,
+                pnl_pct          REAL,
+                annual_div       REAL,
+                realized_div     REAL,
+                div_yield        REAL,
+                div_frequency    TEXT,
+                last_div_amount  REAL,
+                last_div_date    TEXT,
+                next_div_date    TEXT,
+                payout_date      TEXT,
+                fetched_at       TEXT NOT NULL
+            )
+        ''')
+
+        # 9. Intraday Snapshots
+        conn.execute('''
+            CREATE TABLE IF NOT EXISTS intraday_snapshots (
+                ticker       TEXT NOT NULL,
+                recorded_at  TEXT NOT NULL,
+                price        REAL NOT NULL,
+                session_date TEXT NOT NULL,
+                PRIMARY KEY (ticker, recorded_at)
+            )
+        ''')
+
+        # 10. Predictions Cache
+        conn.execute('''
+            CREATE TABLE IF NOT EXISTS predictions_cache (
+                cache_key    TEXT PRIMARY KEY,
+                dates        TEXT NOT NULL, -- JSON
+                yhat         TEXT NOT NULL, -- JSON
+                yhat_lower   TEXT NOT NULL, -- JSON
+                yhat_upper   TEXT NOT NULL, -- JSON
+                fitted_last  REAL,
+                computed_at  TEXT NOT NULL
+            )
+        ''')
+
+        # 11. Indexes
         conn.execute("CREATE INDEX IF NOT EXISTS idx_etf_meta_ticker ON etf_metadata(ticker)")
         conn.execute("CREATE INDEX IF NOT EXISTS idx_watchlist_date ON watchlist(added_date)")
         conn.execute("CREATE INDEX IF NOT EXISTS idx_history_ticker_date ON price_history(ticker, date)")
+        # 9. Worker Tasks (Task Queue)
+        conn.execute('''
+            CREATE TABLE IF NOT EXISTS worker_tasks (
+                task_id      TEXT PRIMARY KEY,
+                task_type    TEXT NOT NULL,
+                payload      TEXT, -- JSON
+                status       TEXT DEFAULT 'pending',
+                priority     INTEGER DEFAULT 5,
+                created_at   TEXT NOT NULL,
+                completed_at TEXT,
+                result       TEXT -- JSON
+            )
+        ''')
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_worker_tasks_poll ON worker_tasks(status, priority, created_at)")
+
+        # 10. Signal Results
+        conn.execute('''
+            CREATE TABLE IF NOT EXISTS signal_results (
+                ticker            TEXT PRIMARY KEY,
+                signal            TEXT NOT NULL,
+                score             REAL NOT NULL,
+                confidence        REAL,
+                reasons           TEXT, -- JSON
+                indicators        TEXT, -- JSON
+                ai_explanation    TEXT,
+                generated_at      TEXT NOT NULL,
+                hysteresis_forced INTEGER DEFAULT 0
+            )
+        ''')
+
+        # 11. Watchlist Signal Results
+        conn.execute('''
+            CREATE TABLE IF NOT EXISTS watchlist_signal_results (
+                ticker            TEXT PRIMARY KEY,
+                signal            TEXT NOT NULL,
+                score             REAL NOT NULL,
+                confidence        REAL,
+                reasons           TEXT, -- JSON
+                indicators        TEXT, -- JSON
+                ai_explanation    TEXT,
+                generated_at      TEXT NOT NULL,
+                hysteresis_forced INTEGER DEFAULT 0
+            )
+        ''')
+
+        # 12. Benchmark Data
+        conn.execute('''
+            CREATE TABLE IF NOT EXISTS benchmark_data (
+                symbol     TEXT PRIMARY KEY,
+                label      TEXT NOT NULL,
+                history    TEXT, -- JSON
+                fetched_at TEXT NOT NULL
+            )
+        ''')
         
         conn.commit()
+        
+        # 12. Migrations — Add missing columns to existing tables
+        try:
+            # Check for last_div_date in market_prices
+            cursor = conn.execute("PRAGMA table_info(market_prices)")
+            columns = [row[1] for row in cursor.fetchall()]
+            if "last_div_date" not in columns:
+                logger.info("Migrating market_prices: Adding last_div_date column")
+                conn.execute("ALTER TABLE market_prices ADD COLUMN last_div_date TEXT")
+                conn.commit()
+        except Exception as e:
+            logger.warning(f"Migration for market_prices failed: {e}")
+
+        # 13. Legacy JSON Migration
+        migrate_json_to_sqlite()
+        
         _DB_INITIALIZED = True
         logger.info(f"Database initialised at {DB_PATH}")
     finally:
@@ -127,3 +243,126 @@ def init_db():
 def get_db_path():
     """Returns the absolute path to the database file."""
     return DB_PATH
+
+def migrate_json_to_sqlite():
+    """Seamlessly migrates data from legacy JSON caches to SQLite on first run."""
+    import json
+    import glob
+    from datetime import datetime
+    
+    snapshot_path = "data/cache/portfolio_snapshot.json"
+    predictions_path = "data/cache/predictions.json"
+    intraday_files = glob.glob("data/cache/intraday_*.json")
+    
+    # Check if there is anything to migrate
+    if not (os.path.exists(snapshot_path) or os.path.exists(predictions_path) or intraday_files):
+        return
+
+    conn = get_connection()
+    try:
+        # Start a single transaction for the entire migration
+        conn.execute("BEGIN TRANSACTION")
+        
+        # A. Market Prices (portfolio_snapshot.json)
+        row = conn.execute("SELECT COUNT(*) FROM market_prices").fetchone()
+        if row[0] == 0 and os.path.exists(snapshot_path):
+            with open(snapshot_path, "r") as f:
+                data = json.load(f)
+                holdings = data.get("holdings", [])
+                fetched_at = data.get("fetched_at", datetime.now().isoformat())
+                for h in holdings:
+                    conn.execute('''
+                        INSERT OR REPLACE INTO market_prices (
+                            ticker, day_chg, day_chg_pct, day_pnl, mkt_value, pnl, pnl_pct, 
+                            annual_div, realized_div, div_yield, div_frequency, 
+                            last_div_amount, next_div_date, payout_date, fetched_at
+                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    ''', (
+                        h["ticker"], h.get("day_chg"), h.get("day_chg_pct"), h.get("day_pnl"),
+                        h.get("mkt_value"), h.get("pnl"), h.get("pnl_pct"), h.get("annual_div"),
+                        h.get("realized_div"), h.get("div_yield"), h.get("div_frequency"),
+                        h.get("last_div_amount"), h.get("next_div_date"), h.get("payout_date"),
+                        fetched_at
+                    ))
+
+        # B. Intraday Snapshots (intraday_YYYY-MM-DD.json)
+        row = conn.execute("SELECT COUNT(*) FROM intraday_snapshots").fetchone()
+        if row[0] == 0:
+            for f_path in intraday_files:
+                with open(f_path, "r") as f:
+                    session_data = json.load(f)
+                    date_str = os.path.basename(f_path).replace("intraday_", "").replace(".json", "")
+                    for ticker, points in session_data.items():
+                        for p in points:
+                            conn.execute('''
+                                INSERT OR IGNORE INTO intraday_snapshots (ticker, recorded_at, price, session_date)
+                                VALUES (?, ?, ?, ?)
+                            ''', (ticker, p["Date"], p["Close"], date_str))
+
+        # C. Predictions Cache (predictions.json)
+        row = conn.execute("SELECT COUNT(*) FROM predictions_cache").fetchone()
+        if row[0] == 0 and os.path.exists(predictions_path):
+            with open(predictions_path, "r") as f:
+                cache = json.load(f)
+                for key, res in cache.items():
+                    conn.execute('''
+                        INSERT OR REPLACE INTO predictions_cache (
+                            cache_key, dates, yhat, yhat_lower, yhat_upper, fitted_last, computed_at
+                        ) VALUES (?, ?, ?, ?, ?, ?, ?)
+                    ''', (
+                        key, json.dumps(res["dates"]), json.dumps(res["yhat"]),
+                        json.dumps(res["yhat_lower"]), json.dumps(res["yhat_upper"]),
+                        res.get("fitted_last", 0.0), res.get("computed_at", "")
+                    ))
+
+        # Commit all changes
+        conn.execute("COMMIT")
+        logger.info("Successfully committed migration data to SQLite")
+
+        # D. Post-commit Verification & Cleanup
+        # Only delete files if we are sure the data is in the DB
+        if os.path.exists(snapshot_path):
+            count = conn.execute("SELECT COUNT(*) FROM market_prices").fetchone()[0]
+            if count > 0:
+                os.remove(snapshot_path)
+                logger.info("Cleaned up portfolio_snapshot.json")
+        
+        if os.path.exists(predictions_path):
+            count = conn.execute("SELECT COUNT(*) FROM predictions_cache").fetchone()[0]
+            if count > 0:
+                os.remove(predictions_path)
+                logger.info("Cleaned up predictions.json")
+                
+        for f_path in intraday_files:
+            date_str = os.path.basename(f_path).replace("intraday_", "").replace(".json", "")
+            count = conn.execute("SELECT COUNT(*) FROM intraday_snapshots WHERE session_date = ?", (date_str,)).fetchone()[0]
+            if count > 0:
+                os.remove(f_path)
+                logger.info(f"Cleaned up {f_path}")
+
+    except Exception as e:
+        conn.execute("ROLLBACK")
+        logger.error(f"Migration failed, rolled back: {e}")
+    finally:
+        conn.close()
+
+def enqueue_task(task_type: str, payload: dict = None, priority: int = 5) -> str:
+    """Insert a new task into the worker_tasks table. Returns the task_id."""
+    import uuid
+    import json
+    from datetime import datetime
+    
+    task_id = str(uuid.uuid4())
+    conn = get_connection()
+    try:
+        conn.execute('''
+            INSERT INTO worker_tasks (task_id, task_type, payload, status, priority, created_at)
+            VALUES (?, ?, ?, ?, ?, ?)
+        ''', (
+            task_id, task_type, json.dumps(payload) if payload else None,
+            'pending', priority, datetime.now().isoformat()
+        ))
+        conn.commit()
+        return task_id
+    finally:
+        conn.close()

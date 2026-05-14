@@ -121,7 +121,7 @@ def calculate_portfolio_dividend_stats(holdings):
     # Events (Calendar)
     today = pd.Timestamp.now().floor("D")
     events = []
-    f_map = {"Monthly": 1, "Quarterly": 3, "Biannual": 6, "Annual": 12, "Unknown": 3}
+    f_map = {"Monthly": 1, "Quarterly": 3, "Semi-Annual": 6, "Biannual": 6, "Annual": 12, "Unknown": 3}
     
     for h in holdings:
         payout_dt = h.get("payout_date")

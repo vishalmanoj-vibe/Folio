@@ -1,6 +1,7 @@
 import os
 import logging
 import copy
+import pandas as pd
 import google.genai as genai
 from services.technical_indicators import (
     compute_signals
@@ -68,8 +69,47 @@ def build_portfolio_context(portfolio_data: dict, ticker: str = "") -> str:
                 f"Bollinger={sig['bb_label']}"
             )
     
+    # ── Performance Context (7-Day) ──
+    perf_lines = []
+    total_7d_chg = 0.0
+    valid_count = 0
+    
+    for h in sorted_holdings:
+        ticker_h = h["ticker"]
+        history = histories.get(ticker_h, [])
+        if len(history) < 2:
+            continue
+            
+        # Get price from ~7 days ago
+        target_date = (pd.Timestamp.now() - pd.Timedelta(days=7)).strftime("%Y-%m-%d")
+        start_price = None
+        for entry in reversed(history):
+            if entry["Date"] <= target_date:
+                start_price = float(entry["Close"])
+                break
+        
+        if not start_price:
+            # Fallback to the oldest available in our 14d window
+            start_price = float(history[0]["Close"])
+            
+        curr_price = float(h.get("last_price", 0))
+        if start_price > 0:
+            chg_pct = (curr_price - start_price) / start_price * 100
+            weight = (float(h.get("mkt_value", 0)) / total_val) if total_val > 0 else 0
+            total_7d_chg += chg_pct * weight
+            valid_count += 1
+            if weight > 0.02: # Only list holdings > 2% weight in perf summary
+                perf_lines.append(f"  {ticker_h}: {chg_pct:+.1f}%")
+
+    if valid_count > 0:
+        lines.append(f"\nRECENT PERFORMANCE (Estimated 7-Day Trend):")
+        lines.append(f"Portfolio Total: {total_7d_chg:+.2f}%")
+        if perf_lines:
+            lines.extend(perf_lines[:10]) # Top 10 movers/weights
+        lines.append("")
+
     if sig_lines:
-        lines.append("\nTechnical Signals (from price history):")
+        lines.append("Technical Signals (from price history):")
         lines.extend(sig_lines)
         lines.append("")
         

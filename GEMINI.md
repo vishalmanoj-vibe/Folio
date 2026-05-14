@@ -154,13 +154,19 @@
 - `services/market/data_fetcher.py` — Updated `fetch_live` to request 2-day windows and ensure snapshots/backfills occur even on internal cache hits.
 
 - **Project-wide Audit**: Standardized all services to use `logger.debug()` and verified `prevent_initial_call=True` for multi-page safety.
-- **Page Renaming**: Standardized page names to Holdings, Positions, Watchlist, Insights, Deep Dive, and Assistant.
-
 ### Rendering Prioritization & Fast Startup (Complete)
 - **Callback Prioritization**: Implemented `pathname` awareness across all rendering callbacks in `chart_callbacks.py`, `positions_callbacks.py`, and `watchlist_callbacks.py` to prevent off-page DOM thrashing.
 - **Fast Startup**: Refactored `app.py` to seed `portfolio-store` and `watchlist-store` with disk cached data, removing blocking `fetch_live` calls from the startup sequence.
 - **Standardized Fallbacks**: Integrated `create_empty_fig` across all chart components to ensure professional empty states.
 - **Aesthetic Excellence & Chart Standardization (Complete)**:
-  - Unified all charts via `apply_standard_layout()` for consistent typography and hover UX.
-  - Implemented glassmorphism nav bar and 200ms theme transitions.
-  - Added real-time animated market status heartbeat to the header.
+- Unified all charts via `apply_standard_layout()` for consistent typography and hover UX.
+- Implemented glassmorphism nav bar and 200ms theme transitions.
+- Added real-time animated market status heartbeat to the header.
+
+### Memory Hygiene & Dual-Process Architecture (Complete)
+- `launcher.py` — New process manager separating Dash UI from background data processing.
+- `worker.py` — Background worker handling technical analysis, signals, and market refreshes.
+- `services/market/data_fetcher.py` — Implemented metadata truncation and compact series caching.
+- `core/cache.py` — Enforced bounded memory caching with automated eviction passes.
+- `docs/performance/phase4_results.md` — Documented ~40% reduction in baseline RSS memory usage and instant startup (<1s).
+- **History Gating**: Enforced 24h staleness for historical data to eliminate redundant network churn.

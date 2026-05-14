@@ -55,6 +55,7 @@ def register_callbacks(app) -> None:
     # ── P&L history ───────────────────────────────────────────────────────────
     @app.callback(
         Output("pnl-history-chart", "figure"),
+        Output("benchmark-pending-store", "data", allow_duplicate=True),
         Input("portfolio-store",    "data"),
         Input("theme-store",        "data"),
         # FIX: change to State to prevent double-rendering when portfolio-store updates
@@ -62,25 +63,40 @@ def register_callbacks(app) -> None:
         Input("pnl-mode-store",     "data"),
         Input("ticker-store",       "data"),
         Input("url",                "pathname"),
+        Input("task-poll-interval", "n_intervals"),
+        State("benchmark-pending-store", "data"),
+        prevent_initial_call=True,
     )
-    def pnl_history_chart(data, theme, period, mode, selected, pathname):
+    def pnl_history_chart(data, theme, period, mode, selected, pathname, n_tasks, bench_pending):
         import dash
-        if pathname != "/": return dash.no_update
+        if pathname != "/": return dash.no_update, dash.no_update
         t_       = get_theme(theme or "dark")
         period   = period or "max"
         mode     = mode or "pct"
         selected = selected or "Portfolio"
 
         if not data or "holdings" not in data or not data["holdings"]:
-            return create_empty_fig("No holdings data available", height=450, theme_tokens=t_)
+            return create_empty_fig("No holdings data available", height=450, theme_tokens=t_), dash.no_update
 
         # ── Lazy Fetch & P&L Injection ──
         from services.market.data_fetcher import fetch_portfolio_history, compute_tranche_pnl
         import pandas as pd
         
         holdings = data["holdings"]
+        
+        # ── Start Date Optimization ──
+        # If 'max' is selected, truncate to the date of the first purchase 
+        # to prevent processing irrelevant historical data.
+        fetch_period = period
+        if period == "max":
+            all_buy_dates = []
+            for h in holdings:
+                all_buy_dates.extend([pd.to_datetime(t["date"]) for t in h.get("buy_tranches", [])])
+            if all_buy_dates:
+                fetch_period = min(all_buy_dates)
+
         # Fetch histories for all tickers needed
-        histories = fetch_portfolio_history(holdings, period)
+        histories = fetch_portfolio_history(holdings, fetch_period)
         
         # Populate tranches with P&L series for the chart builder
         for h in holdings:
@@ -94,7 +110,28 @@ def register_callbacks(app) -> None:
                     # compute_tranche_pnl expects a Series with DatetimeIndex
                     h["tranches"] = compute_tranche_pnl(close_s, h.get("buy_tranches", []))
 
-        return build_pnl_history_figure(holdings, mode, period, t_, selected)
+        # ── Benchmark Check ──
+        from data.cache_manager import get_benchmarks_db
+        from data.database import enqueue_task, get_connection
+        
+        bench_data = get_benchmarks_db()
+        new_bench_pending = bench_pending
+        
+        if bench_data is None:
+            # Queue task if not already pending
+            conn = get_connection()
+            try:
+                row = conn.execute("SELECT task_id FROM worker_tasks WHERE task_type = 'fetch_benchmarks' AND status IN ('pending', 'running')").fetchone()
+                if row:
+                    new_bench_pending = row["task_id"]
+                else:
+                    new_bench_pending = enqueue_task("fetch_benchmarks", {"period": "max"}, priority=8)
+            finally:
+                conn.close()
+        else:
+            new_bench_pending = None
+
+        return build_pnl_history_figure(holdings, mode, period, t_, selected), new_bench_pending
 
     # ── Normalised price history ──────────────────────────────────────────────
     @app.callback(

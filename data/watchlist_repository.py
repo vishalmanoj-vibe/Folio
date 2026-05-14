@@ -23,6 +23,19 @@ class WatchlistRepository:
         finally:
             conn.close()
 
+    def load_watchlist_holdings(self) -> list[dict]:
+        """Returns synthetic holding dicts (avg_cost=0) for all watchlist tickers."""
+        watchlist = self.load_watchlist()
+        return [
+            {
+                "ticker": item["ticker"],
+                "ticker_yf": item["ticker"] + ".AX",
+                "avg_cost": 0,
+                "buy_tranches": []
+            }
+            for item in watchlist
+        ]
+
     def save_watchlist(self, watchlist: list[dict]) -> None:
         """
         Overwrite watchlist table. 

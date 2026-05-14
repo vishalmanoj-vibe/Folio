@@ -94,9 +94,36 @@ def create_header(
         transitionProps={"transition": "fade", "duration": 150}
     )
 
+    # Intelligence Action
+    intelligence_action = html.Div([
+        dmc.Tooltip(
+            label="Refresh All Signals (Portfolio & Watchlist)",
+            position="bottom",
+            withArrow=True,
+            children=dmc.ActionIcon(
+                "🤖",
+                id="global-generate-signals-btn",
+                variant="subtle",
+                color="cyan",
+                size="lg",
+                radius="xl"
+            )
+        ),
+        dcc.Loading(
+            id="global-loading-signals",
+            type="dot",
+            color="var(--cyan)",
+            children=html.Span(
+                id="global-signals-status-label",
+                style={"fontSize": "10px", "color": "var(--t-sec)", "marginLeft": "4px", "marginRight": "12px", "whiteSpace": "nowrap"}
+            )
+        )
+    ], style={"display": "flex", "alignItems": "center"})
+
     nav_right = html.Div([
         html.Div(id="market-status", children=market_status) if market_status else html.Div(id="market-status"),
         last_updated_chip,
+        intelligence_action,
         settings_dropdown
     ], className="nav-right")
 

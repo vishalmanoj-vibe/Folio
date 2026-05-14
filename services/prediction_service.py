@@ -18,12 +18,12 @@ logger = logging.getLogger(__name__)
 _PROPHET_AVAILABLE = None
 
 # Cache configuration
-CACHE_DIR = "data/cache"
-PREDICTIONS_CACHE_FILE = os.path.join(CACHE_DIR, "predictions.json")
+# No longer using disk JSON file. Using predictions_cache table in portfolio.db.
+from data.database import get_connection
 
 def _ensure_cache_dir():
-    if not os.path.exists(CACHE_DIR):
-        os.makedirs(CACHE_DIR, exist_ok=True)
+    # Deprecated: SQLite handles its own file creation
+    pass
 
 def _generate_cache_key(dates: list, horizon_str: str) -> str:
     """
@@ -54,23 +54,32 @@ def get_forecast(dates: list, values: list, horizon_str: str) -> dict:
     # 2. Generate stable cache key (no prices included)
     cache_key = _generate_cache_key(dates, horizon_str)
     
-    # 3. Check disk cache + Staleness check (24 hours)
-    _ensure_cache_dir()
-    if os.path.exists(PREDICTIONS_CACHE_FILE):
-        try:
-            with open(PREDICTIONS_CACHE_FILE, "r") as f:
-                cache = json.load(f)
-                if cache_key in cache:
-                    result = cache[cache_key]
-                    computed_at_str = result.get("computed_at")
-                    if computed_at_str:
-                        computed_at = datetime.strptime(computed_at_str, "%Y-%m-%d %H:%M")
-                        # Return immediately if valid hit found within 24 hours and includes required metadata
-                        if (datetime.now() - computed_at).total_seconds() < 86400 and "fitted_last" in result:
-                            logger.info("Stable prediction cache hit (within 24h).")
-                            return result
-        except Exception as e:
-            logger.warning(f"Failed to read predictions cache: {e}")
+    # 3. Check SQLite cache + Staleness check (24 hours)
+    conn = get_connection()
+    try:
+        row = conn.execute(
+            "SELECT * FROM predictions_cache WHERE cache_key = ?",
+            (cache_key,)
+        ).fetchone()
+        
+        if row:
+            computed_at_str = row["computed_at"]
+            if computed_at_str:
+                computed_at = datetime.strptime(computed_at_str, "%Y-%m-%d %H:%M")
+                if (datetime.now() - computed_at).total_seconds() < 86400:
+                    logger.info("Stable prediction SQLite cache hit (within 24h).")
+                    return {
+                        "dates": json.loads(row["dates"]),
+                        "yhat": json.loads(row["yhat"]),
+                        "yhat_lower": json.loads(row["yhat_lower"]),
+                        "yhat_upper": json.loads(row["yhat_upper"]),
+                        "fitted_last": row["fitted_last"],
+                        "computed_at": computed_at_str
+                    }
+    except Exception as e:
+        logger.warning(f"Failed to read predictions cache from SQLite: {e}")
+    finally:
+        conn.close()
 
     # 4. Only after cache miss — attempt Prophet import
     if _PROPHET_AVAILABLE is None:
@@ -157,22 +166,29 @@ def get_forecast(dates: list, values: list, horizon_str: str) -> dict:
         }
 
         # 6. Save to cache
+        conn = get_connection()
         try:
-            cache = {}
-            if os.path.exists(PREDICTIONS_CACHE_FILE):
-                with open(PREDICTIONS_CACHE_FILE, "r") as f:
-                    cache = json.load(f)
-            
-            # Limited to 20 most recent requests
-            if len(cache) > 20:
-                oldest_key = list(cache.keys())[0]
-                cache.pop(oldest_key)
-                
-            cache[cache_key] = result
-            with open(PREDICTIONS_CACHE_FILE, "w") as f:
-                json.dump(cache, f)
+            # Maintain max 20 entries (simplistic LRU)
+            count_row = conn.execute("SELECT COUNT(*) FROM predictions_cache").fetchone()
+            if count_row and count_row[0] >= 20:
+                oldest_key_row = conn.execute("SELECT cache_key FROM predictions_cache ORDER BY computed_at ASC LIMIT 1").fetchone()
+                if oldest_key_row:
+                    conn.execute("DELETE FROM predictions_cache WHERE cache_key = ?", (oldest_key_row[0],))
+
+            conn.execute('''
+                INSERT OR REPLACE INTO predictions_cache (
+                    cache_key, dates, yhat, yhat_lower, yhat_upper, fitted_last, computed_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?)
+            ''', (
+                cache_key, json.dumps(result["dates"]), json.dumps(result["yhat"]),
+                json.dumps(result["yhat_lower"]), json.dumps(result["yhat_upper"]),
+                result["fitted_last"], result["computed_at"]
+            ))
+            conn.commit()
         except Exception as e:
-            logger.warning(f"Failed to write prediction cache: {e}")
+            logger.warning(f"Failed to write prediction cache to SQLite: {e}")
+        finally:
+            conn.close()
 
         return result
 

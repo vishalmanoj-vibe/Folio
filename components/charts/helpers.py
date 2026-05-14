@@ -63,16 +63,20 @@ def create_empty_fig(msg: str = "Waiting for data…",
     )
     return f
 
-def build_benchmark_traces(period: str, theme_tokens: dict | None = None, portfolio_start: pd.Timestamp | None = None) -> list:
+def build_benchmark_traces(period: str, theme_tokens: dict | None = None, portfolio_start: pd.Timestamp | None = None, benchmarks: dict | None = None) -> list:
     """
     Return Plotly Scatter traces for S&P 500 and ASX 200 normalised to
     % return from the start of the selected period window or portfolio start.
     """
-    try:
-        from services.market.data_fetcher import fetch_benchmarks
-        benchmarks = fetch_benchmarks(period="max")
-    except Exception as exc:
-        logger.warning("Could not load benchmarks: %s", exc)
+    if benchmarks is None:
+        try:
+            from data.cache_manager import get_benchmarks_db
+            benchmarks = get_benchmarks_db()
+        except Exception as exc:
+            logger.warning("Could not load benchmarks from DB: %s", exc)
+            return []
+
+    if not benchmarks:
         return []
 
     cutoff = get_period_cutoff(period)

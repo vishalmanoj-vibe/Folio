@@ -42,6 +42,7 @@ import os
 import sys
 import signal
 import time
+from datetime import datetime
 
 from components.portfolio_layout import INDEX_STRING
 from data.repository import PortfolioRepository
@@ -74,35 +75,13 @@ except Exception as e:
     logger.error(f"\nERROR loading database:\n{e}\n")
 
 from core.engine import build_holdings
-from services.market.data_fetcher import fetch_live, load_portfolio_snapshot
+from services.market.data_fetcher import load_portfolio_snapshot
 from services.market.session_cache import clear_old_caches
 from services.history_cache import set_histories
-from services.research_memory import run_startup_maintenance
-
-# ── Maintenance ──────────────────────────────────────────────────────────────
-clear_old_caches(keep_days=1)  # Aggressive cleanup on startup
-
+# Maintenance is now deferred to worker tasks
 INITIAL_HOLDINGS = build_holdings(INITIAL_HISTORY)
-INITIAL_PORTFOLIO_DATA: dict = load_portfolio_snapshot()
-
-if not INITIAL_PORTFOLIO_DATA:
-    logger.info("No disk snapshot found. Starting with skeleton data.")
-    skeleton_holdings = []
-    for h in INITIAL_HOLDINGS:
-        skeleton_holdings.append({
-            **h,
-            "last_price": h["avg_cost"],
-            "prev_close": h["avg_cost"],
-            "mkt_value": h["total_cost"],
-            "pnl": 0.0, "pnl_pct": 0.0,
-            "day_pnl": 0.0, "day_chg": 0.0, "day_chg_pct": 0.0,
-            "day_high": h["avg_cost"], "day_low": h["avg_cost"],
-            "annual_div": 0.0, "realized_div": 0.0, "div_yield": 0.0,
-            "div_frequency": "Unknown", "last_div_amount": 0.0,
-        })
-    INITIAL_PORTFOLIO_DATA = {"holdings": skeleton_holdings, "histories": {}}
-else:
-    logger.info("Fast-loaded portfolio from disk snapshot.")
+INITIAL_PORTFOLIO_DATA: dict = load_portfolio_snapshot(INITIAL_HOLDINGS)
+logger.info("Fast-loaded portfolio from disk snapshot (SQLite).")
 
 # ── Initial watchlist load ───────────────────────────────────────────────────
 watchlist_repo = WatchlistRepository()
@@ -132,7 +111,9 @@ if INITIAL_WATCHLIST:
         }
         if disk_histories:
             set_histories("startup_watchlist", disk_histories)
-        watchlist_repo.refresh_all_histories()
+        
+        # Heavy bulk refresh removed from global scope to save memory.
+        # It will be triggered by the startup-interval via task queue.
         logger.info(f"Watchlist seeded from cache ({len(disk_histories)} tickers)")
     except Exception as e:
         logger.warning(f"Initial watchlist fetch failed: {e}")
@@ -173,16 +154,20 @@ app.layout = dmc.MantineProvider(
             dcc.Store(id="portfolio-store",     data=INITIAL_PORTFOLIO_DATA),
             dcc.Store(id="watchlist-store",     data=INITIAL_WATCHLIST_DATA),
             dcc.Store(id="alerts-store"),
-            dcc.Store(id="signals-store",           data={}, storage_type="session"),
-            dcc.Store(id="watchlist-signals-store", data={}, storage_type="session"),
+            dcc.Store(id="signals-store",           data={}, storage_type="local"),
+            dcc.Store(id="watchlist-signals-store", data={}, storage_type="local"),
             dcc.Store(id="theme-store",          data="dark", storage_type='local'),
             dcc.Store(id="compact-mode-store",   data=True),
-            dcc.Store(id="table-state-store",     data={"search": "", "sort_col": "mkt_value", "sort_dir": "desc"}, storage_type='local'),
+            dcc.Store(id="folio-table-state-v3",   data={"search": "", "sort_col": "ticker", "sort_dir": "asc"}, storage_type='session'),
             dcc.Interval(id="live-interval", interval=30000, n_intervals=0),
             dcc.Interval(id="heartbeat-interval", interval=30000, n_intervals=0),
             dcc.Interval(id="price-interval", interval=300000, n_intervals=0),
             dcc.Interval(id="startup-interval", interval=1500, n_intervals=0, max_intervals=1),
+            dcc.Interval(id="task-poll-interval", interval=2000, n_intervals=0, disabled=True),
             dcc.Store(id="nav-link-store"),
+            dcc.Store(id="pending-tasks-store", data=[], storage_type="session"),
+            dcc.Store(id="ai-pending-tasks-store", data={}, storage_type="session"), # {task_id: message_index}
+            dcc.Store(id="benchmark-pending-store", data=None, storage_type="session"), # task_id
 
             # ── Picker Stores (Session persistence) ────────────────────────────────
             dcc.Store(id="period-store",           data="max",    storage_type='session'),
@@ -218,17 +203,7 @@ app.layout = dmc.MantineProvider(
 
 
 
-# ── Refresh logic helpers ─────────────────
-def _perform_refresh(period="max"):
-    history  = repo.load_transactions()
-    holdings = build_holdings(history)
-    if holdings:
-        # fetch_live no longer returns histories or requires a period.
-        portfolio_data, histories, sig = fetch_live(holdings, record_snapshots=True)
-        set_histories(sig, histories)
-    else:
-        portfolio_data = {"holdings": [], "fetched_at": time.strftime("%H:%M:%S")}
-    return history, portfolio_data
+# Note: _perform_refresh and direct fetch_live calls have been moved to worker.py.
 
 # ── SINGLE OWNER: txn-store ───────────────────────────────────────────────────
 @app.callback(
@@ -289,26 +264,49 @@ def update_txn_store(n_startup, n_submit, t_type, ticker, shares, price, date_st
     prevent_initial_call=True,
 )
 def update_portfolio_store(txn_data, p1, p2, p3, p4, p5, n_price, n_start, n_btn):
-    triggered_id = dash.callback_context.triggered_id
+    """
+    Consumer only: Reads enriched portfolio data from the market_prices SQLite table.
+    The worker process is responsible for updating market_prices.
+    """
+    from data.cache_manager import get_live_prices
     
-    # Skip live fetch if market is closed and it's a periodic interval update
-    if triggered_id == "price-interval" and not is_market_open():
-        return dash.no_update
+    # 1. Get tickers from current txn-store
+    holdings = build_holdings(txn_data)
+    tickers = [h["ticker"] for h in holdings]
+    
+    if not tickers:
+        return {"holdings": [], "fetched_at": datetime.now().strftime("%H:%M:%S")}
 
     try:
-        # Determine the maximum period requested across all pages to ensure history is available
-        period_priority = {
-            "max": 100, "5y": 95, "2y": 90, "1y": 80, 
-            "ytd": 70, "6mo": 65, "3mo": 60, "1mo": 40, "1d": 20
-        }
-        requested = [p1, p2, p3, p4, p5]
-        weights = [(period_priority.get(p, 0), p) for p in requested if p]
-        period = sorted(weights, key=lambda x: x[0], reverse=True)[0][1] if weights else "max"
+        # 2. Read from SQLite (Centralized cache)
+        # get_live_prices is now the single source of truth for the Dash process
+        prices = get_live_prices(tickers)
+        
+        # Merge holdings with live price metrics
+        enriched = []
+        for h in holdings:
+            p = prices.get(h["ticker"], {})
+            enriched.append({**h, **p})
+            
+        fetched_at = "Unknown"
+        if enriched and "fetched_at" in enriched[0]:
+            fetched_at = enriched[0]["fetched_at"]
+            # Convert ISO to readable time
+            try:
+                if "T" in str(fetched_at):
+                    dt = datetime.fromisoformat(str(fetched_at))
+                    fetched_at = dt.strftime("%H:%M:%S")
+                else:
+                    fetched_at = str(fetched_at)[:8] # Already formatted or truncated
+            except:
+                pass
 
-        _, data = _perform_refresh(period)
-        return data
+        return {
+            "holdings": enriched,
+            "fetched_at": fetched_at
+        }
     except Exception as e:
-        logger.error(f"Portfolio refresh failed: {e}")
+        logger.error(f"Portfolio store update failed: {e}")
         return dash.no_update
 
 # ── Global Picker Syncing (UI -> Store) ──────────────────────────────────────
@@ -362,13 +360,7 @@ def sync_pred(v):
     label = "Forecast ON" if v else "Forecast"
     return v, label
 
-@app.callback(Output("positions-period-store", "data"), Input({"type": "pos-period-btn", "index": ALL}, "n_clicks"), prevent_initial_call=True)
-def sync_p4(n_list):
-    if not ctx.triggered_id: return dash.no_update
-    # FIX: ignore ghost clicks on dynamically generated components
-    if not ctx.triggered[0]["value"] or int(ctx.triggered[0]["value"]) < 1:
-        return dash.no_update
-    return ctx.triggered_id["index"]
+
 
 
 
@@ -386,6 +378,19 @@ research_cb.register_callbacks(app)
 signals_cb.register_callbacks(app)
 
 
+@app.callback(
+    Output("url", "search"),
+    Input("startup-interval", "n_intervals"),
+    prevent_initial_call=True,
+)
+def trigger_startup_maintenance_callback(n):
+    """Enqueues heavy maintenance tasks to the background worker after startup."""
+    if n == 1:
+        from data.database import enqueue_task
+        enqueue_task("maintenance", {"gemini_api_key": os.getenv("GEMINI_API_KEY")})
+        logger.info("Enqueued background maintenance task (Cache cleanup + Watchlist refresh)")
+    return dash.no_update
+
 # ── Render Performance Optimizations ──────────────────────────────────────────
 app.clientside_callback(
     """
@@ -394,7 +399,7 @@ app.clientside_callback(
     }
     """,
     Output("nav-link-store", "data", allow_duplicate=True),
-    Input("portfolio-store", "data"),
+    Input("url", "pathname"),
     prevent_initial_call=True,
 )
 
@@ -428,6 +433,24 @@ def close_browser():
         os.system(cmd_safari)
 
 
+# ── Task Poll Interval Manager (Clientside) ───────────────────────────────────
+app.clientside_callback(
+    """
+    function(p1, p2, p3) {
+        // Enable interval if any store has data
+        const hasPending = (p1 && p1.length > 0) || 
+                          (p2 && Object.keys(p2).length > 0) || 
+                          (p3 !== null && p3 !== undefined);
+        return !hasPending; // returns disabled=true if NOT pending
+    }
+    """,
+    Output("task-poll-interval", "disabled"),
+    Input("pending-tasks-store", "data"),
+    Input("ai-pending-tasks-store", "data"),
+    Input("benchmark-pending-store", "data"),
+)
+
+
 def handle_exit(sig, frame):
     """Signal handler for graceful shutdown."""
     close_browser()
@@ -448,32 +471,8 @@ if __name__ == "__main__":
     signal.signal(signal.SIGINT, handle_exit)
     signal.signal(signal.SIGTERM, handle_exit)
 
-    # ── Background Snapshot Thread ─────────────────
-    def background_refresh():
-        """
-        Independent thread that records snapshots every 300s (5m).
-        Ensures 'Today' chart has continuous data even if browser is closed.
-        """
-        from services.market.market_status import is_market_open, time_until_market_open
-        while True:
-            try:
-                seconds_until_open = time_until_market_open()
-                
-                # Fetch if market is open or we are in the 5-minute pre-market window
-                if is_market_open() or seconds_until_open <= 0:
-                    _perform_refresh("1d")
-                    logger.debug("Background snapshot recorded.")
-                    time.sleep(300)
-                else:
-                    # Sleep exactly until 09:55 on the next trading day
-                    sleep_time = seconds_until_open
-                    logger.debug(f"Market closed. Background thread sleeping for {sleep_time:.0f} seconds until next pre-market fetch.")
-                    time.sleep(sleep_time)
-            except Exception as e:
-                logger.error(f"Background refresh failed: {e}")
-                time.sleep(300)
-
-    threading.Thread(target=background_refresh, daemon=True).start()
+    # ── Background Worker ─────────────────
+    # Worker is now managed by launcher.py as a separate process.
 
     # Start browser after a short delay
     threading.Timer(1.5, open_browser).start()

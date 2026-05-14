@@ -15,9 +15,8 @@ from components.ui_helpers import txn_table
 import logging
 import math
 logger = logging.getLogger(__name__)
-
-
 from services.market.data_fetcher import get_etf_name, get_ticker_cached
+from data.database import get_connection
 
 def register_callbacks(app):
     """
@@ -40,19 +39,31 @@ def register_callbacks(app):
             return "", dash.no_update
         
         try:
+            # 1. Get Name (Uses multi-layer cache)
             name = get_etf_name(ticker)
-            # Try to get live price for pre-fill
-            ticker_yf = f"{ticker.upper()}.AX" if "." not in ticker else ticker.upper()
-            tk = get_ticker_cached(ticker_yf)
             
-            # Use fast_info if possible, else regular info
+            # 2. Get Price from SQLite (Read-only, zero network)
+            conn = get_connection()
+            price = None
             try:
-                price = tk.fast_info.last_price
-                if price == 0 or math.isnan(price):
-                    price = tk.info.get("regularMarketPrice") or tk.info.get("previousClose")
-            except Exception:
-                price = tk.info.get("regularMarketPrice") or tk.info.get("previousClose")
+                row = conn.execute("SELECT last_price FROM market_prices WHERE ticker = ?", (ticker,)).fetchone()
+                if row:
+                    price = row["last_price"]
+            finally:
+                conn.close()
                 
+            # 3. If NOT in cache, perform a targeted live fetch
+            if not price:
+                try:
+                    ticker_yf = f"{ticker}.AX" if "." not in ticker else ticker
+                    tk = get_ticker_cached(ticker_yf)
+                    # Try fast_info first, then full info
+                    price = tk.fast_info.last_price
+                    if not price or math.isnan(price) or price == 0:
+                        price = tk.info.get("regularMarketPrice") or tk.info.get("previousClose")
+                except Exception:
+                    price = None
+
             return name, round(price, 2) if price else dash.no_update
         except Exception as e:
             # Only log if it's not a common 'not found' or network timeout

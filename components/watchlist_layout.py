@@ -20,57 +20,11 @@ def create_watchlist_layout() -> html.Div:
                 [
                     html.Div([
                         html.H1("Market Watchlist", className="header-title"),
-                        html.P("Track potential purchases · Live pricing · Real-time metrics", className="header-subtitle"),
-                    ], className="header-title-row"),
-                    html.Div([
-                        dmc.Button(
-                            "Generate Signals",
-                            id="watchlist-generate-signals-btn",
-                            variant="light",
-                            color="teal",
-                            size="sm",
-                            leftSection="🤖"
-                        ),
-                        dcc.Loading(
-                            id="watchlist-loading-signals",
-                            type="dot",
-                            color="var(--t-pri)",
-                            children=html.Span(
-                                id="watchlist-signals-status-label",
-                                style={"marginLeft": "10px", "fontSize": "11px", "color": "var(--t-sec)"}
-                            )
-                        )
-                    ], style={"marginLeft": "auto", "display": "flex", "alignItems": "center", "gap": "8px"})
+                        html.P("Track potential purchases · Real-time metrics", className="header-subtitle"),
+                    ], className="header-title-row", style={"flex": "0 0 auto"}),
                 ],
                 className="page-header-row",
-                style={"display": "flex"}
-            ),
-
-            # ── Add Ticker Row ────────────────────────────────────────────────
-            section(
-                None,
-                html.Div(
-                    [
-                        html.Div([
-                            dmc.TextInput(
-                                id="watchlist-input",
-                                placeholder="Enter ticker (e.g. VAS, MQG)",
-                                size="sm",
-                                className="txn-input-text",
-                                style={"width": "260px", "marginRight": "12px"}
-                            ),
-                            html.Button(
-                                "Add to Watchlist",
-                                id="watchlist-add-btn",
-                                n_clicks=0,
-                                className="btn-primary"
-                            ),
-                        ], style={"display": "flex", "alignItems": "center", "marginBottom": "12px"}),
-                        html.P(id="watchlist-msg", className="txn-status-msg", style={"margin": "0"}),
-                    ],
-                    className="card-inset",
-                    style={"padding": "16px"}
-                )
+                style={"display": "flex", "alignItems": "center", "padding": "16px 24px", "borderBottom": "0.5px solid var(--border)", "marginBottom": "16px"}
             ),
 
             # ── Main Content: Table & Chart ───────────────────────────────────
@@ -81,7 +35,25 @@ def create_watchlist_layout() -> html.Div:
                         # Left: Table
                         html.Div(
                             [
-                                chart_title("Watched Assets"),
+                                html.Div([
+                                    chart_title("Watched Assets"),
+                                    html.Div([
+                                        html.Div([
+                                            dmc.TextInput(
+                                                id="watchlist-input",
+                                                placeholder="Ticker (e.g. VAS)",
+                                                size="xs",
+                                                style={"width": "120px"}
+                                            ),
+                                            html.Div(id="watchlist-ticker-hint", 
+                                                    style={"position": "absolute", "top": "100%", "left": "0", 
+                                                            "fontSize": "10px", "color": "var(--cyan)", "whiteSpace": "nowrap", "zIndex": "10"}),
+                                        ], style={"position": "relative"}),
+                                        html.Button("Add", id="watchlist-add-btn", n_clicks=0, className="btn-primary btn-sm", style={"marginLeft": "8px"}),
+                                        html.P(id="watchlist-msg", className="txn-status-msg", style={"margin": "0 0 0 8px", "fontSize": "10px"}),
+                                    ], style={"marginLeft": "auto", "display": "flex", "alignItems": "center"})
+                                ], style={"display": "flex", "alignItems": "center", "marginBottom": "12px"}),
+                                
                                 dcc.Loading(
                                     html.Div(id="watchlist-table-container"),
                                     custom_spinner=table_skeleton(5)

@@ -1,6 +1,7 @@
 import base64
 import os
 import logging
+import json
 from datetime import datetime
 from dash import Input, Output, State, ctx, html, no_update
 import dash
@@ -9,6 +10,7 @@ from services.research_memory import (
     append_turn, load_conversation_log,
     load_memory_summary, check_memory_size
 )
+from data.database import enqueue_task, get_connection
 
 logger = logging.getLogger(__name__)
 
@@ -72,6 +74,7 @@ def register_callbacks(app):
         Output("research-typing-indicator", "style"),
         Output("research-send-btn", "disabled"),
         Output("report-cache-store", "data", allow_duplicate=True),
+        Output("ai-pending-tasks-store", "data", allow_duplicate=True),
         Input("research-send-btn", "n_clicks"),
         Input("research-input", "n_submit"),
         Input("qp-1", "n_clicks"),
@@ -84,59 +87,48 @@ def register_callbacks(app):
         State("portfolio-store", "data"),
         State("research-ticker-store", "data"),
         State("research-usage-store", "data"),
+        State("ai-pending-tasks-store", "data"),
         prevent_initial_call=True
     )
     def send_research_message(n_send, n_submit, n1, n2, n3, n4, n_report,
-                              input_val, current_history, portfolio_data,
-                              ticker, usage_data):
+                               input_val, current_history, portfolio_data,
+                               ticker, usage_data, ai_pending):
         from datetime import date
         DAILY_LIMIT = 20
         today_str = str(date.today())
 
         if not ctx.triggered_id:
             return (no_update, no_update, no_update,
-                    {"display": "none"}, False, no_update)
+                    {"display": "none"}, False, no_update, no_update)
 
         # Guard against mount-time ghost fires for quick-prompt buttons
         triggered_val = ctx.triggered[0].get("value") or 0
         if str(ctx.triggered_id) in ("qp-1", "qp-2", "qp-3", "qp-4", "qp-report"):
             if not triggered_val or int(triggered_val) < 1:
                 return (no_update, no_update, no_update,
-                        {"display": "none"}, False, no_update)
+                        {"display": "none"}, False, no_update, no_update)
 
         # Guard for send button / enter key
         if str(ctx.triggered_id) in ("research-send-btn", "research-input"):
             if not triggered_val or int(triggered_val) < 1:
                 return (no_update, no_update, no_update,
-                        {"display": "none"}, False, no_update)
+                        {"display": "none"}, False, no_update, no_update)
 
         history = list(current_history or [])
 
         # ── Report generation branch ─────────────────────────────────────────
         if ctx.triggered_id == "qp-report":
             history.append({"role": "user", "content": "Generate Weekly Report"})
-            try:
-                api_key = os.getenv("GEMINI_API_KEY", "")
-                from services.report_service import generate_weekly_report
-                pdf_bytes = generate_weekly_report(portfolio_data, api_key)
-                b64 = base64.b64encode(pdf_bytes).decode("utf-8")
-
-                # Append a special "report-ready" message to chat history
-                history.append({
-                    "role": "assistant",
-                    "content": "✓ Your **Weekly Portfolio Report** is ready!",
-                    "type": "report-ready",
-                })
-                return (history, "", no_update,
-                        {"display": "none"}, False, b64)
-            except Exception as e:
-                logger.error(f"Report generation failed: {e}")
-                history.append({
-                    "role": "assistant",
-                    "content": "❌ Report generation failed. Please try again.",
-                })
-                return (history, "", no_update,
-                        {"display": "none"}, False, no_update)
+            history.append({"role": "assistant", "content": "⌛ Preparing your report, please wait...", "type": "thinking"})
+            placeholder_idx = len(history) - 1
+            
+            # Enqueue report task
+            task_id = enqueue_task("generate_report", {"tickers": [h["ticker"] for h in portfolio_data.get("holdings", [])]}, priority=2)
+            
+            new_ai_pending = (ai_pending or {}).copy()
+            new_ai_pending[task_id] = placeholder_idx
+            
+            return (history, "", no_update, {"display": "none"}, False, no_update, new_ai_pending)
 
         # ── Standard chat branch ─────────────────────────────────────────────
         if not usage_data:
@@ -154,7 +146,7 @@ def register_callbacks(app):
             )
             history.append({"role": "assistant", "content": limit_msg})
             return (history, "", no_update,
-                    {"display": "none"}, False, no_update)
+                    {"display": "none"}, False, no_update, no_update)
 
         message = None
         if ctx.triggered_id == "qp-1":
@@ -170,25 +162,33 @@ def register_callbacks(app):
 
         if not message or not str(message).strip():
             return (no_update, no_update, no_update,
-                    {"display": "none"}, False, no_update)
+                    {"display": "none"}, False, no_update, no_update)
 
         history.append({"role": "user", "content": message})
+        history.append({"role": "assistant", "content": "Thinking...", "type": "thinking"})
+        placeholder_idx = len(history) - 1
+        
         append_turn("user", message)
-
-        response = get_ai_response(history, portfolio_data, ticker or "")
-        from services.web_search import should_search_web
-        used_search = should_search_web(message)
-
-        response_content = response
-        if used_search:
-            response_content = "🔍 *Web search used*\n\n" + response
-
-        history.append({"role": "assistant", "content": response_content})
-        append_turn("assistant", response)
-
+        
+        # ── Build Compact Context ──
+        holdings = portfolio_data.get("holdings", [])
+        top_holdings = sorted(holdings, key=lambda x: x.get("mkt_value", 0), reverse=True)[:20]
+        context = {
+            "holdings": top_holdings
+        }
+        
+        # Enqueue AI task
+        task_id = enqueue_task("generate_ai_response", {
+            "messages": history[:-1], # History excluding placeholder
+            "context": context,
+            "ticker": ticker or "General"
+        }, priority=1) # Highest priority
+        
+        new_ai_pending = (ai_pending or {}).copy()
+        new_ai_pending[task_id] = placeholder_idx
+        
         new_usage = {"count": current_count + 1, "reset_date": today_str}
-        return (history, "", new_usage,
-                {"display": "none"}, False, no_update)
+        return (history, "", new_usage, {"display": "none"}, False, no_update, new_ai_pending)
 
     # --- CLIENTSIDE: Show typing indicator immediately on send or quick prompt click ---
     app.clientside_callback(
@@ -213,7 +213,66 @@ def register_callbacks(app):
         prevent_initial_call=True,
     )
 
-    # --- CALLBACK 3: Render chat messages ---
+    # --- CALLBACK 3: Poll AI tasks ---
+    @app.callback(
+        Output("research-chat-store", "data", allow_duplicate=True),
+        Output("ai-pending-tasks-store", "data", allow_duplicate=True),
+        Output("report-cache-store", "data", allow_duplicate=True),
+        Input("task-poll-interval", "n_intervals"),
+        State("ai-pending-tasks-store", "data"),
+        State("research-chat-store", "data"),
+        prevent_initial_call=True
+    )
+    def poll_ai_research_callback(n, pending, history):
+        if not pending:
+            return no_update, {}, no_update
+            
+        history = list(history or [])
+        conn = get_connection()
+        try:
+            still_pending = {}
+            new_report = no_update
+            
+            for task_id, placeholder_idx in pending.items():
+                row = conn.execute("SELECT status, result FROM worker_tasks WHERE task_id = ?", (task_id,)).fetchone()
+                
+                if row:
+                    status = row["status"]
+                    if status == "complete":
+                        res = json.loads(row["result"]) if row["result"] else {}
+                        
+                        # Replace placeholder in history
+                        if placeholder_idx < len(history):
+                            if "response" in res:
+                                # AI Chat response
+                                history[placeholder_idx] = {"role": "assistant", "content": res["response"]}
+                                append_turn("assistant", res["response"])
+                            elif "pdf_b64" in res:
+                                # Report response
+                                history[placeholder_idx] = {
+                                    "role": "assistant",
+                                    "content": "✓ Your **Weekly Portfolio Report** is ready!",
+                                    "type": "report-ready"
+                                }
+                                new_report = res["pdf_b64"]
+                        
+                    elif status == "failed":
+                        res = json.loads(row["result"]) if row["result"] else {}
+                        err = res.get("error", "AI failed.")
+                        if placeholder_idx < len(history):
+                            history[placeholder_idx] = {"role": "assistant", "content": f"❌ {err}"}
+                    else:
+                        still_pending[task_id] = placeholder_idx
+                else:
+                    # Task not found
+                    if placeholder_idx < len(history):
+                        history[placeholder_idx] = {"role": "assistant", "content": "❌ Assistant is temporarily unavailable (Task not found)."}
+            
+            return history, still_pending, new_report
+        finally:
+            conn.close()
+
+    # --- CALLBACK 4: Render chat messages ---
     @app.callback(
         Output("research-chat-display", "children"),
         Input("research-chat-store", "data"),

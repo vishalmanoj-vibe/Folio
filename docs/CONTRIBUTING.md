@@ -22,10 +22,14 @@ This guide covers local setup, development conventions, and how to extend the ap
      ```bash
      pip install -r requirements.txt
      ```
+   - Install Playwright (required for ETF holdings scraping):
+     ```bash
+     playwright install webkit
+     ```
 
 3. **Configuration**:
    - Create a `.env` file in the root directory (see `.env.example` for all available variables).
-   - `GEMINI_API_KEY` is required for AI Analyst features.
+   - `GEMINI_API_KEY` is required for Assistant features.
 
 4. **Run the App**:
    ```bash

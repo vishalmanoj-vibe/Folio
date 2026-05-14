@@ -50,7 +50,19 @@ def register_callbacks(app) -> None:
         if not portfolio_data or "fetched_at" not in portfolio_data:
             return dot_class, "Last refreshed: just now"
             
-        return dot_class, f"Last refreshed: {portfolio_data['fetched_at']}"
+        fetched_at = portfolio_data.get("fetched_at", "Unknown")
+        # Fail-safe formatting for UI badge
+        try:
+            if "T" in str(fetched_at):
+                from datetime import datetime
+                dt = datetime.fromisoformat(str(fetched_at))
+                fetched_at = dt.strftime("%H:%M:%S")
+            else:
+                fetched_at = str(fetched_at)[:8]
+        except:
+            pass
+            
+        return dot_class, f"Last refreshed: {fetched_at}"
 
     # ── Stat cards ────────────────────────────────────────────────────────────
     @app.callback(
@@ -119,7 +131,7 @@ def register_callbacks(app) -> None:
     @app.callback(
         Output("live-table",        "children"),
         Input("portfolio-store",    "data"),
-        Input("table-state-store",  "data"),
+        Input("folio-table-state-v3",  "data"),
         Input("url", "pathname"),
         State("table-filter",       "value"),
         State("signals-store",      "data"),
@@ -161,10 +173,18 @@ def register_callbacks(app) -> None:
 
         # ── Sorting ───────────────────────────────────────────────────────────
         if not isinstance(table_state, dict) or not table_state:
-            table_state = {"sort_col": "mkt_value", "sort_dir": "desc"}
+            table_state = {"sort_col": "ticker", "sort_dir": "asc"}
             
-        sort_col = table_state.get("sort_col", "mkt_value")
-        sort_dir = table_state.get("sort_dir", "desc")
+        sort_col = table_state.get("sort_col", "ticker")
+        sort_dir = table_state.get("sort_dir", "asc")
+        
+        # ── HARD-LOCK ──
+        # If the column is 'ticker', we FORCE ascending. This prevents any 
+        # stale or ghost updates from flipping it to descending on load.
+        if sort_col == "ticker":
+            sort_dir = "asc"
+            
+        logger.debug(f"FINAL RENDER: sort_col={sort_col}, sort_dir={sort_dir}")
         
         rows_data = build_live_table_rows(holdings, sort_col, sort_dir)
 

@@ -11,7 +11,11 @@ from datetime import timedelta
 def get_period_cutoff(period: str) -> pd.Timestamp | None:
     """
     Calculate the start date based on a given time period string.
+    If a Timestamp or date object is passed, return it as a pd.Timestamp.
     """
+    import datetime
+    if isinstance(period, (pd.Timestamp, datetime.date, datetime.datetime)):
+        return pd.Timestamp(period)
     # We align cutoffs with the UTC-normalized indices from fetch_live.
     # For ASX, 'Today' start (10:00 AM Sydney) is 00:00 UTC.
     # We use a robust way to get this regardless of server local time.
@@ -28,8 +32,10 @@ def get_period_cutoff(period: str) -> pd.Timestamp | None:
         "1mo": now_utc - timedelta(days=30),
         "3mo": now_utc - timedelta(days=91),
         "6mo": now_utc - timedelta(days=182),
+        "ytd": pd.Timestamp(year=now_syd.year, month=1, day=1),
         "1y":  now_utc - timedelta(days=365),
         "2y":  now_utc - timedelta(days=730),
+        "5y":  now_utc - timedelta(days=1825),
         "max": None,
     }
     return mapping.get(period, None)

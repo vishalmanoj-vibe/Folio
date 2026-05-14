@@ -466,3 +466,25 @@ def register_callbacks(app) -> None:
         repo.save_note(selected_ticker, note_text or "")
         return f"✓ Saved"
 
+
+    # ── Ticker Discovery (Name) ─────────────────────────
+    @app.callback(
+        Output("watchlist-ticker-hint", "children"),
+        Input("watchlist-input", "value"),
+        prevent_initial_call=True,
+    )
+    def discover_watchlist_ticker(ticker):
+        if not ticker or len(ticker.strip()) == 0:
+            return ""
+        
+        ticker = ticker.strip().upper()
+        if len(ticker) < 2:
+            return ""
+        
+        try:
+            name = get_etf_name(ticker)
+            return name
+        except Exception as e:
+            if ticker and len(ticker) > 2:
+                logger.debug(f"Watchlist discovery failed for {ticker}: {e}")
+            return ""

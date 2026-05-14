@@ -99,6 +99,12 @@ def compute_signals(ticker: str, history: list[dict]) -> dict:
         macd_line, signal_line = compute_macd(prices)
         bb_upper, bb_mid, bb_lower = compute_bbands(prices)
         
+        # New indicators: SMA 200 and Volatility
+        sma_200 = prices.rolling(200).mean()
+        returns = prices.pct_change().dropna()
+        # Annualized volatility (Std Dev of returns * sqrt of trading days)
+        vol_30d = returns.tail(30).std() * (252**0.5) * 100 if len(returns) >= 30 else 0
+        
         # ── 3. Signal Classification ──────────────────────────────────────
         rsi_val = float(rsi_series.iloc[-1])
         macd_val = float(macd_line.iloc[-1])
@@ -123,6 +129,23 @@ def compute_signals(ticker: str, history: list[dict]) -> dict:
             bb_label = "Below lower band"
         else:
             bb_label = "Inside bands"
+
+        # SMA 200 Trend classification
+        current_sma = sma_200.iloc[-1] if not sma_200.empty else None
+        if current_sma:
+            sma_label = "Bullish" if last_price > current_sma else "Bearish"
+        else:
+            sma_label = "Insufficient Data"
+
+        # Volatility classification
+        if vol_30d == 0:
+            vol_label = "Calculating..."
+        elif vol_30d < 15:
+            vol_label = "Low"
+        elif vol_30d < 30:
+            vol_label = "Medium"
+        else:
+            vol_label = "High"
             
         result = {
             "ticker": ticker,
@@ -134,6 +157,10 @@ def compute_signals(ticker: str, history: list[dict]) -> dict:
             "bb_upper": round(bb_upper.iloc[-1], 3),
             "bb_lower": round(bb_lower.iloc[-1], 3),
             "bb_label": bb_label,
+            "sma_200": round(current_sma, 3) if current_sma else None,
+            "sma_label": sma_label,
+            "volatility": round(vol_30d, 1),
+            "vol_label": vol_label,
             "last_price": round(last_price, 3),
         }
         

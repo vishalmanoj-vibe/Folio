@@ -42,8 +42,9 @@ pip install -r requirements.txt
 echo "GEMINI_API_KEY=your_key_here" > .env
 
 # 5. Run
-python app.py
-# Opens automatically at http://127.0.0.1:8050
+python launcher.py
+# This starts both the Dash UI and the background worker.
+# Open manually at http://127.0.0.1:8050
 ```
 
 The database is created automatically on first run. Add your transactions directly from the UI — no CSV or manual setup required.
@@ -58,12 +59,12 @@ All other features (live prices, P&L tracking, dividends, signals engine, foreca
 
 | Page | Route | Description |
 |---|---|---|
-| Overview | `/` | Live positions table, P&L chart, stat cards |
+| Holdings | `/` | Live positions table, P&L chart, stat cards |
 | Positions | `/positions` | Per-holding deep-dive with candlestick charts and dividends |
 | Watchlist | `/watchlist` | Track tickers you are considering buying |
-| Intelligence | `/intelligence` | Risk metrics, equity curve, drawdown, forecasting |
-| Analytics | `/analytics` | Allocation treemaps, correlation matrix, volatility |
-| AI Analyst | `/ai-analyst` | Chat-based portfolio research and weekly PDF report |
+| Insights | `/intelligence` | Risk metrics, equity curve, drawdown, forecasting |
+| Deep Dive | `/analytics` | Allocation treemaps, correlation matrix, volatility |
+| Assistant | `/ai-analyst` | Chat-based portfolio research and weekly PDF report |
 
 ## Architecture
 

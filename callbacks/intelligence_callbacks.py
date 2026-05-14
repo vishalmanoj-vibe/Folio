@@ -6,6 +6,7 @@ Callbacks for the Portfolio Intelligence page.
 """
 import math
 import logging
+import pandas as pd
 from dash import Input, Output, State, html
 from config.constants import COLORS, GREEN, RED
 
@@ -34,19 +35,22 @@ def register_callbacks(app) -> None:
         Output("intel-drawdown-chart", "figure"),
         Output("intel-alerts",         "children"),
         Output("intel-data-note",      "children"),
+        Output("benchmark-pending-store", "data", allow_duplicate=True),
         Input("portfolio-store",       "data"),
         Input("intel-period-store",    "data"),
         Input("theme-store",           "data"),
         Input("intel-pred-store",      "data"),
         Input("url", "pathname"),
+        Input("task-poll-interval", "n_intervals"),
         State("intel-pred-toggle",     "checked"),
         State("intel-period-picker",   "value"),
-        prevent_initial_call=False,
+        State("benchmark-pending-store", "data"),
+        prevent_initial_call=True,
     )
-    def update_intelligence(port_data, period_st, theme, pred_st, url_pathname, pred_ui, period_ui):
+    def update_intelligence(port_data, period_st, theme, pred_st, url_pathname, n_tasks, pred_ui, period_ui, bench_pending):
         import dash
         # FIX: prevent background recalculation when not on Intelligence page (robust to trailing slashes)
-        if url_pathname.rstrip("/") != "/intelligence": return tuple([dash.no_update] * 5)
+        if url_pathname.rstrip("/") != "/intelligence": return tuple([dash.no_update] * 6)
         # Use the directly triggered toggle value
         period = period_st or period_ui or "3mo"
         t_ = get_theme(theme or "dark")
@@ -65,6 +69,7 @@ def register_callbacks(app) -> None:
                 "detail": "Portfolio data is loading — please wait.",
             })],
             "Waiting for portfolio data…",
+            dash.no_update
         )
 
         try:
@@ -75,9 +80,34 @@ def register_callbacks(app) -> None:
             tickers   = sorted({h["ticker"] for h in holdings})
             fetched_at = port_data.get("fetched_at", "")
 
+            # ── 0. Benchmark Data ──
+            from data.cache_manager import get_benchmarks_db
+            from data.database import enqueue_task, get_connection
+            
+            bench_data = get_benchmarks_db()
+            bench_note = ""
+            new_bench_pending = bench_pending
+            
+            if bench_data is None:
+                # Queue task if not already pending
+                conn = get_connection()
+                try:
+                    row = conn.execute("SELECT task_id FROM worker_tasks WHERE task_type = 'fetch_benchmarks' AND status IN ('pending', 'running')").fetchone()
+                    if row:
+                        new_bench_pending = row["task_id"]
+                    else:
+                        new_bench_pending = enqueue_task("fetch_benchmarks", {"period": "max"}, priority=8)
+                    bench_note = " · ⏳ Benchmarks loading…"
+                finally:
+                    conn.close()
+            else:
+                # Benchmarks available, clear pending ID
+                new_bench_pending = None
+
             data_note = (
                 f"Analysing {len(tickers)} ETF(s): {', '.join(tickers)}"
                 + (f"  ·  Prices updated {fetched_at}" if fetched_at else "")
+                + bench_note
                 + "  ·  Sector & geo: live from Yahoo Finance (cached 24 h)"
             )
 
@@ -134,10 +164,15 @@ def register_callbacks(app) -> None:
             ]
 
             # ── B. Equity curve ───────────────────────────────────────────────────
+            from components.charts.helpers import build_benchmark_traces
+            p_start = pd.to_datetime(metrics.get("ret_dates", ["2000-01-01"])[0])
+            b_traces = build_benchmark_traces(period, t_, portfolio_start=p_start, benchmarks=bench_data) if bench_data else []
+
             eq_fig = build_intel_equity_chart(
                 metrics.get("ret_dates", []),
                 metrics.get("ret_values", []),
-                t_
+                t_,
+                benchmarks=b_traces
             )
             eq_fig.update_layout(uirevision=f"pred_{pred_on}")
 
@@ -219,7 +254,8 @@ def register_callbacks(app) -> None:
                 risk_cards,
                 eq_fig, dd_fig,
                 alert_cards,
-                data_note
+                data_note,
+                new_bench_pending
             )
         except Exception:
             logger.exception("Failed to update intelligence page")

@@ -85,9 +85,9 @@ def register_callbacks(app) -> None:
 
     # ── Table Header Sorting ──────────────────────────────────────────────────
     @app.callback(
-        Output("table-state-store", "data"),
+        Output("folio-table-state-v3", "data"),
         Input({"type": "table-th", "index": dash.ALL}, "n_clicks"),
-        State("table-state-store", "data"),
+        State("folio-table-state-v3", "data"),
         prevent_initial_call=True
     )
     def update_table_sorting(n_clicks_list, current_state):
@@ -106,7 +106,7 @@ def register_callbacks(app) -> None:
 
         # Ensure current_state is a valid dict
         if not current_state or not isinstance(current_state, dict):
-            current_state = {"sort_col": "mkt_value", "sort_dir": "desc", "search": ""}
+            current_state = {"sort_col": "ticker", "sort_dir": "asc", "search": ""}
         
         new_state = current_state.copy()
         

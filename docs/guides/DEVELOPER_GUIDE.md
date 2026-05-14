@@ -9,7 +9,7 @@ The application follows a strictly decoupled layered architecture to ensure sepa
 ```text
 ┌─────────────────────────────────────────────────────────────────────────────┐
 │                             PRESENTATION LAYER                              │
-│  (app.py, pages/, callbacks/, components/, assets/)                         │
+│  (app.py, launcher.py, pages/, callbacks/, components/, assets/)             │
 └──────────┬───────────────────────────┬───────────────────────┬──────────────┘
            │                           │                       │
            ▼                           ▼                       ▼
@@ -20,12 +20,11 @@ The application follows a strictly decoupled layered architecture to ensure sepa
 │                       │   │  stats_engine.py)     │   │                       │
 └──────────┬────────────┘   └───────────┬───────────┘   └───────────┬───────────┘
            │                            │                           │
-           └───────────────┬────────────┴───────────────┬───────────┘
-                           ▼                            ▼
-               ┌───────────────────────┐    ┌───────────────────────┐
-               │      DOMAIN LAYER     │    │   FOUNDATION LAYER    │
-               │ (models/transaction.py)    │   (core/, config/)    │
-               └───────────────────────┘    └───────────────────────┘
+           ▼                            ▼                           ▼
+┌───────────────────────┐   ┌───────────────────────┐   ┌───────────────────────┐
+│      DOMAIN LAYER     │   │   FOUNDATION LAYER    │   │  BACKGROUND WORKER    │
+│ (models/transaction.py)    │   (core/, config/)    │   │ (worker.py, tasks/)   │
+└───────────────────────┘   └───────────────────────┘   └───────────────────────┘
 ```
 
 ### Layer Responsibilities
@@ -194,12 +193,12 @@ folio/
 │   └── research_callbacks.py       # AI chat interaction
 │
 ├── pages/                          # Multi-page routing
-│   ├── portfolio.py                # Main Dashboard (/)
-│   ├── positions.py                # Ticker deep-dive (/positions)
+│   ├── portfolio.py                # Holdings (/)
+│   ├── positions.py                # Positions (/positions)
 │   ├── watchlist.py                # Watchlist (/watchlist)
-│   ├── intelligence.py             # Risk Analysis (/intelligence)
-│   ├── analytics.py                # Allocation Treemaps (/analytics)
-│   └── ai_analyst.py               # AI Research & Reports (/ai-analyst)
+│   ├── intelligence.py             # Insights (/intelligence)
+│   ├── analytics.py                # Deep Dive (/analytics)
+│   └── ai_analyst.py               # Assistant (/ai-analyst)
 │
 └── assets/                         # Static assets (Modular CSS)
     ├── base-tokens.css             # Design Tokens (CSS Variables)
@@ -325,8 +324,8 @@ The transaction entry system was migrated from a standard `dcc.Input` to a Manti
 
 ## Specialized Features
 
-### 1. Intelligence & Risk Analysis
-The **Intelligence Page** provides a deep dive into portfolio risk.
+### 1. Insights & Risk Analysis
+The **Insights Page** provides a deep dive into portfolio risk.
 - **Metrics**: Annualized Volatility, Sharpe Ratio, and Max Drawdown are calculated using pure Python in `intelligence_service.py`. 
 - **Optimization**: To avoid double-calculating heavy return series (e.g. when forecasting is enabled), returns are pre-computed once and passed into the metrics engine.
 - **Robustness**: Safety checks ensure that missing ETF metadata (`funds_data`) doesn't crash the engine; it falls back to parsing the `info` category or symbol-based inference.
@@ -368,8 +367,8 @@ To ensure consistent data views across the dashboard, the application implements
 - **The Problem**: Different pages (e.g., Positions vs. Watchlist) may request different time periods, but they share the global `portfolio-store`.
 - **The Fix**: The refresh callback in `app.py` evaluates all active page-specific period stores and instructs the market service to fetch the **maximum** duration requested. This ensures that when a user switches pages, the required historical data is already present in the global cache.
 
-### 8. AI Research Assistant & Persistent Memory
-The **Research Page** leverages Google Gemini 2.5 Flash Lite for contextual portfolio reasoning.
+### 8. AI Assistant & Persistent Memory
+The **Assistant Page** leverages Google Gemini 2.5 Flash Lite for contextual portfolio reasoning.
 - **Contextual Awareness**: On every query, the assistant is injected with a live snapshot of the portfolio (Holdings, P&L, Weights) and the ticker currently being researched.
 - **Technical Integration**: Live technical signals (RSI/MACD/BB) are automatically computed and injected into the prompt context, allowing the AI to reason about technical entry points.
 - **Cost & Performance Optimization**:
@@ -390,7 +389,7 @@ The research assistant is now equipped with real-time web search capabilities to
 
 ### 10. Technical Charting & UI Layout Stability
 To provide a professional trading experience, the dashboard implements several layout and visualization safeguards:
-- **Layout Isolation (AI Insights)**: To prevent large blocks of AI-generated text from disrupting the CSS Grid, AI Analyst insights are rendered in a dedicated `ai-insight-container`. This prevents the "auto-fit" behavior from shrinking the top-level metric cards when the AI card expands.
+- **Layout Isolation (AI Insights)**: To prevent large blocks of AI-generated text from disrupting the CSS Grid, Assistant insights are rendered in a dedicated `ai-insight-container`. This prevents the "auto-fit" behavior from shrinking the top-level metric cards when the AI card expands.
 - **Dynamic Chart Scaling**: Price charts on the Watchlist page calculate the period's min/max prices dynamically. The Y-axis is constrained to `[min * 0.98, max * 1.02]`, eliminating the massive empty gap at the bottom of the chart caused by the default "start at $0" behavior (common in `fill="tozeroy"` charts).
 - **Typography Standards**: All AI-generated explanations use standard 13px body font sizes with 1.5 line height for readability, while technical metrics (e.g., RSI Score) are consistently themed using the primary accent color (`var(--cyan)`).
 
@@ -403,9 +402,9 @@ To eliminate visual inconsistencies and "compactness" issues, the dashboard foll
 ### 12. Deterministic Strategy Engine & AI Critique
 The dashboard includes a hybrid decision-support system:
 - **Strategy Engine** (`services/strategy_engine.py`): Pure, rule-based logic that generates BUY/SELL/HOLD signals based on five weighted dimensions (Trend, Momentum, Price vs 200MA, Price vs Cost, and Risk).
-- **AI Analyst Overlay** (`services/ai_engine.py`): Gemini critiques the deterministic signals, providing human-readable context and risk flags without overriding the engine's verdict.
+- **Assistant Overlay** (`services/ai_engine.py`): Gemini critiques the deterministic signals, providing human-readable context and risk flags without overriding the engine's verdict.
 - **Hysteresis**: To prevent signal flickering on volatile days, the engine implements a "flip-prevention" logic where a signal change is only accepted if the new score exceeds a 0.7 confidence threshold.
-- **Overview Integration**: Signals from the engine are automatically injected into the main Portfolio Overview table as a "Suggestion" badge, allowing users to see actionable insights alongside live performance data.
+- **Overview Integration**: Signals from the engine are automatically injected into the main Holdings Overview table as a "Suggestion" badge, allowing users to see actionable insights alongside live performance data.
 
 ### 13. Intraday Resampling & Resiliency
 To ensure the "Today" P&L chart remains professional and readable:
@@ -413,8 +412,8 @@ To ensure the "Today" P&L chart remains professional and readable:
 - **Trading Session Stitching**: Plotly `rangebreaks` are applied to the X-axis to hide overnight sessions and weekends, creating a continuous trading timeline.
 - **Background Snapshotting**: A dedicated thread in `app.py` records market snapshots every 5 minutes while the market is open, ensuring chart continuity even if the dashboard is closed.
 
-### 14. Analytics Visualization & Theme Integration
-To provide a seamless visual experience, the Allocation and Performance charts in the Analytics page are deeply integrated with the design system.
+### 14. Deep Dive Visualization & Theme Integration
+To provide a seamless visual experience, the Allocation and Performance charts in the Deep Dive page are deeply integrated with the design system.
 - **Background Harmonization**: All Plotly figures utilize `paper_bgcolor="rgba(0,0,0,0)"` and `plot_bgcolor="rgba(0,0,0,0)"`, ensuring they blend perfectly with the CSS `var(--surface)` layer without grey "canvas" artifacts.
 - **Theme-Aware Typography**: Labels and titles are dynamically mapped to CSS variables (e.g., `var(--t-pri)`), ensuring high contrast and readability across both light and dark modes.
 - **Template Stripping**: Standard Plotly templates are disabled to prevent legacy styling (like default grid lines or grey backgrounds) from leaking into the modern dashboard aesthetic.

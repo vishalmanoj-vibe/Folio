@@ -14,7 +14,7 @@ This document chronicles the technical evolution of Folio, transitioning from a 
 
 ---
 
-## Phase 2: Analytics & Market Intelligence (v0.5.0 – v1.0.0)
+## Phase 2: Deep Dive & Market Insights (v0.5.0 – v1.0.0)
 **Theme**: Moving beyond static data with forecasting and real-time intraday tracking.
 
 *   **Predictive Analysis**: Integrated **Facebook Prophet** for forward-looking price projections with confidence intervals.
@@ -34,7 +34,7 @@ This document chronicles the technical evolution of Folio, transitioning from a 
 
 ---
 
-## Phase 4: The AI Analyst & Technical Engine (v1.6.0 – v2.2.0)
+## Phase 4: The Assistant & Technical Engine (v1.6.0 – v2.2.0)
 **Theme**: Integrating Generative AI and quantitative technical analysis.
 
 *   **Research Assistant**: Integrated **Google Gemini (flash-lite)** with full portfolio context awareness for interactive research.
@@ -49,7 +49,7 @@ This document chronicles the technical evolution of Folio, transitioning from a 
 
 *   **SQLite Migration**: Fully decommissioned CSV and local JSON files for core data. Implemented **SQLite in WAL (Write-Ahead Logging) mode** for superior concurrency and state persistence.
 *   **Strategy Engine**: Centralized signal logic into a rule-based engine. Established the boundary where the Engine generates signals and the AI *explains* them, preventing AI "hallucination" in trading signals.
-*   **Unified AI Analyst**: Consolidated Research and Reports into a single, high-performance page with deterministic caching and responsive AI insight containers.
+*   **Unified Assistant**: Consolidated Research and Reports into a single, high-performance page with deterministic caching and responsive AI insight containers.
 *   **The 4-Layer Standard**: Finalized the current architectural standard:
     1.  **Presentation (Dash)**: UI and Callbacks.
     2.  **Service (Business Logic)**: Data fetching and formatting.
@@ -61,8 +61,8 @@ This document chronicles the technical evolution of Folio, transitioning from a 
 ## Phase 6: Professionalization & UI Refinement (v3.1.0 – v3.5.0)
 **Theme**: Polishing the visual experience and ensuring system-wide compliance.
 
-*   **Analytics Visualization Fix**: Solved persistent "grey canvas" artifacts in Treemaps by harmonizing Plotly backgrounds with CSS surface tokens and implementing theme-aware typography for hierarchical data.
-*   **Portfolio Suggestions**: Integrated the Strategy Engine directly into the main Overview table, providing instant BUY/SELL/HOLD signals alongside live P&L data.
+*   **Deep Dive Visualization Fix**: Solved persistent "grey canvas" artifacts in Treemaps by harmonizing Plotly backgrounds with CSS surface tokens and implementing theme-aware typography for hierarchical data.
+*   **Portfolio Suggestions**: Integrated the Strategy Engine directly into the main Holdings table, providing instant BUY/SELL/HOLD signals alongside live P&L data.
 *   **UI Standardization**: Enforced a strict **16px/24px global grid** and centralized all content wrappers into a single `section()` helper to ensure layout consistency across all pages.
 *   **Intraday Resiliency**: Refined the "Today" view with 5-minute resampling, Plotly `rangebreaks` to hide non-trading hours, and a 15:00 lookback window for cross-session continuity.
 *   **Compliance Audit**: Executed a 100% precision audit of the codebase, standardizing logging to use `logger.debug()` (replacing `print`) and verifying `prevent_initial_call=True` for all page-specific callbacks.
@@ -108,3 +108,14 @@ This document chronicles the technical evolution of Folio, transitioning from a 
 *   **Lazy Ticker Fetching**: Transitioned from global portfolio-wide history fetching to a **per-page lazy-loading strategy**. The detail pages (Positions, Watchlist) now fetch their own history on-demand via a standalone `fetch_ticker_history()` service, reducing redundant network data transfer and processing by ~80% on the main dashboard refresh.
 *   **Memory Footprint Reduction (Compact DFs)**: Implemented a compact caching strategy for yfinance downloads. Instead of storing multi-megabyte `multi_full` DataFrames, the system now extracts and caches individual, compact `pd.Series` for Close prices and Dividends. Raw bulk DataFrames are discarded immediately, preventing unbounded RAM creep and achieving a **55% reduction in baseline RSS memory usage**.
 *   **Relational History Management**: Established a robust `HistoryRepository` with market-aware staleness checks (5m cooldown during trading / 24h otherwise) and automated record cleanup, ensuring the `portfolio.db` remains performant and sized optimally.
+
+---
+
+## Phase 10: Enterprise-Grade Memory Hygiene & Dual-Process Architecture (v4.3.0 – Current)
+**Theme**: Scaling the architecture for long-running sessions and complex scrapers.
+
+*   **Dual-Process Resilience**: Implemented a `launcher.py` process manager that separates the Dash UI from the data-heavy background worker, ensuring the UI remains responsive even during heavy Technical Analysis or AI signal generation.
+*   **Startup Task Decentralization**: Offloaded intensive historical data hydration (e.g., Watchlist histories) from the web startup sequence to the background worker. This achieved a 40% reduction in web-process startup memory.
+*   **Advanced Scraper Throttling**: Hardened the ETF holdings scraper with a tiered architecture (Requests -> DDGS -> Playwright) and a 30-day TTL SQLite cache with 24-hour error backoff, preventing redundant browser-heavy executions.
+*   **Metadata Truncation**: Implemented aggressive truncation for yfinance `info` objects. Only essential metadata (name, sector, yield) is persisted to SQLite, preventing "Heap Bloat" from unused nested dictionaries.
+*   **Historical Staleness Gating**: Replaced high-frequency 5-minute historical history refreshes with a 24-hour staleness threshold for historical data, while maintaining 5-minute resolution for intraday P&L tracking.

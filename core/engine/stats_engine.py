@@ -73,7 +73,7 @@ def compute_portfolio_stats(holdings: list[dict]) -> dict:
     }
 
 
-def build_live_table_rows(holdings: list[dict], sort_col: str = "mkt_value", sort_dir: str = "desc") -> list[dict]:
+def build_live_table_rows(holdings: list[dict], sort_col: str = "ticker", sort_dir: str = "asc") -> list[dict]:
     """
     Sort holdings by any column and attach pre-computed display fields.
 

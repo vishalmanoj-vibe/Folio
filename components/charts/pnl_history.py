@@ -25,9 +25,8 @@ def _build_intraday_figure(
     """
     Build the 'Today' intraday P&L chart.
     """
-    import json as _json, os as _os
-    from datetime import datetime as _dt
     from services.market.market_status import get_previous_trading_session_start
+    from data.cache_manager import get_intraday
 
     GREEN_C = theme_tokens.get("GREEN", "#1D9E75")
     RED_C   = theme_tokens.get("RED",   "#E24B4A")
@@ -35,18 +34,22 @@ def _build_intraday_figure(
     now_syd      = pd.Timestamp.now(tz="Australia/Sydney")
     today_str    = now_syd.strftime("%Y-%m-%d")
     chart_start  = get_previous_trading_session_start()
+    chart_start_str = chart_start.strftime("%Y-%m-%d %H:%M:%S")
     market_close = pd.Timestamp(f"{today_str} 16:15:00", tz="Australia/Sydney")
 
-    cache_path = _os.path.join("data", "cache", f"intraday_{today_str}.json")
-    session_data: dict = {}
-    try:
-        if _os.path.exists(cache_path):
-            with open(cache_path) as _f:
-                session_data = _json.load(_f)
-    except Exception:
-        pass
-
-    if not session_data:
+    # Filter tickers if a specific one is selected
+    target_tickers = [selected] if selected != "Portfolio" else [h["ticker"] for h in holdings]
+    
+    # Check if we have any data at all first
+    has_any_data = False
+    ticker_data_map = {}
+    for ticker in target_tickers:
+        s = get_intraday(ticker, chart_start_str)
+        if not s.empty:
+            ticker_data_map[ticker] = s
+            has_any_data = True
+            
+    if not has_any_data:
         from components.charts.helpers import create_empty_fig
         return create_empty_fig("Waiting for market session data (ASX opens 10:00 Sydney Time) …", height=380, theme_tokens=theme_tokens)
 
@@ -59,23 +62,22 @@ def _build_intraday_figure(
     all_series: list[pd.Series] = []
 
     for ticker in target_tickers:
-        points = session_data.get(ticker)
-        if not points: continue
+        price_s = ticker_data_map.get(ticker)
+        if price_s is None or price_s.empty: continue
         
         prev_close   = prev_close_map.get(ticker, 0.0)
         total_shares = total_shares_map.get(ticker, 0.0)
         if prev_close <= 0 or (selected == "Portfolio" and total_shares <= 0):
             continue
 
-        df = pd.DataFrame(points)
-        df["Date"] = pd.to_datetime(df["Date"]).dt.tz_localize("Australia/Sydney")
-        df = df.sort_values("Date").drop_duplicates("Date")
-        df = df[(df["Date"] >= chart_start) & (df["Date"] <= market_close)]
+        price_s.index = price_s.index.tz_localize("Australia/Sydney")
+        price_s = price_s.sort_index()
+        price_s = price_s[~price_s.index.duplicated(keep='last')]
+        price_s = price_s[(price_s.index >= chart_start) & (price_s.index <= market_close)]
 
-        if df.empty:
+        if price_s.empty:
             continue
 
-        price_s = df.set_index("Date")["Close"]
         price_s = price_s[price_s > 0]
         if not price_s.empty:
             price_s = price_s.resample('5min').last().ffill()
@@ -102,9 +104,11 @@ def _build_intraday_figure(
             weights = []
             for ticker in combined.columns:
                 h = next((x for x in holdings if x["ticker"] == ticker), {})
-                weights.append(h.get("total_cost", h.get("prev_close", 1) * h.get("total_shares", 1)))
+                # Weight by previous session's market value (shares * prev_close)
+                # for accurate daily P&L contribution
+                weights.append(h.get("total_shares", 0) * h.get("prev_close", 0))
             
-            if weights and len(weights) == combined.shape[1]:
+            if weights and any(w > 0 for w in weights) and len(weights) == combined.shape[1]:
                 total_w    = sum(weights)
                 weight_arr = [w / total_w for w in weights]
                 portfolio_s = (combined * weight_arr).sum(axis=1).round(4)

@@ -1,0 +1,406 @@
+# worker.py
+"""
+Folio Background Worker
+=======================
+Handles all network-bound tasks:
+1. Scheduled live price refreshes (every 5m during market hours).
+2. On-demand tasks (history fetches, signal generation, benchmarks).
+
+Communicates with Dash process via SQLite (worker_tasks table).
+"""
+
+import os
+import json
+import time
+import uuid
+import logging
+import threading
+from datetime import datetime
+import pandas as pd
+
+from data.database import get_connection
+from data.repository import PortfolioRepository, HistoryRepository
+from core.engine import build_holdings
+from services.market.data_fetcher import fetch_live, fetch_benchmarks, fetch_ticker_history
+from services.market.market_status import is_market_open, time_until_market_open
+from services.strategy_engine import generate_portfolio_signals
+from services.ai_engine import analyze_signals
+from data.cache_manager import save_live_prices
+
+# Setup logging
+from config.logging import setup_logging
+setup_logging()
+logger = logging.getLogger("worker")
+
+# ── Task Handlers ────────────────────────────────────────────────────────────
+
+def handle_fetch_history(payload: dict):
+    """Fetch history for a ticker and period."""
+    ticker = payload.get("ticker")
+    period = payload.get("period", "max")
+    if not ticker:
+        return {"error": "Missing ticker"}
+    
+    logger.info(f"Task: Fetching history for {ticker} ({period})")
+    results = fetch_ticker_history(ticker, period)
+    return {"status": "success", "count": len(results)}
+
+def handle_generate_signals(payload: dict):
+    """Run strategy engine and AI analysis for tickers."""
+    tickers = payload.get("tickers", [])
+    scope = payload.get("scope", "portfolio") # 'portfolio' or 'watchlist'
+    
+    if not tickers:
+        return {"error": "No tickers provided"}
+
+    logger.info(f"Task: Generating signals for {len(tickers)} tickers (scope: {scope})")
+    
+    # 1. Build Context
+    from services.market.data_fetcher import get_full_history_cache
+    from data.repository import PortfolioRepository
+    
+    # We need holdings data with ticker_yf and avg_cost
+    repo = PortfolioRepository()
+    if scope == "portfolio":
+        holdings = build_holdings(repo.load_transactions())
+    else:
+        from data.watchlist_repository import WatchlistRepository
+        w_repo = WatchlistRepository()
+        holdings = w_repo.load_watchlist_holdings()
+        
+    multi_full = get_full_history_cache(holdings)
+    
+    # If cache is empty (common after-hours or on first run), 
+    # force a fetch to ensure signals can be generated.
+    if multi_full.empty:
+        logger.info("Signal cache empty. Triggering on-demand history fetch...")
+        from services.market.data_fetcher import fetch_live
+        # fetch_live with record_snapshots=False will populate the compact series cache
+        fetch_live(holdings, record_snapshots=False)
+        multi_full = get_full_history_cache(holdings)
+    
+    # Load previous signals for hysteresis
+    conn = get_connection()
+    prev_signals = {}
+    try:
+        rows = conn.execute("SELECT ticker, signal FROM signal_results").fetchall()
+        for r in rows:
+            prev_signals[r["ticker"]] = {"signal": r["signal"]}
+    finally:
+        conn.close()
+        
+    # 2. Strategy Engine
+    signals = generate_portfolio_signals(multi_full, holdings, prev_signals)
+    
+    # 3. AI Analysis
+    ai_results = analyze_signals(signals)
+    
+    # 3. Persist to SQLite
+    table = "signal_results" if scope == "portfolio" else "watchlist_signal_results"
+    
+    conn = get_connection()
+    try:
+        now = datetime.now().isoformat()
+        for ticker, sig in signals.items():
+            ai_res = ai_results.get(ticker, {})
+            
+            conn.execute(f'''
+                INSERT OR REPLACE INTO {table} (
+                    ticker, signal, score, confidence, reasons, indicators, 
+                    ai_explanation, generated_at, hysteresis_forced
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ''', (
+                ticker, sig["signal"], sig["score"], sig.get("confidence"),
+                json.dumps(sig["reasons"]), json.dumps(sig["indicators"]),
+                json.dumps(ai_res) if ai_res else None, now,
+                1 if sig.get("hysteresis_forced") else 0
+            ))
+        conn.commit()
+    finally:
+        conn.close()
+        
+    return {"status": "success", "tickers": list(signals.keys()), "scope": scope}
+
+def handle_generate_ai_response(payload: dict):
+    """Generate Assistant/Research chat response using Gemini (async)."""
+    messages = payload.get("messages", [])
+    context = payload.get("context", {})
+    ticker = payload.get("ticker", "General")
+    
+    if not messages:
+        return {"error": "No chat history provided"}
+
+    logger.info(f"Task: Generating AI response for {ticker}")
+    
+    # We wrap the Gemini call in a thread to enforce a 45s timeout
+    result_container = {"response": None, "error": None}
+    
+    def _call_gemini():
+        try:
+            from services.research_service import get_ai_response
+            from data.repository import HistoryRepository
+            import pandas as pd
+            
+            # Enrich context with histories for technical analysis and performance context
+            h_repo = HistoryRepository()
+            holdings = context.get("holdings", [])
+            tickers = [h["ticker"] for h in holdings]
+            
+            if tickers:
+                # Fetch 14 days of history to ensure we have enough for technicals and 7d performance
+                histories = {}
+                cutoff = (pd.Timestamp.now() - pd.Timedelta(days=14)).strftime("%Y-%m-%d")
+                for t in tickers:
+                    h_list = h_repo.load_history(t, from_date=cutoff)
+                    if h_list:
+                        histories[t] = h_list
+                context["histories"] = histories
+
+            response = get_ai_response(messages, context, ticker)
+            result_container["response"] = response
+        except Exception as e:
+            result_container["error"] = str(e)
+
+    t = threading.Thread(target=_call_gemini)
+    t.start()
+    t.join(timeout=45.0)
+    
+    if t.is_alive():
+        logger.warning(f"AI Task for {ticker} timed out after 45s")
+        return {"error": "Assistant timed out (45s limit reached)"}
+    
+    if result_container["error"]:
+        return {"error": result_container["error"]}
+        
+    return {"status": "success", "response": result_container["response"]}
+
+def handle_fetch_benchmarks(payload: dict):
+    """Fetch S&P 500 and ASX 200 history."""
+    period = payload.get("period", "max")
+    logger.info(f"Task: Fetching benchmarks ({period})")
+    
+    results = fetch_benchmarks(period)
+    
+    conn = get_connection()
+    try:
+        now = datetime.now().isoformat()
+        for label, history in results.items():
+            # Map label back to symbol
+            from services.market.data_fetcher import BENCHMARK_TICKERS
+            symbol = next((k for k, v in BENCHMARK_TICKERS.items() if v == label), label)
+            
+            conn.execute('''
+                INSERT OR REPLACE INTO benchmark_data (
+                    symbol, label, history, fetched_at
+                ) VALUES (?, ?, ?, ?)
+            ''', (symbol, label, json.dumps(history), now))
+        conn.commit()
+    finally:
+        conn.close()
+        
+    return {"status": "success", "benchmarks": list(results.keys())}
+
+def handle_generate_report(payload: dict):
+    """Generate weekly PDF report (async)."""
+    # Note: We don't need a huge payload. We can rebuild context from DB.
+    logger.info("Task: Generating weekly report")
+    
+    try:
+        from data.repository import PortfolioRepository
+        from core.engine import build_holdings
+        from services.market.data_fetcher import get_full_history_cache
+        from services.report_service import generate_weekly_report
+        import base64
+        
+        # 1. Build context from DB
+        repo = PortfolioRepository()
+        txns = repo.load_transactions()
+        holdings = build_holdings(txns) # This includes latest market_prices if called via repository? 
+        # Actually build_holdings just does txn math. We need live metrics.
+        # repository.load_transactions doesn't fetch live.
+        
+        # We'll use AIEngine logic to build a report-ready context
+        from services.research_service import build_portfolio_context
+        # We need a portfolio-store-like dict: {holdings, histories}
+        # build_portfolio_context returns exactly this.
+        portfolio_context = build_portfolio_context()
+        
+        api_key = os.getenv("GEMINI_API_KEY", "")
+        if not api_key:
+            return {"error": "Missing GEMINI_API_KEY"}
+            
+        pdf_bytes = generate_weekly_report(portfolio_context, api_key)
+        b64 = base64.b64encode(pdf_bytes).decode("utf-8")
+        
+        return {"status": "success", "pdf_b64": b64}
+    except Exception as e:
+        logger.error(f"Report task failed: {e}")
+        return {"error": str(e)}
+
+def handle_maintenance(payload: dict):
+    """Perform periodic maintenance: cache cleanup, AI memory, and history refreshes."""
+    logger.info("Task: Running background maintenance...")
+    
+    # 1. Clear old intraday caches
+    from services.market.session_cache import clear_old_caches
+    clear_old_caches(keep_days=1)
+    
+    # 2. Run AI startup maintenance (summarization)
+    api_key = payload.get("gemini_api_key")
+    if api_key:
+        from services.research_memory import run_startup_maintenance
+        run_startup_maintenance(api_key)
+    
+    # 3. Refresh watchlist histories
+    from data.watchlist_repository import WatchlistRepository
+    repo = WatchlistRepository()
+    repo.refresh_all_histories()
+    
+    return {"status": "success"}
+
+TASK_HANDLERS = {
+    "fetch_history": handle_fetch_history,
+    "generate_signals": handle_generate_signals,
+    "fetch_benchmarks": handle_fetch_benchmarks,
+    "generate_ai_response": handle_generate_ai_response,
+    "generate_report": handle_generate_report,
+    "maintenance": handle_maintenance
+}
+
+# ── Main Worker Loops ────────────────────────────────────────────────────────
+
+def reset_stale_tasks():
+    """On startup, reset pending/running tasks older than 10 mins to failed."""
+    logger.info("Maintenance: Resetting stale tasks...")
+    conn = get_connection()
+    try:
+        cutoff = (datetime.now() - pd.Timedelta(minutes=10)).isoformat()
+        cursor = conn.execute('''
+            UPDATE worker_tasks 
+            SET status = 'failed', result = '{"error": "Task timed out or worker restarted"}'
+            WHERE status IN ('pending', 'running') AND created_at < ?
+        ''', (cutoff,))
+        if cursor.rowcount > 0:
+            logger.info(f"Reset {cursor.rowcount} stale tasks to failed")
+        conn.commit()
+    finally:
+        conn.close()
+
+def prune_tasks():
+    """On startup, delete completed/failed tasks older than 24 hours."""
+    logger.info("Maintenance: Pruning old tasks...")
+    conn = get_connection()
+    try:
+        cutoff = (datetime.now() - pd.Timedelta(hours=24)).isoformat()
+        cursor = conn.execute('''
+            DELETE FROM worker_tasks 
+            WHERE status IN ('complete', 'failed') AND completed_at < ?
+        ''', (cutoff,))
+        if cursor.rowcount > 0:
+            logger.info(f"Pruned {cursor.rowcount} old tasks from queue")
+        conn.commit()
+    finally:
+        conn.close()
+
+def poll_tasks():
+    """Check worker_tasks table for pending tasks."""
+    conn = get_connection()
+    try:
+        # Fetch highest priority oldest task
+        task = conn.execute('''
+            SELECT * FROM worker_tasks 
+            WHERE status = 'pending' 
+            ORDER BY priority ASC, created_at ASC 
+            LIMIT 1
+        ''').fetchone()
+        
+        if not task:
+            return
+            
+        task_id = task["task_id"]
+        task_type = task["task_type"]
+        payload = json.loads(task["payload"]) if task["payload"] else {}
+        
+        # Mark as running
+        conn.execute("UPDATE worker_tasks SET status = 'running' WHERE task_id = ?", (task_id,))
+        conn.commit()
+        
+        # Execute
+        handler = TASK_HANDLERS.get(task_type)
+        if not handler:
+            result = {"error": f"Unknown task type: {task_type}"}
+            status = "failed"
+        else:
+            try:
+                result = handler(payload)
+                status = "complete"
+            except Exception as e:
+                logger.error(f"Task {task_id} failed: {e}")
+                result = {"error": str(e)}
+                status = "failed"
+        
+        # Mark as complete/failed
+        conn.execute('''
+            UPDATE worker_tasks 
+            SET status = ?, result = ?, completed_at = ? 
+            WHERE task_id = ?
+        ''', (status, json.dumps(result), datetime.now().isoformat(), task_id))
+        conn.commit()
+        
+    except Exception as e:
+        logger.error(f"Polling loop error: {e}")
+    finally:
+        conn.close()
+
+def run_worker():
+    """Main worker entry point."""
+    logger.info("Folio Worker starting up...")
+    
+    # 1. Initial maintenance (Reset then Prune)
+    reset_stale_tasks()
+    prune_tasks()
+    
+    last_refresh = 0
+    REFRESH_COOLDOWN = 300 # 5 minutes
+    
+    while True:
+        # ── Part A: Demand-driven Task Queue ───────────────────
+        poll_tasks()
+        
+        # ── Part B: Time-driven Scheduled Fetch ───────────────
+        now = time.time()
+        if now - last_refresh >= REFRESH_COOLDOWN:
+            try:
+                if is_market_open(include_auction=True):
+                    logger.info("Scheduled refresh: Market is open. Fetching live prices...")
+                    
+                    # Derive current holdings from transactions
+                    repo = PortfolioRepository()
+                    txns = repo.load_transactions()
+                    holdings = build_holdings(txns)
+                    
+                    if holdings:
+                        # Perform refresh
+                        fetch_live(holdings, record_snapshots=True)
+                        logger.info(f"Refreshed {len(holdings)} holdings")
+                    
+                    last_refresh = now
+                    REFRESH_COOLDOWN = 300 # Back to 5m
+                else:
+                    wait_sec = time_until_market_open()
+                    logger.debug(f"Market closed. Next check in 10 minutes (or until open: {wait_sec:.0f}s)")
+                    last_refresh = now
+                    REFRESH_COOLDOWN = 600 # Check every 10m when closed
+            except Exception as e:
+                logger.error(f"Scheduled refresh failed: {e}")
+                last_refresh = now # Still back off to prevent tight loop failure
+        
+        time.sleep(2) # Small sleep between polls
+
+if __name__ == "__main__":
+    try:
+        run_worker()
+    except KeyboardInterrupt:
+        logger.info("Worker stopped by user")
+    except Exception as e:
+        logger.critical(f"Worker crashed: {e}")

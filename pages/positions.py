@@ -23,28 +23,9 @@ def layout() -> html.Div:
                         html.H1("Positions", className="header-title"),
                         html.P("Detailed view per ETF holding", className="header-subtitle"),
                     ], className="header-title-row"),
-                    html.Div([
-                        dmc.Button(
-                            "Generate Signals",
-                            id="generate-signals-btn",
-                            variant="light",
-                            color="teal",
-                            size="sm",
-                            leftSection="🤖"
-                        ),
-                        dcc.Loading(
-                            id="loading-signals",
-                            type="dot",
-                            color="var(--t-pri)",
-                            children=html.Span(
-                                id="signals-status-label",
-                                style={"marginLeft": "10px", "fontSize": "11px", "color": "var(--t-sec)"}
-                            )
-                        )
-                    ], style={"marginLeft": "auto", "display": "flex", "alignItems": "center", "gap": "8px"})
                 ],
                 className="page-header-row",
-                style={"display": "flex"}
+                style={"display": "flex", "alignItems": "center"}
             ),
 
             html.Div([
@@ -75,10 +56,16 @@ def layout() -> html.Div:
                         ),
                         
                         # Price Chart Section (Dynamic)
-                        dcc.Loading(
-                            html.Div(id="positions-price-chart-container"),
-                            custom_spinner=chart_skeleton(350)
-                        ),
+                        html.Div([
+                            html.Div([
+                                chart_title("Price history", "positions-price"),
+                                html.Div(id="positions-period-btns", className="flex-row-gap", style={"marginLeft": "auto"})
+                            ], id="positions-price-chart-header", className="flex-row flex-center", style={"marginBottom": "12px", "display": "none"}),
+                            dcc.Loading(
+                                html.Div(id="positions-price-chart-container"),
+                                custom_spinner=chart_skeleton(350)
+                            ),
+                        ], style={"marginTop": "24px"}),
 
                         # Ticker-Specific Dividend History (Dynamic)
                         dcc.Loading(

@@ -39,41 +39,46 @@ pytest --cov=. --cov-report=html test/
 This generates an HTML coverage report in `htmlcov/index.html`.
 
 1. **SQLite Integrity**:
-   - Add a transaction via the UI (Portfolio page transaction form).
-   - Verify it appears in the Portfolio table immediately.
+   - Add a transaction via the UI (Holdings page transaction form).
+   - Verify it appears in the Holdings table immediately.
    - Restart the app and verify the transaction persisted in `portfolio.db`.
 
 2. **Technical Indicators & Signals**:
    - Navigate to the **Positions** page, select a ticker, and click "Generate Signals".
-   - Verify that the signal badge (BUY/SELL/HOLD) and the AI Analyst insight card appear.
-   - Navigate back to the **Overview** page and verify the "Suggestion" column in the main table matches the signal.
+   - Verify that the signal badge (BUY/SELL/HOLD) and the AI Assistant insight card appear.
+   - Navigate back to the **Holdings** page and verify the "Suggestion" column in the main table matches the signal.
 
-3. **Analytics Visualization**:
-   - Navigate to the **Analytics** page.
-   - Verify that Treemap charts (Sector/Geography) blend seamlessly with the background (no grey canvas).
-   - Toggle between Light and Dark modes and verify text contrast on all charts.
+3. **Deep Dive Visualization**:
+   - Navigate to the **Deep Dive** page.
+   - Verify that Treemap charts (Allocation tab) blend seamlessly with the background (no grey canvas).
+   - Toggle between Flat Tickers / Sector / Region and verify hierarchy updates.
 
 4. **Market Status & Intraday**:
    - Verify the "Market Open/Closed" badge correctly reflects AEST time (taking into account the ASX closing auction until 16:15).
    - Check the "Today" (1d) chart and verify it displays 5-minute resampled data with no overnight gaps.
 
+5. **Dual-Process Resilience**:
+   - Run the application via `python launcher.py`.
+   - Verify that the Dash UI (Port 8050) and Worker (Background) both start.
+   - Verify that background data refreshes (price updates) occur without interrupting the UI responsiveness.
+
 ## Manual Verification (UI Features)
 
 For features with complex UI interactions or AI components, follow these manual verification steps:
 
-### Technical Signals (Intelligence Page)
-1. Navigate to the **Intelligence** page.
-2. Verify the "Technical Signals" table renders for all holdings.
-3. Cross-check the RSI values against a third-party source (e.g., Yahoo Finance or TradingView) to ensure Wilder's smoothing is accurate.
+### Technical Signals (Insights Page)
+1. Navigate to the **Insights** page.
+2. Verify the Risk metrics cards render correctly.
+3. Verify that the "Forecast" toggle (Prophet) adds the projection line with continuity correction.
 
 ### Candlestick Charts (Positions Page)
 1. Navigate to the **Positions** page and select an ETF.
 2. Toggle between different time periods (1mo, 6mo, 1y).
 3. Verify that the Candlestick chart renders correctly for periods > 1d.
-4. Verify that for the **1d** period, the chart gracefully falls back to a Scatter (Line) chart to handle missing OHLC data.
+4. Verify that for the **1d** period, the chart gracefully falls back to a Scatter (Line) chart.
 
-### AI Analyst Context (AI Analyst Page)
-1. Navigate to the **AI Analyst** page.
+### AI Assistant Context (Assistant Page)
+1. Navigate to the **Assistant** page.
 2. Enter a ticker in the research input or use a quick prompt chip.
 3. Verify the AI response incorporates technical status and portfolio context.
 4. Click "Generate Weekly Report" and verify the PDF download starts.

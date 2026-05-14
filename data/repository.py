@@ -234,6 +234,46 @@ class HistoryRepository:
         finally:
             conn.close()
 
+    def get_latest_prices(self, tickers: list[str]) -> dict:
+        """
+        Retrieves the latest price, prev close, and day range for a list of tickers.
+        Efficiently fetches only the last 2 records per ticker from price_history.
+        """
+        if not tickers: return {}
+        tickers = [t.upper() for t in tickers]
+        conn = get_connection()
+        try:
+            placeholders = ",".join(["?"] * len(tickers))
+            # We fetch the latest 2 records for each ticker to determine last vs prev
+            query = f"""
+                SELECT ticker, date, close_price, high_price, low_price
+                FROM (
+                    SELECT ticker, date, close_price, high_price, low_price,
+                           ROW_NUMBER() OVER (PARTITION BY ticker ORDER BY date DESC) as rn
+                    FROM price_history
+                    WHERE ticker IN ({placeholders})
+                )
+                WHERE rn <= 2
+            """
+            df = pd.read_sql_query(query, conn, params=tickers)
+            if df.empty: return {}
+
+            results = {}
+            for ticker, group in df.groupby("ticker"):
+                group = group.sort_values("date", ascending=False)
+                latest = group.iloc[0]
+                prev = group.iloc[1] if len(group) > 1 else latest
+                
+                results[ticker] = {
+                    "last_price": float(latest["close_price"]),
+                    "prev_close": float(prev["close_price"]),
+                    "day_high": float(latest["high_price"]),
+                    "day_low": float(latest["low_price"])
+                }
+            return results
+        finally:
+            conn.close()
+
     def get_meta(self, ticker: str) -> dict | None:
         """Retrieve metadata for a ticker's history."""
         ticker = ticker.upper()
@@ -262,8 +302,9 @@ class HistoryRepository:
             last_fetched = datetime.fromisoformat(meta["last_fetched"])
             age = datetime.now() - last_fetched
             
-            # Recency threshold
-            recency_limit = 300 if is_market_open() else 86400
+            # Recency threshold: Daily history only needs once-per-day refresh
+            # Intraday data is handled separately by fetch_live.
+            recency_limit = 86400 # 24 hours
             if age.total_seconds() > recency_limit:
                 return True
         except Exception:

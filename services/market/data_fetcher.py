@@ -24,7 +24,10 @@ from services.market.market_status import (
 
 logger = logging.getLogger(__name__)
 
-SNAPSHOT_PATH = os.path.join(DATA_CACHE_DIR, "portfolio_snapshot.json")
+# Using market_prices table instead of snapshot file.
+from data.database import get_connection
+from data.cache_manager import save_live_prices, get_live_prices, get_etf_name as get_etf_name_db
+from data.repository import PortfolioRepository, HistoryRepository
 
 _NAME_CACHE: dict = {}
 _NAME_CACHE_TTL = 86400
@@ -56,7 +59,6 @@ def get_etf_name(ticker: str) -> str:
     Hierarchy: Memory Cache -> SQLite Assets Table -> yfinance API
     """
     from config.constants import NAMES
-    from data.repository import PortfolioRepository
     
     ticker_upper = ticker.strip().upper()
     cache_key = f"name_{ticker_upper}"
@@ -66,11 +68,9 @@ def get_etf_name(ticker: str) -> str:
     if cached and time.time() < cached[1]:
         return cached[0]
     
-    # 2. Check SQLite Assets Table (Persistent)
-    repo = PortfolioRepository()
-    asset = repo.get_asset(ticker_upper)
-    if asset and asset.get("name"):
-        name = asset["name"]
+    # 2. Check SQLite Assets Table via cache_manager (Persistent)
+    name = get_etf_name_db(ticker_upper)
+    if name:
         _NAME_CACHE[cache_key] = (name, time.time() + _NAME_CACHE_TTL)
         return name
 
@@ -85,12 +85,23 @@ def get_etf_name(ticker: str) -> str:
             if now < expiry:
                 name = info.get("longName") or info.get("shortName") or fallback
                 _NAME_CACHE[cache_key] = (name, now + _NAME_CACHE_TTL)
-                repo.upsert_asset(ticker_upper, name=name)
+                # Persist to SQLite
+                PortfolioRepository().upsert_asset(ticker_upper, name=name)
                 return name
 
         # 4. Fetch from yfinance (Source)
         tk = get_ticker_cached(yf_ticker)
-        info = tk.info or {}
+        raw_info = tk.info or {}
+        
+        # Memory Hygiene: Extract only what we need
+        info = {
+            "longName": raw_info.get("longName"),
+            "shortName": raw_info.get("shortName"),
+            "sector": raw_info.get("sector"),
+            "country": raw_info.get("country"),
+            "exDividendDate": raw_info.get("exDividendDate"),
+            "dividendPayDate": raw_info.get("dividendPayDate")
+        }
         
         # Update info cache
         _INFO_CACHE[yf_ticker] = (info, now + _INFO_CACHE_TTL)
@@ -100,7 +111,7 @@ def get_etf_name(ticker: str) -> str:
         
         # Update both caches
         _NAME_CACHE[cache_key] = (result, now + _NAME_CACHE_TTL)
-        repo.upsert_asset(ticker_upper, name=result)
+        PortfolioRepository().upsert_asset(ticker_upper, name=result)
         
         return result
     except Exception as e:
@@ -109,32 +120,73 @@ def get_etf_name(ticker: str) -> str:
 
 
 def save_portfolio_snapshot(data: dict) -> None:
-    """Save the full portfolio state to a disk snapshot for fast startup."""
+    """Save the full portfolio state to the market_prices table."""
     if not data or "holdings" not in data:
         return
-        
-    try:
-        os.makedirs(os.path.dirname(SNAPSHOT_PATH), exist_ok=True)
-        with open(SNAPSHOT_PATH, "w") as f:
-            json.dump(data, f, default=str)
-        logger.info("Portfolio snapshot saved to disk")
-    except Exception as e:
-        logger.error("Failed to save portfolio snapshot: %s", e)
+    save_live_prices(data["holdings"])
 
+def load_portfolio_snapshot(initial_holdings: list[dict]) -> dict:
+    """
+    Load the portfolio state from the market_prices table and merge with
+    the core holding data (shares/cost) built from transactions.
+    """
+    if not initial_holdings:
+        return {"holdings": [], "fetched_at": datetime.now().strftime("%H:%M:%S")}
 
-def load_portfolio_snapshot() -> dict | None:
-    """Load the portfolio state from a disk snapshot."""
-    if not os.path.exists(SNAPSHOT_PATH):
-        return None
+    tickers = [h["ticker"] for h in initial_holdings]
+    db_prices = get_live_prices(tickers)
+    
+    enriched = []
+    for h in initial_holdings:
+        ticker = h["ticker"]
+        p = db_prices.get(ticker, {})
         
-    try:
-        with open(SNAPSHOT_PATH, "r") as f:
-            data = json.load(f)
-        logger.info("Portfolio snapshot loaded from disk")
-        return data
-    except Exception as e:
-        logger.error("Failed to load portfolio snapshot: %s", e)
-        return None
+        # Merge core (h) with enrichment (p)
+        # Default to skeleton values for missing fields to prevent crashes
+        # We ensure last_price and prev_close are NEVER None by falling back to avg_cost or 0
+        merged = {
+            **h,
+            "last_price":     p.get("last_price") or h.get("avg_cost") or 0.0,
+            "prev_close":     p.get("prev_close") or h.get("avg_cost") or 0.0,
+            "day_high":       p.get("day_high") or h.get("avg_cost") or 0.0,
+            "day_low":        p.get("day_low") or h.get("avg_cost") or 0.0,
+            "day_chg":        p.get("day_chg") or 0.0,
+            "day_chg_pct":    p.get("day_chg_pct") or 0.0,
+            "day_pnl":        p.get("day_pnl") or 0.0,
+            "mkt_value":      p.get("mkt_value") or h.get("total_cost") or 0.0,
+            "pnl":            p.get("pnl") or 0.0,
+            "pnl_pct":        p.get("pnl_pct") or 0.0,
+            "annual_div":     p.get("annual_div") or 0.0,
+            "realized_div":   p.get("realized_div") or 0.0,
+            "div_yield":      p.get("div_yield") or 0.0,
+            "div_frequency":  p.get("div_frequency") or "Unknown",
+            "last_div_amount": p.get("last_div_amount") or 0.0,
+            "last_div_date":  p.get("last_div_date"),
+            "next_div_date":  p.get("next_div_date"),
+            "payout_date":    p.get("payout_date"),
+            "fetched_at":     p.get("fetched_at", "")
+        }
+        enriched.append(merged)
+            
+    fetched_at = "Unknown"
+    if db_prices:
+        first_p = next(iter(db_prices.values()))
+        raw_fetched = first_p.get("fetched_at", "Unknown")
+        if raw_fetched and raw_fetched != "Unknown":
+            try:
+                # Handle ISO format from DB
+                if "T" in str(raw_fetched):
+                    dt = datetime.fromisoformat(str(raw_fetched))
+                    fetched_at = dt.strftime("%H:%M:%S")
+                else:
+                    fetched_at = str(raw_fetched)
+            except:
+                fetched_at = str(raw_fetched)[:8] # Fallback to start of string
+
+    return {
+        "holdings": enriched,
+        "fetched_at": fetched_at
+    }
 
 
 def _download_with_retry(
@@ -219,14 +271,6 @@ def _extract_col(bulk_df: pd.DataFrame, ticker_yf: str, col_name: str) -> pd.Ser
         (ticker_yf.split(".")[0], col_name),
         (col_name, ticker_yf.split(".")[0])
     ]
-
-    # Multi-index case
-    for cand in candidates:
-        if cand in cols:
-            return bulk_df[cand].dropna()
-    
-
-    return pd.Series(dtype=float)
 
     # Multi-index case
     for cand in candidates:
@@ -570,11 +614,28 @@ def _enrich_single_holding(h: dict, multi_live: pd.DataFrame, multi_period: pd.D
                 info, expiry = _INFO_CACHE[ticker_yf]
                 if now >= expiry:
                     tk = get_ticker_cached(ticker_yf)
-                    info = tk.info or {}
+                    raw_info = tk.info or {}
+                    # Memory Hygiene: Extract only what we need to prevent 1GB+ bloat
+                    info = {
+                        "longName": raw_info.get("longName"),
+                        "shortName": raw_info.get("shortName"),
+                        "sector": raw_info.get("sector"),
+                        "country": raw_info.get("country"),
+                        "exDividendDate": raw_info.get("exDividendDate"),
+                        "dividendPayDate": raw_info.get("dividendPayDate")
+                    }
                     _INFO_CACHE[ticker_yf] = (info, now + _INFO_CACHE_TTL)
             else:
                 tk = get_ticker_cached(ticker_yf)
-                info = tk.info or {}
+                raw_info = tk.info or {}
+                info = {
+                    "longName": raw_info.get("longName"),
+                    "shortName": raw_info.get("shortName"),
+                    "sector": raw_info.get("sector"),
+                    "country": raw_info.get("country"),
+                    "exDividendDate": raw_info.get("exDividendDate"),
+                    "dividendPayDate": raw_info.get("dividendPayDate")
+                }
                 _INFO_CACHE[ticker_yf] = (info, now + _INFO_CACHE_TTL)
 
             enriched_h["next_div_date"] = None
@@ -673,7 +734,6 @@ def fetch_ticker_history(ticker: str, period: str) -> list[dict]:
     Standalone lazy fetcher for ticker history.
     Checks SQLite cache first; fetches from yfinance if stale or missing.
     """
-    from data.repository import HistoryRepository
     repo = HistoryRepository()
     
     ticker_upper = ticker.upper()
@@ -736,7 +796,9 @@ def fetch_live(holdings: list[dict], record_snapshots: bool = True) -> tuple[dic
         for h in sorted(holdings, key=lambda x: x['ticker'])
     )
     cache_key = f"market_data_v3_{holdings_sig}"
-    cached = get_cache(cache_key)
+    # Cache check: Skip cache if we are recording snapshots (Worker context)
+    # This ensures the worker ALWAYS fetches fresh data from yfinance.
+    cached = get_cache(cache_key) if not record_snapshots else None
     
     if cached:
         if record_snapshots:
@@ -803,7 +865,6 @@ def fetch_live(holdings: list[dict], record_snapshots: bool = True) -> tuple[dic
     enriched: list[dict] = []
     
     # Side Effect: Persist 5-day live OHLC to SQLite
-    from data.repository import HistoryRepository
     repo = HistoryRepository()
     
     with ThreadPoolExecutor(max_workers=10) as executor:

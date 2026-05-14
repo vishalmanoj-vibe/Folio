@@ -99,14 +99,6 @@ def analyze_signals(signals_dict: dict) -> dict:
         score = sig_data.get("score", 0.0)
         is_forced = sig_data.get("hysteresis_forced", False)
         
-        if is_forced:
-            ai_insights[ticker] = {
-                "explanation": "Signal held due to hysteresis to prevent flip-flopping.",
-                "risks": ["Signal is held mechanically, underlying indicators may be shifting."],
-                "verdict": "Mixed"
-            }
-            continue
-            
         if abs(score) < 0.4:
             ai_insights[ticker] = {
                 "explanation": "No AI analysis (low conviction signal).",
@@ -118,7 +110,8 @@ def analyze_signals(signals_dict: dict) -> dict:
         clean_signal = {
             "signal": sig_data.get("signal"),
             "score": sig_data.get("score"),
-            "indicators": sig_data.get("indicators", {})
+            "indicators": sig_data.get("indicators", {}),
+            "is_mechanical_hold": is_forced
         }
         filtered_signals[ticker] = clean_signal
         
@@ -155,9 +148,10 @@ Input:
 
 Task:
 For EACH ticker:
-1. Explain WHY the signal was generated
-2. List 2-3 risks
-3. Give verdict: Reasonable, Weak, or Conflicting
+1. Explain WHY the signal was generated based on technicals.
+2. If `is_mechanical_hold` is true, acknowledge that the signal is being held at HOLD mechanically to prevent flip-flopping, but explain the underlying bullish/bearish technical trend.
+3. List 2-3 risks
+4. Give verdict: Reasonable, Weak, or Conflicting
 
 Return ONLY valid JSON in this format:
 {{
