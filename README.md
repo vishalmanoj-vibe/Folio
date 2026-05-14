@@ -1,6 +1,6 @@
 # Folio
 
-A local portfolio dashboard for tracking ASX ETFs with live prices, P&L history, dividends, analytics, and AI-powered insights.
+A local portfolio dashboard for tracking ASX ETFs with live prices, P&L history, dividends, deep-dive analytics, and AI-powered insights.
 
 Built with Dash, Plotly, yfinance, and Gemini.
 
@@ -11,12 +11,12 @@ Built with Dash, Plotly, yfinance, and Gemini.
 - **Live Tracking** — Real-time prices via Yahoo Finance with ASX-specific bulk optimisations and 5-minute refresh.
 - **Intraday Monitoring** — "Today" P&L chart with high-frequency session caching and persistent daily snapshots across restarts.
 - **Positions Deep-Dive** — Candlestick charts, transaction history, live sparklines, and integrated dividend analysis per holding.
-- **Intelligence Dashboard** — Sharpe Ratio, Annualised Volatility, Max Drawdown, and equity curve with optional Prophet forecasting.
+- **Insights Dashboard** — Sharpe Ratio, Annualised Volatility, Max Drawdown, and equity curve with optional Prophet forecasting.
 - **Allocation Analysis** — Hierarchical Sector and Geographic treemaps with smart concentration alerts.
 - **Dividend Tracking** — Tranche-accurate realized income engine matched against actual ex-dividend dates, not just yield estimates.
 - **Trading Signals** — Weighted BUY/SELL/HOLD engine using trend, momentum, drawdown, moving averages, and cost basis analysis. Includes optional AI-generated explanations.
 - **Watchlist** — Track tickers you don't own yet with live pricing, signals, and research notes.
-- **AI Research Assistant** — Chat interface powered by Gemini 2.5 Flash Lite for portfolio analysis and ticker research, with persistent conversation memory and optional web search.
+- **AI Assistant** — Chat interface powered by Gemini 2.5 Flash Lite for portfolio analysis and ticker research, with persistent conversation memory and optional web search.
 - **Weekly PDF Report** — AI-generated portfolio summary with holdings breakdown, technical signals, dividend calendar, and market news.
 - **Premium Aesthetics** — High-fidelity UI with glassmorphism navigation, smooth 200ms theme transitions, Inter typography (tabular numerals), and interactive hover depth.
 - **Data Freshness Heartbeat** — Real-time animated status indicator in the header synchronized with ASX trading sessions.
@@ -51,7 +51,7 @@ The database is created automatically on first run. Add your transactions direct
 
 ## AI Features
 
-The Research Assistant and Trading Signal AI overlay both require a Gemini API key. Get one free at [aistudio.google.com](https://aistudio.google.com).
+The AI Assistant and Trading Signal AI overlay both require a Gemini API key. Get one free at [aistudio.google.com](https://aistudio.google.com).
 
 All other features (live prices, P&L tracking, dividends, signals engine, forecasting) work without an API key.
 
@@ -68,10 +68,11 @@ All other features (live prices, P&L tracking, dividends, signals engine, foreca
 
 ## Architecture
 
-- **Presentation**  →  `callbacks/`, `pages/`, `components/`, `assets/`
-- **Service**       →  `services/market/`, `services/ai_engine.py`, `services/strategy_engine.py`, `services/intelligence_service.py`
-- **Engine**        →  `core/engine/portfolio_engine.py`, `core/engine/stats_engine.py`
-- **Data**          →  `data/repository.py`, `data/database.py`, `data/watchlist_repository.py`
+- **Orchestration** →  `launcher.py` (Process Manager), `worker.py` (Background Service)
+- **Presentation**   →  `app.py`, `pages/`, `callbacks/`, `components/`, `assets/`
+- **Service**        →  `services/market/`, `services/ai_engine.py`, `services/strategy_engine.py`, `services/intelligence_service.py`
+- **Engine**         →  `core/engine/portfolio_engine.py`, `core/engine/stats_engine.py`
+- **Data**           →  `data/repository.py`, `data/database.py` (SQLite Relational Persistence)
 
 All market data fetches use `yf.download()` bulk calls — never per-ticker loops. The database uses WAL mode for safe concurrent writes from the background snapshot thread.
 
@@ -90,7 +91,7 @@ For a full breakdown of the data flow, callback architecture, and module respons
 
 ## Disclaimer
 
-Folio started as a personal project to solve real portfolio tracking problems while experimenting with modern AI-assisted development tools.
+Folio started as a personal project to solve real portfolio tracking problems while experimenting with modern AI-assisted development tools. Approximately 70% of this codebase was generated using AI; as such, users should expect occasional bugs and are encouraged to verify critical data.
 
 This dashboard is for personal tracking only. Nothing it displays constitutes financial advice. Always verify with a licensed financial adviser before making investment decisions.
 
