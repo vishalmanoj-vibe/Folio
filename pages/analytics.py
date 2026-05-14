@@ -23,24 +23,94 @@ def layout():
                     html.H1("Deep Dive", className="header-title"),
                     html.P("Allocation, risk & performance analysis", className="header-subtitle"),
                 ], className="header-title-row"),
-                html.Div([
-                    # Standalone export button removed to avoid duplicate ID with global nav
-                ], className="header-controls"),
+                html.Div([], className="header-controls"),
             ],
             className="page-header-row"
+        ),
+
+        # ── Configure Holdings Sources — top-level collapse ──
+        dmc.Collapse(
+            html.Div([
+                html.Div([
+                    # Existing URL table
+                    html.Div(id="holdings-url-table", style={"marginBottom": "16px"}),
+                    # Add new URL form
+                    html.Div([
+                        dmc.TextInput(
+                            id="holdings-url-ticker-input",
+                            placeholder="Ticker (e.g. VHY)",
+                            style={"width": "130px", "flexShrink": "0"},
+                            size="sm",
+                        ),
+                        dmc.TextInput(
+                            id="holdings-url-input",
+                            placeholder="Paste fund page URL (e.g. https://www.vanguard.com.au/...)",
+                            style={"flex": "1"},
+                            size="sm",
+                        ),
+                        dmc.Button(
+                            "Save URL",
+                            id="holdings-url-save-btn",
+                            size="sm",
+                            variant="filled",
+                            color="teal",
+                            style={"flexShrink": "0"},
+                        ),
+                    ], style={"display": "flex", "gap": "10px", "alignItems": "center"}),
+                    html.Div(
+                        id="holdings-url-save-status",
+                        style={"fontSize": "12px", "marginTop": "8px", "color": "var(--t-muted)"}
+                    ),
+                ], style={
+                    "padding": "20px 24px",
+                    "background": "var(--surface)",
+                    "borderBottom": "1px solid var(--border)",
+                    "marginBottom": "20px",
+                    "borderRadius": "8px",
+                }),
+            ]),
+            id="holdings-url-collapse",
+            opened=False,
+            transitionDuration=200,
         ),
 
         # ── Tabs Navigation ───────────────────────────────────────────────
         dmc.Tabs(
             [
+                # TabsList row — tabs on the left, configure button on the right
                 dmc.TabsList(
                     [
                         dmc.TabsTab("Allocation", value="allocation"),
                         dmc.TabsTab("ETF Holdings", value="holdings"),
                         dmc.TabsTab("Risk & Performance", value="performance"),
+                        # Spacer pushes the configure button to the far right
+                        html.Div(style={"flex": "1"}),
+                        html.Div(
+                            [
+                                html.Span("⚙", style={"marginRight": "6px", "fontSize": "13px"}),
+                                html.Span("Configure Sources", style={"fontSize": "12px", "fontWeight": "600"}),
+                            ],
+                            id="holdings-url-toggle",
+                            n_clicks=0,
+                            style={
+                                "display": "flex",
+                                "alignItems": "center",
+                                "cursor": "pointer",
+                                "padding": "6px 12px",
+                                "borderRadius": "6px",
+                                "color": "var(--t-sec)",
+                                "border": "1px solid var(--border)",
+                                "marginBottom": "4px",
+                                "userSelect": "none",
+                                "transition": "background 150ms",
+                                "whiteSpace": "nowrap",
+                            }
+                        ),
                     ],
+                    grow=True,
                     className="tabs-list-custom"
                 ),
+
 
                 # ── Tab 1: Allocation ─────────────────────────────────────────
                 dmc.TabsPanel(
@@ -65,8 +135,8 @@ def layout():
                             html.Div([
                                 dcc.Loading(
                                     dcc.Graph(
-                                        id="portfolio-treemap", 
-                                        config={"displayModeBar": False, "doubleClick": "reset"}, 
+                                        id="portfolio-treemap",
+                                        config={"displayModeBar": False, "doubleClick": "reset"},
                                         style={"height": "600px"},
                                         className="treemap-canvas"
                                     ),
@@ -82,7 +152,7 @@ def layout():
                     value="allocation"
                 ),
 
-                # ── Tab 1.5: ETF Holdings ─────────────────────────────────────
+                # ── Tab 2: ETF Holdings ───────────────────────────────────────
                 dmc.TabsPanel(
                     html.Div([
                         section(
@@ -104,12 +174,12 @@ def layout():
                                     style={"fontSize": "11px", "color": "var(--t-muted)", "marginTop": "12px", "textAlign": "center"}
                                 )
                             ])
-                        )
+                        ),
                     ]),
                     value="holdings"
                 ),
 
-                # ── Tab 2: Performance & Risk ─────────────────────────────────
+                # ── Tab 3: Performance & Risk ─────────────────────────────────
                 dmc.TabsPanel(
                     html.Div([
                         # Price History
@@ -139,7 +209,7 @@ def layout():
 
                         # Row for Correlation & Volatility
                         section(
-                            None, # No title node
+                            None,
                             html.Div([
                                 html.Div([
                                     chart_title("Return Correlation Matrix", "corr-desc"),
@@ -166,4 +236,10 @@ def layout():
             variant="default",
             className="analytics-tabs"
         ),
+
+
     ], className="page-root")
+
+
+
+

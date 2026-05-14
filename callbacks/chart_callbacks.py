@@ -268,3 +268,100 @@ def register_callbacks(app) -> None:
             
         fig = build_holdings_bubble_chart(blended_data, t_)
         return fig, "Data updated recently"
+
+    # ── Holdings URL Config — Toggle collapse ─────────────────────────────────
+    @app.callback(
+        Output("holdings-url-collapse", "opened"),
+        Input("holdings-url-toggle", "n_clicks"),
+        State("holdings-url-collapse", "opened"),
+        prevent_initial_call=True
+    )
+    def toggle_url_collapse(n_clicks, is_open):
+        return not is_open
+
+    # ── Holdings URL Config — Load existing URLs table ────────────────────────
+    @app.callback(
+        Output("holdings-url-table", "children"),
+        Input("holdings-url-collapse", "opened"),
+        Input("holdings-url-save-btn", "n_clicks"),
+        Input("url", "pathname"),
+        prevent_initial_call=True
+    )
+    def load_url_table(is_open, _save, pathname):
+        import dash
+        if pathname.rstrip("/") != "/analytics":
+            return dash.no_update
+        if not is_open:
+            return dash.no_update
+
+
+        from services.market.holdings_fetcher import get_all_user_urls, PROVIDER_SEED_URLS
+
+        user_urls = get_all_user_urls()
+        # Merge with defaults, user URLs override
+        all_tickers = sorted(set(list(PROVIDER_SEED_URLS.keys()) + list(user_urls.keys())))
+
+        if not all_tickers:
+            return html.P("No tickers configured.", style={"color": "var(--t-muted)", "fontSize": "13px"})
+
+        rows = [
+            html.Tr([
+                html.Th("Ticker", style={"width": "80px", "paddingRight": "16px", "textAlign": "left", "fontSize": "12px", "color": "var(--t-muted)"}),
+                html.Th("Source URL", style={"textAlign": "left", "fontSize": "12px", "color": "var(--t-muted)"}),
+                html.Th("Type", style={"width": "90px", "textAlign": "center", "fontSize": "12px", "color": "var(--t-muted)"}),
+            ], style={"borderBottom": "1px solid var(--border)"})
+        ]
+        for t in all_tickers:
+            is_user = t in user_urls
+            display_url = user_urls.get(t) or PROVIDER_SEED_URLS.get(t, "—")
+            badge_style = {
+                "fontSize": "10px", "padding": "2px 8px", "borderRadius": "10px",
+                "background": "var(--cyan)" if is_user else "var(--surface)",
+                "color": "var(--bg)" if is_user else "var(--t-muted)",
+                "fontWeight": "600",
+            }
+            rows.append(html.Tr([
+                html.Td(t, style={"fontWeight": "600", "fontSize": "13px", "paddingRight": "16px", "paddingBottom": "8px"}),
+                html.Td(
+                    html.A(
+                        display_url[:60] + ("…" if len(display_url) > 60 else ""),
+                        href=display_url, target="_blank",
+                        style={"fontSize": "12px", "color": "var(--cyan)", "textDecoration": "none"}
+                    ),
+                    style={"paddingBottom": "8px"}
+                ),
+                html.Td(
+                    html.Span("Custom" if is_user else "Default", style=badge_style),
+                    style={"textAlign": "center", "paddingBottom": "8px"}
+                ),
+            ]))
+
+        return html.Table(rows, style={"width": "100%", "borderCollapse": "collapse"})
+
+    # ── Holdings URL Config — Save URL ────────────────────────────────────────
+    @app.callback(
+        Output("holdings-url-save-status", "children"),
+        Output("holdings-url-ticker-input", "value"),
+        Output("holdings-url-input", "value"),
+        Input("holdings-url-save-btn", "n_clicks"),
+        State("holdings-url-ticker-input", "value"),
+        State("holdings-url-input", "value"),
+        prevent_initial_call=True
+    )
+    def save_holdings_url(n_clicks, ticker_val, url_val):
+        import dash
+        if not ticker_val or not url_val:
+            return "⚠ Please enter both a ticker and a URL.", dash.no_update, dash.no_update
+
+        ticker_clean = ticker_val.strip().upper().replace(".AX", "")
+        url_clean = url_val.strip()
+
+        if not url_clean.startswith("http"):
+            return "⚠ URL must start with http:// or https://", dash.no_update, dash.no_update
+
+        try:
+            from services.market.holdings_fetcher import save_user_url
+            save_user_url(ticker_clean, url_clean)
+            return f"✅ Saved URL for {ticker_clean}. Holdings will refresh on next load.", "", ""
+        except Exception as e:
+            return f"❌ Failed to save: {e}", dash.no_update, dash.no_update

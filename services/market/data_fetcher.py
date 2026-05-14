@@ -494,24 +494,38 @@ def _enrich_single_holding(h: dict, multi_live: pd.DataFrame, multi_period: pd.D
         live_high  = _extract_col(multi_live, ticker_yf, "High")
         live_low   = _extract_col(multi_live, ticker_yf, "Low")
 
-        if len(live_close) >= 2:
+        # 1. Determine Last Price and Previous Close (for daily P&L)
+        last_price = h["avg_cost"]
+        prev_close = h["avg_cost"]
+        
+        # Latest price from live feed
+        if not live_close.empty:
             last_price = float(live_close.iloc[-1])
-            prev_close = float(live_close.iloc[-2])
-            # FIX: zero-price fallback for ASX off-hours
-            if last_price == 0.0 or last_price is None:
-                last_price = prev_close if prev_close else h["avg_cost"]
-        elif len(live_close) == 1:
-            last_price = float(live_close.iloc[-1])
-            prev_close = float(close_f.iloc[-2]) if len(close_f) >= 2 else last_price
-            # FIX: zero-price fallback for ASX off-hours
-            if last_price == 0.0 or last_price is None:
-                last_price = prev_close if prev_close else h["avg_cost"]
+            if last_price == 0.0:
+                # Fallback to previous interval if market is just opening with 0.0 bids
+                last_price = float(live_close.iloc[-2]) if len(live_close) >= 2 else h["avg_cost"]
+        elif not close_f.empty:
+            last_price = float(close_f.iloc[-1])
+
+        # Previous session close (CRITICAL for correct Day P&L)
+        today_start = pd.Timestamp.now(tz="Australia/Sydney").normalize()
+        # Find points strictly before today in the 5-day feed
+        # Ensure live_close index is timezone-aware for comparison if it isn't already
+        try:
+            if live_close.index.tz is None:
+                live_close.index = live_close.index.tz_localize("Australia/Sydney")
+        except:
+            pass
+            
+        yesterday_points = live_close[live_close.index < today_start]
+        if not yesterday_points.empty:
+            prev_close = float(yesterday_points.iloc[-1])
+        elif len(close_f) >= 2:
+            # Fallback to daily history: iloc[-1] is usually today, iloc[-2] is yesterday
+            prev_close = float(close_f.iloc[-2])
         else:
-            last_price = float(close_f.iloc[-1]) if len(close_f) >= 1 else h["avg_cost"]
-            prev_close = float(close_f.iloc[-2]) if len(close_f) >= 2 else last_price
-            # FIX: zero-price fallback for ASX off-hours
-            if last_price == 0.0 or last_price is None:
-                last_price = prev_close if prev_close else h["avg_cost"]
+            prev_close = last_price
+
 
         day_high = float(live_high.iloc[-1]) if not live_high.empty else last_price
         day_low  = float(live_low.iloc[-1])  if not live_low.empty  else last_price
@@ -607,7 +621,7 @@ def get_full_history_cache(holdings: list[dict]) -> pd.DataFrame:
         
     series_dict = {}
     for h in holdings:
-        ticker_yf = h["ticker_yf"]
+        ticker_yf = h.get("ticker_yf", h["ticker"] + ".AX")
         s = get_cache(f"close_series_{ticker_yf}")
         if s is not None and not s.empty:
             # Reconstruct MultiIndex structure (Close, Ticker)
@@ -737,7 +751,25 @@ def fetch_live(holdings: list[dict], record_snapshots: bool = True) -> tuple[dic
 
     # ── A. Live quotes: single bulk 5-day download ────────────────────────────
     logger.info("Fetching live quotes (5d) for %d tickers", len(tickers_yf))
-    multi_live = _download_with_retry(tickers_yf, period="5d")
+    multi_live = _download_with_retry(tickers_yf, period="5d", interval="5m")
+
+    # ── A2. Backfill Session Cache ────────────────────────────────────────────
+    # Use the 5-day data to fill any gaps in today's intraday history
+    try:
+        backfill_map = {}
+        for t_yf in tickers_yf:
+            ticker_short = t_yf.split(".")[0]
+            s = extract_close(multi_live, t_yf)
+            if not s.empty:
+                backfill_map[ticker_short] = s
+        
+        if backfill_map:
+            # Backfill from 15:00 previous trading day to ensure continuity
+            start_limit = get_previous_trading_session_start()
+            backfill_session_cache(backfill_map, start_limit=start_limit)
+    except Exception as e:
+        logger.error("Backfill failed in fetch_live: %s", e)
+
 
     # ── B. Full history: extracted to compact series ──────────────────────────
     # We no longer cache the bulk DataFrame. We extract Close and Dividends 

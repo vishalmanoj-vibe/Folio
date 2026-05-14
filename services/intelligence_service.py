@@ -164,7 +164,11 @@ def _save_metadata(ticker_yf: str, meta_type: str, data: dict[str, float]) -> No
 def fetch_etf_sector_weights(ticker_yf: str) -> dict[str, float]:
     """
     Retrieves the sector weightings for a given ETF.
-    Strategy: Memory Cache -> SQLite (7-day stale check) -> yfinance API
+    Strategy:
+      1. Memory Cache (in-process)
+      2. SQLite etf_metadata (7-day TTL) — populated by holdings_fetcher scrape
+         (BlackRock CSV, VanEck JSON, BetaShares HTML all include sector columns)
+      3. yfinance API (last resort — unreliable for many ASX ETFs)
     """
     key = f"sector_{ticker_yf}"
     cached = get_cache(key)
@@ -208,7 +212,11 @@ def fetch_etf_sector_weights(ticker_yf: str) -> dict[str, float]:
 def fetch_etf_geo_weights(ticker_yf: str) -> dict[str, float]:
     """
     Retrieves the geographic weightings for a given ETF.
-    Strategy: Memory Cache -> SQLite (7-day stale check) -> yfinance API
+    Strategy:
+      1. Memory Cache (in-process)
+      2. SQLite etf_metadata (7-day TTL) — populated by holdings_fetcher scrape
+         (BlackRock CSV, VanEck JSON, BetaShares HTML all include country/location columns)
+      3. yfinance API (last resort — unreliable for many ASX ETFs)
     """
     key = f"geo_{ticker_yf}"
     cached = get_cache(key)

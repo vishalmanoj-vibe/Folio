@@ -402,3 +402,21 @@ def register_callbacks(app):
         pdf_bytes = base64.b64decode(b64_data)
         filename = f"Portfolio_Report_{datetime.now().strftime('%Y%m%d')}.pdf"
         return dash.dcc.send_bytes(pdf_bytes, filename=filename)
+
+    # --- CLIENTSIDE: Auto-scroll chat to bottom when children change ---
+    app.clientside_callback(
+        """
+        function(children) {
+            const el = document.getElementById('research-chat-display');
+            if (el) {
+                setTimeout(() => {
+                    el.scrollTop = el.scrollHeight;
+                }, 100);
+            }
+            return window.dash_clientside.no_update;
+        }
+        """,
+        Output("research-chat-display", "id"), # Dummy output
+        Input("research-chat-display", "children"),
+        prevent_initial_call=True
+    )
