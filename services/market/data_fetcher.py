@@ -202,10 +202,19 @@ def _download_with_retry(
     """
     for attempt in range(max_retries):
         try:
+            import datetime
             kwargs = dict(
-                period=period, group_by="ticker",
+                group_by="ticker",
                 auto_adjust=True, progress=False, actions=actions
             )
+            
+            # If period is a date-like object or ISO date string, use it as 'start'
+            is_date_str = isinstance(period, str) and len(period) == 10 and period.count("-") == 2
+            if is_date_str or isinstance(period, (pd.Timestamp, datetime.date, datetime.datetime)):
+                kwargs["start"] = pd.to_datetime(period).strftime("%Y-%m-%d")
+            else:
+                kwargs["period"] = period
+                
             if interval:
                 kwargs["interval"] = interval
             df = yf.download(tickers, **kwargs)

@@ -102,7 +102,8 @@ def register_callbacks(app) -> None:
             for h in holdings:
                 all_buy_dates.extend([pd.to_datetime(t["date"]) for t in h.get("buy_tranches", [])])
             if all_buy_dates:
-                fetch_period = min(all_buy_dates)
+                # Convert to string to ensure stable cache keys and backend compatibility
+                fetch_period = min(all_buy_dates).strftime("%Y-%m-%d")
 
         # Fetch histories for all tickers needed
         histories = fetch_portfolio_history(holdings, fetch_period)
