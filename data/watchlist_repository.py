@@ -30,7 +30,8 @@ class WatchlistRepository:
             {
                 "ticker": item["ticker"],
                 "ticker_yf": item["ticker"] + ".AX",
-                "avg_cost": 0,
+                "total_shares": 0.0,
+                "avg_cost": 0.0,
                 "buy_tranches": []
             }
             for item in watchlist

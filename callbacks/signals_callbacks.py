@@ -28,9 +28,14 @@ def register_callbacks(app):
         triggered_any = False
         today_str = datetime.now().strftime('%Y-%m-%d')
         
+        from data.repository import PortfolioRepository
+        from data.watchlist_repository import WatchlistRepository
+        from core.engine import build_holdings
+
         # 1. Check Portfolio
-        p_holdings = port_data.get("holdings", [])
-        p_tickers = [h["ticker"] for h in p_holdings if h.get("ticker")]
+        p_repo = PortfolioRepository()
+        p_holdings = build_holdings(p_repo.load_transactions())
+        p_tickers = [h["ticker"] for h in p_holdings]
         p_needs_update = True
         if p_tickers and port_signals and port_signals.get("generated_at"):
             if port_signals["generated_at"].startswith(today_str):
@@ -44,8 +49,9 @@ def register_callbacks(app):
             triggered_any = True
 
         # 2. Check Watchlist
-        w_holdings = watch_data.get("holdings", [])
-        w_tickers = [h["ticker"] for h in w_holdings if h.get("ticker")]
+        w_repo = WatchlistRepository()
+        w_items = w_repo.load_watchlist()
+        w_tickers = [item["ticker"] for item in w_items]
         w_needs_update = True
         if w_tickers and watch_signals and watch_signals.get("generated_at"):
             if watch_signals["generated_at"].startswith(today_str):
@@ -103,11 +109,18 @@ def register_callbacks(app):
             out_watch = dash.no_update
             
             if updates_needed["signals"]:
-                tickers = [h["ticker"] for h in port_data.get("holdings", [])]
+                from data.repository import PortfolioRepository
+                from core.engine import build_holdings
+                p_repo = PortfolioRepository()
+                p_holdings = build_holdings(p_repo.load_transactions())
+                tickers = [h["ticker"] for h in p_holdings]
                 out_signals = _load_signal_results(tickers, table="signal_results")
 
             if updates_needed["watchlist_signals"]:
-                tickers = [h["ticker"] for h in watch_data.get("holdings", [])]
+                from data.watchlist_repository import WatchlistRepository
+                w_repo = WatchlistRepository()
+                w_items = w_repo.load_watchlist()
+                tickers = [item["ticker"] for item in w_items]
                 out_watch = _load_signal_results(tickers, table="watchlist_signal_results")
             
             return out_signals, out_watch, still_pending

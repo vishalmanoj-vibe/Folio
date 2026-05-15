@@ -15,8 +15,8 @@ import sys
 import threading
 from config.settings import CACHE_TTL_SECONDS
 
-MAX_CACHE_ENTRIES = 500
-MAX_CACHE_MEMORY_MB = 200
+MAX_CACHE_ENTRIES = 200
+MAX_CACHE_MEMORY_MB = 100
 
 _CACHE: dict = {}
 _CACHE_LOCK = threading.Lock()

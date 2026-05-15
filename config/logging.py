@@ -44,8 +44,10 @@ CONFIG = {
         },
         "file": {
             "level": "DEBUG",
-            "class": "logging.FileHandler",
+            "class": "logging.handlers.RotatingFileHandler",
             "filename": LOG_FILE,
+            "maxBytes": 5 * 1024 * 1024,  # 5MB
+            "backupCount": 3,
             "formatter": "standard",
             "mode": "a",
         },

@@ -834,31 +834,28 @@ def fetch_live(holdings: list[dict], record_snapshots: bool = True) -> tuple[dic
 
 
     # ── B. Full history: extracted to compact series ──────────────────────────
-    # We no longer cache the bulk DataFrame. We extract Close and Dividends 
-    # immediately and discard the rest.
-    needs_fetch = False
-    for t_yf in tickers_yf:
-        if get_cache(f"close_series_{t_yf}") is None or get_cache(f"dividends_{t_yf}") is None:
-            needs_fetch = True
-            break
-            
-    if needs_fetch:
-        logger.info("Fetching full history (max) for %d tickers", len(tickers_yf))
-        multi_full = _download_with_retry(tickers_yf, period="max", actions=True)
+    # Optimization: Only fetch history for tickers missing from cache.
+    missing_history = [t for t in tickers_yf if get_cache(f"close_series_{t}") is None or get_cache(f"dividends_{t}") is None]
+    
+    if missing_history:
+        logger.info("Fetching full history (max) for %d missing tickers", len(missing_history))
+        multi_full = _download_with_retry(missing_history, period="max", actions=True)
         if not multi_full.empty:
-            for t_yf in tickers_yf:
+            for t_yf in missing_history:
                 close_s = extract_close(multi_full, t_yf)
                 div_s = extract_dividends(multi_full, t_yf)
                 
                 # Cache compact Series
                 if not close_s.empty:
-                    set_cache(f"close_series_{t_yf}", close_s, ttl=3600)
+                    # 24h cache for technicals to prevent redundant history churn
+                    set_cache(f"close_series_{t_yf}", close_s, ttl=86400)
                 if not div_s.empty:
                     # Filter for non-zero dividends to save even more space
                     div_s = div_s[div_s > 0]
-                    set_cache(f"dividends_{t_yf}", div_s, ttl=21600) # 6 hours for dividends
+                    # 7d cache for dividends as they change rarely
+                    set_cache(f"dividends_{t_yf}", div_s, ttl=604800)
             
-            # Explicitly clear multi_full reference
+            # Explicitly clear multi_full reference to free RAM before enrichment starts
             del multi_full
 
     # ── C. Enrichment ─────────────────────────────────────────────────────────

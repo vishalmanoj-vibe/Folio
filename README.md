@@ -4,7 +4,7 @@ A local portfolio dashboard for tracking ASX ETFs with live prices, P&L history,
 
 Built with Dash, Plotly, yfinance, and Gemini.
 
-![Dashboard](screenshot.png)
+![Dashboard](screenshots/screenshot.png)
 
 ## Features
 

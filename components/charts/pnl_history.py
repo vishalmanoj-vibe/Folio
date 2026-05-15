@@ -43,6 +43,8 @@ def _build_intraday_figure(
     # Check if we have any data at all first
     has_any_data = False
     ticker_data_map = {}
+    h_map = {h["ticker"]: h for h in holdings}
+    
     for ticker in target_tickers:
         s = get_intraday(ticker, chart_start_str)
         if not s.empty:
@@ -65,6 +67,8 @@ def _build_intraday_figure(
         price_s = ticker_data_map.get(ticker)
         if price_s is None or price_s.empty: continue
         
+        h = h_map.get(ticker, {})
+        
         prev_close   = prev_close_map.get(ticker, 0.0)
         total_shares = total_shares_map.get(ticker, 0.0)
         if prev_close <= 0 or (selected == "Portfolio" and total_shares <= 0):
@@ -79,8 +83,16 @@ def _build_intraday_figure(
             continue
 
         price_s = price_s[price_s > 0]
+        
+        # Inject live price as the final point to synchronise with summary cards
+        # This prevents the 'chart says 0.55% vs card says 0.65%' discrepancy
+        last_price = h.get("last_price", 0.0)
+        if last_price > 0:
+            # We use now_syd (which is already localized) for the live point
+            price_s[now_syd] = last_price
+
         if not price_s.empty:
-            price_s = price_s.resample('5min').last().ffill()
+            price_s = price_s.sort_index().resample('5min').last().ffill()
 
         if price_s.empty:
             continue
@@ -122,9 +134,17 @@ def _build_intraday_figure(
 
     # Split into Previous Session and Today for independent coloring
     today_start = pd.Timestamp.now(tz="Australia/Sydney").normalize()
+    previous_s = portfolio_s[portfolio_s.index < today_start]
+    today_s    = portfolio_s[portfolio_s.index >= today_start]
+
+    # To ensure a continuous line across the overnight gap,
+    # we inject the last point of the previous session into the start of today.
+    if not previous_s.empty and not today_s.empty:
+        today_s = pd.concat([previous_s.tail(1), today_s])
+
     segments = [
-        ("Previous", portfolio_s[portfolio_s.index < today_start]),
-        ("Today",    portfolio_s[portfolio_s.index >= today_start])
+        ("Previous", previous_s),
+        ("Today",    today_s)
     ]
 
     for name, s in segments:

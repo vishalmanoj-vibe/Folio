@@ -3,35 +3,34 @@ import logging
 logger = logging.getLogger(__name__)
 
 # Module-level cache for price histories
-_CACHE = {}
-_LATEST = None
+# We only keep the latest version to prevent memory leaks from signature churn.
+_LATEST_HISTORIES = {}
+_LATEST_SIG = None
 
 def set_histories(sig: str, histories: dict) -> None:
     """
     Stores the price histories dict in the server-side cache.
-    
-    Args:
-        sig: A unique signature string for the holdings (tickers + shares).
-        histories: The dictionary of price histories keyed by ticker.
+    Replaces the previous entry to prevent memory growth.
     """
-    global _LATEST
+    global _LATEST_HISTORIES, _LATEST_SIG
     if not histories:
         logger.debug("Skipping empty histories cache update")
         return
         
-    _CACHE[sig] = histories
-    _LATEST = histories
+    _LATEST_HISTORIES = histories
+    _LATEST_SIG = sig
     logger.debug(f"Histories cached for signature: {sig[:20]}...")
 
 def get_histories(sig: str) -> dict | None:
     """
-    Retrieves histories for a specific holdings signature.
+    Retrieves histories if the signature matches the latest cached one.
     """
-    return _CACHE.get(sig)
+    if sig == _LATEST_SIG:
+        return _LATEST_HISTORIES
+    return None
 
 def get_latest_histories() -> dict:
     """
     Returns the most recently stored histories dict.
-    Returns an empty dict if no histories are cached.
     """
-    return _LATEST if _LATEST is not None else {}
+    return _LATEST_HISTORIES
