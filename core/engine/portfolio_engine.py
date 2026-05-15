@@ -40,7 +40,7 @@ logger = logging.getLogger(__name__)
 # 1.  Holdings aggregation
 # ─────────────────────────────────────────────────────────────────────────────
 
-def build_holdings(history: list[dict]) -> list[dict]:
+def build_holdings(history: list[dict], include_tranches: bool = True) -> list[dict]:
     """
     Aggregate raw buy/sell transaction records into one consolidated row
     per ticker that is still held (net shares > 0).
@@ -52,13 +52,15 @@ def build_holdings(history: list[dict]) -> list[dict]:
     ----------
     history : list of transaction dicts
         Each dict must have: type, ticker, shares, price, date (YYYY-MM-DD).
+    include_tranches : bool, default True
+        If True, includes the full list of buy tranches in each holding.
 
     Returns
     -------
     list of HoldingDicts — one per held ticker, each containing:
         ticker, ticker_yf, name, market,
         total_shares, total_cost, avg_cost,
-        first_purchase, buy_tranches
+        first_purchase, buy_tranches (optional)
     """
     if not history:
         return []
@@ -104,7 +106,7 @@ def build_holdings(history: list[dict]) -> list[dict]:
         # Proportional cost: preserves correct cost basis when shares are sold
         remaining_cost = round(total_cost * (net_shares / total_bought), 2)
 
-        results.append({
+        holding = {
             "ticker":         ticker,
             "ticker_yf":      ticker + ".AX",
             "name":           NAMES.get(ticker, ticker),   # static fallback only
@@ -113,8 +115,10 @@ def build_holdings(history: list[dict]) -> list[dict]:
             "total_cost":     remaining_cost,
             "avg_cost":       avg_cost,
             "first_purchase": buys["date"].min(),
-            "buy_tranches":   build_tranches(ticker, buys),
-        })
+        }
+        if include_tranches:
+            holding["buy_tranches"] = build_tranches(ticker, buys)
+        results.append(holding)
 
     logger.info("Built %d holding(s) from %d transaction(s)", len(results), len(history))
     return results

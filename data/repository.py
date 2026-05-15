@@ -151,6 +151,7 @@ class HistoryRepository:
                 l = r.get("Low") or r.get("low_price") or r.get("low")
                 c = r.get("Close") or r.get("close_price") or r.get("close")
                 v = r.get("Volume") or r.get("volume")
+                dv = r.get("Dividends") or r.get("dividends") or 0.0
                 
                 if not d or c is None:
                     continue
@@ -162,16 +163,17 @@ class HistoryRepository:
                     d_clean = d
                     
                 conn.execute('''
-                    INSERT INTO price_history (ticker, date, open_price, high_price, low_price, close_price, volume, fetched_at)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                    INSERT INTO price_history (ticker, date, open_price, high_price, low_price, close_price, volume, dividends, fetched_at)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
                     ON CONFLICT(ticker, date) DO UPDATE SET
                         open_price = COALESCE(?, open_price),
                         high_price = COALESCE(?, high_price),
                         low_price = COALESCE(?, low_price),
                         close_price = ?,
                         volume = COALESCE(?, volume),
+                        dividends = COALESCE(?, dividends),
                         fetched_at = ?
-                ''', (ticker, d_clean, o, h, l, c, v, now_iso, o, h, l, c, v, now_iso))
+                ''', (ticker, d_clean, o, h, l, c, v, dv, now_iso, o, h, l, c, v, dv, now_iso))
             
             # 2. Update metadata
             valid_dates = [r.get("Date") or r.get("date") for r in records if (r.get("Date") or r.get("date"))]
@@ -228,7 +230,8 @@ class HistoryRepository:
                 "high_price": "High",
                 "low_price": "Low",
                 "close_price": "Close",
-                "volume": "Volume"
+                "volume": "Volume",
+                "dividends": "Dividends"
             }
             return df.rename(columns=rename_map).to_dict("records")
         finally:
@@ -324,11 +327,29 @@ class HistoryRepository:
         else:
             # Requested period is "max" (Since purchase)
             # If we only have a short period (like 5d from fetch_live), we must fetch max
-            if meta.get("period") != "max":
                 logger.info(f"Depth stale for {ticker}: requested max but stored period is {meta.get('period')}")
                 return True
                 
+        # 3. Dividend Check (One-time recovery after schema upgrade)
+        if not self.has_dividends(ticker):
+            logger.info(f"Dividend recovery needed for {ticker}")
+            return True
+            
         return False
+
+    def has_dividends(self, ticker: str) -> bool:
+        """Check if any non-zero dividends are recorded for this ticker."""
+        conn = get_connection()
+        try:
+            row = conn.execute(
+                "SELECT COUNT(*) as count FROM price_history WHERE ticker = ? AND dividends > 0",
+                (ticker.upper(),)
+            ).fetchone()
+            return row["count"] > 0
+        except:
+            return False
+        finally:
+            conn.close()
 
     def delete_old_records(self, days_to_keep: int = 730) -> None:
         """Cleanup price history records older than the retention limit."""

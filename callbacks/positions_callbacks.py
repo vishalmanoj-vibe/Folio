@@ -182,6 +182,17 @@ def register_callbacks(app) -> None:
         if not h:
             return html.Div(f"Metrics for {ticker} are currently unavailable", className="c-muted"), None
 
+        # Reconstruct tranches for this specific ticker from DB
+        from data.repository import PortfolioRepository
+        repo = PortfolioRepository()
+        txn_data = repo.load_transactions()
+        
+        from core.engine.portfolio_engine import build_tranches
+        import pandas as pd
+        df_txn = pd.DataFrame(txn_data)
+        ticker_buys = df_txn[(df_txn["ticker"] == ticker) & (df_txn["type"] == "buy")]
+        h["buy_tranches"] = build_tranches(ticker, ticker_buys)
+
         pnl = h["pnl"]; pc = GREEN if pnl >= 0 else RED
         day_pnl = h["day_pnl"]; dc = GREEN if day_pnl >= 0 else RED
 
@@ -473,6 +484,16 @@ def register_callbacks(app) -> None:
         h = next((x for x in port_data["holdings"] if x["ticker"] == ticker), None)
         if not h: return None
         
+        # Reconstruct tranches from DB
+        from data.repository import PortfolioRepository
+        txn_data = PortfolioRepository().load_transactions()
+        
+        from core.engine.portfolio_engine import build_tranches
+        import pandas as pd
+        df_txn = pd.DataFrame(txn_data)
+        ticker_buys = df_txn[(df_txn["ticker"] == ticker) & (df_txn["type"] == "buy")]
+        h["buy_tranches"] = build_tranches(ticker, ticker_buys)
+        
         df = get_ticker_dividend_data(ticker, h["ticker_yf"])
         if df.empty:
             return html.Div("No dividend history found for this position.", className="c-muted", style={"fontSize": "13px", "padding": "20px", "border": "0.5px dashed var(--border)", "borderRadius": "8px", "textAlign": "center"})
@@ -539,7 +560,18 @@ def register_callbacks(app) -> None:
         if not port_data or "holdings" not in port_data:
             return [None]*3
             
-        holdings = port_data["holdings"]
+        from data.repository import PortfolioRepository
+        txn_data = PortfolioRepository().load_transactions()
+        
+        from core.engine.portfolio_engine import build_holdings
+        # We need tranches for dividend eligibility logic
+        holdings = build_holdings(txn_data, include_tranches=True)
+        # Re-merge with live price data from port_data
+        price_map = {h["ticker"]: h for h in port_data["holdings"]}
+        for h in holdings:
+            if h["ticker"] in price_map:
+                h.update(price_map[h["ticker"]])
+
         df_full, stats, _ = calculate_portfolio_dividend_stats(holdings)
         
         # 1. Comparison Charts (Progress Rows)
@@ -583,5 +615,9 @@ def register_callbacks(app) -> None:
                 html.Tbody(rows)
             ], style={"width": "100%", "borderCollapse": "collapse"})
             
+        # Memory Hygiene
+        import gc
+        gc.collect()
+        
         return income_rows, yield_rows, table
 

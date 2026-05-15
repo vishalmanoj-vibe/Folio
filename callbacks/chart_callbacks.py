@@ -79,10 +79,19 @@ def register_callbacks(app) -> None:
             return create_empty_fig("No holdings data available", height=450, theme_tokens=t_), dash.no_update
 
         # ── Lazy Fetch & P&L Injection ──
-        from services.market.data_fetcher import fetch_portfolio_history, compute_tranche_pnl
-        import pandas as pd
+        from data.repository import PortfolioRepository
+        txn_data = PortfolioRepository().load_transactions()
         
-        holdings = data["holdings"]
+        from services.market.data_fetcher import fetch_portfolio_history
+        from core.engine.portfolio_engine import build_holdings, compute_tranche_pnl
+        import pandas as pd
+        # We need tranches for the P&L history calculation
+        holdings = build_holdings(txn_data, include_tranches=True)
+        # Re-merge with current live metrics (last_price, mkt_value) from portfolio-store
+        price_map = {h["ticker"]: h for h in data.get("holdings", [])}
+        for h in holdings:
+            if h["ticker"] in price_map:
+                h.update(price_map[h["ticker"]])
         
         # ── Start Date Optimization ──
         # If 'max' is selected, truncate to the date of the first purchase 
@@ -131,7 +140,13 @@ def register_callbacks(app) -> None:
         else:
             new_bench_pending = None
 
-        return build_pnl_history_figure(holdings, mode, period, t_, selected), new_bench_pending
+        fig = build_pnl_history_figure(holdings, mode, period, t_, selected)
+        
+        # ── Memory Hygiene ──
+        import gc
+        gc.collect()
+        
+        return fig, new_bench_pending
 
     # ── Normalised price history ──────────────────────────────────────────────
     @app.callback(
@@ -284,31 +299,63 @@ def register_callbacks(app) -> None:
     @app.callback(
         Output("holdings-bubble-chart", "figure"),
         Output("holdings-freshness-note", "children"),
+        Output("holdings-url-collapse", "opened", allow_duplicate=True),
         Input("portfolio-store", "data"),
         Input("theme-store", "data"),
         Input("url", "pathname"),
+        Input("holdings-url-save-status", "children"),  # re-trigger after URL save
+        State("holdings-url-collapse", "opened"),
         prevent_initial_call=True
     )
-    def update_holdings_bubble_chart(data, theme, pathname):
+    def update_holdings_bubble_chart(data, theme, pathname, _save_status, collapse_open):
         import dash
-        if pathname.rstrip("/") != "/analytics": 
-            return dash.no_update, dash.no_update
-            
+        if pathname.rstrip("/") != "/analytics":
+            return dash.no_update, dash.no_update, dash.no_update
+
         t_ = get_theme(theme or "dark")
-        
+
         if not data or "holdings" not in data or not data["holdings"]:
-            return create_empty_fig("No portfolio data", height=600, theme_tokens=t_), ""
-            
+            return create_empty_fig("No portfolio data", height=600, theme_tokens=t_), "", dash.no_update
+
         blended_data = holdings_blended_data(data)
+
         if not blended_data:
-            return create_empty_fig("No holdings data available", height=600, theme_tokens=t_), "No data available"
-            
+            # Determine which tickers still have no holdings data after the scrape
+            from services.market.holdings_fetcher import get_user_url, PROVIDER_SEED_URLS
+            from services.intelligence_service import _get_cached_metadata
+            missing = []
+            for h in data["holdings"]:
+                ticker = h["ticker"]
+                cached = _get_cached_metadata(ticker + ".AX", "holdings", ttl_days=30)
+                if not cached:
+                    has_seed = ticker in PROVIDER_SEED_URLS
+                    has_user = bool(get_user_url(ticker))
+                    if not has_seed and not has_user:
+                        missing.append(ticker)
+
+            if missing:
+                note = (
+                    f"⚠ No holdings data for: {', '.join(missing)}. "
+                    "Please expand ⚙ Configure Sources and add a fund page URL."
+                )
+            else:
+                note = "⚠ Holdings data unavailable — scrape may be in progress or throttled (retries every 24 h)."
+
+            empty_fig = create_empty_fig(
+                "No holdings data — add a source URL in ⚙ Configure Sources",
+                height=600, theme_tokens=t_
+            )
+            # Auto-open the configure panel only when tickers are genuinely missing a URL
+            should_open = bool(missing) or collapse_open
+            return empty_fig, note, should_open
+
         fig = build_holdings_bubble_chart(blended_data, t_)
-        return fig, "Data updated recently"
+        return fig, "Holdings data loaded successfully.", dash.no_update
+
 
     # ── Holdings URL Config — Toggle collapse ─────────────────────────────────
     @app.callback(
-        Output("holdings-url-collapse", "opened"),
+        Output("holdings-url-collapse", "opened", allow_duplicate=True),
         Input("holdings-url-toggle", "n_clicks"),
         State("holdings-url-collapse", "opened"),
         prevent_initial_call=True

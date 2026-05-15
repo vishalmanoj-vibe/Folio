@@ -86,20 +86,31 @@ def init_db():
                 last_error   TEXT
             )
         ''')
+
+        # 5b. ETF Holdings URLs (user-provided source overrides)
+        conn.execute('''
+            CREATE TABLE IF NOT EXISTS etf_holdings_urls (
+                ticker      TEXT PRIMARY KEY,
+                url         TEXT NOT NULL,
+                updated_at  TEXT DEFAULT CURRENT_TIMESTAMP
+            )
+        ''')
         
         # 6. Price History (OHLC)
         conn.execute('''
             CREATE TABLE IF NOT EXISTS price_history (
-                ticker      TEXT NOT NULL,
-                date        TEXT NOT NULL,
-                open_price  REAL,
-                high_price  REAL,
-                low_price   REAL,
-                close_price REAL NOT NULL,
-                volume      REAL,
-                fetched_at  TEXT NOT NULL,
-                PRIMARY KEY (ticker, date)
-            )
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                ticker TEXT NOT NULL,
+                date TEXT NOT NULL,
+                open_price REAL,
+                high_price REAL,
+                low_price REAL,
+                close_price REAL,
+                volume REAL,
+                dividends REAL DEFAULT 0,
+                fetched_at TEXT,
+                UNIQUE(ticker, date)
+            );
         ''')
         
         # 7. History Metadata
@@ -231,6 +242,40 @@ def init_db():
                 conn.commit()
         except Exception as e:
             logger.warning(f"Migration for market_prices failed: {e}")
+
+        # 13. Migration — Add dividends to price_history if missing
+        try:
+            cursor = conn.execute("PRAGMA table_info(price_history)")
+            columns = [row[1] for row in cursor.fetchall()]
+            if "dividends" not in columns:
+                logger.info("Migrating price_history: Adding dividends column")
+                conn.execute("ALTER TABLE price_history ADD COLUMN dividends REAL DEFAULT 0")
+                conn.commit()
+        except Exception as e:
+            logger.warning(f"Migration for price_history failed: {e}")
+            
+        # 14. Migration — Ensure history_meta has all columns
+        try:
+            cursor = conn.execute("PRAGMA table_info(history_meta)")
+            columns = [row[1] for row in cursor.fetchall()]
+            if "period" not in columns:
+                conn.execute("ALTER TABLE history_meta ADD COLUMN period TEXT")
+                conn.commit()
+        except Exception as e:
+            logger.warning(f"Migration for history_meta failed: {e}")
+
+        # 15. Migration — Create etf_holdings_urls if missing (existing DBs)
+        try:
+            conn.execute('''
+                CREATE TABLE IF NOT EXISTS etf_holdings_urls (
+                    ticker      TEXT PRIMARY KEY,
+                    url         TEXT NOT NULL,
+                    updated_at  TEXT DEFAULT CURRENT_TIMESTAMP
+                )
+            ''')
+            conn.commit()
+        except Exception as e:
+            logger.warning(f"Migration for etf_holdings_urls failed: {e}")
 
         # 13. Legacy JSON Migration
         migrate_json_to_sqlite()

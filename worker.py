@@ -237,6 +237,25 @@ def handle_generate_report(payload: dict):
         logger.error(f"Report task failed: {e}")
         return {"error": str(e)}
 
+def handle_generate_prediction(payload: dict):
+    """Generate portfolio return forecast using Prophet."""
+    dates = payload.get("dates", [])
+    values = payload.get("values", [])
+    horizon = payload.get("horizon", "3mo")
+    
+    if not dates or not values:
+        return {"error": "Missing dates or values"}
+        
+    logger.info(f"Task: Generating prediction forecast (horizon: {horizon})")
+    # Lazy import to keep worker startup fast
+    from services.prediction_service import get_forecast
+    result = get_forecast(dates, values, horizon)
+    
+    if not result:
+        return {"error": "Forecast generation failed or returned empty"}
+        
+    return {"status": "success"}
+
 def handle_maintenance(payload: dict):
     """Perform periodic maintenance: cache cleanup, AI memory, and history refreshes."""
     logger.info("Task: Running background maintenance...")
@@ -264,6 +283,7 @@ TASK_HANDLERS = {
     "fetch_benchmarks": handle_fetch_benchmarks,
     "generate_ai_response": handle_generate_ai_response,
     "generate_report": handle_generate_report,
+    "generate_prediction": handle_generate_prediction,
     "maintenance": handle_maintenance
 }
 
