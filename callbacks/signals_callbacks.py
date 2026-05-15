@@ -131,16 +131,19 @@ def register_callbacks(app):
     # ── Global Status UI ─────────────────────────────────────────────────────
     @app.callback(
         Output("global-signals-status-label", "children", allow_duplicate=True),
+        Output("signals-updated-chip", "style"),
         Input("pending-tasks-store", "data"),
         Input("signals-store", "data"),
         Input("watchlist-signals-store", "data"),
-        prevent_initial_call=True
+        prevent_initial_call='initial_duplicate'
     )
     def update_global_status(pending, signals, w_signals):
+        chip_style = {"display": "flex", "marginLeft": "4px", "padding": "2px 8px", "border": "0.5px solid rgba(0, 255, 255, 0.15)", "gap": "6px", "alignItems": "center"}
+        
         # If any signals task is pending
         is_pending = any(t["type"] in ("signals", "watchlist_signals") for t in (pending or []))
         if is_pending:
-            return "Updating Intelligence..."
+            return "Updating Intelligence...", chip_style
         
         # Use the latest generated_at from either store
         t1 = signals.get("generated_at") if signals else None
@@ -154,11 +157,11 @@ def register_callbacks(app):
         if latest:
             try:
                 dt = datetime.fromisoformat(latest)
-                return f"Updated {dt.strftime('%H:%M')}"
+                return f"Updated {dt.strftime('%H:%M')}", chip_style
             except:
-                return f"Updated {latest[:10]}"
+                return f"Updated {latest[:10]}", chip_style
             
-        return ""
+        return "", chip_style
 
 def _load_signal_results(tickers: list[str], table: str = "signal_results") -> dict:
     """Helper to read signal_results from SQLite and format for dcc.Store."""

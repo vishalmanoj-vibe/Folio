@@ -94,31 +94,37 @@ def create_header(
         transitionProps={"transition": "fade", "duration": 150}
     )
 
-    # Intelligence Action
-    intelligence_action = html.Div([
-        dmc.Tooltip(
-            label="Refresh All Signals (Portfolio & Watchlist)",
-            position="bottom",
-            withArrow=True,
-            children=dmc.ActionIcon(
-                "🤖",
-                id="global-generate-signals-btn",
-                variant="subtle",
-                color="cyan",
-                size="lg",
-                radius="xl"
+    # Intelligence Action (Consolidated Button + Status Box)
+    intelligence_action = html.Div(
+        id="signals-updated-chip",
+        children=[
+            dmc.Tooltip(
+                label="Refresh All Signals (Portfolio & Watchlist)",
+                position="bottom",
+                withArrow=True,
+                children=dmc.ActionIcon(
+                    "🤖",
+                    id="global-generate-signals-btn",
+                    variant="subtle",
+                    color="cyan",
+                    size="md",
+                    radius="md",
+                    style={"height": "20px", "width": "20px", "fontSize": "14px"}
+                )
+            ),
+            dcc.Loading(
+                id="global-loading-signals",
+                type="dot",
+                color="var(--cyan)",
+                children=html.Span(
+                    id="global-signals-status-label",
+                    style={"fontSize": "10px", "color": "var(--t-sec)", "whiteSpace": "nowrap", "marginLeft": "2px"}
+                )
             )
-        ),
-        dcc.Loading(
-            id="global-loading-signals",
-            type="dot",
-            color="var(--cyan)",
-            children=html.Span(
-                id="global-signals-status-label",
-                style={"fontSize": "10px", "color": "var(--t-sec)", "marginLeft": "4px", "marginRight": "12px", "whiteSpace": "nowrap"}
-            )
-        )
-    ], style={"display": "flex", "alignItems": "center"})
+        ],
+        className="last-updated",
+        style={"marginLeft": "4px", "padding": "2px 8px", "border": "0.5px solid rgba(0, 255, 255, 0.15)", "gap": "6px"}
+    )
 
     nav_right = html.Div([
         html.Div(id="market-status", children=market_status) if market_status else html.Div(id="market-status"),
