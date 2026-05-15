@@ -129,10 +129,31 @@ def _get_cached_metadata(ticker_yf: str, meta_type: str, ttl_days: int = _METADA
     finally:
         conn.close()
 
+def _truncate_dict(data: dict[str, float], top_n: int = 30) -> dict[str, float]:
+    """Sorts a dictionary by value and keeps top N, grouping others."""
+    if not data or len(data) <= top_n:
+        return data
+    sorted_items = sorted(data.items(), key=lambda x: x[1], reverse=True)
+    top_items = dict(sorted_items[:top_n])
+    others_weight = sum(v for k, v in sorted_items[top_n:])
+    if others_weight > 0.001:
+        # Avoid double-counting if 'Other' already exists
+        if "Other" in top_items:
+            top_items["Other"] += others_weight
+        elif "Other Holdings" in top_items:
+            top_items["Other Holdings"] += others_weight
+        else:
+            top_items["Other Holdings"] = others_weight
+    return {k: round(v, 4) for k, v in top_items.items()}
+
 def _save_metadata(ticker_yf: str, meta_type: str, data: dict[str, float]) -> None:
-    """Save metadata to SQLite."""
+    """Save metadata to SQLite. Automatically truncates holdings to Top 30."""
     from data.database import get_connection
     ticker_yf = ticker_yf.upper()
+    
+    # Surgical optimization: truncate holdings at the source
+    if meta_type == "holdings":
+        data = _truncate_dict(data, top_n=30)
     
     conn = get_connection()
     try:

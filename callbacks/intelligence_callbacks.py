@@ -165,12 +165,20 @@ def register_callbacks(app) -> None:
 
             # ── B. Equity curve ───────────────────────────────────────────────────
             from components.charts.helpers import build_benchmark_traces
-            p_start = pd.to_datetime(metrics.get("ret_dates", ["2000-01-01"])[0])
+            ret_dates = metrics.get("ret_dates", [])
+            ret_values = metrics.get("ret_values", [])
+            
+            p_start = None
+            if ret_dates:
+                try:
+                    p_start = pd.to_datetime(ret_dates[0])
+                except: pass
+
             b_traces = build_benchmark_traces(period, t_, portfolio_start=p_start, benchmarks=bench_data) if bench_data else []
 
             eq_fig = build_intel_equity_chart(
-                metrics.get("ret_dates", []),
-                metrics.get("ret_values", []),
+                ret_dates,
+                ret_values,
                 t_,
                 benchmarks=b_traces
             )
@@ -179,12 +187,43 @@ def register_callbacks(app) -> None:
             # ── B2. Prediction Trace (Optional) ───────────────────────────────────
             if pred_on:
                 full_metrics = compute_risk_metrics(port_data, period="max", returns=full_returns)
+                # DASH UI: Safe read-only check (never loads Prophet)
                 pred_data = get_forecast(
                     full_metrics.get("ret_dates", []),
                     full_metrics.get("ret_values", []),
-                    period or "3mo"
+                    period or "3mo",
+                    read_only=True
                 )
-                if pred_data:
+                
+                if pred_data is None:
+                    # Cache miss! Delegate to background worker
+                    conn = get_connection()
+                    try:
+                        # Check if a task for THIS specific horizon is already pending
+                        cursor = conn.execute("SELECT payload FROM worker_tasks WHERE task_type = 'generate_prediction' AND status IN ('pending', 'running')")
+                        already_tasked = False
+                        target_horizon = period or "3mo"
+                        
+                        for row in cursor.fetchall():
+                            try:
+                                payload = json.loads(row["payload"])
+                                if payload.get("horizon") == target_horizon:
+                                    already_tasked = True
+                                    break
+                            except: continue
+                            
+                        if not already_tasked:
+                            enqueue_task("generate_prediction", {
+                                "dates": full_metrics.get("ret_dates", []),
+                                "values": full_metrics.get("ret_values", []),
+                                "horizon": target_horizon
+                            }, priority=7)
+                            logger.info(f"Enqueued background prediction task for horizon: {target_horizon}")
+                        
+                        data_note += f" · ⏳ Forecasting ({target_horizon})..."
+                    finally:
+                        conn.close()
+                elif pred_data:
                     logger.info(f"Adding forecast trace to equity chart. Points: {len(pred_data['dates'])}")
                     p_dates = pred_data["dates"]
                     yhat = pred_data["yhat"]
@@ -227,9 +266,11 @@ def register_callbacks(app) -> None:
                     ))
                     
                     # Force X-axis to frame both history and forecast perfectly
-                    if p_dates_dt and metrics.get("ret_dates"):
-                        start_d = datetime.strptime(metrics["ret_dates"][0], "%Y-%m-%d")
-                        eq_fig.update_layout(xaxis=dict(range=[start_d, p_dates_dt[-1]]))
+                    if p_dates_dt and ret_dates:
+                        try:
+                            start_d = datetime.strptime(ret_dates[0], "%Y-%m-%d")
+                            eq_fig.update_layout(xaxis=dict(range=[start_d, p_dates_dt[-1]]))
+                        except: pass
 
             # ── C. Drawdown curve ─────────────────────────────────────────────────
             dd_fig = build_intel_drawdown_chart(

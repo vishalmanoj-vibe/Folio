@@ -37,7 +37,7 @@ def _generate_cache_key(dates: list, horizon_str: str) -> str:
     data_str = f"{dates[0]}_{dates[-1]}_{len(dates)}_{horizon_str}_{today_str}"
     return hashlib.md5(data_str.encode()).hexdigest()
 
-def get_forecast(dates: list, values: list, horizon_str: str) -> dict:
+def get_forecast(dates: list, values: list, horizon_str: str, read_only: bool = False) -> dict:
     """
     Generates a forward-looking return forecast using Facebook Prophet.
     Optimized with stable caching, 24h staleness checks, and data downsampling.
@@ -82,6 +82,10 @@ def get_forecast(dates: list, values: list, horizon_str: str) -> dict:
         conn.close()
 
     # 4. Only after cache miss — attempt Prophet import
+    if read_only:
+        # Return None to indicate a cache miss without loading Prophet
+        return None
+
     if _PROPHET_AVAILABLE is None:
         try:
             from prophet import Prophet
@@ -95,6 +99,7 @@ def get_forecast(dates: list, values: list, horizon_str: str) -> dict:
     try:
         from prophet import Prophet
         horizon_map = {
+            "1mo": 30,
             "90d": 90,
             "3mo": 90,
             "6m": 182,
@@ -115,11 +120,17 @@ def get_forecast(dates: list, values: list, horizon_str: str) -> dict:
         })
         
         # Problem 3 — Downsample to max 500 points for speed
+        # Also slice to last 5 years (approx 1260 trading days) to ensure recent trends dominate
         original_count = len(df)
+        if original_count > 1260:
+            df = df.iloc[-1260:].copy()
+            logger.info(f"Sliced history to last 5 years ({len(df)} points) for better trend sensitivity.")
+            original_count = len(df)
+
         if original_count > 500:
             step = original_count // 500
             df = df.iloc[::step].copy()
-            logger.info(f"Downsampled data from {original_count} to {len(df)} points for faster fitting.")
+            logger.info(f"Downsampled data to {len(df)} points for faster fitting.")
         
         # Determine seasonality based on data density (using full original length for logic)
         total_days = (df["ds"].max() - df["ds"].min()).days

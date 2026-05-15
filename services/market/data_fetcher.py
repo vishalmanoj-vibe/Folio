@@ -574,11 +574,45 @@ def _enrich_single_holding(h: dict, multi_live: pd.DataFrame, multi_period: pd.D
         day_high = float(live_high.iloc[-1]) if not live_high.empty else last_price
         day_low  = float(live_low.iloc[-1])  if not live_low.empty  else last_price
 
+        # 2. Dividends (from RAM cache or SQLite)
+        div_f = get_cache(f"dividends_{ticker_yf}")
+        if div_f is None:
+            # Fallback to SQLite if not in RAM
+            from data.repository import HistoryRepository
+            db_hist = HistoryRepository().load_history(h["ticker"])
+            if db_hist:
+                # Robust extraction: look for any non-zero Dividends in history
+                df_db = pd.DataFrame(db_hist)
+                if "Dividends" in df_db.columns:
+                    df_db["Date"] = pd.to_datetime(df_db["Date"])
+                    df_db = df_db.set_index("Date").sort_index()
+                    # Filter for rows where Dividends > 0
+                    div_f = df_db[df_db["Dividends"] > 0]["Dividends"]
+                    if not div_f.empty:
+                        # Cache it for next time to save DB I/O
+                        set_cache(f"dividends_{ticker_yf}", div_f, ttl=604800)
+                    else:
+                        div_f = pd.Series(dtype=float)
+                else:
+                    div_f = pd.Series(dtype=float)
+            else:
+                div_f = pd.Series(dtype=float)
+
         _pnl      = compute_holding_pnl(h, last_price, prev_close)
         mkt_value = _pnl["mkt_value"]
 
         annual_div, total_div, div_yield = _compute_dividends_bulk(div_f, h["total_shares"], mkt_value)
-        realized_div = _calculate_realized_dividends(div_f, h.get("buy_tranches", []))
+        
+        # Realized dividends need tranches for eligibility
+        # If tranches are missing (due to memory optimization), load from DB
+        tranches = h.get("buy_tranches")
+        if not tranches:
+            from data.repository import PortfolioRepository
+            txns = PortfolioRepository().load_transactions()
+            # Filter for this ticker
+            tranches = [t for t in txns if t["ticker"] == h["ticker"] and t["type"].upper() == "BUY"]
+            
+        realized_div = _calculate_realized_dividends(div_f, tranches)
         div_frequency = _deduce_frequency(div_f)
         div_f_clean = div_f[div_f > 0]
         last_div_amount = float(div_f_clean.iloc[-1]) if not div_f_clean.empty else 0.0
@@ -604,8 +638,10 @@ def _enrich_single_holding(h: dict, multi_live: pd.DataFrame, multi_period: pd.D
             "div_frequency":  div_frequency,
             "last_div_amount": round(last_div_amount, 4),
             "last_div_date":   div_f.index[-1].strftime("%Y-%m-%d") if not div_f.empty else None,
-            "tranches":       h.get("buy_tranches", []), # Keep base tranche data
         }
+        # Memory Hygiene: Only include tranches if they actually contain data
+        if h.get("buy_tranches"):
+            enriched_h["buy_tranches"] = h["buy_tranches"]
         
         # 3. Upcoming Dividends (expensive I/O - using TTL cache)
         try:
@@ -834,28 +870,28 @@ def fetch_live(holdings: list[dict], record_snapshots: bool = True) -> tuple[dic
 
 
     # ── B. Full history: extracted to compact series ──────────────────────────
-    # Optimization: Only fetch history for tickers missing from cache.
-    missing_history = [t for t in tickers_yf if get_cache(f"close_series_{t}") is None or get_cache(f"dividends_{t}") is None]
+    # Optimization: Only fetch history for tickers missing from SQLite
+    missing_history = []
+    repo_hist = HistoryRepository()
+    for t_yf in tickers_yf:
+        ticker_short = t_yf.split(".")[0]
+        # Check if we have at least 1 year of history or recent data
+        if repo_hist.is_stale(ticker_short, requested_period="1y"):
+            missing_history.append(t_yf)
     
     if missing_history:
         logger.info("Fetching full history (max) for %d missing tickers", len(missing_history))
         multi_full = _download_with_retry(missing_history, period="max", actions=True)
         if not multi_full.empty:
             for t_yf in missing_history:
-                close_s = extract_close(multi_full, t_yf)
+                # Memory Hygiene: Price history (large) stays in SQLite.
+                # Dividends (small) are cached in RAM for metrics performance.
                 div_s = extract_dividends(multi_full, t_yf)
-                
-                # Cache compact Series
-                if not close_s.empty:
-                    # 24h cache for technicals to prevent redundant history churn
-                    set_cache(f"close_series_{t_yf}", close_s, ttl=86400)
                 if not div_s.empty:
-                    # Filter for non-zero dividends to save even more space
                     div_s = div_s[div_s > 0]
-                    # 7d cache for dividends as they change rarely
                     set_cache(f"dividends_{t_yf}", div_s, ttl=604800)
             
-            # Explicitly clear multi_full reference to free RAM before enrichment starts
+            # Explicitly clear multi_full reference
             del multi_full
 
     # ── C. Enrichment ─────────────────────────────────────────────────────────
@@ -924,4 +960,12 @@ def fetch_live(holdings: list[dict], record_snapshots: bool = True) -> tuple[dic
         save_portfolio_snapshot(result)
         
     logger.info("Done — %d enriched (no global history)", len(enriched))
+    # ── Memory Hygiene ──
+    try:
+        del multi_live
+        import gc
+        gc.collect()
+    except:
+        pass
+
     return result, {}, holdings_sig

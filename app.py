@@ -79,7 +79,7 @@ from services.market.data_fetcher import load_portfolio_snapshot
 from services.market.session_cache import clear_old_caches
 from services.history_cache import set_histories
 # Maintenance is now deferred to worker tasks
-INITIAL_HOLDINGS = build_holdings(INITIAL_HISTORY)
+INITIAL_HOLDINGS = build_holdings(INITIAL_HISTORY, include_tranches=False)
 INITIAL_PORTFOLIO_DATA: dict = load_portfolio_snapshot(INITIAL_HOLDINGS)
 logger.info("Fast-loaded portfolio from disk snapshot (SQLite).")
 
@@ -271,7 +271,7 @@ def update_portfolio_store(txn_data, p1, p2, p3, p4, p5, n_price, n_start, n_btn
     from data.cache_manager import get_live_prices
     
     # 1. Get tickers from current txn-store
-    holdings = build_holdings(txn_data)
+    holdings = build_holdings(txn_data, include_tranches=False)
     tickers = [h["ticker"] for h in holdings]
     
     if not tickers:
@@ -301,10 +301,14 @@ def update_portfolio_store(txn_data, p1, p2, p3, p4, p5, n_price, n_start, n_btn
             except:
                 pass
 
-        return {
+        res = {
             "holdings": enriched,
             "fetched_at": fetched_at
         }
+        # Final cleanup
+        import gc
+        gc.collect()
+        return res
     except Exception as e:
         logger.error(f"Portfolio store update failed: {e}")
         return dash.no_update

@@ -12,11 +12,20 @@ import signal
 import logging
 import multiprocessing
 from multiprocessing import Process
+import subprocess
 
 # Setup logging
 from config.logging import setup_logging
 setup_logging()
 logger = logging.getLogger("launcher")
+
+def get_process_memory_mb(pid):
+    """Get process memory usage in MB using 'ps'."""
+    try:
+        output = subprocess.check_output(["ps", "-o", "rss=", "-p", str(pid)])
+        return int(output.strip()) / 1024
+    except:
+        return 0
 
 def run_dash():
     """Wrapper to run the Dash app."""
@@ -44,6 +53,7 @@ class FolioLauncher:
         self.dash_process = None
         self.worker_process = None
         self.running = True
+        self.last_mem_check = 0
         
         # Register signals for graceful shutdown
         signal.signal(signal.SIGINT, self.handle_exit)
@@ -92,6 +102,17 @@ class FolioLauncher:
 
             # 3. Heartbeat
             time.sleep(5)
+            
+            # 5. Monitor Worker Memory (Every 60s)
+            if self.worker_process and self.worker_process.is_alive():
+                current_time = time.time()
+                if current_time - self.last_mem_check > 60:
+                    self.last_mem_check = current_time
+                    mem_mb = get_process_memory_mb(self.worker_process.pid)
+                    if mem_mb > 800:
+                        logger.warning(f"Worker memory high ({mem_mb:.1f}MB). Restarting process...")
+                        self.worker_process.terminate()
+                        # The loop will restart it automatically next iteration
             
             # 4. Check if Dash was closed normally (e.g., app.run returned)
             if self.dash_process and not self.dash_process.is_alive():
