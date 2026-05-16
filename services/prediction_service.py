@@ -99,25 +99,22 @@ def get_forecast(dates: list, values: list, horizon_str: str, read_only: bool = 
     try:
         from prophet import Prophet
         horizon_map = {
-            "1mo": 30,
-            "90d": 90,
-            "3mo": 90,
-            "6m": 182,
-            "6mo": 182,
-            "1y": 365,
-            "2y": 730,
-            "5y": 1825,
-            "max": 90 # Default for max view
+            "1mo": 30, "90d": 90, "3mo": 90, "6m": 182, "6mo": 182,
+            "1y": 365, "2y": 730, "5y": 1825, "max": 90
         }
         days = horizon_map.get(horizon_str, 90)
         
-        logger.info(f"Computing new prediction for horizon {horizon_str} ({days} days)")
+        logger.info(f"Computing new prediction for {len(dates)} points. Horizon: {horizon_str} ({days} days)")
         
         # Prepare dataframe for Prophet
         df = pd.DataFrame({
             "ds": pd.to_datetime(dates),
             "y": values
         })
+        
+        if df.empty or len(df) < 5:
+            logger.warning(f"Insufficient data for Prophet: {len(df)} points.")
+            return {}
         
         # Problem 3 — Downsample to max 500 points for speed
         # Also slice to last 5 years (approx 1260 trading days) to ensure recent trends dominate

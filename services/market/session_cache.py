@@ -118,12 +118,16 @@ def backfill_session_cache(tickers_data: dict[str, pd.Series], start_limit: pd.T
 
 def get_session_history(ticker: str) -> pd.Series:
     """
-    Retrieve today's recorded points for a ticker from SQLite.
+    Retrieve the appropriate session points for a ticker from SQLite.
+    If market is closed/weekend, returns the most recent trading session data.
     """
-    # We use cache_manager for this to follow the new architecture
+    from services.market.market_status import get_effective_session_context
     from data.cache_manager import get_intraday
-    today_str = pd.Timestamp.now(tz="Australia/Sydney").strftime("%Y-%m-%d")
-    return get_intraday(ticker, today_str)
+    
+    context = get_effective_session_context()
+    session_date_str = context['effective_date'].strftime("%Y-%m-%d")
+    
+    return get_intraday(ticker, session_date_str)
 
 def clear_old_caches(keep_days: int = 2):
     """Delete session caches older than keep_days from SQLite."""

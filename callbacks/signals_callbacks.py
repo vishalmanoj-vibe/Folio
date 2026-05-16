@@ -39,9 +39,18 @@ def register_callbacks(app):
         p_needs_update = True
         if p_tickers and port_signals and port_signals.get("generated_at"):
             if port_signals["generated_at"].startswith(today_str):
-                cached = port_signals.get("raw", {}).keys()
+                raw_data = port_signals.get("raw", {})
+                cached = raw_data.keys()
+                # If all tickers are cached AND none of them have errors or a 0.0 score
                 if all(t in cached for t in p_tickers):
-                    p_needs_update = False
+                    has_errors = any(
+                        "No market data" in " ".join(raw_data.get(t, {}).get("reasons", [])) or
+                        "Insufficient data" in " ".join(raw_data.get(t, {}).get("reasons", [])) or
+                        raw_data.get(t, {}).get("score", 0.0) == 0.0
+                        for t in p_tickers
+                    )
+                    if not has_errors:
+                        p_needs_update = False
         
         if p_tickers and p_needs_update:
             task_id = enqueue_task("generate_signals", {"tickers": p_tickers, "scope": "portfolio"}, priority=3)
@@ -55,9 +64,17 @@ def register_callbacks(app):
         w_needs_update = True
         if w_tickers and watch_signals and watch_signals.get("generated_at"):
             if watch_signals["generated_at"].startswith(today_str):
-                cached = watch_signals.get("raw", {}).keys()
+                raw_data = watch_signals.get("raw", {})
+                cached = raw_data.keys()
                 if all(t in cached for t in w_tickers):
-                    w_needs_update = False
+                    has_errors = any(
+                        "No market data" in " ".join(raw_data.get(t, {}).get("reasons", [])) or
+                        "Insufficient data" in " ".join(raw_data.get(t, {}).get("reasons", [])) or
+                        raw_data.get(t, {}).get("score", 0.0) == 0.0
+                        for t in w_tickers
+                    )
+                    if not has_errors:
+                        w_needs_update = False
         
         if w_tickers and w_needs_update:
             task_id = enqueue_task("generate_signals", {"tickers": w_tickers, "scope": "watchlist"}, priority=3)

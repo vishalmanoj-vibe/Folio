@@ -56,11 +56,9 @@ def register_callbacks(app) -> None:
         if not port_data or "holdings" not in port_data:
             return []
 
-        # ── Mini Sparkline Generator ──
-        # Renders a high-density area chart of the last 20 price points 
-        # to provide quick visual context for each holding.
-        from services.market.data_fetcher import fetch_portfolio_history
-        histories_map = fetch_portfolio_history(port_data["holdings"], "1mo")
+        # ── Mini Sparkline Generator (Memory Optimized) ──
+        from services.market.data_fetcher import fetch_portfolio_series
+        series_map = fetch_portfolio_series(port_data["holdings"], "1mo")
         
         cards = []
         for h in port_data["holdings"]:
@@ -91,10 +89,10 @@ def register_callbacks(app) -> None:
                         )
                 
                 spark_fig = go.Figure()
-                history = histories_map.get(ticker, [])
-                if history:
-                    # Repository now returns CamelCase keys (Date, Close)
-                    prices = [x.get("Close") for x in history[-20:]]
+                history_s = series_map.get(ticker)
+                if history_s is not None and not history_s.empty:
+                    # Renders a high-density area chart of the last 20 price points
+                    prices = history_s.tail(20).tolist()
                     is_pos = pnl >= 0
                     line_color = GREEN if is_pos else RED
                     fill_color = "rgba(29,158,117,0.08)" if is_pos else "rgba(226,75,74,0.08)"
@@ -136,6 +134,10 @@ def register_callbacks(app) -> None:
             except Exception as e:
                 logger.error(f"Failed to render card for {h.get('ticker', '?')}: {e}")
                 continue
+        
+        # Memory Hygiene
+        import gc
+        gc.collect()
         return cards
 
     # ── 2. Handle Card Clicks ──────────────────────────────────────────────────
@@ -226,13 +228,16 @@ def register_callbacks(app) -> None:
             for label, val, sub, color in [(m[0], m[1], m[2], m[3] if len(m)>3 else None) for m in metrics]
         ]
         
-        # Generate Tech Signals
-        tech_signals = None
-        from services.market.data_fetcher import fetch_ticker_history
-        history = fetch_ticker_history(ticker, "1y")
-        if history:
-            tech_signals = tech_signal_badges(ticker, history)
-
+        # Generate Tech Signals (Memory Optimized)
+        from data.repository import HistoryRepository
+        history_s = HistoryRepository().load_close_series(ticker, from_date=(pd.Timestamp.now() - pd.DateOffset(years=1)).strftime("%Y-%m-%d"))
+        if not history_s.empty:
+            tech_signals = tech_signal_badges(ticker, history_s)
+        
+        # Memory Hygiene
+        import gc
+        gc.collect()
+        
         return cards_layout, tech_signals
 
     @app.callback(
@@ -340,10 +345,11 @@ def register_callbacks(app) -> None:
                             opacity=0.9
                         ))
                     else:
-                        # Fallback to line chart if OHLC is missing
+                        # Fallback to line chart using compact Series
+                        prices = df["Close"]
                         fig.add_trace(go.Scatter(
-                            x=df.index, y=df["Close"], mode="lines",
-                            line=dict(color=GREEN if df["Close"].iloc[-1] >= df["Close"].iloc[0] else RED, width=2),
+                            x=prices.index, y=prices, mode="lines",
+                            line=dict(color=GREEN if prices.iloc[-1] >= prices.iloc[0] else RED, width=2),
                             name=ticker,
                             hovertemplate="$%{y:,.3f}<extra></extra>"
                         ))
@@ -473,9 +479,10 @@ def register_callbacks(app) -> None:
         Input("positions-selected-ticker", "data"),
         Input("portfolio-store", "data"),
         Input("url", "pathname"),
-        prevent_initial_call=True
+        State("txn-store", "data"),
+        prevent_initial_call=False
     )
-    def render_ticker_dividends(ticker, port_data, url_pathname):
+    def render_ticker_dividends(ticker, port_data, url_pathname, txn_data):
         import dash
         if url_pathname.rstrip("/") != "/positions": return dash.no_update
         if not ticker or not port_data or "holdings" not in port_data:
@@ -484,9 +491,10 @@ def register_callbacks(app) -> None:
         h = next((x for x in port_data["holdings"] if x["ticker"] == ticker), None)
         if not h: return None
         
-        # Reconstruct tranches from DB
-        from data.repository import PortfolioRepository
-        txn_data = PortfolioRepository().load_transactions()
+        # Reconstruct tranches from txn-store (Zero DB Hit)
+        if not txn_data:
+            from data.repository import PortfolioRepository
+            txn_data = PortfolioRepository().load_transactions()
         
         from core.engine.portfolio_engine import build_tranches
         import pandas as pd

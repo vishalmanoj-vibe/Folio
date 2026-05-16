@@ -13,6 +13,7 @@ from core.engine.utils import get_period_cutoff
 from components.charts.helpers import build_benchmark_traces, hex_to_rgba, apply_standard_layout
 
 import logging
+from services.market.market_status import get_effective_session_context
 logger = logging.getLogger(__name__)
 
 def _build_intraday_figure(
@@ -25,17 +26,29 @@ def _build_intraday_figure(
     """
     Build the 'Today' intraday P&L chart.
     """
-    from services.market.market_status import get_previous_trading_session_start
     from data.cache_manager import get_intraday
 
     GREEN_C = theme_tokens.get("GREEN", "#1D9E75")
     RED_C   = theme_tokens.get("RED",   "#E24B4A")
 
-    now_syd      = pd.Timestamp.now(tz="Australia/Sydney")
-    today_str    = now_syd.strftime("%Y-%m-%d")
-    chart_start  = get_previous_trading_session_start()
+    ctx = get_effective_session_context()
+    effective_start = ctx['effective_date'] # Already normalized to 00:00
+    chart_start = effective_start.replace(hour=10)
     chart_start_str = chart_start.strftime("%Y-%m-%d %H:%M:%S")
-    market_close = pd.Timestamp(f"{today_str} 16:15:00", tz="Australia/Sydney")
+    
+    # We want to show until the end of the effective day
+    market_close = effective_start.replace(hour=16, minute=15, second=0)
+    
+    # localized timestamps for filtering
+    # helper to ensure timezone awareness
+    def ensure_syd(ts):
+        if ts.tzinfo is None:
+            return ts.tz_localize("Australia/Sydney")
+        return ts.tz_convert("Australia/Sydney")
+
+    chart_start_tz = ensure_syd(chart_start)
+    market_close_tz = ensure_syd(market_close)
+    now_syd = pd.Timestamp.now(tz="Australia/Sydney")
 
     # Filter tickers if a specific one is selected
     target_tickers = [selected] if selected != "Portfolio" else [h["ticker"] for h in holdings]
@@ -74,10 +87,13 @@ def _build_intraday_figure(
         if prev_close <= 0 or (selected == "Portfolio" and total_shares <= 0):
             continue
 
-        price_s.index = price_s.index.tz_localize("Australia/Sydney")
+        if price_s.index.tz is None:
+            price_s.index = price_s.index.tz_localize("Australia/Sydney")
+        else:
+            price_s.index = price_s.index.tz_convert("Australia/Sydney")
         price_s = price_s.sort_index()
         price_s = price_s[~price_s.index.duplicated(keep='last')]
-        price_s = price_s[(price_s.index >= chart_start) & (price_s.index <= market_close)]
+        price_s = price_s[(price_s.index >= chart_start_tz) & (price_s.index <= market_close_tz)]
 
         if price_s.empty:
             continue
@@ -85,11 +101,11 @@ def _build_intraday_figure(
         price_s = price_s[price_s > 0]
         
         # Inject live price as the final point to synchronise with summary cards
-        # This prevents the 'chart says 0.55% vs card says 0.65%' discrepancy
-        last_price = h.get("last_price", 0.0)
-        if last_price > 0:
-            # We use now_syd (which is already localized) for the live point
-            price_s[now_syd] = last_price
+        # Only if we are in the live session
+        if ctx['is_live']:
+            last_price = h.get("last_price", 0.0)
+            if last_price > 0:
+                price_s[now_syd] = last_price
 
         if not price_s.empty:
             price_s = price_s.sort_index().resample('5min').last().ffill()
@@ -133,18 +149,28 @@ def _build_intraday_figure(
         portfolio_s = combined.iloc[:, 0]
 
     # Split into Previous Session and Today for independent coloring
-    today_start = pd.Timestamp.now(tz="Australia/Sydney").normalize()
-    previous_s = portfolio_s[portfolio_s.index < today_start]
-    today_s    = portfolio_s[portfolio_s.index >= today_start]
+    # If we are live, we use midnight as the split
+    if ctx['is_live']:
+        split_dt = now_syd.normalize()
+        previous_s = portfolio_s[portfolio_s.index < split_dt]
+        today_s    = portfolio_s[portfolio_s.index >= split_dt]
+    else:
+        # If not live, everything is "Previous" (from the perspective of the chart)
+        previous_s = portfolio_s
+        today_s    = pd.Series(dtype=float)
 
     # To ensure a continuous line across the overnight gap,
     # we inject the last point of the previous session into the start of today.
     if not previous_s.empty and not today_s.empty:
         today_s = pd.concat([previous_s.tail(1), today_s])
 
+    # Determine segment names for legend
+    prev_label = "Previous" if ctx['is_live'] else ""
+    today_label = "Today"
+    
     segments = [
-        ("Previous", previous_s),
-        ("Today",    today_s)
+        (prev_label, previous_s),
+        (today_label, today_s)
     ]
 
     for name, s in segments:
@@ -154,10 +180,13 @@ def _build_intraday_figure(
         line_color = GREEN_C if lv >= 0 else RED_C
         fill_color = hex_to_rgba(line_color, 0.12)
 
+        # Build label: "Ticker" or "Ticker Previous/Today"
+        trace_name = f"{selected} {name}".strip()
+        
         fig.add_trace(go.Scatter(
             x=s.index,
             y=s.values,
-            name=f"{selected} {name}",
+            name=trace_name,
             mode="lines",
             fill="tozeroy",
             fillcolor=fill_color,
@@ -216,25 +245,23 @@ def build_pnl_history_figure(
     )
     
     if period == "1d":
+        # Ensure x-axis shows the full effective session window (10:00 - 16:15)
+        # instead of just the last few hours.
+        ctx = get_effective_session_context()
+        effective_start = ctx['effective_date']
+        range_start = effective_start.replace(hour=10).isoformat()
+        range_end   = effective_start.replace(hour=16, minute=15).isoformat()
+        
         fig.update_layout(xaxis=dict(
             tickformat="%H:%M",
             dtick=30 * 60 * 1000,
             tickangle=0,
-        ))
-        from services.market.market_status import get_previous_trading_session_start
-        chart_start = get_previous_trading_session_start()
-        range_start = chart_start.isoformat()
-        range_end   = pd.Timestamp.now(tz="Australia/Sydney").replace(hour=16, minute=15, second=0).isoformat()
-        
-        fig.update_xaxes(
             range=[range_start, range_end],
             rangebreaks=[
                 dict(bounds=["sat", "mon"]),
                 dict(bounds=[16.25, 10], pattern="hour"),
-            ],
-            dtick=None,
-            nticks=10,
-        )
+            ]
+        ))
     else:
         fig.update_xaxes(tickformat=None)
 

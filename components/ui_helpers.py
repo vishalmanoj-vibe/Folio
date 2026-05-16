@@ -5,6 +5,7 @@ components/ui_helpers.py
 Refined UI helpers for the Folio Dashboard.
 """
 
+import pandas as pd
 from dash import html
 import dash_mantine_components as dmc
 from config.constants import COLORS, CHART_INFO
@@ -192,11 +193,20 @@ def progress_row(ticker: str, value: float, max_val: float, prefix: str = "", su
         html.Div(f"{prefix}{value:{fmt}}{suffix}", className="progress-value"),
     ], className="progress-row")
 
-def tech_signal_badges(ticker: str, history: list[dict]) -> html.Div:
+def tech_signal_badges(ticker: str, history: list[dict] | pd.Series) -> html.Div:
     """Renders a row of technical signal badges for a given ticker."""
     from services.technical_indicators import compute_signals
     
-    if not history:
+    # Unified empty check for list or Series
+    is_empty = False
+    if history is None:
+        is_empty = True
+    elif isinstance(history, pd.Series):
+        is_empty = history.empty
+    elif isinstance(history, list):
+        is_empty = len(history) == 0
+        
+    if is_empty:
         return html.Div("Insufficient history for technicals.", style={"color": "var(--t-sec)", "fontSize": "12px", "padding": "8px 0"})
         
     sig = compute_signals(ticker, history)

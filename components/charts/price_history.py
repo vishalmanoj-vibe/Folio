@@ -48,30 +48,25 @@ def build_price_chart_figure(
     # For non-max periods, use a single calendar cutoff for all tickers
     calendar_cutoff = get_period_cutoff(period)
 
-    for i, (t, recs) in enumerate(histories.items()):
-        df = pd.DataFrame(recs)
-        if df.empty: continue
-
-        if "Date" in df.columns:
-            df["Date"] = pd.to_datetime(df["Date"])
-            df = df.set_index("Date").sort_index()
+    for i, (t, s) in enumerate(histories.items()):
+        if s.empty: continue
 
         # Determine start date
         if period == "max":
             ticker_cutoff = purchase_map.get(t)
             if ticker_cutoff is not None:
-                df = df[df.index >= ticker_cutoff]
+                s = s[s.index >= ticker_cutoff]
         elif calendar_cutoff is not None:
-            df = df[df.index >= calendar_cutoff]
+            s = s[s.index >= calendar_cutoff]
 
-        if df.empty or df["Close"].iloc[0] == 0:
+        if s.empty or s.iloc[0] == 0:
             continue
 
         # Normalize to 100
-        base = df["Close"].iloc[0]
+        base = float(s.iloc[0])
         fig.add_trace(go.Scatter(
-            x=df.index,
-            y=(df["Close"] / base * 100).round(2),
+            x=s.index,
+            y=(s / base * 100).round(2),
             name=t, 
             mode="lines",
             line=dict(color=COLORS[i % len(COLORS)], width=2.0, shape='spline'),

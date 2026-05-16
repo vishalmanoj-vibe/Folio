@@ -56,7 +56,7 @@ def handle_generate_signals(payload: dict):
     logger.info(f"Task: Generating signals for {len(tickers)} tickers (scope: {scope})")
     
     # 1. Build Context
-    from services.market.data_fetcher import get_full_history_cache
+    from services.market.data_fetcher import get_full_history_cache, extract_close
     from data.repository import PortfolioRepository
     
     # We need holdings data with ticker_yf and avg_cost
@@ -70,15 +70,29 @@ def handle_generate_signals(payload: dict):
         
     multi_full = get_full_history_cache(holdings)
     
-    # If cache is empty (common after-hours or on first run), 
-    # force a fetch to ensure signals can be generated.
+    # Ensure we have enough history for technical indicators (min 220 days) for ALL tickers
+    missing_depth = []
     if multi_full.empty:
-        logger.info("Signal cache empty. Triggering on-demand history fetch...")
-        from services.market.data_fetcher import fetch_live
-        # fetch_live with record_snapshots=False will populate the compact series cache
-        fetch_live(holdings, record_snapshots=False)
+        missing_depth = [h["ticker"] for h in holdings]
+    else:
+        for h in holdings:
+            t_yf = h.get("ticker_yf", h["ticker"] + ".AX")
+            s = extract_close(multi_full, t_yf)
+            if s.empty or len(s.dropna()) < 220:
+                missing_depth.append(h["ticker"])
+
+    if missing_depth:
+        logger.info("Signal history missing or insufficient for %d tickers: %s. Fetching...", len(missing_depth), missing_depth)
+        # Fetch only what's missing to be efficient, but force_fetch=True to ensure it hits yfinance if stale
+        missing_holdings = [h for h in holdings if h["ticker"] in missing_depth]
+        from services.market.data_fetcher import fetch_portfolio_series
+        fetch_portfolio_series(missing_holdings, "max", force_fetch=True)
+        # Re-load full cache
         multi_full = get_full_history_cache(holdings)
     
+    if multi_full.empty:
+        logger.warning("Could not retrieve any history for signal generation.")
+        return {"error": "Insufficient market data history for technical signals"}
     # Load previous signals for hysteresis
     conn = get_connection()
     prev_signals = {}
@@ -272,14 +286,38 @@ def handle_maintenance(payload: dict):
     
     # 3. Refresh watchlist histories
     from data.watchlist_repository import WatchlistRepository
-    repo = WatchlistRepository()
-    repo.refresh_all_histories()
+    WatchlistRepository().refresh_all_histories()
+    
+    # 4. Refresh portfolio histories
+    from data.repository import PortfolioRepository
+    from services.market.data_fetcher import fetch_ticker_history
+    txns = PortfolioRepository().load_transactions()
+    tickers = {t["ticker"] for t in txns}
+    for t in tickers:
+        # fetch_ticker_history internally checks is_stale (24h gate)
+        fetch_ticker_history(t, "max")
     
     return {"status": "success"}
+
+def handle_scrape_holdings(payload: dict):
+    """Fetch ETF holdings breakdown from provider websites."""
+    ticker = payload.get("ticker")
+    if not ticker:
+        return {"error": "Missing ticker"}
+    
+    logger.info(f"Task: Scraping holdings for {ticker}")
+    from services.market.holdings_fetcher import fetch_holdings
+    # Important: allow_scrape=True to actually run the scrape in the worker process
+    results = fetch_holdings(ticker, allow_scrape=True)
+    
+    if not results:
+        return {"error": "Scrape failed or returned no holdings"}
+    return {"status": "success", "count": len(results)}
 
 TASK_HANDLERS = {
     "fetch_history": handle_fetch_history,
     "generate_signals": handle_generate_signals,
+    "scrape_holdings": handle_scrape_holdings,
     "fetch_benchmarks": handle_fetch_benchmarks,
     "generate_ai_response": handle_generate_ai_response,
     "generate_report": handle_generate_report,

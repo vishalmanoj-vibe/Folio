@@ -219,7 +219,8 @@ def get_benchmarks_db() -> dict | None:
             return None
             
         fetched_at = pd.to_datetime(row["fetched_at"])
-        if (pd.Timestamp.now() - fetched_at).total_seconds() > 3600:
+        # History gating: 24h threshold for benchmarks
+        if (pd.Timestamp.now() - fetched_at).total_seconds() > 86400:
             return None # Stale
             
         # If not stale, fetch all
