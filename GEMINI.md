@@ -41,6 +41,9 @@
   - `fetch_live()` returns only `{holdings, fetched_at}`. Histories are excluded to keep JSON payloads < 20KB.
   - All history access MUST go through `HistoryRepository` (SQLite) or `fetch_ticker_history()` (Lazy).
   - Heavy DataFrames (e.g. `multi_full` from yfinance) MUST NOT be stored in long-term cache. Extract compact `pd.Series` and discard the raw DataFrame immediately.
+- **Distributed Scraping**: All heavy provider scrapes (Playwright/Scraping) MUST be offloaded to the background worker. The Dash process is strictly read-only for holdings metadata.
+- **Depth Awareness**: The `is_stale` check for 'max' periods MUST check if a 'max' fetch has already been performed to prevent infinite refresh loops for young tickers with < 220 days of history.
+- **Staleness Gating**: Enforce a strict 24-hour staleness gate for all historical (non-live) price data.
 
 ## Data conventions
 - Tickers stored without .AX in CSV; ticker_yf = ticker + ".AX" for yfinance
