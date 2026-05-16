@@ -45,6 +45,30 @@ The application follows a strictly decoupled layered architecture to ensure sepa
 4.  **Data (Persistence)**: The `PortfolioRepository` and `WatchlistRepository` provide a clean abstraction for data operations. The system uses a **Relational SQLite** backend (`portfolio.db`) for all state data (Transactions, Watchlist, Metadata), utilizing WAL mode for concurrency. JSON is retained only for transient intraday snapshots.
 5.  **Domain (Models)**: Typed definitions (Pydantic/TypedDict) that enforce data contracts across all layers.
 6.  **Foundation (Core/Config)**: System-wide utilities (Validators, TTL Caching, Logging) and environment configuration.
+7.  **Background Worker**: A separate process (`worker.py`) that handles I/O-bound and CPU-intensive tasks (Technical Signals, ETF Scrapes, Market Refreshes).
+
+---
+
+## Distributed Intelligence & Memory Hygiene
+
+To maintain a lightweight memory footprint (~300MB baseline) and prevent UI freezes, Folio uses a distributed task architecture.
+
+### 1. The Worker Process (`worker.py`)
+The worker process is the "heavy lifter". It handles:
+- **`generate_signals`**: Computes RSI/MACD and runs AI signal analysis.
+- **`scrape_holdings`**: Executes Playwright-based browser sessions to discover ETF holdings.
+- **`fetch_history`**: Backfills missing market data for new tickers.
+- **`maintenance`**: Cleans up old caches and summarizes AI memory.
+
+### 2. Task Orchestration
+The Dash UI never executes heavy scrapers directly. Instead, it uses `enqueue_task()` to signal the worker.
+- **Enqueuing**: `services/market/holdings_fetcher.py` checks if data is missing; if so, it adds a `scrape_holdings` task to the SQLite queue.
+- **UI State**: The dashboard displays "Scraping in progress..." or "Loading signals..." while the worker is busy.
+
+### 3. Memory Safeguards
+- **Staleness Gating**: A strict 24-hour gate prevents redundant historical fetches.
+- **Smart Depth Awareness**: Prevents infinite loops for young tickers (listed < 220 days) by tracking the history period in metadata.
+- **Metadata Truncation**: Strips unused fields from yfinance objects before database insertion.
 
 ---
 

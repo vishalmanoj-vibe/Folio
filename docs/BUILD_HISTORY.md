@@ -111,11 +111,13 @@ This document chronicles the technical evolution of Folio, transitioning from a 
 
 ---
 
-## Phase 10: Enterprise-Grade Memory Hygiene & Dual-Process Architecture (v4.3.0 – Current)
+## Phase 10: Enterprise-Grade Memory Hygiene & Distributed Architecture (v2.0.0 – Current)
 **Theme**: Scaling the architecture for long-running sessions and complex scrapers.
 
 *   **Dual-Process Resilience**: Implemented a `launcher.py` process manager that separates the Dash UI from the data-heavy background worker, ensuring the UI remains responsive even during heavy Technical Analysis or AI signal generation.
 *   **Startup Task Decentralization**: Offloaded intensive historical data hydration (e.g., Watchlist histories) from the web startup sequence to the background worker. This achieved a 40% reduction in web-process startup memory.
-*   **Advanced Scraper Throttling**: Hardened the ETF holdings scraper with a tiered architecture (Requests -> DDGS -> Playwright) and a 30-day TTL SQLite cache with 24-hour error backoff, preventing redundant browser-heavy executions.
+*   **Distributed Scraper Offloading**: Moved the *execution* of the ETF holdings scraper (including Playwright/WebKit sessions) to the background worker. The Dash UI now enqueues these as asynchronous tasks, preventing massive 1GB+ RAM spikes in the web process.
+*   **Smart Depth Awareness**: Refactored the `is_stale` logic to handle young tickers (listed < 220 days). By tracking the history 'period' in metadata, the system now avoids redundant daily "max" history fetches for stocks that have already provided their full available history.
 *   **Metadata Truncation**: Implemented aggressive truncation for yfinance `info` objects. Only essential metadata (name, sector, yield) is persisted to SQLite, preventing "Heap Bloat" from unused nested dictionaries.
-*   **Historical Staleness Gating**: Replaced high-frequency 5-minute historical history refreshes with a 24-hour staleness threshold for historical data, while maintaining 5-minute resolution for intraday P&L tracking.
+*   **Historical Staleness Gating**: Enforced a strict 24-hour staleness threshold for historical data, while maintaining 5-minute resolution for intraday P&L tracking.
+*   **UI Hover Stability**: Standardized Plotly `hovertemplate` syntax to use doubled-braces (`%{{y}}`), eliminating `NameError` crashes during normalized chart rendering.

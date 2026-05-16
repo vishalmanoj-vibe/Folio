@@ -57,10 +57,17 @@ This generates an HTML coverage report in `htmlcov/index.html`.
    - Verify the "Market Open/Closed" badge correctly reflects AEST time (taking into account the ASX closing auction until 16:15).
    - Check the "Today" (1d) chart and verify it displays 5-minute resampled data with no overnight gaps.
 
-5. **Dual-Process Resilience**:
-   - Run the application via `python launcher.py`.
-   - Verify that the Dash UI (Port 8050) and Worker (Background) both start.
-   - Verify that background data refreshes (price updates) occur without interrupting the UI responsiveness.
+6. **Memory Hygiene & Distributed Worker**:
+   - Open a system monitor (e.g., Activity Monitor or `top`).
+   - Run `python launcher.py` and verify the `app.py` process stays around **300-350MB**.
+   - Navigate to the **ETF Details** page for a ticker requiring scraping (e.g., a new ETF).
+   - Verify that the UI displays "Scraping in progress" and that the RAM spike happens in the **worker.py** process, NOT the `app.py` process.
+   - Verify that clicking "Refresh" on a ticker with < 1 year of history does NOT trigger a redundant yfinance call if it was already fetched (Smart Depth check).
+
+7. **Visual Stability**:
+   - Navigate to the **Analytics** page.
+   - Hover over the Normalized Price chart.
+   - Verify that the hover labels appear correctly without any "Error in f-string" console artifacts (Stable Hover Fix).
 
 ## Manual Verification (UI Features)
 
