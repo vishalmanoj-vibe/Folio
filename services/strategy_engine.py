@@ -36,6 +36,8 @@ def compute_indicators(price_df: pd.DataFrame) -> dict:
     current_price = prices.iloc[-1]
     drawdown = (recent_high - current_price) / recent_high * 100 if recent_high > 0 else 0.0
     
+    logger.debug("[INDICATORS] Price: %.2f | SMA50: %.2f | SMA200: %.2f | RSI: %.2f", float(current_price), float(sma_50), float(sma_200), float(rsi_val))
+    
     return {
         "price": float(current_price),
         "sma_50": float(sma_50),

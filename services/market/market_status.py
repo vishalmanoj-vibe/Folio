@@ -38,6 +38,7 @@ def get_previous_trading_session_start() -> pd.Timestamp:
     """
     Finds the start time (15:00) of the previous trading session relative to today.
     Skips weekends automatically.
+    Used for providing context on 1d charts.
     """
     now_syd = pd.Timestamp.now(tz=MARKET_TIMEZONE)
     today = now_syd.floor("D")
@@ -45,11 +46,70 @@ def get_previous_trading_session_start() -> pd.Timestamp:
     # Start looking from yesterday
     prev_day = today - pd.Timedelta(days=1)
     
-    # Skip weekends (MARKET_WEEKDAYS is [0,1,2,3,4])
-    while prev_day.weekday() not in MARKET_WEEKDAYS:
+    # Skip weekends and holidays
+    while prev_day.weekday() not in MARKET_WEEKDAYS or prev_day.date() in au_holidays:
         prev_day -= pd.Timedelta(days=1)
         
     return prev_day.replace(hour=15, minute=0, second=0, microsecond=0)
+
+def get_effective_session_context() -> dict:
+    """
+    Determines the "Effective Session" date and the "Comparison Anchor" date.
+    
+    If Market is Open:
+        Effective: Today
+        Anchor: Yesterday (Previous Trading Day)
+    If Market is Closed (After hours):
+        Effective: Today
+        Anchor: Yesterday (Previous Trading Day)
+    If Market is Closed (Weekend or Before Open):
+        Effective: Most recent trading day (e.g. Friday)
+        Anchor: Day before that (e.g. Thursday)
+        
+    Returns:
+        dict: {
+            'effective_date': pd.Timestamp (normalized),
+            'anchor_date': pd.Timestamp (normalized),
+            'is_live': bool (True if today is the effective session)
+        }
+    """
+    now = pd.Timestamp.now(tz=MARKET_TIMEZONE)
+    today = now.normalize()
+    
+    def is_trading_day(dt):
+        return dt.weekday() in MARKET_WEEKDAYS and dt.date() not in au_holidays
+
+    # Case 1: It is a trading day
+    if is_trading_day(now):
+        # If it's before 10am, we are still looking at the previous session's results as the "effective" ones
+        if now.hour < 10:
+            effective = today - pd.Timedelta(days=1)
+            while not is_trading_day(effective):
+                effective -= pd.Timedelta(days=1)
+            
+            anchor = effective - pd.Timedelta(days=1)
+            while not is_trading_day(anchor):
+                anchor -= pd.Timedelta(days=1)
+            
+            return {'effective_date': effective, 'anchor_date': anchor, 'is_live': False}
+        else:
+            # Market is open or after hours on a trading day
+            anchor = today - pd.Timedelta(days=1)
+            while not is_trading_day(anchor):
+                anchor -= pd.Timedelta(days=1)
+            
+            return {'effective_date': today, 'anchor_date': anchor, 'is_live': True}
+            
+    # Case 2: Weekend or Holiday
+    effective = today - pd.Timedelta(days=1)
+    while not is_trading_day(effective):
+        effective -= pd.Timedelta(days=1)
+        
+    anchor = effective - pd.Timedelta(days=1)
+    while not is_trading_day(anchor):
+        anchor -= pd.Timedelta(days=1)
+        
+    return {'effective_date': effective, 'anchor_date': anchor, 'is_live': False}
 
 def time_until_market_open() -> float:
     """

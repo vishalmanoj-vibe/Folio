@@ -8,6 +8,7 @@ Chart callbacks.
 import logging
 import plotly.graph_objects as go
 from dash import Input, Output, State, ALL, html
+import pandas as pd
 import dash_mantine_components as dmc
 
 from config.constants import COLORS, get_theme
@@ -59,9 +60,9 @@ def register_callbacks(app) -> None:
         Input("portfolio-store",    "data"),
         Input("theme-store",        "data"),
         # FIX: change to State to prevent double-rendering when portfolio-store updates
-        State("period-store",       "data"),
-        Input("pnl-mode-store",     "data"),
-        Input("ticker-store",       "data"),
+        Input("period-store",         "data"),
+        Input("pnl-mode-store",       "data"),
+        Input("ticker-store",         "data"),
         Input("url",                "pathname"),
         Input("task-poll-interval", "n_intervals"),
         State("benchmark-pending-store", "data"),
@@ -105,20 +106,20 @@ def register_callbacks(app) -> None:
                 # Convert to string to ensure stable cache keys and backend compatibility
                 fetch_period = min(all_buy_dates).strftime("%Y-%m-%d")
 
-        # Fetch histories for all tickers needed
-        histories = fetch_portfolio_history(holdings, fetch_period)
+        # Fetch compact close series for all tickers (Memory Optimized)
+        from services.market.data_fetcher import fetch_portfolio_series
+        series_map = fetch_portfolio_series(holdings, fetch_period)
         
         # Populate tranches with P&L series for the chart builder
         for h in holdings:
             ticker = h["ticker"]
-            history_list = histories.get(ticker, [])
-            if history_list:
-                df_h = pd.DataFrame(history_list)
-                if not df_h.empty:
-                    df_h["Date"] = pd.to_datetime(df_h["Date"])
-                    close_s = df_h.set_index("Date")["Close"]
-                    # compute_tranche_pnl expects a Series with DatetimeIndex
-                    h["tranches"] = compute_tranche_pnl(close_s, h.get("buy_tranches", []))
+            close_s = series_map.get(ticker)
+            if close_s is not None and not close_s.empty:
+                # compute_tranche_pnl expects a Series with DatetimeIndex
+                h["tranches"] = compute_tranche_pnl(close_s, h.get("buy_tranches", []))
+        
+        # Memory Hygiene: delete series_map as it's now embedded in tranches or redundant
+        del series_map
 
         # ── Benchmark Check ──
         from data.cache_manager import get_benchmarks_db
@@ -135,7 +136,8 @@ def register_callbacks(app) -> None:
                 if row:
                     new_bench_pending = row["task_id"]
                 else:
-                    new_bench_pending = enqueue_task("fetch_benchmarks", {"period": "max"}, priority=8)
+                    # Optimized: use fetch_period (which is start date if max) instead of hardcoded 'max'
+                    new_bench_pending = enqueue_task("fetch_benchmarks", {"period": fetch_period}, priority=8)
             finally:
                 conn.close()
         else:
@@ -155,7 +157,7 @@ def register_callbacks(app) -> None:
         Input("portfolio-store", "data"),
         Input("theme-store",     "data"),
         # FIX: change to State to prevent double-rendering
-        State("analytics-period-store", "data"),
+        Input("analytics-period-store", "data"),
         Input("url",             "pathname"),
     )
     def price_chart(data, theme, period, pathname):
@@ -166,13 +168,19 @@ def register_callbacks(app) -> None:
         if not data or "holdings" not in data:
             return create_empty_fig("No portfolio data available", height=400, theme_tokens=t_)
             
-        from services.market.data_fetcher import fetch_portfolio_history
-        histories = fetch_portfolio_history(data["holdings"], period)
+        from services.market.data_fetcher import fetch_portfolio_series
+        histories = fetch_portfolio_series(data["holdings"], period)
         if not histories:
             return create_empty_fig("No price history available", height=400, theme_tokens=t_)
             
         holdings = data.get("holdings", [])
-        return build_price_chart_figure(histories, period, t_, holdings)
+        fig = build_price_chart_figure(histories, period, t_, holdings)
+        
+        # Memory Hygiene
+        import gc
+        gc.collect()
+        
+        return fig
 
     # ── Portfolio Treemap ─────────────────────────────────────────────────────
     @app.callback(

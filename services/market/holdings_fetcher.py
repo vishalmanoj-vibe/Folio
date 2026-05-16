@@ -769,64 +769,83 @@ def get_all_user_urls() -> dict[str, str]:
 
 # ── Main entry point ──────────────────────────────────────────────────────────
 
-def fetch_holdings(ticker: str) -> dict:
+def fetch_holdings(ticker: str, allow_scrape: bool = False) -> dict:
     """
     Main entry point for fetching ETF holdings.
     Returns: { "Company Name": weight_percentage (0-100), ... }
 
-    URL priority:
-      1. User-provided URL (stored in etf_holdings_urls via save_user_url)
-      2. PROVIDER_SEED_URLS (known tickers hardcoded at module level)
-      3. DDGS discovery + Playwright fallback (any unknown ticker)
-
-    Also saves sector/geo breakdowns to etf_metadata as a byproduct.
+    Args:
+        ticker: The ticker symbol
+        allow_scrape: If True, performs the scrape synchronously (for worker context).
+                     If False, only returns cache or enqueues a background task.
     """
-    ticker_yf = ticker + ".AX"
+    ticker_yf = ticker.upper() + ".AX" if "." not in ticker else ticker.upper()
+    ticker_short = ticker.upper().replace(".AX", "")
 
     # 1. Check SQLite cache first
     cached = _get_cached_metadata(ticker_yf, "holdings", ttl_days=HOLDINGS_TTL_DAYS)
     if cached:
-        logger.debug(f"[{ticker}] Holdings cache hit ({len(cached)} entries).")
+        logger.debug(f"[{ticker_short}] Holdings cache hit ({len(cached)} entries).")
         return cached
 
     # 2. Check throttle — skip if we failed recently
-    if _check_throttle(ticker):
-        logger.debug(f"[{ticker}] Throttled — skipping fetch.")
+    if _check_throttle(ticker_short):
+        logger.debug(f"[{ticker_short}] Throttled — skipping fetch.")
         return {}
 
-    # 3. Determine URL: user-provided → PROVIDER_SEED_URLS → empty
-    user_url = get_user_url(ticker)
-    url = user_url or PROVIDER_SEED_URLS.get(ticker, "")
+    # 3. If from Dash (allow_scrape=False), enqueue task and return empty
+    if not allow_scrape:
+        from data.database import enqueue_task, get_connection
+        conn = get_connection()
+        try:
+            # Check if already enqueued
+            row = conn.execute(
+                "SELECT task_id FROM worker_tasks WHERE task_type = 'scrape_holdings' AND status IN ('pending', 'running') AND payload LIKE ?",
+                (f'%"{ticker_short}"%',)
+            ).fetchone()
+            
+            if not row:
+                logger.info(f"[{ticker_short}] Enqueueing background holdings scrape.")
+                enqueue_task("scrape_holdings", {"ticker": ticker_short}, priority=6)
+        except Exception as e:
+            logger.error(f"[{ticker_short}] Failed to enqueue holdings scrape: {e}")
+        finally:
+            conn.close()
+        return {}
+
+    # 4. Determine URL: user-provided → PROVIDER_SEED_URLS → empty
+    user_url = get_user_url(ticker_short)
+    url = user_url or PROVIDER_SEED_URLS.get(ticker_short, "")
     provider = _detect_provider(url)
 
     holdings: dict[str, float] = {}
     sector_map: dict[str, float] = {}
     geo_map: dict[str, float] = {}
 
-    # 4. Tier 1 — Provider-specific scrape
+    # 5. Tier 1 — Provider-specific scrape
     if provider == "betashares":
-        holdings, sector_map, geo_map = _fetch_betashares(ticker, url)
+        holdings, sector_map, geo_map = _fetch_betashares(ticker_short, url)
 
     elif provider == "globalx":
-        holdings, sector_map, geo_map = _fetch_globalx(ticker, url)
+        holdings, sector_map, geo_map = _fetch_globalx(ticker_short, url)
 
     elif provider == "blackrock":
-        holdings, sector_map, geo_map = _fetch_blackrock(ticker, url)
+        holdings, sector_map, geo_map = _fetch_blackrock(ticker_short, url)
 
     elif provider == "vaneck":
-        holdings, sector_map, geo_map = _fetch_vaneck(ticker, url)
+        holdings, sector_map, geo_map = _fetch_vaneck(ticker_short, url)
 
     elif provider == "vanguard":
-        holdings, sector_map, geo_map = _fetch_vanguard_playwright(ticker, url)
+        holdings, sector_map, geo_map = _fetch_vanguard_playwright(ticker_short, url)
 
-    # 5. Tier 1.5 + Tier 2 — Unknown provider or Tier 1 failed
+    # 6. Tier 1.5 + Tier 2 — Unknown provider or Tier 1 failed
     if not holdings and provider == "unknown":
-        discovered_url = _discover_url_ddgs(ticker)
+        discovered_url = _discover_url_ddgs(ticker_short)
         target_url = discovered_url or url
         if target_url:
-            holdings, sector_map, geo_map = _fetch_playwright_generic(ticker, target_url)
+            holdings, sector_map, geo_map = _fetch_playwright_generic(ticker_short, target_url)
 
-    # 6. Normalise
+    # 7. Normalise
     holdings = _normalize_holdings(holdings)
 
     # 7. Persist to cache or record failure

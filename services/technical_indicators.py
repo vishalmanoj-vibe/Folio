@@ -62,34 +62,35 @@ def compute_bbands(prices: pd.Series, period: int = 20, std: int = 2) -> tuple:
 from core import get_cache, set_cache
 from config.settings import TECHNICALS_CACHE_TTL
 
-def compute_signals(ticker: str, history: list[dict]) -> dict:
+def compute_signals(ticker: str, history: list[dict] | pd.Series) -> dict:
     """
     Compute high-level technical signals from price history.
-    Takes a list of {"Date": str, "Close": float} dicts.
+    Takes either a list of {"Date": str, "Close": float} dicts OR a pd.Series (DatetimeIndex).
     Returns a standardized dictionary of indicators and labels.
     """
     try:
         # Minimum history required for stable indicator calculation
-        if not history or len(history) < 30:
+        if history is None or len(history) < 30:
             return {"ticker": ticker, "error": "Insufficient data"}
             
-        # Check cache
-        last_date = history[-1].get("Date") or history[-1].get("date", "unknown")
+        if isinstance(history, pd.Series):
+            last_date = history.index[-1].strftime("%Y-%m-%d")
+            prices = history
+        else:
+            last_date = history[-1].get("Date") or history[-1].get("date", "unknown")
+            # ── Data Preparation (Fallback for legacy list format) ───────────
+            df = pd.DataFrame(history)
+            if "Date" not in df.columns or "Close" not in df.columns:
+                return {"ticker": ticker, "error": "Missing required columns (Date/Close)"}
+            df["Date"] = pd.to_datetime(df["Date"])
+            df = df.set_index("Date").sort_index()
+            prices = df["Close"]
+
         cache_key = f"technicals_{ticker}_{last_date}"
         cached = get_cache(cache_key)
         if cached:
             return cached
         
-        
-        # ── 1. Data Preparation ───────────────────────────────────────────
-        df = pd.DataFrame(history)
-        
-        if "Date" not in df.columns or "Close" not in df.columns:
-            return {"ticker": ticker, "error": "Missing required columns (Date/Close)"}
-
-        df["Date"] = pd.to_datetime(df["Date"])
-        df = df.set_index("Date").sort_index()
-        prices = df["Close"]
         
         if prices.empty:
             return {"ticker": ticker, "error": "Empty history"}

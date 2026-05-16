@@ -205,7 +205,7 @@ class HistoryRepository:
         ticker = ticker.upper()
         conn = get_connection()
         try:
-            query = "SELECT * FROM price_history WHERE ticker = ?"
+            query = "SELECT date, open_price, high_price, low_price, close_price, volume, dividends FROM price_history WHERE ticker = ?"
             params = [ticker]
             
             if from_date:
@@ -216,24 +216,34 @@ class HistoryRepository:
                 params.append(to_date)
                 
             query += " ORDER BY date ASC"
-            
-            # Use read_sql_query for bulk loading (much faster than manual dictionary creation)
             df = pd.read_sql_query(query, conn, params=params)
             
             if df.empty:
                 return []
                 
-            # Rename columns to CamelCase for downstream components
-            rename_map = {
-                "date": "Date",
-                "open_price": "Open",
-                "high_price": "High",
-                "low_price": "Low",
-                "close_price": "Close",
-                "volume": "Volume",
-                "dividends": "Dividends"
-            }
-            return df.rename(columns=rename_map).to_dict("records")
+            df.columns = ["Date", "Open", "High", "Low", "Close", "Volume", "Dividends"]
+            return df.to_dict("records")
+        finally:
+            conn.close()
+
+    def load_close_series(self, ticker: str, from_date: str = None) -> pd.Series:
+        """Efficiently fetch only the Close price series for a ticker."""
+        ticker = ticker.upper()
+        conn = get_connection()
+        try:
+            query = "SELECT date, close_price FROM price_history WHERE ticker = ?"
+            params = [ticker]
+            if from_date:
+                query += " AND date >= ?"
+                params.append(from_date)
+            query += " ORDER BY date ASC"
+            
+            df = pd.read_sql_query(query, conn, params=params)
+            if df.empty:
+                return pd.Series(dtype=float)
+            
+            df["date"] = pd.to_datetime(df["date"])
+            return df.set_index("date")["close_price"]
         finally:
             conn.close()
 
@@ -322,19 +332,26 @@ class HistoryRepository:
         if cutoff:
             cutoff_str = cutoff.strftime("%Y-%m-%d")
             if stored_first > cutoff_str:
-                logger.info(f"Depth stale for {ticker}: stored_first({stored_first}) > cutoff({cutoff_str})")
+                logger.debug(f"Depth stale for {ticker}: stored_first({stored_first}) > cutoff({cutoff_str})")
                 return True
         else:
             # Requested period is "max" (Since purchase)
-            # If we only have a short period (like 5d from fetch_live), we must fetch max
-                logger.info(f"Depth stale for {ticker}: requested max but stored period is {meta.get('period')}")
-                return True
+            # Threshold: If we have < 220 days, it's definitely stale for technicals,
+            # UNLESS we have already fetched the full available 'max' history.
+            stored_last = meta.get("last_date")
+            if stored_first and stored_last:
+                try:
+                    d1 = datetime.strptime(stored_first, "%Y-%m-%d")
+                    d2 = datetime.strptime(stored_last, "%Y-%m-%d")
+                    days = (d2 - d1).days
+                    if days < 220:
+                        # Check if we already tried a 'max' fetch
+                        if meta.get("period") != "max":
+                            logger.info(f"Depth stale for {ticker}: requested max but only {days} days stored. Attempting full history recovery.")
+                            return True
+                except Exception:
+                    pass
                 
-        # 3. Dividend Check (One-time recovery after schema upgrade)
-        if not self.has_dividends(ticker):
-            logger.info(f"Dividend recovery needed for {ticker}")
-            return True
-            
         return False
 
     def has_dividends(self, ticker: str) -> bool:

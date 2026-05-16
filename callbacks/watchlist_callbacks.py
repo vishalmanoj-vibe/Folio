@@ -266,23 +266,21 @@ def register_callbacks(app) -> None:
         if pathname.rstrip("/") != "/watchlist":
             return create_empty_fig("", height=300, theme_tokens=t_), "Price Performance"
 
-        # Lazy Fetch
-        from services.market.data_fetcher import fetch_ticker_history
-        history = fetch_ticker_history(selected_ticker, period or "1y")
+        # Lazy Fetch (Memory Optimized)
+        from data.repository import HistoryRepository
+        from core.engine.utils import get_period_cutoff
+        cutoff = get_period_cutoff(period or "1y")
+        cutoff_str = cutoff.strftime("%Y-%m-%d") if cutoff else None
+        history = HistoryRepository().load_close_series(selected_ticker, from_date=cutoff_str)
         
-        if not history:
+        if history is None or history.empty:
             return create_empty_fig(f"No historical data available for {selected_ticker}", height=300, theme_tokens=t_), "Price Performance"
 
-        df = pd.DataFrame(history)
-        df["Date"] = pd.to_datetime(df["Date"])
-
-        if df.empty:
-            return create_empty_fig(f"No data for {selected_ticker} in this period", height=300, theme_tokens=t_), f"Price Performance: {selected_ticker}"
-        
+        # history is already a pd.Series with DatetimeIndex
         fig = go.Figure()
         fig.add_trace(go.Scatter(
-            x=df["Date"],
-            y=df["Close"],
+            x=history.index,
+            y=history,
             mode="lines",
             line=dict(color=CYAN, width=2),
             fill="tozeroy",
@@ -299,8 +297,8 @@ def register_callbacks(app) -> None:
             zeroline=False,
             tickfont=dict(color=T_SEC, size=10),
         )
-        y_min = df["Close"].min()
-        y_max = df["Close"].max()
+        y_min = history.min()
+        y_max = history.max()
         
         layout_args["yaxis"] = dict(
             showgrid=True,
@@ -315,6 +313,10 @@ def register_callbacks(app) -> None:
         layout_args["showlegend"] = False
         
         fig.update_layout(**layout_args)
+        
+        # Memory Hygiene
+        import gc
+        gc.collect()
 
         return fig, f"Price Performance: {selected_ticker}"
 
@@ -434,12 +436,15 @@ def register_callbacks(app) -> None:
 
             ai_card = html.Div(ai_children, className="etf-detail-card", style={"marginTop": "10px", "marginBottom": "24px", "width": "100%"})
 
-        # Generate Tech Signals
-        tech_signals = None
-        from services.market.data_fetcher import fetch_ticker_history
-        history = fetch_ticker_history(selected_ticker, "1y")
-        if history:
-            tech_signals = tech_signal_badges(selected_ticker, history)
+        # Generate Tech Signals (Memory Optimized)
+        from data.repository import HistoryRepository
+        history_s = HistoryRepository().load_close_series(selected_ticker, from_date=(pd.Timestamp.now() - pd.DateOffset(years=1)).strftime("%Y-%m-%d"))
+        if not history_s.empty:
+            tech_signals = tech_signal_badges(selected_ticker, history_s)
+        
+        # Memory Hygiene
+        import gc
+        gc.collect()
 
         return cards, tech_signals, ai_card
 

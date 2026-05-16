@@ -19,7 +19,7 @@ from services.market.session_cache import (
     record_snapshot, get_session_history, clear_old_caches, backfill_session_cache
 )
 from services.market.market_status import (
-    is_market_open, get_previous_trading_session_start
+    is_market_open, get_previous_trading_session_start, get_effective_session_context
 )
 
 logger = logging.getLogger(__name__)
@@ -420,11 +420,42 @@ def _deduce_frequency(div_s: pd.Series) -> str:
         return "Irregular"
 
 
+def get_earliest_purchase_date() -> str:
+    """
+    Finds the date of the very first 'BUY' transaction for tickers currently held.
+    Returns ISO string 'YYYY-MM-DD' or 'max' if no active holdings found.
+    """
+    from data.repository import PortfolioRepository
+    from core.engine import build_holdings
+    try:
+        repo = PortfolioRepository()
+        txns = repo.load_transactions()
+        holdings = build_holdings(txns)
+        active_tickers = {h["ticker"] for h in holdings}
+        
+        buy_dates = [
+            pd.to_datetime(t["date"]) 
+            for t in txns 
+            if t.get("type", "").upper() == "BUY" and t["ticker"] in active_tickers
+        ]
+        
+        if buy_dates:
+            return min(buy_dates).strftime("%Y-%m-%d")
+    except Exception as e:
+        logger.debug("Failed to determine earliest purchase date: %s", e)
+    return "max"
+
 def fetch_benchmarks(period: str = "max") -> dict[str, list[dict]]:
     """
     Fetch S&P 500 (^GSPC) and ASX 200 (^AXJO) close series using bulk download.
+    Optimized: If 'max' is requested, it truncates to the earliest purchase date.
     """
-    cache_key = f"benchmarks_{period}"
+    # Normalize 'max' to the actual start of this portfolio's history
+    effective_period = period
+    if period == "max":
+        effective_period = get_earliest_purchase_date()
+        
+    cache_key = f"benchmarks_{effective_period}"
     cached = get_cache(cache_key)
     if cached:
         return cached
@@ -433,7 +464,7 @@ def fetch_benchmarks(period: str = "max") -> dict[str, list[dict]]:
     symbols = list(BENCHMARK_TICKERS.keys())
 
     try:
-        bulk_df = _download_with_retry(symbols, period=period)
+        bulk_df = _download_with_retry(symbols, period=effective_period)
         if bulk_df.empty:
             return {}
 
@@ -477,8 +508,16 @@ def _enrich_single_holding(h: dict, multi_live: pd.DataFrame, multi_period: pd.D
                 yf_1d = yf_1d[yf_1d > 0]
                 yf_1d.index = normalise_tz(yf_1d.index)
                 
-                # Allow data from the previous trading session (15:00 onwards)
-                cutoff = get_previous_trading_session_start()
+                # Determine cutoff based on live context
+                ctx = get_effective_session_context()
+                if ctx['is_live']:
+                    # During market or after hours: show from 15:00 previous day for context
+                    cutoff = get_previous_trading_session_start()
+                else:
+                    # Weekend or before market: show the FULL effective session (e.g. all of Friday)
+                    # Use 00:00 of the effective date as the cutoff
+                    cutoff = ctx['effective_date']
+                
                 cutoff_utc = normalise_tz(pd.DatetimeIndex([cutoff]))[0]
                 yf_1d = yf_1d[yf_1d.index >= cutoff_utc]
             
@@ -548,40 +587,60 @@ def _enrich_single_holding(h: dict, multi_live: pd.DataFrame, multi_period: pd.D
         live_low   = _extract_col(multi_live, ticker_yf, "Low")
 
         # 1. Determine Last Price and Previous Close (for daily P&L)
+        ctx = get_effective_session_context()
         last_price = h["avg_cost"]
         prev_close = h["avg_cost"]
         
         # Latest price from live feed
         if not live_close.empty:
+            # On a weekend, live_close.iloc[-1] is Friday's close
             last_price = float(live_close.iloc[-1])
             if last_price == 0.0:
-                # Fallback to previous interval if market is just opening with 0.0 bids
                 last_price = float(live_close.iloc[-2]) if len(live_close) >= 2 else h["avg_cost"]
         elif not close_f.empty:
             last_price = float(close_f.iloc[-1])
 
         # Previous session close (CRITICAL for correct Day P&L)
-        today_start = pd.Timestamp.now(tz="Australia/Sydney").normalize()
-        # Find points strictly before today in the 5-day feed
-        # Ensure live_close index is timezone-aware for comparison if it isn't already
+        # We compare against the point BEFORE the effective session starts
+        anchor_start = ctx['anchor_date'] # Thursday 00:00
+        effective_start = ctx['effective_date'] # Friday 00:00
+        
+        # Try to find the anchor price (Thursday Close)
         try:
             if live_close.index.tz is None:
-                live_close.index = live_close.index.tz_localize("Australia/Sydney")
+                live_close_tz = live_close.copy()
+                live_close_tz.index = live_close_tz.index.tz_localize("Australia/Sydney")
+            else:
+                live_close_tz = live_close.tz_convert("Australia/Sydney")
         except:
-            pass
+            live_close_tz = live_close
             
-        yesterday_points = live_close[live_close.index < today_start]
-        if not yesterday_points.empty:
-            prev_close = float(yesterday_points.iloc[-1])
+        anchor_points = live_close_tz[live_close_tz.index < effective_start]
+        if not anchor_points.empty:
+            prev_close = float(anchor_points.iloc[-1])
         elif len(close_f) >= 2:
-            # Fallback to daily history: iloc[-1] is usually today, iloc[-2] is yesterday
+            # Fallback to daily history
+            # If we are viewing Friday data on Saturday, ctx['effective_date'] is Friday.
+            # close_f.iloc[-1] is Friday, close_f.iloc[-2] is Thursday.
+            # This works if the worker has already updated today.
             prev_close = float(close_f.iloc[-2])
         else:
             prev_close = last_price
 
 
-        day_high = float(live_high.iloc[-1]) if not live_high.empty else last_price
-        day_low  = float(live_low.iloc[-1])  if not live_low.empty  else last_price
+        # 1.5 Determine Session High/Low for the effective session
+        effective_points_high = live_high[(live_high.index >= effective_start) & (live_high.index < effective_start + pd.Timedelta(days=1))]
+        effective_points_low  = live_low[(live_low.index >= effective_start) & (live_low.index < effective_start + pd.Timedelta(days=1))]
+        
+        if not effective_points_high.empty:
+            day_high = float(effective_points_high.max())
+        else:
+            day_high = float(live_high.iloc[-1]) if not live_high.empty else last_price
+            
+        if not effective_points_low.empty:
+            day_low = float(effective_points_low.min())
+        else:
+            day_low = float(live_low.iloc[-1]) if not live_low.empty else last_price
 
         # 2. Dividends (from RAM cache or SQLite)
         div_f = get_cache(f"dividends_{ticker_yf}")
@@ -719,16 +778,34 @@ def _enrich_single_holding(h: dict, multi_live: pd.DataFrame, multi_period: pd.D
 def get_full_history_cache(holdings: list[dict]) -> pd.DataFrame:
     """
     Helper to reconstruct a minimal DataFrame with 'Close' columns 
-    from the compact server-side cache.
+    from either RAM cache or SQLite HistoryRepository.
     Note: This is a reconstructed DataFrame, not the original bulk download.
     """
     if not holdings:
         return pd.DataFrame()
         
     series_dict = {}
+    from data.repository import HistoryRepository
+    repo = HistoryRepository()
+    
+    # Memory Optimization: For signal generation, we only need ~250-500 days.
+    # We limit the SQLite fetch to the last 2 years to prevent RAM bloat.
+    cutoff = (datetime.now() - pd.DateOffset(years=2)).strftime("%Y-%m-%d")
+    
     for h in holdings:
-        ticker_yf = h.get("ticker_yf", h["ticker"] + ".AX")
+        ticker = h["ticker"]
+        ticker_yf = h.get("ticker_yf", ticker + ".AX")
+        
+        # 1. Try RAM Cache (Fastest)
         s = get_cache(f"close_series_{ticker_yf}")
+        
+        # 2. Try SQLite Fallback (Cross-process stable)
+        if s is None or s.empty:
+            s = repo.load_close_series(ticker, from_date=cutoff)
+            if not s.empty:
+                # Back-populate RAM cache for this process
+                set_cache(f"close_series_{ticker_yf}", s, ttl=3600)
+                
         if s is not None and not s.empty:
             # Reconstruct MultiIndex structure (Close, Ticker)
             series_dict[("Close", ticker_yf)] = s
@@ -758,7 +835,69 @@ def fetch_portfolio_history(holdings: list[dict], period: str) -> dict:
                 histories[ticker] = future.result()
             except Exception as e:
                 logger.error(f"Batch fetch failed for {ticker}: {e}")
+    
+    # Memory Hygiene
+    import gc
+    gc.collect()
     return histories
+
+def fetch_portfolio_series(holdings: list[dict], period: str, force_fetch: bool = False) -> dict[str, pd.Series]:
+    """
+    Fetch ONLY Close price series for all holdings concurrently.
+    Returns a dict mapping ticker -> pd.Series (DatetimeIndex).
+    This is significantly more memory-efficient than fetch_portfolio_history.
+    
+    Args:
+        holdings: List of holding dicts
+        period: Time period string (e.g. '1y', 'max')
+        force_fetch: If True, blocks on yfinance instead of enqueuing to worker.
+    """
+    series_map = {}
+    if not holdings:
+        return series_map
+        
+    from core.engine.utils import get_period_cutoff
+    cutoff = get_period_cutoff(period)
+    cutoff_str = cutoff.strftime("%Y-%m-%d") if cutoff else None
+
+    def _fetch_one(ticker: str):
+        repo = HistoryRepository()
+        # 1. Check if stale or missing (Depth-aware)
+        if repo.is_stale(ticker.upper(), requested_period=period):
+            if force_fetch:
+                # Worker context: Fetch immediately
+                fetch_ticker_history(ticker, period)
+            else:
+                # Dash process: Enqueue to worker but do NOT block UI
+                from data.database import enqueue_task, get_connection
+                conn = get_connection()
+                try:
+                    row = conn.execute("SELECT task_id FROM worker_tasks WHERE task_type = 'fetch_history' AND status = 'pending' AND payload LIKE ?", (f'%"{ticker.upper()}"%',)).fetchone()
+                    if not row:
+                        enqueue_task("fetch_history", {"ticker": ticker, "period": period}, priority=7)
+                finally:
+                    conn.close()
+        
+        # 2. Return compact series (even if stale, serve from cache for speed)
+        s = repo.load_close_series(ticker, from_date=cutoff_str)
+        if not s.empty:
+            # Side Effect: Populate RAM cache for multi-service consistency
+            ticker_yf = next((h["ticker_yf"] for h in holdings if h["ticker"] == ticker), ticker + ".AX")
+            set_cache(f"close_series_{ticker_yf}", s, ttl=3600) # 1h RAM cache for series
+        return s
+
+    with ThreadPoolExecutor(max_workers=min(len(holdings), 10)) as executor:
+        futures = {executor.submit(_fetch_one, h["ticker"]): h["ticker"] for h in holdings}
+        for future in futures:
+            ticker = futures[future]
+            try:
+                series_map[ticker] = future.result()
+            except Exception as e:
+                logger.error(f"Series batch fetch failed for {ticker}: {e}")
+    
+    import gc
+    gc.collect()
+    return series_map
     if not holdings:
         return pd.DataFrame()
         

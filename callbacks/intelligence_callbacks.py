@@ -53,6 +53,13 @@ def register_callbacks(app) -> None:
         if url_pathname.rstrip("/") != "/intelligence": return tuple([dash.no_update] * 6)
         # Use the directly triggered toggle value
         period = period_st or period_ui or "3mo"
+        
+        # FIX: 'Since purchase' (max) should align with earliest transaction, not the start of yf history
+        if period == "max":
+            from services.market.data_fetcher import get_earliest_purchase_date
+            period = get_earliest_purchase_date()
+            logger.info(f"Mapping 'max' period to earliest purchase: {period}")
+
         t_ = get_theme(theme or "dark")
         # UI toggle takes precedence during interaction; store provides session persistence
         pred_on = pred_ui if pred_ui is not None else pred_st
@@ -96,7 +103,10 @@ def register_callbacks(app) -> None:
                     if row:
                         new_bench_pending = row["task_id"]
                     else:
-                        new_bench_pending = enqueue_task("fetch_benchmarks", {"period": "max"}, priority=8)
+                        # Optimized: calculate earliest purchase for benchmarks instead of 'max'
+                        from services.market.data_fetcher import get_earliest_purchase_date
+                        fetch_period = get_earliest_purchase_date() if period == "max" else period
+                        new_bench_pending = enqueue_task("fetch_benchmarks", {"period": fetch_period}, priority=8)
                     bench_note = " · ⏳ Benchmarks loading…"
                 finally:
                     conn.close()
