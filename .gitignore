@@ -52,3 +52,16 @@ dump_project.sh
 generate_code_md.py
 audit_repo*.sh
 /docs/performance/
+# PyInstaller build artifacts
+dist/
+build/
+*.spec.bak
+
+# PyInstaller spec (optional - keep this if you want spec in git)
+# folio.spec
+
+# macOS app bundle
+*.app
+
+# pywebview cache
+.webview/

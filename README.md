@@ -108,3 +108,6 @@ for details.
 ## License
 
 MIT License © 2026 Vishal Manoj Kumar
+
+## Attribution
+<a href="https://www.flaticon.com/free-icons/stock-exchange" title="stock exchange icons">Stock exchange icons created by Cyber Olympus - Flaticon</a>
