@@ -931,10 +931,10 @@ def fetch_ticker_history(ticker: str, period: str) -> list[dict]:
             yf_period = period if period != "Since purchase" else "max"
             
             # Fetch slightly more than needed to ensure overlap/continuity
-            df = _download_with_retry([ticker_yf], period=yf_period)
+            df = _download_with_retry([ticker_yf], period=yf_period, actions=True)
             if not df.empty:
-                # Extract OHLC
-                ohlc_cols = ["Open", "High", "Low", "Close", "Volume"]
+                # Extract OHLC and Dividends
+                ohlc_cols = ["Open", "High", "Low", "Close", "Volume", "Dividends"]
                 dfs = []
                 for col in ohlc_cols:
                     s = _extract_col(df, ticker_yf, col)

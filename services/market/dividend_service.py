@@ -16,35 +16,39 @@ CONFIRMED_PAY_DATES = {
 
 def get_ticker_dividend_data(ticker, ticker_yf):
     """
-    Fetches historical dividends for a specific ticker.
+    Fetches historical dividends for a specific ticker from SQLite price_history.
     Uses per-ticker caching.
     """
     cache_key = f"dividend_{ticker}"
     cached = get_cache(cache_key)
     if cached is not None:
-        # If cached is a dict (legacy) or other format, handle it
         if isinstance(cached, pd.DataFrame):
             return cached
 
     try:
-        logger.debug(f"Fetching dividend history for {ticker}")
-        bulk_df = _download_with_retry([ticker_yf], period="max", actions=True)
-        if bulk_df.empty:
-            return pd.DataFrame()
-
-        div_s = extract_dividends(bulk_df, ticker_yf)
-        if div_s.empty:
+        logger.debug(f"Loading dividend history from SQLite for {ticker}")
+        from data.repository import HistoryRepository
+        db_hist = HistoryRepository().load_history(ticker)
+        if not db_hist:
             df = pd.DataFrame()
             set_cache(cache_key, df, ttl=DIVIDENDS_CACHE_TTL)
             return df
 
-        div_s = div_s[div_s > 0]
-        if div_s.empty:
+        df_db = pd.DataFrame(db_hist)
+        if "Dividends" not in df_db.columns:
             df = pd.DataFrame()
             set_cache(cache_key, df, ttl=DIVIDENDS_CACHE_TTL)
             return df
 
-        div_s.index = normalise_tz(div_s.index)
+        df_db["Date"] = pd.to_datetime(df_db["Date"])
+        df_db = df_db.set_index("Date").sort_index()
+        
+        # Filter for rows where Dividends > 0
+        div_s = df_db[df_db["Dividends"] > 0]["Dividends"]
+        if div_s.empty:
+            df = pd.DataFrame()
+            set_cache(cache_key, df, ttl=DIVIDENDS_CACHE_TTL)
+            return df
 
         div_list = []
         for ex_date, amount in div_s.items():
@@ -67,7 +71,7 @@ def get_ticker_dividend_data(ticker, ticker_yf):
         set_cache(cache_key, df, ttl=DIVIDENDS_CACHE_TTL)
         return df
     except Exception as e:
-        logger.error(f"Failed to fetch dividends for {ticker}: {e}")
+        logger.error(f"Failed to load SQLite dividends for {ticker}: {e}")
         return pd.DataFrame()
 
 def calculate_portfolio_dividend_stats(holdings):
