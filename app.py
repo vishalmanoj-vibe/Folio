@@ -28,11 +28,36 @@ yfinance fetches on startup. Instead:
 from config.logging import setup_logging
 setup_logging()
 
+import logging
+logger = logging.getLogger(__name__)
+
+import os
+import sys
 from dotenv import load_dotenv
 load_dotenv()
 
-import logging
-logger = logging.getLogger(__name__)
+# Darwin Keychain / Database key loading
+if not os.environ.get("GEMINI_API_KEY"):
+    try:
+        from data.repository import PortfolioRepository
+        db_key = PortfolioRepository().get_gemini_api_key()
+        if db_key:
+            os.environ["GEMINI_API_KEY"] = db_key
+            logger.info("Successfully loaded GEMINI_API_KEY from database metadata.")
+    except Exception as e:
+        logger.debug(f"Could not load GEMINI_API_KEY from database: {e}")
+
+if not os.environ.get("GEMINI_API_KEY") and sys.platform == "darwin":
+    try:
+        import keyring
+        key = keyring.get_password("Folio", "gemini_api_key")
+        if key:
+            os.environ["GEMINI_API_KEY"] = key
+            logger.info("Successfully loaded GEMINI_API_KEY from macOS Keychain.")
+        else:
+            logger.info("GEMINI_API_KEY not found in macOS Keychain.")
+    except Exception as e:
+        logger.warning(f"Could not retrieve GEMINI_API_KEY from macOS Keychain: {e}")
 
 import dash
 from dash import html, dcc, Input, Output, State, ALL, ctx
@@ -62,6 +87,7 @@ import callbacks.positions_callbacks      as positions_cb
 import callbacks.watchlist_callbacks      as watchlist_cb
 import callbacks.research_callbacks  as research_cb
 import callbacks.signals_callbacks        as signals_cb
+import callbacks.setup_callbacks           as setup_cb
 
 # ── Initial data load ─────────────────────────────────────────────────────────
 repo = PortfolioRepository()
@@ -132,6 +158,9 @@ app = dash.Dash(
     suppress_callback_exceptions=True,
 )
 
+# Register onboarding wizard callbacks
+setup_cb.register_setup_callbacks(app)
+
 app.title = "Folio — Live"
 app.index_string = INDEX_STRING
 
@@ -150,6 +179,7 @@ app.layout = dmc.MantineProvider(
     children=html.Div(
         [
             dcc.Location(id="url", refresh=False),
+            dcc.Store(id="setup-is-first-run-store", data=(not repo.is_onboarding_completed()), storage_type="session"),
             dcc.Store(id="txn-store",       data=INITIAL_HISTORY),
             dcc.Store(id="portfolio-store",     data=INITIAL_PORTFOLIO_DATA),
             dcc.Store(id="watchlist-store",     data=INITIAL_WATCHLIST_DATA),
@@ -165,6 +195,7 @@ app.layout = dmc.MantineProvider(
             dcc.Interval(id="startup-interval", interval=1500, n_intervals=0, max_intervals=1),
             dcc.Interval(id="task-poll-interval", interval=2000, n_intervals=0, disabled=True),
             dcc.Store(id="nav-link-store"),
+            dcc.Store(id="refresh-trigger-store", data=0),
             dcc.Store(id="pending-tasks-store", data=[], storage_type="session"),
             dcc.Store(id="ai-pending-tasks-store", data={}, storage_type="session"), # {task_id: message_index}
             dcc.Store(id="benchmark-pending-store", data=None, storage_type="session"), # task_id
@@ -196,6 +227,9 @@ app.layout = dmc.MantineProvider(
             
             # Page Content with Loading Indicator
             dash.page_container,
+            
+            # Dummy target for clientside redirect guards
+            html.Div(id="dummy-redirect-output", style={"display": "none"}),
         ],
         className="app-container",
     )
@@ -241,6 +275,25 @@ def update_txn_store(n_startup, n_submit, t_type, ticker, shares, price, date_st
             keys_to_clear = [k for k in _cache.keys() if k.startswith("market_data_")]
             for k in keys_to_clear:
                 _cache.pop(k, None)
+
+            # CRITICAL: Also clear market_prices SQLite entry for the affected ticker.
+            # get_live_prices() checks SQLite freshness, not just in-memory cache.
+            # Without this, it returns stale mkt_value/pnl calculated against the
+            # OLD share count, so portfolio-store gets wrong data and other pages don't update.
+            try:
+                from data.database import get_connection
+                _conn = get_connection()
+                try:
+                    _conn.execute("DELETE FROM market_prices WHERE ticker = ?", (new_txn["ticker"],))
+                    _conn.commit()
+                finally:
+                    _conn.close()
+            except Exception as _e:
+                logger.warning(f"Could not clear market_prices for {new_txn['ticker']}: {_e}")
+
+            # Enqueue a background task to refresh live prices immediately
+            from data.database import enqueue_task
+            enqueue_task("refresh_portfolio", priority=1)
                 
             return updated
         return dash.no_update
@@ -260,14 +313,19 @@ def update_txn_store(n_startup, n_submit, t_type, ticker, shares, price, date_st
     Input("watchlist-period-store", "data"),
     Input("price-interval",         "n_intervals"),
     Input("startup-interval",       "n_intervals"),
-    Input("refresh-btn",            "n_clicks"),
+    Input("refresh-trigger-store",  "data"),
+    State("url", "pathname"),
     prevent_initial_call=True,
 )
-def update_portfolio_store(txn_data, p1, p2, p3, p4, p5, n_price, n_start, n_btn):
+def update_portfolio_store(txn_data, p1, p2, p3, p4, p5, n_price, n_start, n_trigger, pathname):
     """
     Consumer only: Reads enriched portfolio data from the market_prices SQLite table.
     The worker process is responsible for updating market_prices.
     """
+    if pathname and pathname.startswith("/setup"):
+        logger.info("Onboarding in progress: skipping portfolio live price updates.")
+        return dash.no_update
+
     from data.cache_manager import get_live_prices
     
     # 1. Get tickers from current txn-store
@@ -390,9 +448,36 @@ signals_cb.register_callbacks(app)
 def trigger_startup_maintenance_callback(n):
     """Enqueues heavy maintenance tasks to the background worker after startup."""
     if n == 1:
-        from data.database import enqueue_task
-        enqueue_task("maintenance", {"gemini_api_key": os.getenv("GEMINI_API_KEY")})
-        logger.info("Enqueued background maintenance task (Cache cleanup + Watchlist refresh)")
+        if repo.is_onboarding_completed():
+            from data.database import enqueue_task
+            enqueue_task("maintenance", {"gemini_api_key": os.getenv("GEMINI_API_KEY")})
+            logger.info("Enqueued background maintenance task (Cache cleanup + Watchlist refresh)")
+        else:
+            logger.info("Onboarding in progress: skipping startup maintenance task.")
+    return dash.no_update
+
+@app.callback(
+    Output("pending-tasks-store", "data", allow_duplicate=True),
+    Input("startup-interval", "n_intervals"),
+    State("pending-tasks-store", "data"),
+    prevent_initial_call=True
+)
+def hydrate_pending_tasks(n, pending):
+    from data.database import get_connection
+    conn = get_connection()
+    try:
+        rows = conn.execute("SELECT task_id, task_type FROM worker_tasks WHERE status IN ('pending', 'running')").fetchall()
+        new_pending = pending or []
+        existing_ids = {t["id"] for t in new_pending}
+        for r in rows:
+            if r["task_id"] not in existing_ids:
+                new_pending.append({"id": r["task_id"], "type": r["task_type"]})
+        return new_pending if len(new_pending) > (len(pending or [])) else dash.no_update
+    except Exception as e:
+        logger.error(f"Failed to hydrate pending tasks: {e}")
+        return dash.no_update
+    finally:
+        conn.close()
     return dash.no_update
 
 # ── Render Performance Optimizations ──────────────────────────────────────────
@@ -416,6 +501,10 @@ def open_browser():
     rendering of premium CSS effects (like glassmorphism and backdrop-filters) 
     which are highly optimized in WebKit.
     """
+    if os.getenv("FOLIO_HEADLESS") == "1":
+        logger.info("Headless mode active; skipping browser launch.")
+        return
+
     if sys.platform == "darwin":
         # Guaranteed to use Safari on macOS
         os.system("open -a Safari http://127.0.0.1:8050/")

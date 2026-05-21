@@ -113,7 +113,7 @@ def calculate_portfolio_dividend_stats(holdings):
     # KPI Stats
     total_realized = df_full["total"].sum() if not df_full.empty else 0
     annual_est = sum(h.get("annual_div", 0) for h in holdings)
-    port_total_val = sum(h["mkt_value"] for h in holdings)
+    port_total_val = sum(h.get("mkt_value") or 0 for h in holdings)
     port_yield = (annual_est / port_total_val * 100) if port_total_val else 0
     
     stats = {

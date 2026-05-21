@@ -252,7 +252,7 @@ def register_callbacks(app) -> None:
         Input("url", "pathname"),
         Input("theme-store", "data"),
         Input("watchlist-period-store", "data"),
-        prevent_initial_call=False
+        prevent_initial_call=True
     )
     def update_watchlist_chart(selected_ticker, data, pathname, theme, period):
         # Resolve theme tokens
@@ -264,6 +264,9 @@ def register_callbacks(app) -> None:
 
         # Multi-page safety
         if pathname.rstrip("/") != "/watchlist":
+            return create_empty_fig("", height=300, theme_tokens=t_), "Price Performance"
+
+        if not selected_ticker:
             return create_empty_fig("", height=300, theme_tokens=t_), "Price Performance"
 
         # Lazy Fetch (Memory Optimized)

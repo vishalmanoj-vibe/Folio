@@ -209,7 +209,7 @@ def _download_with_retry(
             )
             
             # If period is a date-like object or ISO date string, use it as 'start'
-            is_date_str = isinstance(period, str) and len(period) == 10 and period.count("-") == 2
+            is_date_str = isinstance(period, str) and len(period) >= 10 and "-" in period
             if is_date_str or isinstance(period, (pd.Timestamp, datetime.date, datetime.datetime)):
                 kwargs["start"] = pd.to_datetime(period).strftime("%Y-%m-%d")
             else:
@@ -340,8 +340,13 @@ def _compute_dividends_bulk(
 
     div_s.index = normalise_tz(div_s.index)
     cutoff = pd.Timestamp.now() - pd.Timedelta(days=365)
-
-    annual_per_share = float(div_s[div_s.index >= cutoff].sum())
+    
+    annual_per_share = 0.0
+    if isinstance(div_s.index, pd.DatetimeIndex):
+        annual_per_share = float(div_s[div_s.index >= cutoff].sum())
+    else:
+        # Fallback if index is not a DatetimeIndex for some reason
+        annual_per_share = 0.0
     total_per_share  = float(div_s.sum())
 
     annual_div = round(annual_per_share * total_shares, 2)
@@ -379,11 +384,17 @@ def _calculate_realized_dividends(div_s: pd.Series, tranches: list[dict]) -> flo
     total_received = 0.0
 
     for ex_date, amount in div_s.items():
-        # Ex-date determines eligibility. Most brokers use Ex-date + 1 business day 
-        # or the settlement date, but for simplicity we check if purchase was BEFORE Ex-date.
+        if not isinstance(ex_date, pd.Timestamp):
+            try:
+                ex_date = pd.to_datetime(ex_date)
+            except Exception:
+                continue
+
+        # How many shares were held ON the ex-dividend date?
+        # A tranche must be purchased BEFORE the ex_date to be eligible
         shares_on_date = sum(
             t["shares"] for t in tranches
-            if pd.to_datetime(t["date"]).tz_localize(None) < ex_date
+            if pd.to_datetime(t["date"]).tz_localize(None) < ex_date.tz_localize(None)
         )
 
         if shares_on_date > 0:
@@ -606,16 +617,18 @@ def _enrich_single_holding(h: dict, multi_live: pd.DataFrame, multi_period: pd.D
         effective_start = ctx['effective_date'] # Friday 00:00
         
         # Try to find the anchor price (Thursday Close)
-        try:
-            if live_close.index.tz is None:
-                live_close_tz = live_close.copy()
-                live_close_tz.index = live_close_tz.index.tz_localize("Australia/Sydney")
-            else:
-                live_close_tz = live_close.tz_convert("Australia/Sydney")
-        except:
-            live_close_tz = live_close
+        anchor_points = pd.Series(dtype=float)
+        if not live_close.empty and isinstance(live_close.index, pd.DatetimeIndex):
+            try:
+                if live_close.index.tz is None:
+                    live_close_tz = live_close.copy()
+                    live_close_tz.index = live_close_tz.index.tz_localize("Australia/Sydney")
+                else:
+                    live_close_tz = live_close.tz_convert("Australia/Sydney")
+                anchor_points = live_close_tz[live_close_tz.index < effective_start]
+            except Exception as e:
+                logger.debug("Failed to calculate anchor points from live data: %s", e)
             
-        anchor_points = live_close_tz[live_close_tz.index < effective_start]
         if not anchor_points.empty:
             prev_close = float(anchor_points.iloc[-1])
         elif len(close_f) >= 2:
@@ -629,8 +642,18 @@ def _enrich_single_holding(h: dict, multi_live: pd.DataFrame, multi_period: pd.D
 
 
         # 1.5 Determine Session High/Low for the effective session
-        effective_points_high = live_high[(live_high.index >= effective_start) & (live_high.index < effective_start + pd.Timedelta(days=1))]
-        effective_points_low  = live_low[(live_low.index >= effective_start) & (live_low.index < effective_start + pd.Timedelta(days=1))]
+        effective_points_high = pd.Series(dtype=float)
+        effective_points_low  = pd.Series(dtype=float)
+        if not live_high.empty and isinstance(live_high.index, pd.DatetimeIndex):
+            try:
+                effective_points_high = live_high[(live_high.index >= effective_start) & (live_high.index < effective_start + pd.Timedelta(days=1))]
+            except Exception as e:
+                logger.debug("Failed to slice live_high: %s", e)
+        if not live_low.empty and isinstance(live_low.index, pd.DatetimeIndex):
+            try:
+                effective_points_low  = live_low[(live_low.index >= effective_start) & (live_low.index < effective_start + pd.Timedelta(days=1))]
+            except Exception as e:
+                logger.debug("Failed to slice live_low: %s", e)
         
         if not effective_points_high.empty:
             day_high = float(effective_points_high.max())
@@ -760,6 +783,8 @@ def _enrich_single_holding(h: dict, multi_live: pd.DataFrame, multi_period: pd.D
         return enriched_h, history_data
 
     except Exception as exc:
+        import traceback
+        traceback.print_exc()
         logger.warning("Failed to enrich %s: %s", ticker_yf, exc)
         fallback_price = round(h["avg_cost"], 3)
         fallback_cost  = round(h["total_shares"] * h["avg_cost"], 2)
@@ -898,19 +923,6 @@ def fetch_portfolio_series(holdings: list[dict], period: str, force_fetch: bool 
     import gc
     gc.collect()
     return series_map
-    if not holdings:
-        return pd.DataFrame()
-        
-    tickers_yf = [h["ticker_yf"] for h in holdings]
-    tickers_str = " ".join(sorted(tickers_yf))
-    full_cache_key = f"bulk_full_{tickers_str.replace(' ', '_')}"
-    
-    cached = get_cache(full_cache_key)
-    if cached is not None:
-        return cached
-    return pd.DataFrame()
-
-
 
 
 def fetch_ticker_history(ticker: str, period: str) -> list[dict]:

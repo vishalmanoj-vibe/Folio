@@ -17,8 +17,8 @@ def get_period_cutoff(period: str) -> pd.Timestamp | None:
     if isinstance(period, (pd.Timestamp, datetime.date, datetime.datetime)):
         return pd.Timestamp(period)
     
-    # Handle ISO date strings (e.g. "2024-01-01")
-    if isinstance(period, str) and len(period) == 10 and period.count("-") == 2:
+    # Handle ISO date strings (e.g. "2024-01-01" or "2024-01-01 00:00:00")
+    if isinstance(period, str) and len(period) >= 10 and "-" in period:
         try:
             return pd.Timestamp(period)
         except Exception:

@@ -65,7 +65,7 @@ def register_callbacks(app) -> None:
             try:
                 ticker = h["ticker"]
                 name = NAMES.get(ticker, ticker)
-                pnl = h["pnl_pct"]
+                pnl = h.get("pnl_pct") or 0.0
                 pnl_cls = "c-pos" if pnl >= 0 else "c-neg"
                 is_selected = ticker == selected_ticker
                 
@@ -113,7 +113,7 @@ def register_callbacks(app) -> None:
                 card_children = [
                     html.Div(ticker, className="holding-card-ticker"),
                     html.Div(name,   className="holding-card-name"),
-                    html.Div(f"${h['mkt_value']:,.2f}", className="holding-card-value"),
+                    html.Div(f"${h.get('mkt_value') or h.get('total_cost', 0.0):,.2f}", className="holding-card-value"),
                     html.Div(f"{pnl:+.2f}%", className=f"holding-card-pnl {pnl_cls}"),
                     html.Div(f"Yield: {h.get('div_yield', 0):.2f}%", className="holding-card-name", style={"marginTop": "4px"}),
                 ]
@@ -195,8 +195,8 @@ def register_callbacks(app) -> None:
         ticker_buys = df_txn[(df_txn["ticker"] == ticker) & (df_txn["type"] == "buy")]
         h["buy_tranches"] = build_tranches(ticker, ticker_buys)
 
-        pnl = h["pnl"]; pc = GREEN if pnl >= 0 else RED
-        day_pnl = h["day_pnl"]; dc = GREEN if day_pnl >= 0 else RED
+        pnl = h.get("pnl") or 0.0; pc = GREEN if pnl >= 0 else RED
+        day_pnl = h.get("day_pnl") or 0.0; dc = GREEN if day_pnl >= 0 else RED
 
         # Calculate ticker-specific next payment
         _, _, events = calculate_portfolio_dividend_stats([h])
@@ -210,10 +210,10 @@ def register_callbacks(app) -> None:
             next_div_sub = f"{next_e['date'].strftime('%d %b')} ({next_e['type']})"
 
         metrics = [
-            ("Total Invested", f"${h['total_cost']:,.2f}", f"{h['total_shares']:,.2f} units"),
-            ("Market Value", f"${h['mkt_value']:,.2f}", f"@ ${h['last_price']:,.3f}"),
-            ("Unrealised P&L", f"{'+$' if pnl >= 0 else '-$'}{abs(pnl):,.2f}", f"{h['pnl_pct']:+.2f}%", pc),
-            ("Today's P&L", f"{'+$' if day_pnl >= 0 else '-$'}{abs(day_pnl):,.2f}", f"{h['day_chg_pct']:+.2f}%", dc),
+            ("Total Invested", f"${h.get('total_cost', 0.0):,.2f}", f"{h.get('total_shares', 0.0):,.2f} units"),
+            ("Market Value", f"${h.get('mkt_value') or h.get('total_cost', 0.0):,.2f}", f"@ ${h.get('last_price', 0.0):,.3f}"),
+            ("Unrealised P&L", f"{'+$' if pnl >= 0 else '-$'}{abs(pnl):,.2f}", f"{h.get('pnl_pct') or 0.0:+.2f}%", pc),
+            ("Today's P&L", f"{'+$' if day_pnl >= 0 else '-$'}{abs(day_pnl):,.2f}", f"{h.get('day_chg_pct') or 0.0:+.2f}%", dc),
             ("Avg Cost", f"${h['avg_cost']:,.4f}", "VWAP"),
             ("Div Yield", f"{h.get('div_yield', 0):.2f}%", f"Annual: ${h.get('annual_div', 0):,.2f}"),
             ("Next Div", next_div_val, next_div_sub, GREEN if next_e else None),
@@ -303,7 +303,7 @@ def register_callbacks(app) -> None:
 
         holding = next((h for h in port_data.get("holdings", []) if h["ticker"] == ticker), None)
         if not holding: 
-            return None
+            return None, {"display": "none"}
 
         fig = go.Figure()
         

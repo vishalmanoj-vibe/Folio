@@ -89,6 +89,93 @@ class PortfolioRepository:
             conn.close()
         return self.load_transactions()
 
+    def is_onboarding_completed(self) -> bool:
+        """Check if the onboarding wizard has been completed."""
+        conn = get_connection()
+        try:
+            row = conn.execute(
+                "SELECT value FROM app_metadata WHERE key = 'onboarding_completed'"
+            ).fetchone()
+            if row:
+                return row["value"] == "true"
+            # Fallback: check if transactions exist
+            txns = conn.execute("SELECT COUNT(*) as count FROM transactions").fetchone()
+            if txns["count"] > 0:
+                # Auto-complete for backward compatibility if transactions already exist
+                conn.close()
+                self.set_onboarding_completed(True)
+                return True
+            else:
+                conn.close()
+                self.set_onboarding_completed(False)
+                return False
+        except Exception as e:
+            logger.error(f"Failed to check onboarding status: {e}")
+            return False
+        finally:
+            try:
+                conn.close()
+            except Exception:
+                pass
+
+    def set_onboarding_completed(self, completed: bool) -> None:
+        """Mark the onboarding wizard as completed or incomplete."""
+        conn = get_connection()
+        try:
+            val_str = "true" if completed else "false"
+            conn.execute(
+                """
+                INSERT INTO app_metadata (key, value) VALUES ('onboarding_completed', ?)
+                ON CONFLICT(key) DO UPDATE SET value = ?
+                """,
+                (val_str, val_str)
+            )
+            conn.commit()
+            logger.info(f"Onboarding completion status updated to: {val_str}")
+        except Exception as e:
+            logger.error(f"Failed to set onboarding status: {e}")
+            conn.rollback()
+        finally:
+            conn.close()
+
+    def get_gemini_api_key(self) -> str | None:
+        """Retrieve the Gemini API key from database metadata."""
+        conn = get_connection()
+        try:
+            row = conn.execute(
+                "SELECT value FROM app_metadata WHERE key = 'gemini_api_key'"
+            ).fetchone()
+            if row:
+                return row["value"]
+            return None
+        except Exception as e:
+            logger.error(f"Failed to get gemini_api_key from DB: {e}")
+            return None
+        finally:
+            try:
+                conn.close()
+            except Exception:
+                pass
+
+    def set_gemini_api_key(self, api_key: str) -> None:
+        """Save the Gemini API key to database metadata."""
+        conn = get_connection()
+        try:
+            conn.execute(
+                """
+                INSERT INTO app_metadata (key, value) VALUES ('gemini_api_key', ?)
+                ON CONFLICT(key) DO UPDATE SET value = ?
+                """,
+                (api_key, api_key)
+            )
+            conn.commit()
+            logger.info("Successfully saved Gemini API key to database metadata.")
+        except Exception as e:
+            logger.error(f"Failed to save gemini_api_key to DB: {e}")
+            conn.rollback()
+        finally:
+            conn.close()
+
     # ── Asset (Ticker Master) Methods ──────────────────────────────────────────
 
     def get_asset(self, ticker: str) -> dict | None:
@@ -228,6 +315,8 @@ class HistoryRepository:
 
     def load_close_series(self, ticker: str, from_date: str = None) -> pd.Series:
         """Efficiently fetch only the Close price series for a ticker."""
+        if not ticker:
+            return pd.Series(dtype=float)
         ticker = ticker.upper()
         conn = get_connection()
         try:

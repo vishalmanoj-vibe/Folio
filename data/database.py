@@ -128,6 +128,7 @@ def init_db():
         conn.execute('''
             CREATE TABLE IF NOT EXISTS market_prices (
                 ticker           TEXT PRIMARY KEY,
+                last_price       REAL,
                 day_chg          REAL,
                 day_chg_pct      REAL,
                 day_pnl          REAL,
@@ -228,6 +229,14 @@ def init_db():
                 fetched_at TEXT NOT NULL
             )
         ''')
+
+        # 13. App Metadata
+        conn.execute('''
+            CREATE TABLE IF NOT EXISTS app_metadata (
+                key   TEXT PRIMARY KEY,
+                value TEXT NOT NULL
+            )
+        ''')
         
         conn.commit()
         
@@ -239,7 +248,10 @@ def init_db():
             if "last_div_date" not in columns:
                 logger.info("Migrating market_prices: Adding last_div_date column")
                 conn.execute("ALTER TABLE market_prices ADD COLUMN last_div_date TEXT")
-                conn.commit()
+            if "last_price" not in columns:
+                logger.info("Migrating market_prices: Adding last_price column")
+                conn.execute("ALTER TABLE market_prices ADD COLUMN last_price REAL")
+            conn.commit()
         except Exception as e:
             logger.warning(f"Migration for market_prices failed: {e}")
 
@@ -318,12 +330,12 @@ def migrate_json_to_sqlite():
                 for h in holdings:
                     conn.execute('''
                         INSERT OR REPLACE INTO market_prices (
-                            ticker, day_chg, day_chg_pct, day_pnl, mkt_value, pnl, pnl_pct, 
+                            ticker, last_price, day_chg, day_chg_pct, day_pnl, mkt_value, pnl, pnl_pct, 
                             annual_div, realized_div, div_yield, div_frequency, 
                             last_div_amount, next_div_date, payout_date, fetched_at
-                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     ''', (
-                        h["ticker"], h.get("day_chg"), h.get("day_chg_pct"), h.get("day_pnl"),
+                        h["ticker"], h.get("last_price"), h.get("day_chg"), h.get("day_chg_pct"), h.get("day_pnl"),
                         h.get("mkt_value"), h.get("pnl"), h.get("pnl_pct"), h.get("annual_div"),
                         h.get("realized_div"), h.get("div_yield"), h.get("div_frequency"),
                         h.get("last_div_amount"), h.get("next_div_date"), h.get("payout_date"),

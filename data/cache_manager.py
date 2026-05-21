@@ -69,7 +69,11 @@ def get_live_prices(tickers: list[str]) -> dict:
                 
                 if holdings:
                     fetch_live(holdings, record_snapshots=True)
-                    # Re-query after fetch
+                    # CRITICAL: Close and reopen connection so WAL-committed data is visible.
+                    # Reusing the same connection returns stale data from the snapshot
+                    # taken at connection-open time, before fetch_live() wrote new records.
+                    conn.close()
+                    conn = get_connection()
                     cursor = conn.execute(
                         f"SELECT * FROM market_prices WHERE ticker IN ({placeholders})",
                         [t.upper() for t in tickers]
@@ -104,14 +108,14 @@ def save_live_prices(holdings: list[dict]):
     fetched_at = datetime.now().isoformat()
     try:
         for h in holdings:
-            conn.execute('''
+            conn.execute('''\
                 INSERT OR REPLACE INTO market_prices (
-                    ticker, day_chg, day_chg_pct, day_pnl, mkt_value, pnl, pnl_pct, 
+                    ticker, last_price, day_chg, day_chg_pct, day_pnl, mkt_value, pnl, pnl_pct, 
                     annual_div, realized_div, div_yield, div_frequency, 
                     last_div_amount, last_div_date, next_div_date, payout_date, fetched_at
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ''', (
-                h["ticker"].upper(), h.get("day_chg"), h.get("day_chg_pct"), h.get("day_pnl"),
+                h["ticker"].upper(), h.get("last_price"), h.get("day_chg"), h.get("day_chg_pct"), h.get("day_pnl"),
                 h.get("mkt_value"), h.get("pnl"), h.get("pnl_pct"), h.get("annual_div"),
                 h.get("realized_div"), h.get("div_yield"), h.get("div_frequency"),
                 h.get("last_div_amount"), h.get("last_div_date"), h.get("next_div_date"), h.get("payout_date"),
@@ -122,6 +126,7 @@ def save_live_prices(holdings: list[dict]):
         logger.error(f"Failed to save live prices: {e}")
     finally:
         conn.close()
+
 
 # ── Intraday Snapshots ───────────────────────────────────────────────────────
 

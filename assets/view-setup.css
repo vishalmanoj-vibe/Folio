@@ -1,0 +1,268 @@
+/* assets/view-setup.css */
+/* ============================================================
+   view-setup.css — First-Run Setup Onboarding Wizard Styles
+   ============================================================ */
+
+.setup-root {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: calc(100vh - 100px);
+  padding: 24px;
+}
+
+.setup-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  width: 100%;
+  max-width: 680px;
+  padding: 36px;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
+  transition: border-color 0.2s, box-shadow 0.2s;
+  position: relative;
+  overflow: hidden;
+}
+
+.setup-card:hover {
+  border-color: var(--border-2);
+  box-shadow: 0 16px 48px var(--glow);
+}
+
+/* ── Wizard Step Indicators ── */
+.setup-steps-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 32px;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 16px;
+}
+
+.setup-step {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--t-sec);
+}
+
+.setup-step.active {
+  color: var(--cyan);
+}
+
+.setup-step-num {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: 1.5px solid var(--t-sec);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+}
+
+.setup-step.active .setup-step-num {
+  border-color: var(--cyan);
+  background: var(--cyan-bg);
+  color: var(--cyan);
+}
+
+.setup-step.completed .setup-step-num {
+  border-color: var(--green);
+  background: var(--green-bg);
+  color: var(--green);
+}
+
+/* ── Typo elements ── */
+.setup-title {
+  font-size: 24px;
+  font-weight: 600;
+  color: var(--t-pri);
+  margin-bottom: 8px;
+}
+
+.setup-subtitle {
+  font-size: 13px;
+  color: var(--t-sec);
+  margin-bottom: 24px;
+  line-height: 1.5;
+}
+
+/* ── Page 1: Portfolio Setup Table ── */
+.setup-table-container {
+  margin-bottom: 24px;
+  overflow-x: auto;
+}
+
+.setup-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 8px;
+}
+
+.setup-table th {
+  text-align: left;
+  font-size: 9.5px;
+  color: var(--t-sec);
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border);
+}
+
+.setup-table td {
+  padding: 10px 8px;
+  border-bottom: 0.5px solid var(--border);
+  vertical-align: middle;
+}
+
+.setup-row-input {
+  background: var(--surface-3) !important;
+  border: 1px solid var(--border) !important;
+  color: var(--t-pri) !important;
+  border-radius: 6px !important;
+  padding: 6px 10px !important;
+  width: 100%;
+  font-size: 12px !important;
+}
+
+.setup-row-input:focus {
+  border-color: var(--cyan) !important;
+  box-shadow: 0 0 0 2px var(--cyan-bg) !important;
+}
+
+/* ── Setup Page Actions ── */
+.setup-actions-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 32px;
+  gap: 12px;
+}
+
+.setup-btn-primary {
+  background: var(--cyan) !important;
+  border: 1px solid var(--cyan) !important;
+  color: #000000 !important;
+  font-weight: 600 !important;
+  padding: 10px 24px !important;
+  border-radius: 8px !important;
+  font-size: 13px !important;
+  transition: opacity 0.2s, transform 0.2s !important;
+}
+
+.setup-btn-primary:hover {
+  opacity: 0.9 !important;
+  transform: translateY(-1px) !important;
+}
+
+.setup-btn-primary:disabled {
+  background: var(--border) !important;
+  border-color: var(--border) !important;
+  color: var(--t-sec) !important;
+  cursor: not-allowed !important;
+  transform: none !important;
+}
+
+.setup-btn-secondary {
+  background: transparent !important;
+  border: 1px solid var(--border) !important;
+  color: var(--t-pri) !important;
+  font-weight: 500 !important;
+  padding: 10px 20px !important;
+  border-radius: 8px !important;
+  font-size: 13px !important;
+  transition: border-color 0.2s, background-color 0.2s !important;
+}
+
+.setup-btn-secondary:hover {
+  border-color: var(--cyan-border) !important;
+  background-color: var(--cyan-bg) !important;
+}
+
+.setup-feedback {
+  font-size: 12px;
+  color: var(--red);
+  margin-top: 12px;
+  min-height: 18px;
+}
+
+.setup-feedback.success {
+  color: var(--green);
+}
+
+/* ── Setup Page 2: AI Config UI ── */
+.setup-ai-features-list {
+  background: var(--surface-2);
+  border: 0.5px solid var(--border);
+  border-radius: 10px;
+  padding: 18px;
+  margin-bottom: 24px;
+}
+
+.setup-ai-feature-item {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  margin-bottom: 12px;
+}
+
+.setup-ai-feature-item:last-child {
+  margin-bottom: 0;
+}
+
+.setup-ai-feature-icon {
+  color: var(--cyan);
+  margin-top: 2px;
+}
+
+.setup-ai-feature-text {
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--t-pri);
+}
+
+.setup-ai-feature-text strong {
+  color: var(--cyan);
+}
+
+/* ── Setup Page 3: Ready UI ── */
+.setup-summary-box {
+  background: var(--surface-2);
+  border: 0.5px solid var(--border);
+  border-radius: 12px;
+  padding: 24px;
+  margin-bottom: 28px;
+}
+
+.setup-summary-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--t-pri);
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 8px;
+  margin-bottom: 16px;
+}
+
+.setup-summary-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  margin-bottom: 10px;
+  color: var(--t-sec);
+}
+
+.setup-summary-row:last-child {
+  margin-bottom: 0;
+}
+
+.setup-summary-value {
+  font-weight: 500;
+  color: var(--t-pri);
+}
+
+.setup-summary-value.highlight {
+  color: var(--cyan);
+}

@@ -50,7 +50,7 @@ def gather_report_data(portfolio_data: dict) -> dict:
         if not holdings:
             return {}
 
-        total_val   = sum(h["mkt_value"]  for h in holdings)
+        total_val   = sum(h.get("mkt_value", 0)  for h in holdings)
         total_cost  = sum(h["total_cost"] for h in holdings)
         total_pnl   = total_val - total_cost
         pnl_pct     = (total_pnl / total_cost * 100) if total_cost else 0
@@ -65,9 +65,9 @@ def gather_report_data(portfolio_data: dict) -> dict:
             holdings_data.append({
                 "ticker":     ticker,
                 "name":       h.get("name", ticker),
-                "weight":     (h["mkt_value"] / total_val * 100) if total_val else 0,
-                "mkt_value":  h["mkt_value"],
-                "pnl_pct":    h["pnl_pct"],
+                "weight":     (h.get("mkt_value", 0) / total_val * 100) if total_val else 0,
+                "mkt_value":  h.get("mkt_value", 0),
+                "pnl_pct":    h.get("pnl_pct", 0),
                 "day_chg_pct": h.get("day_chg_pct", 0),
                 "div_yield":  h.get("div_yield", 0),
                 "rsi":        sig.get("rsi", 0),
@@ -154,11 +154,11 @@ def _build_pnl_series(
             return []
 
         # Weight by current market value
-        total_val = sum(h["mkt_value"] for h in holdings)
+        total_val = sum(h.get("mkt_value", 0) for h in holdings)
         weights   = {}
         for h in holdings:
             if h["ticker"] in prices.columns and total_val:
-                weights[h["ticker"]] = h["mkt_value"] / total_val
+                weights[h["ticker"]] = h.get("mkt_value", 0) / total_val
 
         # Normalised return from period start (7 days ago)
         normed = prices / prices.iloc[0]

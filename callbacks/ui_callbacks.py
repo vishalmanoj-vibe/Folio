@@ -153,3 +153,20 @@ def register_callbacks(app) -> None:
         Output("nav-link-store", "data"),
         Input("url", "pathname"),
     )
+
+    # ── Manual Data Refresh ──────────────────────────────────────────────────
+    @app.callback(
+        Output("pending-tasks-store", "data", allow_duplicate=True),
+        Input("refresh-btn", "n_clicks"),
+        State("pending-tasks-store", "data"),
+        prevent_initial_call=True
+    )
+    def handle_refresh_click(n, pending):
+        if not n: 
+            return dash.no_update
+        from data.database import enqueue_task
+        task_id = enqueue_task("refresh_portfolio", priority=1)
+        
+        new_pending = pending or []
+        new_pending.append({"id": task_id, "type": "refresh_portfolio"})
+        return new_pending

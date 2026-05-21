@@ -32,6 +32,20 @@ from config.logging import setup_logging
 setup_logging()
 logger = logging.getLogger("worker")
 
+from dotenv import load_dotenv
+load_dotenv()
+
+# Load GEMINI_API_KEY from database metadata if not in environment
+if not os.environ.get("GEMINI_API_KEY"):
+    try:
+        from data.repository import PortfolioRepository
+        db_key = PortfolioRepository().get_gemini_api_key()
+        if db_key:
+            os.environ["GEMINI_API_KEY"] = db_key
+            logger.info("Successfully loaded GEMINI_API_KEY from database metadata.")
+    except Exception as e:
+        logger.debug(f"Could not load GEMINI_API_KEY from database: {e}")
+
 # ── Task Handlers ────────────────────────────────────────────────────────────
 
 def handle_fetch_history(payload: dict):
@@ -314,6 +328,16 @@ def handle_scrape_holdings(payload: dict):
         return {"error": "Scrape failed or returned no holdings"}
     return {"status": "success", "count": len(results)}
 
+def handle_refresh_portfolio(payload: dict):
+    """Immediate portfolio refresh triggered by UI."""
+    logger.info("Task: Immediate portfolio refresh triggered by UI")
+    repo = PortfolioRepository()
+    txns = repo.load_transactions()
+    holdings = build_holdings(txns)
+    if holdings:
+        fetch_live(holdings, record_snapshots=True)
+    return {"status": "success"}
+
 TASK_HANDLERS = {
     "fetch_history": handle_fetch_history,
     "generate_signals": handle_generate_signals,
@@ -322,7 +346,8 @@ TASK_HANDLERS = {
     "generate_ai_response": handle_generate_ai_response,
     "generate_report": handle_generate_report,
     "generate_prediction": handle_generate_prediction,
-    "maintenance": handle_maintenance
+    "maintenance": handle_maintenance,
+    "refresh_portfolio": handle_refresh_portfolio
 }
 
 # ── Main Worker Loops ────────────────────────────────────────────────────────
@@ -429,8 +454,9 @@ def run_worker():
         now = time.time()
         if now - last_refresh >= REFRESH_COOLDOWN:
             try:
-                if is_market_open(include_auction=True):
-                    logger.info("Scheduled refresh: Market is open. Fetching live prices...")
+                # We always want at least one fetch on startup to populate empty caches
+                if last_refresh == 0 or is_market_open(include_auction=True):
+                    logger.info("Scheduled refresh: Fetching live prices (Startup or Market Open)...")
                     
                     # Derive current holdings from transactions
                     repo = PortfolioRepository()

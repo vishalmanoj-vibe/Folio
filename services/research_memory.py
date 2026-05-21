@@ -6,7 +6,9 @@ import google.genai as genai
 
 logger = logging.getLogger(__name__)
 
-MEMORY_DIR = "data/cache/research_memory"
+from config.settings import DATA_CACHE_DIR
+
+MEMORY_DIR = os.path.join(DATA_CACHE_DIR, "research_memory")
 LOG_FILE = os.path.join(MEMORY_DIR, "conversation_log.json")
 SUMMARY_FILE = os.path.join(MEMORY_DIR, "memory_summary.json")
 MAX_FILE_SIZE_MB = 50

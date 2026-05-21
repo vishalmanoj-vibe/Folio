@@ -91,6 +91,7 @@ def register_callbacks(app):
         Output("signals-store", "data"),
         Output("watchlist-signals-store", "data"),
         Output("pending-tasks-store", "data", allow_duplicate=True),
+        Output("refresh-trigger-store", "data"),
         Input("task-poll-interval", "n_intervals"),
         State("pending-tasks-store", "data"),
         State("portfolio-store", "data"),
@@ -99,12 +100,13 @@ def register_callbacks(app):
     )
     def poll_tasks_and_update_stores(n, pending, port_data, watch_data):
         if not pending:
-            return dash.no_update, dash.no_update, []
+            return dash.no_update, dash.no_update, [], dash.no_update
             
         conn = get_connection()
         try:
             still_pending = []
-            updates_needed = {"signals": False, "watchlist_signals": False}
+            from collections import defaultdict
+            updates_needed = defaultdict(bool)
             
             for task in pending:
                 task_id = task["id"]
@@ -124,6 +126,7 @@ def register_callbacks(app):
             
             out_signals = dash.no_update
             out_watch = dash.no_update
+            out_refresh = dash.no_update
             
             if updates_needed["signals"]:
                 from data.repository import PortfolioRepository
@@ -139,8 +142,11 @@ def register_callbacks(app):
                 w_items = w_repo.load_watchlist()
                 tickers = [item["ticker"] for item in w_items]
                 out_watch = _load_signal_results(tickers, table="watchlist_signal_results")
+                
+            if updates_needed["refresh_portfolio"]:
+                out_refresh = n
             
-            return out_signals, out_watch, still_pending
+            return out_signals, out_watch, still_pending, out_refresh
             
         finally:
             conn.close()
