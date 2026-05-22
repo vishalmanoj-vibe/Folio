@@ -271,15 +271,6 @@ def register_setup_callbacks(app):
             except Exception as e:
                 logger.error(f"AI Onboarding: Failed to save to database metadata: {e}")
 
-            # Also attempt to save to macOS Keychain for backwards compatibility (don't fail if it blocks/rejects)
-            if sys.platform == "darwin":
-                try:
-                    import keyring
-                    keyring.set_password("Folio", "gemini_api_key", api_key)
-                    logger.info("AI Onboarding: Successfully saved Gemini API key to macOS Keychain.")
-                except Exception as e:
-                    logger.error(f"AI Onboarding: Failed to save to macOS Keychain: {e}")
-
             os.environ["GEMINI_API_KEY"] = api_key
 
             return dash.no_update, dcc.Location(pathname="/setup/ready", id="setup-redir-ready", refresh=True)
@@ -302,7 +293,7 @@ def register_setup_callbacks(app):
         # Read AI key status
         ai_status = "Skipped (Not configured)"
         if os.environ.get("GEMINI_API_KEY"):
-            ai_status = "Enabled (Secure Keychain)"
+            ai_status = "Enabled (Database Storage)"
 
         return [
             html.Div("Onboarding Summary", className="setup-summary-title"),
@@ -324,7 +315,7 @@ def register_setup_callbacks(app):
                 [
                     html.Span("Database Directory:"),
                     html.Span(
-                        "Application Support" if getattr(sys, 'frozen', False) else "Local Workspace", 
+                        "Local Workspace", 
                         className="setup-summary-value"
                     )
                 ],

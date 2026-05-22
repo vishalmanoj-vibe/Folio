@@ -85,6 +85,7 @@
 - Never call yfinance per-ticker in a loop — use bulk download
 - Never hardcode AEST offset — use pytz or zoneinfo for timezone checks
 - **Hex in Callbacks**: Never pass CSS `var()` strings to Python functions that perform math on colors (like `interpolate_color`). Use hardcoded hex values from `config/constants.py` for these cases.
+- **Theme Context**: All rendering callbacks that generate Plotly charts MUST take `Input("theme-store", "data")` and pass it to `get_theme(theme or "dark")`. Do not call `get_theme()` without arguments to avoid missing positional argument errors.
 - **UI Transitions**: All theme-aware elements (body, cards, nav) MUST have a 200ms CSS transition on `background-color`, `color`, and `border-color` to prevent jarring theme snaps.
 - **Data Freshness**: The header status indicator MUST accurately reflect `is_market_open(include_auction=False)` with a pulsing green dot during trading and a static grey dot otherwise.
 
@@ -171,5 +172,4 @@
 - `worker.py` — Background worker handling technical analysis, signals, and market refreshes.
 - `services/market/data_fetcher.py` — Implemented metadata truncation and compact series caching.
 - `core/cache.py` — Enforced bounded memory caching with automated eviction passes.
-- `docs/performance/phase4_results.md` — Documented ~40% reduction in baseline RSS memory usage and instant startup (<1s).
 - **History Gating**: Enforced 24h staleness for historical data to eliminate redundant network churn.

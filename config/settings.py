@@ -17,21 +17,14 @@ import sys
 SCRIPT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 def get_data_dir():
-    if getattr(sys, 'frozen', False):
-        path = os.path.expanduser("~/Library/Application Support/Folio")
-    else:
-        path = SCRIPT_DIR
+    path = SCRIPT_DIR
     os.makedirs(path, exist_ok=True)
     return path
 
 DATA_DIR = get_data_dir()
 
-if getattr(sys, 'frozen', False):
-    DB_PATH = os.path.join(DATA_DIR, "portfolio.db")
-    DATA_CACHE_DIR = os.path.join(DATA_DIR, "data", "cache")
-else:
-    DB_PATH = os.getenv("DB_PATH", os.path.join(SCRIPT_DIR, "data", "portfolio.db"))
-    DATA_CACHE_DIR = os.path.join(SCRIPT_DIR, "data", "cache")
+DB_PATH = os.getenv("DB_PATH", os.path.join(SCRIPT_DIR, "data", "portfolio.db"))
+DATA_CACHE_DIR = os.path.join(SCRIPT_DIR, "data", "cache")
 
 # Ensure cache directory exists
 os.makedirs(DATA_CACHE_DIR, exist_ok=True)

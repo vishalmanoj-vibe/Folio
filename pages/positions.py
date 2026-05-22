@@ -88,6 +88,11 @@ def layout() -> html.Div:
                     html.Details([
                         html.Summary("Portfolio Dividend Insights", className="txn-history-summary"),
                         html.Div([
+                            # Bar chart for past year payouts
+                            dcc.Loading(
+                                html.Div(id="positions-portfolio-dividend-chart-container"),
+                                custom_spinner=html.Div(className="skeleton", style={"height": "200px", "width": "100%", "marginBottom": "24px", "borderRadius": "8px"})
+                            ),
                             html.Div([
                                 html.Div([
                                     chart_title("Annual estimated income"),

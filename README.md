@@ -10,7 +10,7 @@ Built with Dash, Plotly, yfinance, and Gemini.
 
 - **Live Tracking** — Real-time prices via Yahoo Finance with ASX-specific bulk optimisations and 5-minute refresh.
 - **Intraday Monitoring** — "Today" P&L chart with high-frequency session caching and persistent daily snapshots across restarts.
-- **Positions Deep-Dive** — Candlestick charts, transaction history, live sparklines, and integrated dividend analysis per holding.
+- **Positions Deep-Dive** — Candlestick charts, transaction history, live sparklines, and integrated dividend analysis per holding and globally.
 - **Insights Dashboard** — Sharpe Ratio, Annualised Volatility, Max Drawdown, and equity curve with optional Prophet forecasting.
 - **Allocation Analysis** — Hierarchical Sector and Geographic treemaps with smart concentration alerts.
 - **Dividend Tracking** — Tranche-accurate realized income engine matched against actual ex-dividend dates, not just yield estimates.
@@ -60,7 +60,7 @@ All other features (live prices, P&L tracking, dividends, signals engine, foreca
 | Page | Route | Description |
 |---|---|---|
 | Holdings | `/` | Live positions table, P&L chart, stat cards |
-| Positions | `/positions` | Per-holding deep-dive with candlestick charts and dividends |
+| Positions | `/positions` | Per-holding deep-dive with candlestick charts and global portfolio dividend insights |
 | Watchlist | `/watchlist` | Track tickers you are considering buying |
 | Insights | `/intelligence` | Risk metrics, equity curve, drawdown, forecasting |
 | Deep Dive | `/analytics` | Allocation treemaps, correlation matrix, volatility |
@@ -108,6 +108,3 @@ for details.
 ## License
 
 MIT License © 2026 Vishal Manoj Kumar
-
-## Attribution
-<a href="https://www.flaticon.com/free-icons/stock-exchange" title="stock exchange icons">Stock exchange icons created by Cyber Olympus - Flaticon</a>

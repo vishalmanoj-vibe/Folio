@@ -47,18 +47,6 @@ if not os.environ.get("GEMINI_API_KEY"):
     except Exception as e:
         logger.debug(f"Could not load GEMINI_API_KEY from database: {e}")
 
-if not os.environ.get("GEMINI_API_KEY") and sys.platform == "darwin":
-    try:
-        import keyring
-        key = keyring.get_password("Folio", "gemini_api_key")
-        if key:
-            os.environ["GEMINI_API_KEY"] = key
-            logger.info("Successfully loaded GEMINI_API_KEY from macOS Keychain.")
-        else:
-            logger.info("GEMINI_API_KEY not found in macOS Keychain.")
-    except Exception as e:
-        logger.warning(f"Could not retrieve GEMINI_API_KEY from macOS Keychain: {e}")
-
 import dash
 from dash import html, dcc, Input, Output, State, ALL, ctx
 import webbrowser

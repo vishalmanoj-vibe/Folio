@@ -367,6 +367,7 @@ Forward-looking projections are handled by `prediction_service.py`.
 Unlike standard yield calculations, the app computes **Realized Dividends** by matching historical Ex-Dividend dates against the user's specific holding tranches. 
 - **Logic**: A dividend is "realized" only if the tranche purchase date is strictly before the Ex-Dividend date.
 - **Accuracy**: This provides a dollar-accurate representation of income actually earned, rather than a theoretical annual yield based on current price.
+- **Visualization**: The dashboard displays both ticker-specific dividend trends and global portfolio dividend history directly on the Positions page, providing a consolidated view of income.
 
 ### 4. Intraday Market Sessions (Today View)
 The "Today" P&L view utilizes a dedicated intraday tracking system to provide real-time updates without the limitations of standard daily-interval data.

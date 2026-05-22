@@ -490,11 +490,12 @@ def register_callbacks(app) -> None:
         Output("positions-ticker-dividend-container", "children"),
         Input("positions-selected-ticker", "data"),
         Input("portfolio-store", "data"),
+        Input("theme-store", "data"),
         Input("url", "pathname"),
         State("txn-store", "data"),
         prevent_initial_call=False
     )
-    def render_ticker_dividends(ticker, port_data, url_pathname, txn_data):
+    def render_ticker_dividends(ticker, port_data, theme, url_pathname, txn_data):
         import dash
         if url_pathname.rstrip("/") != "/positions": return dash.no_update
         if not ticker or not port_data or "holdings" not in port_data:
@@ -530,7 +531,7 @@ def register_callbacks(app) -> None:
             hovertemplate="$%{y:.4f}<extra></extra>"
         ))
         
-        theme_tokens = get_theme()
+        theme_tokens = get_theme(theme or "dark")
         from components.charts.helpers import apply_standard_layout
         apply_standard_layout(fig, theme_tokens, height=140, chart_type="line")
         
@@ -569,18 +570,20 @@ def register_callbacks(app) -> None:
 
     # ── 10. Portfolio Dividend Insights ───────────────────────────────────────
     @app.callback(
-        [Output("positions-dividend-income-chart", "children"),
+        [Output("positions-portfolio-dividend-chart-container", "children"),
+         Output("positions-dividend-income-chart", "children"),
          Output("positions-dividend-yield-chart", "children"),
          Output("positions-dividend-table", "children")],
         Input("portfolio-store", "data"),
+        Input("theme-store", "data"),
         Input("url", "pathname"),
         prevent_initial_call=True
     )
-    def render_portfolio_dividend_insights(port_data, url_pathname):
+    def render_portfolio_dividend_insights(port_data, theme, url_pathname):
         import dash
-        if url_pathname.rstrip("/") != "/positions": return [dash.no_update]*3
+        if url_pathname.rstrip("/") != "/positions": return [dash.no_update]*4
         if not port_data or "holdings" not in port_data:
-            return [None]*3
+            return [None]*4
             
         from data.repository import PortfolioRepository
         txn_data = PortfolioRepository().load_transactions()
@@ -637,9 +640,15 @@ def register_callbacks(app) -> None:
                 html.Tbody(rows)
             ], style={"width": "100%", "borderCollapse": "collapse"})
             
+        # 3. Bar Chart
+        t_ = get_theme(theme or "dark")
+        from components.charts.dividend_history import build_portfolio_dividend_chart
+        fig = build_portfolio_dividend_chart(df_full, t_)
+        chart = dcc.Graph(figure=fig, config={"displayModeBar": False})
+        
         # Memory Hygiene
         import gc
         gc.collect()
         
-        return income_rows, yield_rows, table
+        return chart, income_rows, yield_rows, table
 

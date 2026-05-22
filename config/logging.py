@@ -19,10 +19,7 @@ from config.settings import get_data_dir
 DATA_DIR = get_data_dir()
 LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO").upper()
 
-if getattr(sys, 'frozen', False):
-    LOG_FILE = os.path.join(DATA_DIR, "logs", "portfolio.log")
-else:
-    LOG_FILE = os.getenv("LOG_FILE", os.path.join(DATA_DIR, "logs", "portfolio.log"))
+LOG_FILE = os.getenv("LOG_FILE", os.path.join(DATA_DIR, "logs", "portfolio.log"))
 
 LOG_FILE_ENABLED = os.getenv("LOG_FILE_ENABLED", "true").lower() == "true"
 
