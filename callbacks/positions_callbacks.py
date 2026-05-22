@@ -195,8 +195,20 @@ def register_callbacks(app) -> None:
         ticker_buys = df_txn[(df_txn["ticker"] == ticker) & (df_txn["type"] == "buy")]
         h["buy_tranches"] = build_tranches(ticker, ticker_buys)
 
-        pnl = h.get("pnl") or 0.0; pc = GREEN if pnl >= 0 else RED
-        day_pnl = h.get("day_pnl") or 0.0; dc = GREEN if day_pnl >= 0 else RED
+        total_cost = float(h.get("total_cost") or 0.0)
+        total_shares = float(h.get("total_shares") or 0.0)
+        mkt_value = float(h.get("mkt_value") or 0.0)
+        last_price = float(h.get("last_price") or 0.0)
+        pnl = float(h.get("pnl") or 0.0)
+        pnl_pct = float(h.get("pnl_pct") or 0.0)
+        day_pnl = float(h.get("day_pnl") or 0.0)
+        day_chg_pct = float(h.get("day_chg_pct") or 0.0)
+        avg_cost = float(h.get("avg_cost") or 0.0)
+        div_yield = float(h.get("div_yield") or 0.0)
+        annual_div = float(h.get("annual_div") or 0.0)
+
+        pc = GREEN if pnl >= 0 else RED
+        dc = GREEN if day_pnl >= 0 else RED
 
         # Calculate ticker-specific next payment
         _, _, events = calculate_portfolio_dividend_stats([h])
@@ -210,12 +222,12 @@ def register_callbacks(app) -> None:
             next_div_sub = f"{next_e['date'].strftime('%d %b')} ({next_e['type']})"
 
         metrics = [
-            ("Total Invested", f"${h.get('total_cost', 0.0):,.2f}", f"{h.get('total_shares', 0.0):,.2f} units"),
-            ("Market Value", f"${h.get('mkt_value') or h.get('total_cost', 0.0):,.2f}", f"@ ${h.get('last_price', 0.0):,.3f}"),
-            ("Unrealised P&L", f"{'+$' if pnl >= 0 else '-$'}{abs(pnl):,.2f}", f"{h.get('pnl_pct') or 0.0:+.2f}%", pc),
-            ("Today's P&L", f"{'+$' if day_pnl >= 0 else '-$'}{abs(day_pnl):,.2f}", f"{h.get('day_chg_pct') or 0.0:+.2f}%", dc),
-            ("Avg Cost", f"${h['avg_cost']:,.4f}", "VWAP"),
-            ("Div Yield", f"{h.get('div_yield', 0):.2f}%", f"Annual: ${h.get('annual_div', 0):,.2f}"),
+            ("Total Invested", f"${total_cost:,.2f}", f"{total_shares:,.2f} units"),
+            ("Market Value", f"${mkt_value:,.2f}", f"@ ${last_price:,.3f}"),
+            ("Unrealised P&L", f"{'+$' if pnl >= 0 else '-$'}{abs(pnl):,.2f}", f"{pnl_pct:+.2f}%", pc),
+            ("Today's P&L", f"{'+$' if day_pnl >= 0 else '-$'}{abs(day_pnl):,.2f}", f"{day_chg_pct:+.2f}%", dc),
+            ("Avg Cost", f"${avg_cost:,.4f}", "VWAP"),
+            ("Div Yield", f"{div_yield:.2f}%", f"Annual: ${annual_div:,.2f}"),
             ("Next Div", next_div_val, next_div_sub, GREEN if next_e else None),
         ]
 
@@ -517,13 +529,15 @@ def register_callbacks(app) -> None:
             name="Distribution",
             hovertemplate="$%{y:.4f}<extra></extra>"
         ))
+        
+        theme_tokens = get_theme()
+        from components.charts.helpers import apply_standard_layout
+        apply_standard_layout(fig, theme_tokens, height=140, chart_type="line")
+        
         fig.update_layout(
-            height=140,
             margin=dict(l=0, r=0, t=20, b=0),
             xaxis=dict(visible=True, showgrid=False, tickformat="%b %y", tickfont=dict(size=9, color=T_SEC)),
             yaxis=dict(visible=False),
-            paper_bgcolor="rgba(0,0,0,0)",
-            plot_bgcolor="rgba(0,0,0,0)",
         )
         
         # 2. Last 5 Payments Table

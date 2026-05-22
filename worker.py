@@ -18,7 +18,7 @@ import threading
 from datetime import datetime
 import pandas as pd
 
-from data.database import get_connection
+from data.database import get_connection, init_db
 from data.repository import PortfolioRepository, HistoryRepository
 from core.engine import build_holdings
 from services.market.data_fetcher import fetch_live, fetch_benchmarks, fetch_ticker_history
@@ -438,6 +438,9 @@ def poll_tasks():
 def run_worker():
     """Main worker entry point."""
     logger.info("Folio Worker starting up...")
+    
+    # 0. Initialize database schema
+    init_db()
     
     # 1. Initial maintenance (Reset then Prune)
     reset_stale_tasks()

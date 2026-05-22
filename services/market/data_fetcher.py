@@ -618,17 +618,24 @@ def _enrich_single_holding(h: dict, multi_live: pd.DataFrame, multi_period: pd.D
         
         # Try to find the anchor price (Thursday Close)
         anchor_points = pd.Series(dtype=float)
-        if not live_close.empty and isinstance(live_close.index, pd.DatetimeIndex):
+        if not live_close.empty:
             try:
-                if live_close.index.tz is None:
+                if not isinstance(live_close.index, pd.DatetimeIndex):
                     live_close_tz = live_close.copy()
+                    live_close_tz.index = pd.to_datetime(live_close_tz.index)
+                else:
+                    live_close_tz = live_close
+
+                if live_close_tz.index.tz is None:
+                    live_close_tz = live_close_tz.copy()
                     live_close_tz.index = live_close_tz.index.tz_localize("Australia/Sydney")
                 else:
-                    live_close_tz = live_close.tz_convert("Australia/Sydney")
+                    live_close_tz = live_close_tz.tz_convert("Australia/Sydney")
+
                 anchor_points = live_close_tz[live_close_tz.index < effective_start]
             except Exception as e:
-                logger.debug("Failed to calculate anchor points from live data: %s", e)
-            
+                logger.debug("Failed to filter anchor points for %s: %s", ticker_yf, e)
+
         if not anchor_points.empty:
             prev_close = float(anchor_points.iloc[-1])
         elif len(close_f) >= 2:
@@ -644,22 +651,47 @@ def _enrich_single_holding(h: dict, multi_live: pd.DataFrame, multi_period: pd.D
         # 1.5 Determine Session High/Low for the effective session
         effective_points_high = pd.Series(dtype=float)
         effective_points_low  = pd.Series(dtype=float)
-        if not live_high.empty and isinstance(live_high.index, pd.DatetimeIndex):
+
+        if not live_high.empty:
             try:
-                effective_points_high = live_high[(live_high.index >= effective_start) & (live_high.index < effective_start + pd.Timedelta(days=1))]
+                if not isinstance(live_high.index, pd.DatetimeIndex):
+                    live_high_tz = live_high.copy()
+                    live_high_tz.index = pd.to_datetime(live_high_tz.index)
+                else:
+                    live_high_tz = live_high
+
+                if live_high_tz.index.tz is None:
+                    live_high_tz = live_high_tz.copy()
+                    live_high_tz.index = live_high_tz.index.tz_localize("Australia/Sydney")
+                else:
+                    live_high_tz = live_high_tz.tz_convert("Australia/Sydney")
+
+                effective_points_high = live_high_tz[(live_high_tz.index >= effective_start) & (live_high_tz.index < effective_start + pd.Timedelta(days=1))]
             except Exception as e:
-                logger.debug("Failed to slice live_high: %s", e)
-        if not live_low.empty and isinstance(live_low.index, pd.DatetimeIndex):
+                logger.debug("Failed to filter session high for %s: %s", ticker_yf, e)
+
+        if not live_low.empty:
             try:
-                effective_points_low  = live_low[(live_low.index >= effective_start) & (live_low.index < effective_start + pd.Timedelta(days=1))]
+                if not isinstance(live_low.index, pd.DatetimeIndex):
+                    live_low_tz = live_low.copy()
+                    live_low_tz.index = pd.to_datetime(live_low_tz.index)
+                else:
+                    live_low_tz = live_low
+
+                if live_low_tz.index.tz is None:
+                    live_low_tz = live_low_tz.copy()
+                    live_low_tz.index = live_low_tz.index.tz_localize("Australia/Sydney")
+                else:
+                    live_low_tz = live_low_tz.tz_convert("Australia/Sydney")
+
+                effective_points_low = live_low_tz[(live_low_tz.index >= effective_start) & (live_low_tz.index < effective_start + pd.Timedelta(days=1))]
             except Exception as e:
-                logger.debug("Failed to slice live_low: %s", e)
-        
+                logger.debug("Failed to filter session low for %s: %s", ticker_yf, e)
         if not effective_points_high.empty:
             day_high = float(effective_points_high.max())
         else:
             day_high = float(live_high.iloc[-1]) if not live_high.empty else last_price
-            
+
         if not effective_points_low.empty:
             day_low = float(effective_points_low.min())
         else:
@@ -1044,8 +1076,31 @@ def fetch_live(holdings: list[dict], record_snapshots: bool = True) -> tuple[dic
         multi_full = _download_with_retry(missing_history, period="max", actions=True)
         if not multi_full.empty:
             for t_yf in missing_history:
-                # Memory Hygiene: Price history (large) stays in SQLite.
-                # Dividends (small) are cached in RAM for metrics performance.
+                ticker_short = t_yf.split(".")[0]
+                
+                # Extract OHLC and Dividends for SQLite persistence
+                ohlc_cols = ["Open", "High", "Low", "Close", "Volume", "Dividends"]
+                dfs = []
+                for col in ohlc_cols:
+                    s = _extract_col(multi_full, t_yf, col)
+                    if not s.empty:
+                        s.name = col
+                        dfs.append(s)
+                
+                if dfs:
+                    df_combined = pd.concat(dfs, axis=1).dropna(subset=["Close"])
+                    if not df_combined.empty:
+                        df_combined.index = normalise_tz(pd.to_datetime(df_combined.index))
+                        df_combined.index.name = "Date"
+                        records = df_combined.reset_index().to_dict("records")
+                        for r in records:
+                            if isinstance(r["Date"], pd.Timestamp):
+                                r["Date"] = r["Date"].strftime("%Y-%m-%d %H:%M:%S")
+                        
+                        # Save full history to SQLite
+                        repo_hist.save_history(ticker_short, records, period="max")
+                
+                # Cache dividends in RAM for hot path metrics performance
                 div_s = extract_dividends(multi_full, t_yf)
                 if not div_s.empty:
                     div_s = div_s[div_s > 0]

@@ -238,7 +238,14 @@ class HistoryRepository:
                 l = r.get("Low") or r.get("low_price") or r.get("low")
                 c = r.get("Close") or r.get("close_price") or r.get("close")
                 v = r.get("Volume") or r.get("volume")
-                dv = r.get("Dividends") or r.get("dividends") or 0.0
+                
+                # Differentiate between missing and actual 0.0
+                dv = r.get("Dividends")
+                if dv is None:
+                    dv = r.get("dividends")
+                
+                db_dv = dv if dv is not None else 0.0
+                update_dv = dv  # None (NULL) will preserve existing value on conflict COALESCE
                 
                 if not d or c is None:
                     continue
@@ -260,7 +267,7 @@ class HistoryRepository:
                         volume = COALESCE(?, volume),
                         dividends = COALESCE(?, dividends),
                         fetched_at = ?
-                ''', (ticker, d_clean, o, h, l, c, v, dv, now_iso, o, h, l, c, v, dv, now_iso))
+                ''', (ticker, d_clean, o, h, l, c, v, db_dv, now_iso, o, h, l, c, v, update_dv, now_iso))
             
             # 2. Update metadata
             valid_dates = [r.get("Date") or r.get("date") for r in records if (r.get("Date") or r.get("date"))]
@@ -270,15 +277,25 @@ class HistoryRepository:
             first_date = min(valid_dates).split(" ")[0]
             last_date = max(valid_dates).split(" ")[0]
             
-            conn.execute('''
-                INSERT INTO history_meta (ticker, first_date, last_date, last_fetched, period)
-                VALUES (?, ?, ?, ?, ?)
-                ON CONFLICT(ticker) DO UPDATE SET
-                    first_date = CASE WHEN ? < first_date THEN ? ELSE first_date END,
-                    last_date = CASE WHEN ? > last_date THEN ? ELSE last_date END,
-                    last_fetched = ?,
-                    period = COALESCE(?, period)
-            ''', (ticker, first_date, last_date, now_iso, period, first_date, first_date, last_date, last_date, now_iso, period))
+            if period == "5d":
+                conn.execute('''
+                    INSERT INTO history_meta (ticker, first_date, last_date, last_fetched, period)
+                    VALUES (?, ?, ?, ?, ?)
+                    ON CONFLICT(ticker) DO UPDATE SET
+                        first_date = CASE WHEN ? < first_date THEN ? ELSE first_date END,
+                        last_date = CASE WHEN ? > last_date THEN ? ELSE last_date END,
+                        period = COALESCE(period, ?)
+                ''', (ticker, first_date, last_date, None, period, first_date, first_date, last_date, last_date, period))
+            else:
+                conn.execute('''
+                    INSERT INTO history_meta (ticker, first_date, last_date, last_fetched, period)
+                    VALUES (?, ?, ?, ?, ?)
+                    ON CONFLICT(ticker) DO UPDATE SET
+                        first_date = CASE WHEN ? < first_date THEN ? ELSE first_date END,
+                        last_date = CASE WHEN ? > last_date THEN ? ELSE last_date END,
+                        last_fetched = ?,
+                        period = ?
+                ''', (ticker, first_date, last_date, now_iso, period, first_date, first_date, last_date, last_date, now_iso, period))
             
             conn.commit()
         except Exception as e:
@@ -415,6 +432,12 @@ class HistoryRepository:
         # 2. Depth check
         stored_first = meta.get("first_date")
         if not stored_first:
+            return True
+            
+        # If stored period is '5d' but we request a deeper period (e.g., 'max'), it is stale
+        stored_period = meta.get("period")
+        if stored_period == "5d" and requested_period != "5d":
+            logger.info(f"Depth stale for {ticker}: requested {requested_period} but stored period is '5d'.")
             return True
             
         cutoff = get_period_cutoff(requested_period)

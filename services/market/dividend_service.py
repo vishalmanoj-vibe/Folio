@@ -30,15 +30,11 @@ def get_ticker_dividend_data(ticker, ticker_yf):
         from data.repository import HistoryRepository
         db_hist = HistoryRepository().load_history(ticker)
         if not db_hist:
-            df = pd.DataFrame()
-            set_cache(cache_key, df, ttl=DIVIDENDS_CACHE_TTL)
-            return df
+            return pd.DataFrame()
 
         df_db = pd.DataFrame(db_hist)
         if "Dividends" not in df_db.columns:
-            df = pd.DataFrame()
-            set_cache(cache_key, df, ttl=DIVIDENDS_CACHE_TTL)
-            return df
+            return pd.DataFrame()
 
         df_db["Date"] = pd.to_datetime(df_db["Date"])
         df_db = df_db.set_index("Date").sort_index()
@@ -46,9 +42,7 @@ def get_ticker_dividend_data(ticker, ticker_yf):
         # Filter for rows where Dividends > 0
         div_s = df_db[df_db["Dividends"] > 0]["Dividends"]
         if div_s.empty:
-            df = pd.DataFrame()
-            set_cache(cache_key, df, ttl=DIVIDENDS_CACHE_TTL)
-            return df
+            return pd.DataFrame()
 
         div_list = []
         for ex_date, amount in div_s.items():
@@ -63,9 +57,7 @@ def get_ticker_dividend_data(ticker, ticker_yf):
             })
 
         if not div_list:
-            df = pd.DataFrame()
-            set_cache(cache_key, df, ttl=DIVIDENDS_CACHE_TTL)
-            return df
+            return pd.DataFrame()
 
         df = pd.DataFrame(div_list).sort_values("date", ascending=False)
         set_cache(cache_key, df, ttl=DIVIDENDS_CACHE_TTL)
