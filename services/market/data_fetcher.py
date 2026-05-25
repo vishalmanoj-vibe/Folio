@@ -86,7 +86,8 @@ def get_etf_name(ticker: str) -> str:
                 name = info.get("longName") or info.get("shortName") or fallback
                 _NAME_CACHE[cache_key] = (name, now + _NAME_CACHE_TTL)
                 # Persist to SQLite
-                PortfolioRepository().upsert_asset(ticker_upper, name=name)
+                if info.get("longName") or info.get("shortName") or name != ticker_upper:
+                    PortfolioRepository().upsert_asset(ticker_upper, name=name)
                 return name
 
         # 4. Fetch from yfinance (Source)
@@ -111,7 +112,8 @@ def get_etf_name(ticker: str) -> str:
         
         # Update both caches
         _NAME_CACHE[cache_key] = (result, now + _NAME_CACHE_TTL)
-        PortfolioRepository().upsert_asset(ticker_upper, name=result)
+        if info.get("longName") or info.get("shortName") or result != ticker_upper:
+            PortfolioRepository().upsert_asset(ticker_upper, name=result)
         
         return result
     except Exception as e:

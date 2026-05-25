@@ -173,3 +173,14 @@
 - `services/market/data_fetcher.py` — Implemented metadata truncation and compact series caching.
 - `core/cache.py` — Enforced bounded memory caching with automated eviction passes.
 - **History Gating**: Enforced 24h staleness for historical data to eliminate redundant network churn.
+
+## Surgical Edit Rules — NEVER violate these
+
+- NEVER rewrite a file. Only edit the specific function or block that is broken.
+- NEVER change a function signature unless explicitly asked.
+- NEVER remove a function, callback, or import unless explicitly asked.
+- NEVER reorganise imports or reformat code outside the edited block.
+- NEVER rename variables, IDs, or class names.
+- Before editing any file, state exactly which lines you are changing and why.
+- If fixing a bug requires touching more than 2 files, STOP and ask for approval first.
+- After every edit, list what you changed and confirm what you did NOT change.

@@ -118,6 +118,7 @@ NAMES = {
     "IOZ":  "iShares Core ASX 200 ETF",
     "XMET": "BetaShares Energy Transition Metals ETF",
     "QUAL": "VanEck MSCI World Quality ETF",
+    "EMKT": "VanEck MSCI Emerging Markets ETF",
 }
 
 # ── Chart tooltip copy ────────────────────────────────────────────────────────

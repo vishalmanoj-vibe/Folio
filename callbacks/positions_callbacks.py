@@ -64,7 +64,7 @@ def register_callbacks(app) -> None:
         for h in port_data["holdings"]:
             try:
                 ticker = h["ticker"]
-                name = NAMES.get(ticker, ticker)
+                name = h.get("name", NAMES.get(ticker, ticker))
                 pnl = h.get("pnl_pct") or 0.0
                 pnl_cls = "c-pos" if pnl >= 0 else "c-neg"
                 is_selected = ticker == selected_ticker
