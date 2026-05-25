@@ -32,6 +32,7 @@ def get_live_prices(tickers: list[str]) -> dict:
         
         # Check freshness
         needs_refresh = False
+        is_missing = False
         now = datetime.now()
         refresh_limit_sec = REFRESH_INTERVAL / 1000.0
         
@@ -39,6 +40,7 @@ def get_live_prices(tickers: list[str]) -> dict:
             ticker = ticker.upper()
             if ticker not in result:
                 needs_refresh = True
+                is_missing = True
                 break
             
             fetched_at_str = result[ticker].get("fetched_at")
@@ -56,32 +58,34 @@ def get_live_prices(tickers: list[str]) -> dict:
                 break
         
         if needs_refresh:
-            # Synchronous fetch when stale
-            try:
-                from services.market.data_fetcher import fetch_live
-                from data.repository import PortfolioRepository
-                
-                logger.info("Live prices stale, performing synchronous fetch...")
-                repo = PortfolioRepository()
-                txns = repo.load_transactions()
-                from core.engine.portfolio_engine import build_holdings
-                holdings = build_holdings(txns)
-                
-                if holdings:
-                    fetch_live(holdings, record_snapshots=True)
-                    # CRITICAL: Close and reopen connection so WAL-committed data is visible.
-                    # Reusing the same connection returns stale data from the snapshot
-                    # taken at connection-open time, before fetch_live() wrote new records.
-                    conn.close()
-                    conn = get_connection()
-                    cursor = conn.execute(
-                        f"SELECT * FROM market_prices WHERE ticker IN ({placeholders})",
-                        [t.upper() for t in tickers]
-                    )
-                    rows = cursor.fetchall()
-                    result = {row["ticker"]: dict(row) for row in rows}
-            except Exception as e:
-                logger.error(f"Synchronous live price fetch failed: {e}")
+            from services.market.market_status import is_market_open
+            if is_missing or is_market_open(include_auction=True):
+                # Synchronous fetch when stale
+                try:
+                    from services.market.data_fetcher import fetch_live
+                    from data.repository import PortfolioRepository
+                    
+                    logger.info("Live prices stale, performing synchronous fetch...")
+                    repo = PortfolioRepository()
+                    txns = repo.load_transactions()
+                    from core.engine.portfolio_engine import build_holdings
+                    holdings = build_holdings(txns)
+                    
+                    if holdings:
+                        fetch_live(holdings, record_snapshots=True)
+                        # CRITICAL: Close and reopen connection so WAL-committed data is visible.
+                        # Reusing the same connection returns stale data from the snapshot
+                        # taken at connection-open time, before fetch_live() wrote new records.
+                        conn.close()
+                        conn = get_connection()
+                        cursor = conn.execute(
+                            f"SELECT * FROM market_prices WHERE ticker IN ({placeholders})",
+                            [t.upper() for t in tickers]
+                        )
+                        rows = cursor.fetchall()
+                        result = {row["ticker"]: dict(row) for row in rows}
+                except Exception as e:
+                    logger.error(f"Synchronous live price fetch failed: {e}")
         
         # ── Merge with latest OHLC from price_history ──
         # These fields are NOT in market_prices per user rules, so we fetch them here.

@@ -314,6 +314,9 @@ def update_portfolio_store(txn_data, p1, p2, p3, p4, p5, n_price, n_start, n_tri
         logger.info("Onboarding in progress: skipping portfolio live price updates.")
         return dash.no_update
 
+    if ctx.triggered_id == "price-interval" and not is_market_open():
+        return dash.no_update
+
     from data.cache_manager import get_live_prices
     
     # 1. Get tickers from current txn-store
