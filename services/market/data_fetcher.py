@@ -584,13 +584,32 @@ def _enrich_single_holding(h: dict, multi_live: pd.DataFrame, multi_period: pd.D
 
         # 2. Market Metrics
         close_f = get_cache(f"close_series_{ticker_yf}")
-        div_f   = get_cache(f"dividends_{ticker_yf}")
-        
-        if close_f is None or div_f is None:
-            # Fallback for safety - should be rare if fetch_live is working correctly
-            logger.debug(f"Cache miss for {ticker_yf} Close/Div in enrich loop")
-            close_f = pd.Series(dtype=float)
-            div_f = pd.Series(dtype=float)
+        if close_f is None:
+            from data.repository import HistoryRepository
+            close_f = HistoryRepository().load_close_series(h["ticker"])
+            if not close_f.empty:
+                set_cache(f"close_series_{ticker_yf}", close_f, ttl=3600)
+            else:
+                close_f = pd.Series(dtype=float)
+
+        div_f = get_cache(f"dividends_{ticker_yf}")
+        if div_f is None:
+            from data.repository import HistoryRepository
+            db_hist = HistoryRepository().load_history(h["ticker"])
+            if db_hist:
+                df_db = pd.DataFrame(db_hist)
+                if "Dividends" in df_db.columns:
+                    df_db["Date"] = pd.to_datetime(df_db["Date"])
+                    df_db = df_db.set_index("Date").sort_index()
+                    div_f = df_db[df_db["Dividends"] > 0]["Dividends"]
+                    if not div_f.empty:
+                        set_cache(f"dividends_{ticker_yf}", div_f, ttl=604800)
+                    else:
+                        div_f = pd.Series(dtype=float)
+                else:
+                    div_f = pd.Series(dtype=float)
+            else:
+                div_f = pd.Series(dtype=float)
 
         if not close_f.empty:
             close_f.index = normalise_tz(pd.to_datetime(close_f.index))
@@ -699,34 +718,21 @@ def _enrich_single_holding(h: dict, multi_live: pd.DataFrame, multi_period: pd.D
         else:
             day_low = float(live_low.iloc[-1]) if not live_low.empty else last_price
 
-        # 2. Dividends (from RAM cache or SQLite)
-        div_f = get_cache(f"dividends_{ticker_yf}")
-        if div_f is None:
-            # Fallback to SQLite if not in RAM
-            from data.repository import HistoryRepository
-            db_hist = HistoryRepository().load_history(h["ticker"])
-            if db_hist:
-                # Robust extraction: look for any non-zero Dividends in history
-                df_db = pd.DataFrame(db_hist)
-                if "Dividends" in df_db.columns:
-                    df_db["Date"] = pd.to_datetime(df_db["Date"])
-                    df_db = df_db.set_index("Date").sort_index()
-                    # Filter for rows where Dividends > 0
-                    div_f = df_db[df_db["Dividends"] > 0]["Dividends"]
-                    if not div_f.empty:
-                        # Cache it for next time to save DB I/O
-                        set_cache(f"dividends_{ticker_yf}", div_f, ttl=604800)
-                    else:
-                        div_f = pd.Series(dtype=float)
-                else:
-                    div_f = pd.Series(dtype=float)
-            else:
-                div_f = pd.Series(dtype=float)
-
         _pnl      = compute_holding_pnl(h, last_price, prev_close)
         mkt_value = _pnl["mkt_value"]
 
         annual_div, total_div, div_yield = _compute_dividends_bulk(div_f, h["total_shares"], mkt_value)
+        if h.get("total_shares", 0) == 0 and last_price > 0:
+            # For watchlist / synthetic holdings with 0 shares
+            annual_per_share = 0.0
+            if not div_f.empty:
+                div_f_clean = div_f[div_f > 0]
+                if not div_f_clean.empty:
+                    div_f_clean.index = normalise_tz(div_f_clean.index)
+                    cutoff = pd.Timestamp.now() - pd.Timedelta(days=365)
+                    if isinstance(div_f_clean.index, pd.DatetimeIndex):
+                        annual_per_share = float(div_f_clean[div_f_clean.index >= cutoff].sum())
+            div_yield = round((annual_per_share / last_price * 100), 2)
         
         # Realized dividends need tranches for eligibility
         # If tranches are missing (due to memory optimization), load from DB

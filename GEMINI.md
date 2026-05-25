@@ -78,6 +78,7 @@
 - If adding a store: seed it at startup in app.py alongside txn-store
 - Run python app.py to verify — never assume the app still starts
 - **Performance**: Always update `docs/performance/` templates after running performance measurement phases.
+- **Test Code Revision**: If a diagnostic or test script fails to run due to an error, always revise and repair the existing file instead of creating a new one.
 
 ## Do not
 - Never use position: fixed in Dash layouts
