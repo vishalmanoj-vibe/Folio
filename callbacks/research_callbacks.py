@@ -276,7 +276,7 @@ def register_callbacks(app):
     @app.callback(
         Output("research-chat-display", "children"),
         Input("research-chat-store", "data"),
-        prevent_initial_call=False
+        prevent_initial_call=True
     )
     def render_chat(history):
         if not history:
@@ -336,7 +336,7 @@ def register_callbacks(app):
         Output("research-portfolio-summary", "children"),
         Input("portfolio-store", "data"),
         Input("url", "pathname"),
-        prevent_initial_call=False
+        prevent_initial_call=True
     )
     def render_portfolio_summary(portfolio_data, pathname):
         if pathname != AI_ANALYST_PATH:

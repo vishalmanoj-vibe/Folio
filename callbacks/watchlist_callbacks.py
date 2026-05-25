@@ -90,7 +90,7 @@ def register_callbacks(app) -> None:
         Input("url", "pathname"),
         Input("watchlist-selected-ticker", "data"),
         Input("watchlist-signals-store", "data"),
-        prevent_initial_call=False,
+        prevent_initial_call=True,
     )
     def render_watchlist_table(data, pathname, selected_ticker, signals_store):
         # Multi-page safety: only render if on the watchlist page
@@ -355,7 +355,7 @@ def register_callbacks(app) -> None:
         Input("watchlist-selected-ticker", "data"),
         Input("watchlist-store", "data"),
         Input("watchlist-signals-store", "data"),
-        prevent_initial_call=False,
+        prevent_initial_call=True,
     )
     def render_watchlist_stat_cards(selected_ticker, data, signals_store):
         from components.ui_helpers import stat_card

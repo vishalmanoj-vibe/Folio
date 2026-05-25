@@ -120,7 +120,7 @@ def register_callbacks(app):
     @app.callback(
         Output("txn-log", "children"),
         Input("txn-store", "data"),
-        prevent_initial_call=False,   # runs on load
+        prevent_initial_call=True,   # runs on load
     )
     def update_transaction_log(history):
         """Always show latest transactions"""

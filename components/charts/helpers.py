@@ -82,9 +82,13 @@ def build_benchmark_traces(period: str, theme_tokens: dict | None = None, portfo
     cutoff = get_period_cutoff(period)
     traces = []
     
-    # Theme-aware colors
-    b1_color = theme_tokens.get("BENCH_1", "#6B8FCC") if theme_tokens else "#6B8FCC"
-    b2_color = theme_tokens.get("BENCH_2", "#CC8F6B") if theme_tokens else "#CC8F6B"
+    if theme_tokens is None:
+        from config.constants import get_theme
+        theme_tokens = get_theme("dark")
+    
+    b1_color = theme_tokens.get("BENCH_1")
+    b2_color = theme_tokens.get("BENCH_2")
+    t_sec = theme_tokens.get("T_SEC")
     
     styles = {
         "S&P 500": {"color": b1_color, "dash": "dash"},
@@ -108,7 +112,7 @@ def build_benchmark_traces(period: str, theme_tokens: dict | None = None, portfo
             pct_s = ((df["Close"] - base) / base * 100).round(2)
             latest = float(pct_s.iloc[-1])
             sign   = "+" if latest >= 0 else ""
-            style  = styles.get(label, {"color": "#888888", "dash": "dash"})
+            style  = styles.get(label, {"color": t_sec, "dash": "dash"})
 
             traces.append(go.Scatter(
                 x=pct_s.index.strftime("%Y-%m-%d").tolist(),

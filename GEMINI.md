@@ -88,6 +88,7 @@
 - **Theme Context**: All rendering callbacks that generate Plotly charts MUST take `Input("theme-store", "data")` and pass it to `get_theme(theme or "dark")`. Do not call `get_theme()` without arguments to avoid missing positional argument errors.
 - **UI Transitions**: All theme-aware elements (body, cards, nav) MUST have a 200ms CSS transition on `background-color`, `color`, and `border-color` to prevent jarring theme snaps.
 - **Data Freshness**: The header status indicator MUST accurately reflect `is_market_open(include_auction=False)` with a pulsing green dot during trading and a static grey dot otherwise.
+- **Diagnostic/Test Scripts**: All diagnostic, test, benchmark, or throwaway scripts and code MUST be saved exclusively in the `scratch/` folder to prevent codebase clutter and directory pollution.
 
 ## Self-Improvement
 - After every task, evaluate if a new Rule or Skill should be added to the `.agents/` directory to prevent repeating mistakes or to codify successful new patterns.

@@ -28,7 +28,6 @@ INDEX_STRING = '''
                     const theme = JSON.parse(stored);
                     document.documentElement.setAttribute('data-theme', theme);
                     document.body.setAttribute('data-theme', theme);
-                    document.documentElement.style.backgroundColor = theme === 'dark' ? '#0a0a0a' : '#f5f7f7';
                 }
             } catch (e) {}
         })();

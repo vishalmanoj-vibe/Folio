@@ -69,7 +69,7 @@ def register_callbacks(app) -> None:
         Output("stat-cards",     "children"),
         Input("portfolio-store", "data"),
         Input("url", "pathname"),
-        prevent_initial_call=False,
+        prevent_initial_call=True,
     )
     def update_stats(data, url_pathname):
         import dash
@@ -135,7 +135,7 @@ def register_callbacks(app) -> None:
         Input("url", "pathname"),
         State("table-filter",       "value"),
         State("signals-store",      "data"),
-        prevent_initial_call=False,
+        prevent_initial_call=True,
     )
     def update_live_table(data, table_state, url_pathname, filter_query, signals_store):
         import dash

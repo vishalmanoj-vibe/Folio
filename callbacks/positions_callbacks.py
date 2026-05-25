@@ -13,7 +13,7 @@ from config.constants import (
 from components.ui_helpers import stat_card, tech_signal_badges, progress_row, interpolate_color
 from components.charts.helpers import create_empty_fig
 from services.market.dividend_service import calculate_portfolio_dividend_stats, get_ticker_dividend_data
-from services.history_cache import get_latest_histories
+
 import pandas as pd
 
 # ── Plotly layout base ────────────────────────────────────────────────────────
@@ -493,7 +493,7 @@ def register_callbacks(app) -> None:
         Input("theme-store", "data"),
         Input("url", "pathname"),
         State("txn-store", "data"),
-        prevent_initial_call=False
+        prevent_initial_call=True
     )
     def render_ticker_dividends(ticker, port_data, theme, url_pathname, txn_data):
         import dash

@@ -33,7 +33,7 @@ def register_callbacks(app) -> None:
         function(theme) {
             const t = theme || 'dark';
             document.body.setAttribute('data-theme', t);
-            document.documentElement.style.backgroundColor = (t === 'dark') ? '#0a0a0a' : '#ffffff';
+            document.documentElement.setAttribute('data-theme', t);
             return (t === 'dark') ? '☾' : '☀';
         }
         """,
