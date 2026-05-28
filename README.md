@@ -49,6 +49,18 @@ python launcher.py
 
 The database is created automatically on first run. Add your transactions directly from the UI — no CSV or manual setup required.
 
+## Testing
+
+Folio features a comprehensive, high-performance unit testing suite built on `pytest`. All tests execute inside mock-isolated environments, completely decoupled from live external APIs or production SQLite database files:
+
+```bash
+# Run all fast unit tests and generate coverage report
+./scratch/run_tests.sh
+
+# Open the interactive HTML coverage map in your browser
+open htmlcov/index.html
+```
+
 ## AI Features
 
 The AI Assistant and Trading Signal AI overlay both require a Gemini API key. Get one free at [aistudio.google.com](https://aistudio.google.com).

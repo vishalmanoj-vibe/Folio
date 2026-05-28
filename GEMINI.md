@@ -182,6 +182,11 @@
 - **Draggable UI Layout**: Added premium grab handle (`☰`) column. Enabled row `draggable="true"`, custom `data-ticker` attributes, and glassmorphic dragging states in CSS resets.
 - **HTML5 Event Delegation Engine**: Added `assets/drag_drop.js` with document-level event delegation (survives Dash complete DOM refreshes) to reorder row elements locally and notify Python callbacks via a hidden `#watchlist-order-input` dcc.Input component.
 
+### High-Performance Isolated Testing Framework (Complete)
+- **Unified Test Runner**: Implemented `scratch/run_tests.sh` to dynamically handle virtualenv environments, offline pytest triggers, and HTML/XML coverage reporting.
+- **Isolated Mocks**: Developed 9 mock-isolated unit test suites located strictly in `scratch/tests/` evaluating 61 core test cases spanning Repositories, Services, Technical Indicators, and UI callbacks without live network or external database requests.
+- **Quality & Pre-Commit Hooks**: Configured mypy types (`mypy.ini`) and ruff lints to check code structure and format as an automated Git pre-commit barrier.
+
 ## Surgical Edit Rules — NEVER violate these
 
 - NEVER rewrite a file. Only edit the specific function or block that is broken.

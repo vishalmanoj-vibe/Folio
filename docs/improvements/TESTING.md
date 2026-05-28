@@ -1,125 +1,117 @@
-# Testing Guide
+# High-Performance Isolated Testing Guide
 
-## Running Tests
+Folio includes a world-class, automated test and code quality framework. All unit tests run in **completely offline, sandbox-isolated environments** to ensure fast, deterministic, and network-free execution.
 
-This project includes comprehensive unit tests for core modules.
+---
 
-### Setup
+## 🏗️ Core Testing Principles
 
-First, install dependencies:
+1. **Zero-Network Isolation**: No test is allowed to trigger real Yahoo Finance downloads, DuckDuckGo searches, or Google Gemini API requests. Everything is strictly mocked.
+2. **Database Cleanliness**: Tests interact with isolated, fresh in-memory or temporary SQLite databases. The main `portfolio.db` is never read or written to during testing.
+3. **Modern Type Safety**: All files are strictly typed. We use modern, non-deprecated Python 3.9+ type declarations (e.g. standard `list` and `dict` rather than `typing.List` and `typing.Dict`).
+4. **Strict Style Compliance**: Every test suite and application file must pass `ruff` format and lint checks, as well as strict `mypy` static analysis.
 
-```bash
-pip install -r requirements.txt
+---
+
+## 📁 Test Architecture & Layout
+
+All unit tests are organized inside the `scratch/tests/` directory to prevent codebase clutter:
+
+```text
+scratch/
+├── run_tests.sh              # Unified Test Runner
+└── tests/
+    ├── test_ai_engine.py             # Analyst overlay, verdict mapping, client mocks
+    ├── test_chart_components.py     # go.Figure builders (PnL history, allocations, etc.)
+    ├── test_dividend_service.py     # Tranche matching, ex-date eligibility, yield calculations
+    ├── test_repository.py           # SQLite WAL connections, transactions CRUD
+    ├── test_research.py             # Gemini context builder, log pruning, smart searches
+    ├── test_strategy_engine.py       # Deterministic signal scores, flip prevention
+    ├── test_technical_indicators.py  # Pure pandas RSI, MACD, and Bollinger Bands
+    └── test_ui_callbacks.py         # Dash state updates, URL-prioritized page routing
 ```
 
-### Automated Testing Status ⚠️
+### Coverage Overview & Deep-Dives
 
-The automated test suite is currently being refactored to align with the new **SQLite Relational Architecture** and **Single Refresh Owner** pattern. Legacy tests for CSV handlers and older portfolio builders have been decommissioned.
+Our 9 primary test suites cover the core business math, data layers, and visual rendering paths:
 
-**Planned Test Suite:**
-- `test/test_repository.py`: CRUD operations for transactions and asset metadata.
-- `test/test_engine.py`: Aggregation logic and P&L math.
-- `test/test_signals.py`: Technical indicator accuracy and strategy engine scoring.
+| Test Suite | File Path | Focus Area |
+| :--- | :--- | :--- |
+| **Dividend Engine** | `scratch/tests/test_dividend_service.py` | Validates transaction tranche ex-date calculations to prevent "phantom income". |
+| **AI Analyst Engine** | `scratch/tests/test_ai_engine.py` | Tests Gemini response parsing, confidence thresholds, and `VERDICT_MAP` normalization. |
+| **Persistence Repos** | `scratch/tests/test_repository.py` | Tests SQLite setup, WAL concurrent pragmas, transactional rollbacks, and watchlist notes. |
+| **Visual Charts** | `scratch/tests/test_chart_components.py` | Verifies Plotly `go.Figure` structures, theme token variables, and `create_empty_fig` fallback states. |
+| **Research Assistant** | `scratch/tests/test_research.py` | Mocks Gemini context generation, smart web search token triggers, and rolling log summaries. |
+| **Strategy Engine** | `scratch/tests/test_strategy_engine.py` | Checks weighted BUY/SELL/HOLD scores, hysteresis flip preventions, and CGT tranche warnings. |
+| **Technicals Math** | `scratch/tests/test_technical_indicators.py` | Validates custom pandas formulas for RSI (Wilder's), MACD, and Bollinger Bands. |
+| **UI & Callbacks** | `scratch/tests/test_ui_callbacks.py` | Checks metric aggregation cards and prioritized background URL routing protection. |
 
-To run the (pending) new suite:
-```bash
-pytest
-```
+---
 
-### Manual Verification (Core Features)
+## 🚀 Running the Automated Test Suite
 
-For features with complex UI interactions or AI components, follow these manual verification steps to ensure system integrity:
-
-### Run with Coverage Report
-
-```bash
-pytest --cov=. --cov-report=html test/
-```
-
-This generates an HTML coverage report in `htmlcov/index.html`.
-
-1. **SQLite Integrity**:
-   - Add a transaction via the UI (Holdings page transaction form).
-   - Verify it appears in the Holdings table immediately.
-   - Restart the app and verify the transaction persisted in `portfolio.db`.
-
-2. **Technical Indicators & Signals**:
-   - Navigate to the **Positions** page, select a ticker, and click "Generate Signals".
-   - Verify that the signal badge (BUY/SELL/HOLD) and the AI Assistant insight card appear.
-   - Navigate back to the **Holdings** page and verify the "Suggestion" column in the main table matches the signal.
-
-3. **Deep Dive Visualization**:
-   - Navigate to the **Deep Dive** page.
-   - Verify that Treemap charts (Allocation tab) blend seamlessly with the background (no grey canvas).
-   - Toggle between Flat Tickers / Sector / Region and verify hierarchy updates.
-
-4. **Market Status & Intraday**:
-   - Verify the "Market Open/Closed" badge correctly reflects AEST time (taking into account the ASX closing auction until 16:15).
-   - Check the "Today" (1d) chart and verify it displays 5-minute resampled data with no overnight gaps.
-
-6. **Memory Hygiene & Distributed Worker**:
-   - Open a system monitor (e.g., Activity Monitor or `top`).
-   - Run `python launcher.py` and verify the `app.py` process stays around **300-350MB**.
-   - Navigate to the **ETF Details** page for a ticker requiring scraping (e.g., a new ETF).
-   - Verify that the UI displays "Scraping in progress" and that the RAM spike happens in the **worker.py** process, NOT the `app.py` process.
-   - Verify that clicking "Refresh" on a ticker with < 1 year of history does NOT trigger a redundant yfinance call if it was already fetched (Smart Depth check).
-
-7. **Visual Stability**:
-   - Navigate to the **Analytics** page.
-   - Hover over the Normalized Price chart.
-   - Verify that the hover labels appear correctly without any "Error in f-string" console artifacts (Stable Hover Fix).
-
-## Manual Verification (UI Features)
-
-For features with complex UI interactions or AI components, follow these manual verification steps:
-
-### Technical Signals (Insights Page)
-1. Navigate to the **Insights** page.
-2. Verify the Risk metrics cards render correctly.
-3. Verify that the "Forecast" toggle (Prophet) adds the projection line with continuity correction.
-
-### Candlestick Charts (Positions Page)
-1. Navigate to the **Positions** page and select an ETF.
-2. Toggle between different time periods (1mo, 6mo, 1y).
-3. Verify that the Candlestick chart renders correctly for periods > 1d.
-4. Verify that for the **1d** period, the chart gracefully falls back to a Scatter (Line) chart.
-
-### AI Assistant Context (Assistant Page)
-1. Navigate to the **Assistant** page.
-2. Enter a ticker in the research input or use a quick prompt chip.
-3. Verify the AI response incorporates technical status and portfolio context.
-4. Click "Generate Weekly Report" and verify the PDF download starts.
-
-## Future Test Coverage
-1. **test_technical_indicators.py** (Planned): Unit tests for RSI, MACD, and BB math using fixed price series.
-2. **test_period_sync.py** (Planned): Verification of the "Global Max Period" logic in `app.py`.
-
-## Configuration for Testing
-
-Environment variables for tests can be set in `.env`:
+### 1. The Unified Test Runner
+We provide a single, robust bash script that automatically manages virtual environment discovery, pytest execution, and coverage reporting:
 
 ```bash
-LOG_LEVEL=DEBUG  # More verbose logging during tests
-API_MAX_RETRIES=1  # Faster API timeout during tests
+# Run all unit tests and generate coverage metrics
+./scratch/run_tests.sh
 ```
 
-## CI/CD Integration
-
-To add tests to your CI pipeline:
+### 2. Inspecting Code Coverage
+Our test runner generates an interactive HTML coverage map under `htmlcov/`. To inspect exactly which lines of code are covered by the automated suite, open the report in your web browser:
 
 ```bash
-pytest --cov=. --cov-report=xml test/
+# Open the interactive HTML coverage map
+open htmlcov/index.html
 ```
 
-This generates an XML report for integration with GitHub Actions, GitLab CI, etc.
+---
 
-## Troubleshooting
+## 🛡️ Pre-Commit Hook Integration
 
-**Import errors?**
-Make sure you're running pytest from the project root directory.
+To guarantee that no broken, unformatted, or untyped code is ever committed to the repository, Folio uses a Git pre-commit workflow (`.pre-commit-config.yaml`). 
 
-**Tests pass locally but fail in CI?**
-Check that environment variables are properly set in your CI configuration.
+Before any code is successfully committed, the following hooks are automatically executed:
+1. **Ruff Format**: Enforces standard PEP-8 style formatting.
+2. **Ruff Linter**: Performs strict syntax, deprecation, and rule analysis.
+3. **Mypy Static Analysis**: Validates type signatures, return values, and parameters.
 
-**Flaky tests with yfinance?**
-Tests that mock `datetime` may be timezone-sensitive. See `test_market_status.py` for examples of proper mocking.
+### Manual Verification Commands
+
+You can trigger formatting and typing checks manually at any time:
+
+```bash
+# Run style and quality checks on a file
+ruff check scratch/tests/test_ai_engine.py --fix
+ruff format scratch/tests/test_ai_engine.py
+
+# Run static type checks across the codebase
+mypy scratch/tests/test_ai_engine.py
+```
+
+---
+
+## 🔍 Troubleshooting & Edge Cases
+
+### 1. Legacy Type Hints (`typing.List` / `typing.Dict`)
+* **Problem**: `ruff` throws a `UP035` warning regarding legacy uppercase typing references.
+* **Resolution**: Replace legacy `typing.List` and `typing.Dict` with standard `list` and `dict` types.
+
+### 2. Generator Functions and Mypy
+* **Problem**: Mypy throws a return type error on test fixtures: `"The return type of a generator function should be 'Generator' or one of its supertypes"`.
+* **Resolution**: Annotate the yield fixture with `collections.abc.Generator` rather than `-> None`:
+  ```python
+  from collections.abc import Generator
+  import pytest
+
+  @pytest.fixture
+  def temp_db() -> Generator[None, None, None]:
+      # Setup
+      yield
+      # Teardown
+  ```
+
+### 3. Pydantic / GenAI Mock Key Mismatch
+* **Problem**: Mocking `google.genai.Client` throws serialization errors like `KeyError: 'body'`.
+* **Resolution**: Patch the local module-level reference `"services.research_service.genai"` completely inside `test_research.py` to bypass Pydantic construction for type configs, and supply mock dicts containing all required structure keys (`{'title', 'href', 'body'}`).
