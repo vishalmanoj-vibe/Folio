@@ -192,3 +192,9 @@
 - Before editing any file, state exactly which lines you are changing and why.
 - If fixing a bug requires touching more than 2 files, STOP and ask for approval first.
 - After every edit, list what you changed and confirm what you did NOT change.
+
+## Code Quality Rule
+After every file edit, run `ruff check <filename> --fix` 
+and `ruff format <filename>` before considering the task complete.
+Fix any ruff errors before finishing. Never leave unused imports
+or undefined names in edited files.

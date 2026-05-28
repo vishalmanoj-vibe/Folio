@@ -5,6 +5,7 @@ __pycache__/
 .eggs/
 *.egg-info/
 .pytest_cache/
+.mypy_cache/
 .coverage
 htmlcov/
 
@@ -43,7 +44,9 @@ data/*.db*
 !docs/**/*.md
 
 # ── One-off / scratch scripts ─────────────────────────────────────────────────
-scratch/
+scratch/*
+!scratch/tests/
+!scratch/run_tests.sh
 /scripts
 archive/
 test codes/
