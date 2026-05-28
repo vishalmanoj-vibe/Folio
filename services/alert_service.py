@@ -32,22 +32,26 @@ def check_alerts(holdings: list[dict], thresholds: dict | None = None) -> list[d
     # Individual position drawdowns
     for h in holdings:
         if h.get("pnl_pct", 0) <= individual_threshold:
-            alerts.append({
-                "type":    "drawdown",
-                "ticker":  h["ticker"],
-                "message": f"{h['ticker']} down {h['pnl_pct']:.2f}% since purchase",
-            })
+            alerts.append(
+                {
+                    "type": "drawdown",
+                    "ticker": h["ticker"],
+                    "message": f"{h['ticker']} down {h['pnl_pct']:.2f}% since purchase",
+                }
+            )
 
     # Portfolio total drawdown
-    total_cost  = sum(h.get("total_cost", 0) for h in holdings)
-    total_value = sum(h.get("mkt_value",  0) for h in holdings)
+    total_cost = sum(h.get("total_cost", 0) for h in holdings)
+    total_value = sum(h.get("mkt_value", 0) for h in holdings)
 
     if total_cost > 0:
         total_pct = (total_value - total_cost) / total_cost * 100
         if total_pct <= portfolio_threshold:
-            alerts.append({
-                "type":    "portfolio",
-                "message": f"Portfolio down {total_pct:.2f}% overall",
-            })
+            alerts.append(
+                {
+                    "type": "portfolio",
+                    "message": f"Portfolio down {total_pct:.2f}% overall",
+                }
+            )
 
     return alerts

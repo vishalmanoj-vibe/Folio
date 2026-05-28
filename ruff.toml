@@ -1,0 +1,31 @@
+# ruff.toml
+line-length = 100
+
+[lint]
+select = [
+    "E",    # pycodestyle errors
+    "F",    # pyflakes (unused imports, undefined names)
+    "I",    # isort (import ordering)
+    "W",    # pycodestyle warnings
+    "UP",   # pyupgrade
+]
+
+ignore = [
+    "E501",  # line too long — Dash layouts get long, don't fight it
+    "F401",  # unused imports — Dash sometimes needs these for registration
+    "E402",  # module level import not at top — your app.py needs this
+    "E722",  # bare except — allowed for broad dynamic fallbacks
+    "E741",  # ambiguous variable name 'l' — standard in OHLC financial context
+]
+
+exclude = [
+    "scratch/",
+    "scripts/",
+    ".agents/",
+    "docs/",
+]
+
+[lint.per-file-ignores]
+"app.py" = ["E402", "F401"]         # app.py has intentional late imports
+"pages/*.py" = ["F401"]             # page registration needs some unused imports
+"callbacks/*.py" = ["F811"]         # callbacks can have same-name nested functions

@@ -1,10 +1,12 @@
 # services/market/dividend_service.py
 import logging
+
 import pandas as pd
+
 from config.settings import DIVIDENDS_CACHE_TTL
 from core import get_cache, set_cache
-from services.market.data_fetcher import _download_with_retry, extract_dividends
 from core.engine.utils import normalise_tz
+from services.market.data_fetcher import _download_with_retry, extract_dividends
 
 logger = logging.getLogger(__name__)
 
@@ -13,6 +15,7 @@ CONFIRMED_PAY_DATES = {
     ("VHY", "2026-04-01"): "2026-04-20",
     ("IOZ", "2026-04-09"): "2026-04-21",
 }
+
 
 def get_ticker_dividend_data(ticker, ticker_yf):
     """
@@ -28,6 +31,7 @@ def get_ticker_dividend_data(ticker, ticker_yf):
     try:
         logger.debug(f"Loading dividend history from SQLite for {ticker}")
         from data.repository import HistoryRepository
+
         db_hist = HistoryRepository().load_history(ticker)
         if not db_hist:
             return pd.DataFrame()
@@ -38,7 +42,7 @@ def get_ticker_dividend_data(ticker, ticker_yf):
 
         df_db["Date"] = pd.to_datetime(df_db["Date"])
         df_db = df_db.set_index("Date").sort_index()
-        
+
         # Filter for rows where Dividends > 0
         div_s = df_db[df_db["Dividends"] > 0]["Dividends"]
         if div_s.empty:
@@ -48,13 +52,10 @@ def get_ticker_dividend_data(ticker, ticker_yf):
         for ex_date, amount in div_s.items():
             ex_date_str = ex_date.strftime("%Y-%m-%d")
             pay_date = CONFIRMED_PAY_DATES.get((ticker, ex_date_str))
-            
-            div_list.append({
-                "date": ex_date,
-                "pay_date": pay_date,
-                "ticker": ticker,
-                "amount": float(amount)
-            })
+
+            div_list.append(
+                {"date": ex_date, "pay_date": pay_date, "ticker": ticker, "amount": float(amount)}
+            )
 
         if not div_list:
             return pd.DataFrame()
@@ -66,6 +67,7 @@ def get_ticker_dividend_data(ticker, ticker_yf):
         logger.error(f"Failed to load SQLite dividends for {ticker}: {e}")
         return pd.DataFrame()
 
+
 def calculate_portfolio_dividend_stats(holdings):
     """
     Aggregates dividend data from all holdings.
@@ -76,10 +78,11 @@ def calculate_portfolio_dividend_stats(holdings):
         ticker = h["ticker"]
         ticker_yf = h["ticker_yf"]
         tranches = h.get("buy_tranches", [])
-        
+
         df = get_ticker_dividend_data(ticker, ticker_yf)
-        if df.empty: continue
-        
+        if df.empty:
+            continue
+
         # Calculate eligibility and totals based on tranches
         for _, row in df.iterrows():
             ex_date = row["date"]
@@ -90,71 +93,93 @@ def calculate_portfolio_dividend_stats(holdings):
                 # Fallback pay_date if it matches last dividend metadata
                 if not pay_date and h.get("last_div_date") == ex_date.strftime("%Y-%m-%d"):
                     pay_date = h.get("payout_date")
-                    
-                all_divs.append({
-                    "date": ex_date,
-                    "pay_date": pay_date,
-                    "ticker": ticker,
-                    "amount": row["amount"],
-                    "total": row["amount"] * held_on_date,
-                    "shares": held_on_date
-                })
 
-    df_full = pd.DataFrame(all_divs).sort_values("date", ascending=False) if all_divs else pd.DataFrame()
-    
+                all_divs.append(
+                    {
+                        "date": ex_date,
+                        "pay_date": pay_date,
+                        "ticker": ticker,
+                        "amount": row["amount"],
+                        "total": row["amount"] * held_on_date,
+                        "shares": held_on_date,
+                    }
+                )
+
+    df_full = (
+        pd.DataFrame(all_divs).sort_values("date", ascending=False) if all_divs else pd.DataFrame()
+    )
+
     # KPI Stats
     total_realized = df_full["total"].sum() if not df_full.empty else 0
     annual_est = sum(h.get("annual_div", 0) for h in holdings)
     port_total_val = sum(h.get("mkt_value") or 0 for h in holdings)
     port_yield = (annual_est / port_total_val * 100) if port_total_val else 0
-    
+
     stats = {
         "annual_income": annual_est,
         "portfolio_yield": port_yield,
-        "total_realized": total_realized
+        "total_realized": total_realized,
     }
-    
+
     # Events (Calendar)
     today = pd.Timestamp.now().floor("D")
     events = []
-    f_map = {"Monthly": 1, "Quarterly": 3, "Semi-Annual": 6, "Biannual": 6, "Annual": 12, "Unknown": 3}
-    
+    f_map = {
+        "Monthly": 1,
+        "Quarterly": 3,
+        "Semi-Annual": 6,
+        "Biannual": 6,
+        "Annual": 12,
+        "Unknown": 3,
+    }
+
     for h in holdings:
         payout_dt = h.get("payout_date")
         next_ex_dt = h.get("next_div_date")
-        
+
         if payout_dt:
-            events.append({
-                "ticker": h["ticker"], "date": pd.to_datetime(payout_dt),
-                "amount": h.get("last_div_amount", 0),
-                "total": h.get("last_div_amount", 0) * h["total_shares"],
-                "type": "PAYMENT"
-            })
+            events.append(
+                {
+                    "ticker": h["ticker"],
+                    "date": pd.to_datetime(payout_dt),
+                    "amount": h.get("last_div_amount", 0),
+                    "total": h.get("last_div_amount", 0) * h["total_shares"],
+                    "type": "PAYMENT",
+                }
+            )
         elif next_ex_dt:
-            events.append({
-                "ticker": h["ticker"], "date": pd.to_datetime(next_ex_dt),
-                "amount": h.get("last_div_amount", 0),
-                "total": h.get("last_div_amount", 0) * h["total_shares"],
-                "type": "EX-DATE"
-            })
+            events.append(
+                {
+                    "ticker": h["ticker"],
+                    "date": pd.to_datetime(next_ex_dt),
+                    "amount": h.get("last_div_amount", 0),
+                    "total": h.get("last_div_amount", 0) * h["total_shares"],
+                    "type": "EX-DATE",
+                }
+            )
         else:
             last_dt = h.get("last_div_date")
             if last_dt:
-                next_ex = pd.to_datetime(last_dt) + pd.DateOffset(months=f_map.get(h.get("div_frequency"), 3))
+                next_ex = pd.to_datetime(last_dt) + pd.DateOffset(
+                    months=f_map.get(h.get("div_frequency"), 3)
+                )
                 while next_ex < today:
                     next_ex += pd.DateOffset(months=f_map.get(h.get("div_frequency"), 3))
-                
-                events.append({
-                    "ticker": h["ticker"], "date": next_ex,
-                    "amount": h.get("last_div_amount", 0),
-                    "total": h.get("last_div_amount", 0) * h["total_shares"],
-                    "type": "ESTIMATED"
-                })
-    
+
+                events.append(
+                    {
+                        "ticker": h["ticker"],
+                        "date": next_ex,
+                        "amount": h.get("last_div_amount", 0),
+                        "total": h.get("last_div_amount", 0) * h["total_shares"],
+                        "type": "ESTIMATED",
+                    }
+                )
+
     events = sorted(events, key=lambda x: x["date"])
-    
+
     # Find next payment info
     next_payment = next((e for e in events if e["date"] >= today), None)
     stats["next_payment"] = next_payment
-    
+
     return df_full, stats, events

@@ -15,9 +15,9 @@ Pages
 
 Responsiveness fix (Instant Load + Background Refresh)
 --------------------------------------------------
-To ensure a premium "Day 1" experience, the server does NOT perform blocking 
+To ensure a premium "Day 1" experience, the server does NOT perform blocking
 yfinance fetches on startup. Instead:
-1. Stores (portfolio-store, txn-store, watchlist-store) are seeded with 
+1. Stores (portfolio-store, txn-store, watchlist-store) are seeded with
    persistent disk snapshots (load_portfolio_snapshot).
 2. The UI paints immediately (under 1s) with cached data.
 3. A 'startup-interval' fires 1.5s after load to trigger the first live fetch.
@@ -26,20 +26,25 @@ yfinance fetches on startup. Instead:
 
 # Setup logging first
 from config.logging import setup_logging
+
 setup_logging()
 
 import logging
+
 logger = logging.getLogger(__name__)
 
 import os
 import sys
+
 from dotenv import load_dotenv
+
 load_dotenv()
 
 # Darwin Keychain / Database key loading
 if not os.environ.get("GEMINI_API_KEY"):
     try:
         from data.repository import PortfolioRepository
+
         db_key = PortfolioRepository().get_gemini_api_key()
         if db_key:
             os.environ["GEMINI_API_KEY"] = db_key
@@ -47,35 +52,35 @@ if not os.environ.get("GEMINI_API_KEY"):
     except Exception as e:
         logger.debug(f"Could not load GEMINI_API_KEY from database: {e}")
 
-import dash
-from dash import html, dcc, Input, Output, State, ALL, ctx
-import webbrowser
-import threading
 import os
-import sys
 import signal
+import threading
 import time
+import webbrowser
 from datetime import datetime
 
-from components.portfolio_layout import INDEX_STRING
-from data.repository import PortfolioRepository
-from core.validators import validate_transaction
-from config.settings import REFRESH_INTERVAL
-from data.watchlist_repository import WatchlistRepository
-from services.market.market_status import is_market_open
+import dash
+from dash import ALL, Input, Output, State, ctx, dcc, html
+
+import callbacks.alert_callbacks as alerts
+import callbacks.chart_callbacks as charts
+import callbacks.intelligence_callbacks as intell_cb
 
 # Callback modules
-import callbacks.portfolio_callbacks      as portfolio
-import callbacks.transaction_callbacks    as txn
-import callbacks.chart_callbacks          as charts
-import callbacks.alert_callbacks          as alerts
-import callbacks.ui_callbacks             as ui
-import callbacks.intelligence_callbacks   as intell_cb
-import callbacks.positions_callbacks      as positions_cb
-import callbacks.watchlist_callbacks      as watchlist_cb
-import callbacks.research_callbacks  as research_cb
-import callbacks.signals_callbacks        as signals_cb
-import callbacks.setup_callbacks           as setup_cb
+import callbacks.portfolio_callbacks as portfolio
+import callbacks.positions_callbacks as positions_cb
+import callbacks.research_callbacks as research_cb
+import callbacks.setup_callbacks as setup_cb
+import callbacks.signals_callbacks as signals_cb
+import callbacks.transaction_callbacks as txn
+import callbacks.ui_callbacks as ui
+import callbacks.watchlist_callbacks as watchlist_cb
+from components.portfolio_layout import INDEX_STRING
+from config.settings import REFRESH_INTERVAL
+from core.validators import validate_transaction
+from data.repository import PortfolioRepository
+from data.watchlist_repository import WatchlistRepository
+from services.market.market_status import is_market_open
 
 # ── Initial data load ─────────────────────────────────────────────────────────
 repo = PortfolioRepository()
@@ -89,9 +94,10 @@ except Exception as e:
     logger.error(f"\nERROR loading database:\n{e}\n")
 
 from core.engine import build_holdings
+from services.history_cache import set_histories
 from services.market.data_fetcher import load_portfolio_snapshot
 from services.market.session_cache import clear_old_caches
-from services.history_cache import set_histories
+
 # Maintenance is now deferred to worker tasks
 INITIAL_HOLDINGS = build_holdings(INITIAL_HISTORY, include_tranches=False)
 INITIAL_PORTFOLIO_DATA: dict = load_portfolio_snapshot(INITIAL_HOLDINGS)
@@ -105,11 +111,19 @@ INITIAL_WATCHLIST_DATA = {}
 if INITIAL_WATCHLIST:
     try:
         watchlist_holdings = [
-            {"ticker": i["ticker"], "ticker_yf": i["ticker"] + ".AX", "total_shares": 0, "avg_cost": 0, "total_cost": 0, "buy_tranches": []}
+            {
+                "ticker": i["ticker"],
+                "ticker_yf": i["ticker"] + ".AX",
+                "total_shares": 0,
+                "avg_cost": 0,
+                "total_cost": 0,
+                "buy_tranches": [],
+            }
             for i in INITIAL_WATCHLIST
         ]
         # Fast load from disk cache - zero network calls
         from data.repository import HistoryRepository
+
         h_repo = HistoryRepository()
         disk_histories = {}
         for item in INITIAL_WATCHLIST:
@@ -121,11 +135,11 @@ if INITIAL_WATCHLIST:
         # Initialize with disk data; the background interval will populate live prices
         INITIAL_WATCHLIST_DATA = {
             "holdings": [{"ticker": h["ticker"], "last_price": 0.0} for h in watchlist_holdings],
-            "fetched_at": "Loading..."
+            "fetched_at": "Loading...",
         }
         if disk_histories:
             set_histories("startup_watchlist", disk_histories)
-        
+
         # Heavy bulk refresh removed from global scope to save memory.
         # It will be triggered by the startup-interval via task queue.
         logger.info(f"Watchlist seeded from cache ({len(disk_histories)} tickers)")
@@ -167,16 +181,24 @@ app.layout = dmc.MantineProvider(
     children=html.Div(
         [
             dcc.Location(id="url", refresh=False),
-            dcc.Store(id="setup-is-first-run-store", data=(not repo.is_onboarding_completed()), storage_type="session"),
-            dcc.Store(id="txn-store",       data=INITIAL_HISTORY),
-            dcc.Store(id="portfolio-store",     data=INITIAL_PORTFOLIO_DATA),
-            dcc.Store(id="watchlist-store",     data=INITIAL_WATCHLIST_DATA),
+            dcc.Store(
+                id="setup-is-first-run-store",
+                data=(not repo.is_onboarding_completed()),
+                storage_type="session",
+            ),
+            dcc.Store(id="txn-store", data=INITIAL_HISTORY),
+            dcc.Store(id="portfolio-store", data=INITIAL_PORTFOLIO_DATA),
+            dcc.Store(id="watchlist-store", data=INITIAL_WATCHLIST_DATA),
             dcc.Store(id="alerts-store"),
-            dcc.Store(id="signals-store",           data={}, storage_type="local"),
+            dcc.Store(id="signals-store", data={}, storage_type="local"),
             dcc.Store(id="watchlist-signals-store", data={}, storage_type="local"),
-            dcc.Store(id="theme-store",          data="dark", storage_type='local'),
-            dcc.Store(id="compact-mode-store",   data=True),
-            dcc.Store(id="folio-table-state-v3",   data={"search": "", "sort_col": "ticker", "sort_dir": "asc"}, storage_type='session'),
+            dcc.Store(id="theme-store", data="dark", storage_type="local"),
+            dcc.Store(id="compact-mode-store", data=True),
+            dcc.Store(
+                id="folio-table-state-v3",
+                data={"search": "", "sort_col": "ticker", "sort_dir": "asc"},
+                storage_type="session",
+            ),
             dcc.Interval(id="live-interval", interval=30000, n_intervals=0),
             dcc.Interval(id="heartbeat-interval", interval=30000, n_intervals=0),
             dcc.Interval(id="price-interval", interval=300000, n_intervals=0),
@@ -185,54 +207,50 @@ app.layout = dmc.MantineProvider(
             dcc.Store(id="nav-link-store"),
             dcc.Store(id="refresh-trigger-store", data=0),
             dcc.Store(id="pending-tasks-store", data=[], storage_type="session"),
-            dcc.Store(id="ai-pending-tasks-store", data={}, storage_type="session"), # {task_id: message_index}
-            dcc.Store(id="benchmark-pending-store", data=None, storage_type="session"), # task_id
-
+            dcc.Store(
+                id="ai-pending-tasks-store", data={}, storage_type="session"
+            ),  # {task_id: message_index}
+            dcc.Store(id="benchmark-pending-store", data=None, storage_type="session"),  # task_id
             # ── Picker Stores (Session persistence) ────────────────────────────────
-            dcc.Store(id="period-store",           data="max",    storage_type='session'),
-            dcc.Store(id="pnl-mode-store",         data="pct",  storage_type='session'),
-            dcc.Store(id="ticker-store",           data="Portfolio", storage_type='session'),
-            dcc.Store(id="treemap-mode-store",     data="sector", storage_type='session'),
-            dcc.Store(id="analytics-period-store", data="1mo",    storage_type='session'),
-            dcc.Store(id="intel-period-store",     data="3mo",    storage_type='session'),
-            dcc.Store(id="intel-pred-store",       data=False,    storage_type='session'),
-            dcc.Store(id="positions-selected-ticker", data=None, storage_type='session'),
-            dcc.Store(id="positions-period-store", data="3mo", storage_type='session'),
-            dcc.Store(id="watchlist-selected-ticker", data=None, storage_type='session'),
-            dcc.Store(id="watchlist-period-store", data="1y", storage_type='session'),
-            dcc.Store(id="research-chat-store", data=[], 
-                      storage_type="memory"),
-            dcc.Store(id="research-ticker-store", data="", 
-                      storage_type="memory"),
+            dcc.Store(id="period-store", data="max", storage_type="session"),
+            dcc.Store(id="pnl-mode-store", data="pct", storage_type="session"),
+            dcc.Store(id="ticker-store", data="Portfolio", storage_type="session"),
+            dcc.Store(id="treemap-mode-store", data="sector", storage_type="session"),
+            dcc.Store(id="analytics-period-store", data="1mo", storage_type="session"),
+            dcc.Store(id="intel-period-store", data="3mo", storage_type="session"),
+            dcc.Store(id="intel-pred-store", data=False, storage_type="session"),
+            dcc.Store(id="positions-selected-ticker", data=None, storage_type="session"),
+            dcc.Store(id="positions-period-store", data="3mo", storage_type="session"),
+            dcc.Store(id="watchlist-selected-ticker", data=None, storage_type="session"),
+            dcc.Store(id="watchlist-period-store", data="1y", storage_type="session"),
+            dcc.Store(id="research-chat-store", data=[], storage_type="memory"),
+            dcc.Store(id="research-ticker-store", data="", storage_type="memory"),
             dcc.Store(
                 id="research-usage-store",
                 data={"count": 0, "reset_date": ""},
                 storage_type="local",
             ),
-            
             # Global Navigation
             create_header(),
-            
             # Page Content with Loading Indicator
             dash.page_container,
-            
             # Dummy target for clientside redirect guards
             html.Div(id="dummy-redirect-output", style={"display": "none"}),
         ],
         className="app-container",
-    )
+    ),
 )
-
 
 
 # Note: _perform_refresh and direct fetch_live calls have been moved to worker.py.
 
+
 # ── SINGLE OWNER: txn-store ───────────────────────────────────────────────────
 @app.callback(
     Output("txn-store", "data", allow_duplicate=True),
-    Input("startup-interval",      "n_intervals"),
-    Input("txn-submit",           "n_clicks"),
-    State("txn-type",             "value"),
+    Input("startup-interval", "n_intervals"),
+    Input("txn-submit", "n_clicks"),
+    State("txn-type", "value"),
     State("txn-ticker", "value"),
     State("txn-shares", "value"),
     State("txn-price", "value"),
@@ -246,7 +264,11 @@ def update_txn_store(n_startup, n_submit, t_type, ticker, shares, price, date_st
         if not all([t_type, ticker, shares is not None, price is not None, date_str]):
             return dash.no_update
         # Format date for CSV
-        d_val = date_str.strftime("%Y-%m-%d") if hasattr(date_str, 'strftime') else str(date_str).strip()
+        d_val = (
+            date_str.strftime("%Y-%m-%d")
+            if hasattr(date_str, "strftime")
+            else str(date_str).strip()
+        )
         new_txn = {
             "type": str(t_type).lower(),
             "ticker": str(ticker).upper(),
@@ -257,8 +279,9 @@ def update_txn_store(n_startup, n_submit, t_type, ticker, shares, price, date_st
         valid, _ = validate_transaction(new_txn)
         if valid:
             updated = repo.append_transaction(new_txn)
-            
+
             from core import _cache
+
             # Clear all market data caches to force fresh fetch across all periods
             keys_to_clear = [k for k in _cache.keys() if k.startswith("market_data_")]
             for k in keys_to_clear:
@@ -270,9 +293,12 @@ def update_txn_store(n_startup, n_submit, t_type, ticker, shares, price, date_st
             # OLD share count, so portfolio-store gets wrong data and other pages don't update.
             try:
                 from data.database import get_connection
+
                 _conn = get_connection()
                 try:
-                    _conn.execute("DELETE FROM market_prices WHERE ticker = ?", (new_txn["ticker"],))
+                    _conn.execute(
+                        "DELETE FROM market_prices WHERE ticker = ?", (new_txn["ticker"],)
+                    )
                     _conn.commit()
                 finally:
                     _conn.close()
@@ -281,11 +307,12 @@ def update_txn_store(n_startup, n_submit, t_type, ticker, shares, price, date_st
 
             # Enqueue a background task to refresh live prices immediately
             from data.database import enqueue_task
+
             enqueue_task("refresh_portfolio", priority=1)
-                
+
             return updated
         return dash.no_update
-    
+
     # Otherwise periodic/manual sync from storage
     return repo.load_transactions()
 
@@ -293,15 +320,15 @@ def update_txn_store(n_startup, n_submit, t_type, ticker, shares, price, date_st
 # ── SINGLE OWNER: portfolio-store ─────────────────────────────────────────────
 @app.callback(
     Output("portfolio-store", "data", allow_duplicate=True),
-    Input("txn-store",              "data"),
-    Input("period-store",           "data"),
+    Input("txn-store", "data"),
+    Input("period-store", "data"),
     Input("analytics-period-store", "data"),
     Input("positions-period-store", "data"),
-    Input("intel-period-store",     "data"),
+    Input("intel-period-store", "data"),
     Input("watchlist-period-store", "data"),
-    Input("price-interval",         "n_intervals"),
-    Input("startup-interval",       "n_intervals"),
-    Input("refresh-trigger-store",  "data"),
+    Input("price-interval", "n_intervals"),
+    Input("startup-interval", "n_intervals"),
+    Input("refresh-trigger-store", "data"),
     State("url", "pathname"),
     prevent_initial_call=True,
 )
@@ -318,11 +345,11 @@ def update_portfolio_store(txn_data, p1, p2, p3, p4, p5, n_price, n_start, n_tri
         return dash.no_update
 
     from data.cache_manager import get_live_prices
-    
+
     # 1. Get tickers from current txn-store
     holdings = build_holdings(txn_data, include_tranches=False)
     tickers = [h["ticker"] for h in holdings]
-    
+
     if not tickers:
         return {"holdings": [], "fetched_at": datetime.now().strftime("%H:%M:%S")}
 
@@ -330,13 +357,13 @@ def update_portfolio_store(txn_data, p1, p2, p3, p4, p5, n_price, n_start, n_tri
         # 2. Read from SQLite (Centralized cache)
         # get_live_prices is now the single source of truth for the Dash process
         prices = get_live_prices(tickers)
-        
+
         # Merge holdings with live price metrics
         enriched = []
         for h in holdings:
             p = prices.get(h["ticker"], {})
             enriched.append({**h, **p})
-            
+
         fetched_at = "Unknown"
         if enriched and "fetched_at" in enriched[0]:
             fetched_at = enriched[0]["fetched_at"]
@@ -346,42 +373,83 @@ def update_portfolio_store(txn_data, p1, p2, p3, p4, p5, n_price, n_start, n_tri
                     dt = datetime.fromisoformat(str(fetched_at))
                     fetched_at = dt.strftime("%H:%M:%S")
                 else:
-                    fetched_at = str(fetched_at)[:8] # Already formatted or truncated
+                    fetched_at = str(fetched_at)[:8]  # Already formatted or truncated
             except:
                 pass
 
-        res = {
-            "holdings": enriched,
-            "fetched_at": fetched_at
-        }
+        res = {"holdings": enriched, "fetched_at": fetched_at}
         # Final cleanup
         import gc
+
         gc.collect()
         return res
     except Exception as e:
         logger.error(f"Portfolio store update failed: {e}")
         return dash.no_update
 
+
 # ── Global Picker Syncing (UI -> Store) ──────────────────────────────────────
 # These callbacks ensure that user interactions with UI components are persisted
 # to global stores, which then drive the data fetching engine.
-@app.callback(Output("period-store", "data"), Input("period-picker", "value"), State("period-store", "data"), prevent_initial_call=True)
-def sync_p1(v, current): return v if v and v != current else dash.no_update
+@app.callback(
+    Output("period-store", "data"),
+    Input("period-picker", "value"),
+    State("period-store", "data"),
+    prevent_initial_call=True,
+)
+def sync_p1(v, current):
+    return v if v and v != current else dash.no_update
 
-@app.callback(Output("pnl-mode-store", "data"), Input("pnl-mode", "value"), State("pnl-mode-store", "data"), prevent_initial_call=True)
-def sync_mode(v, current): return v if v and v != current else dash.no_update
 
-@app.callback(Output("ticker-store", "data"), Input("ticker-selector", "value"), State("ticker-store", "data"), prevent_initial_call=True)
-def sync_tk(v, current): return v if v and v != current else dash.no_update
+@app.callback(
+    Output("pnl-mode-store", "data"),
+    Input("pnl-mode", "value"),
+    State("pnl-mode-store", "data"),
+    prevent_initial_call=True,
+)
+def sync_mode(v, current):
+    return v if v and v != current else dash.no_update
 
-@app.callback(Output("treemap-mode-store", "data"), Input("treemap-mode", "value"), State("treemap-mode-store", "data"), prevent_initial_call=True)
-def sync_tree(v, current): return v if v and v != current else dash.no_update
 
-@app.callback(Output("analytics-period-store", "data"), Input("analytics-period-picker", "value"), State("analytics-period-store", "data"), prevent_initial_call=True)
-def sync_p2(v, current): return v if v and v != current else dash.no_update
+@app.callback(
+    Output("ticker-store", "data"),
+    Input("ticker-selector", "value"),
+    State("ticker-store", "data"),
+    prevent_initial_call=True,
+)
+def sync_tk(v, current):
+    return v if v and v != current else dash.no_update
 
-@app.callback(Output("intel-period-store", "data"), Input("intel-period-picker", "value"), State("intel-period-store", "data"), prevent_initial_call=True)
-def sync_p3(v, current): return v if v and v != current else dash.no_update
+
+@app.callback(
+    Output("treemap-mode-store", "data"),
+    Input("treemap-mode", "value"),
+    State("treemap-mode-store", "data"),
+    prevent_initial_call=True,
+)
+def sync_tree(v, current):
+    return v if v and v != current else dash.no_update
+
+
+@app.callback(
+    Output("analytics-period-store", "data"),
+    Input("analytics-period-picker", "value"),
+    State("analytics-period-store", "data"),
+    prevent_initial_call=True,
+)
+def sync_p2(v, current):
+    return v if v and v != current else dash.no_update
+
+
+@app.callback(
+    Output("intel-period-store", "data"),
+    Input("intel-period-picker", "value"),
+    State("intel-period-store", "data"),
+    prevent_initial_call=True,
+)
+def sync_p3(v, current):
+    return v if v and v != current else dash.no_update
+
 
 # ── Initialization Syncing (Store -> UI on load) ──────────────────────────────
 # We use Clientside Callbacks to break circular dependencies.
@@ -392,13 +460,13 @@ for picker_id, store_id in [
     ("ticker-selector", "ticker-store"),
     ("treemap-mode", "treemap-mode-store"),
     ("analytics-period-picker", "analytics-period-store"),
-    ("intel-period-picker", "intel-period-store")
+    ("intel-period-picker", "intel-period-store"),
 ]:
     app.clientside_callback(
         "function(s, p) { return (s && s !== p) ? s : window.dash_clientside.no_update; }",
         Output(picker_id, "value"),
         Input(store_id, "data"),
-        State(picker_id, "value")
+        State(picker_id, "value"),
     )
 
 
@@ -412,10 +480,6 @@ def sync_pred(v):
         return dash.no_update, dash.no_update
     label = "Forecast ON" if v else "Forecast"
     return v, label
-
-
-
-
 
 
 # ── Register Callbacks ────────────────────────────────────────────────────────
@@ -441,23 +505,28 @@ def trigger_startup_maintenance_callback(n):
     if n == 1:
         if repo.is_onboarding_completed():
             from data.database import enqueue_task
+
             enqueue_task("maintenance", {"gemini_api_key": os.getenv("GEMINI_API_KEY")})
             logger.info("Enqueued background maintenance task (Cache cleanup + Watchlist refresh)")
         else:
             logger.info("Onboarding in progress: skipping startup maintenance task.")
     return dash.no_update
 
+
 @app.callback(
     Output("pending-tasks-store", "data", allow_duplicate=True),
     Input("startup-interval", "n_intervals"),
     State("pending-tasks-store", "data"),
-    prevent_initial_call=True
+    prevent_initial_call=True,
 )
 def hydrate_pending_tasks(n, pending):
     from data.database import get_connection
+
     conn = get_connection()
     try:
-        rows = conn.execute("SELECT task_id, task_type FROM worker_tasks WHERE status IN ('pending', 'running')").fetchall()
+        rows = conn.execute(
+            "SELECT task_id, task_type FROM worker_tasks WHERE status IN ('pending', 'running')"
+        ).fetchall()
         new_pending = pending or []
         existing_ids = {t["id"] for t in new_pending}
         for r in rows:
@@ -470,6 +539,7 @@ def hydrate_pending_tasks(n, pending):
     finally:
         conn.close()
     return dash.no_update
+
 
 # ── Render Performance Optimizations ──────────────────────────────────────────
 app.clientside_callback(
@@ -488,8 +558,8 @@ app.clientside_callback(
 def open_browser():
     """
     Automatically opens the dashboard in the default browser.
-    On macOS (darwin), it forces the use of Safari to ensure consistent 
-    rendering of premium CSS effects (like glassmorphism and backdrop-filters) 
+    On macOS (darwin), it forces the use of Safari to ensure consistent
+    rendering of premium CSS effects (like glassmorphism and backdrop-filters)
     which are highly optimized in WebKit.
     """
     if os.getenv("FOLIO_HEADLESS") == "1":
@@ -506,14 +576,14 @@ def open_browser():
 def close_browser():
     """
     Attempts to close the dashboard tab on shutdown.
-    Uses AppleScript (osascript) to find and close any Safari tabs 
-    pointing to the local dashboard URL. This prevents tab bloat 
+    Uses AppleScript (osascript) to find and close any Safari tabs
+    pointing to the local dashboard URL. This prevents tab bloat
     during development.
     """
     if sys.platform == "darwin":
         logger.info("\n  Shutting down... closing browser tabs.")
         # Target both 127.0.0.1 and localhost in Safari
-        cmd_safari = "osascript -e 'tell application \"Safari\" to close (every tab of every window whose URL contains \"127.0.0.1:8050\" or URL contains \"localhost:8050\")' 2>/dev/null"
+        cmd_safari = 'osascript -e \'tell application "Safari" to close (every tab of every window whose URL contains "127.0.0.1:8050" or URL contains "localhost:8050")\' 2>/dev/null'
         os.system(cmd_safari)
 
 
@@ -522,8 +592,8 @@ app.clientside_callback(
     """
     function(p1, p2, p3) {
         // Enable interval if any store has data
-        const hasPending = (p1 && p1.length > 0) || 
-                          (p2 && Object.keys(p2).length > 0) || 
+        const hasPending = (p1 && p1.length > 0) ||
+                          (p2 && Object.keys(p2).length > 0) ||
                           (p3 !== null && p3 !== undefined);
         return !hasPending; // returns disabled=true if NOT pending
     }
@@ -544,12 +614,13 @@ def handle_exit(sig, frame):
 # ── Run ───────────────────────────────────────────────────────────────────────
 if __name__ == "__main__":
     from config.settings import DB_PATH
-    print(f"  Holdings:        http://127.0.0.1:8050/")
-    print(f"  Positions:       http://127.0.0.1:8050/positions")
-    print(f"  Watchlist:       http://127.0.0.1:8050/watchlist")
-    print(f"  Insights:        http://127.0.0.1:8050/intelligence")
-    print(f"  Deep Dive:       http://127.0.0.1:8050/analytics")
-    print(f"  Assistant:       http://127.0.0.1:8050/ai-analyst\n")
+
+    print("  Holdings:        http://127.0.0.1:8050/")
+    print("  Positions:       http://127.0.0.1:8050/positions")
+    print("  Watchlist:       http://127.0.0.1:8050/watchlist")
+    print("  Insights:        http://127.0.0.1:8050/intelligence")
+    print("  Deep Dive:       http://127.0.0.1:8050/analytics")
+    print("  Assistant:       http://127.0.0.1:8050/ai-analyst\n")
 
     # Register signals
     signal.signal(signal.SIGINT, handle_exit)

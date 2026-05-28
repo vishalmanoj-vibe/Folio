@@ -1,9 +1,11 @@
-import os
-import json
 import hashlib
+import json
 import logging
+import os
 import re
+
 import google.genai as genai
+
 from core.cache import get_cache, set_cache
 
 logger = logging.getLogger(__name__)
@@ -19,7 +21,7 @@ Return ONLY valid JSON in this exact format:
   "TICKER": {
     "explanation": "...",
     "risks": ["...", "..."],
-    "verdict": "Reasonable" 
+    "verdict": "Reasonable"
   }
 }
 """
@@ -38,8 +40,9 @@ TONE_MAP = {
     "buy this stock": "this stock shows positive indicators",
     "sell this stock": "this stock shows negative indicators",
     "good time to buy": "favorable entry point structurally",
-    "good time to sell": "favorable exit point structurally"
+    "good time to sell": "favorable exit point structurally",
 }
+
 
 def _safe_parse(response_text: str) -> dict:
     try:
@@ -53,6 +56,7 @@ def _safe_parse(response_text: str) -> dict:
                 pass
         raise ValueError("Failed to parse AI response into JSON")
 
+
 def _sanitize_tone(text: str) -> str:
     if not text:
         return text
@@ -63,25 +67,27 @@ def _sanitize_tone(text: str) -> str:
             text = pattern.sub(good_phrase, text)
     return text
 
+
 def _normalize_ai_response(ai_dict: dict) -> dict:
     normalized = {}
     for ticker, data in ai_dict.items():
         if not isinstance(data, dict):
             continue
-            
+
         verdict = data.get("verdict", "Mixed")
         if verdict not in VERDICT_MAP:
             verdict = "Mixed"
-            
+
         exp = _sanitize_tone(data.get("explanation", ""))
         risks = [_sanitize_tone(r) for r in data.get("risks", [])]
-        
+
         normalized[ticker] = {
             "explanation": exp,
             "risks": risks,
-            "verdict": VERDICT_MAP.get(verdict, "Mixed")
+            "verdict": VERDICT_MAP.get(verdict, "Mixed"),
         }
     return normalized
+
 
 def analyze_signals(signals_dict: dict) -> dict:
     api_key = os.getenv("GEMINI_API_KEY")
@@ -94,47 +100,44 @@ def analyze_signals(signals_dict: dict) -> dict:
 
     filtered_signals = {}
     ai_insights = {}
-    
+
     for ticker, sig_data in signals_dict.items():
         score = sig_data.get("score", 0.0)
         is_forced = sig_data.get("hysteresis_forced", False)
-        
+
         if abs(score) < 0.4:
             ai_insights[ticker] = {
                 "explanation": "No AI analysis (low conviction signal).",
                 "risks": [],
-                "verdict": "Mixed"
+                "verdict": "Mixed",
             }
             continue
-            
+
         clean_signal = {
             "signal": sig_data.get("signal"),
             "score": sig_data.get("score"),
             "indicators": sig_data.get("indicators", {}),
-            "is_mechanical_hold": is_forced
+            "is_mechanical_hold": is_forced,
         }
         filtered_signals[ticker] = clean_signal
-        
+
     if not filtered_signals:
         return ai_insights
-        
+
     # Build a stable cache key using only the signal and a rounded score to prevent
     # minor live price fluctuations from busting the cache and causing redundant API calls.
     stable_signals = {
-        ticker: {
-            "signal": data["signal"],
-            "score": round(data["score"], 1)
-        }
+        ticker: {"signal": data["signal"], "score": round(data["score"], 1)}
         for ticker, data in filtered_signals.items()
     }
     normalized_json = json.dumps(stable_signals, sort_keys=True)
     cache_key = "ai_signal_" + hashlib.md5(normalized_json.encode()).hexdigest()
-    
+
     cached = get_cache(cache_key)
     if cached:
         ai_insights.update(cached)
         return ai_insights
-        
+
     client = genai.Client(api_key=api_key)
     prompt = f"""
 You are a conservative long-term investment analyst.
@@ -162,7 +165,7 @@ Return ONLY valid JSON in this format:
   }}
 }}
 """
-    
+
     try:
         response = client.models.generate_content(
             model="models/gemini-2.5-flash-lite",
@@ -170,21 +173,21 @@ Return ONLY valid JSON in this format:
             config=genai.types.GenerateContentConfig(
                 system_instruction=SYSTEM_PROMPT,
                 temperature=0.2,
-            )
+            ),
         )
-        
+
         if not response or not getattr(response, "text", None):
             raise ValueError("Empty AI response")
-            
+
         logger.debug(f"Raw AI response for {list(filtered_signals.keys())}: {response.text}")
         raw_output = _safe_parse(response.text)
         logger.debug(f"Parsed AI output: {raw_output}")
         normalized_output = _normalize_ai_response(raw_output)
-        
+
         set_cache(cache_key, normalized_output, ttl=86400)
-        
+
         ai_insights.update(normalized_output)
-        
+
     except Exception as e:
         logger.error(f"Failed to analyze signals via AI: {e}")
         for ticker in filtered_signals:
@@ -192,7 +195,7 @@ Return ONLY valid JSON in this format:
                 ai_insights[ticker] = {
                     "explanation": "AI analysis unavailable",
                     "risks": [],
-                    "verdict": "Mixed"
+                    "verdict": "Mixed",
                 }
-            
+
     return ai_insights

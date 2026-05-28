@@ -5,18 +5,20 @@ callbacks/transaction_callbacks.py
 Clean transaction callbacks with reliable history refresh.
 """
 
-from dash import Input, Output, State, html
-import dash
-from datetime import datetime
-
-from core.validators import validate_transaction
-from components.ui_helpers import txn_table
-
 import logging
 import math
+from datetime import datetime
+
+import dash
+from dash import Input, Output, State, html
+
+from components.ui_helpers import txn_table
+from core.validators import validate_transaction
+
 logger = logging.getLogger(__name__)
-from services.market.data_fetcher import get_etf_name, get_ticker_cached
 from data.database import get_connection
+from services.market.data_fetcher import get_etf_name, get_ticker_cached
+
 
 def register_callbacks(app):
     """
@@ -33,25 +35,27 @@ def register_callbacks(app):
     def discover_ticker(ticker):
         if not ticker or len(ticker.strip()) == 0:
             return "", dash.no_update
-        
+
         ticker = ticker.strip().upper()
         if len(ticker) < 2:
             return "", dash.no_update
-        
+
         try:
             # 1. Get Name (Uses multi-layer cache)
             name = get_etf_name(ticker)
-            
+
             # 2. Get Price from SQLite (Read-only, zero network)
             conn = get_connection()
             price = None
             try:
-                row = conn.execute("SELECT last_price FROM market_prices WHERE ticker = ?", (ticker,)).fetchone()
+                row = conn.execute(
+                    "SELECT last_price FROM market_prices WHERE ticker = ?", (ticker,)
+                ).fetchone()
                 if row:
                     price = row["last_price"]
             finally:
                 conn.close()
-                
+
             # 3. If NOT in cache, perform a targeted live fetch
             if not price:
                 try:
@@ -70,7 +74,6 @@ def register_callbacks(app):
             if ticker and len(ticker) > 2:
                 logger.debug(f"Discovery failed for {ticker}: {e}")
             return "", dash.no_update
-
 
     @app.callback(
         Output("txn-msg", "children"),
@@ -93,7 +96,7 @@ def register_callbacks(app):
             return "❌ Please fill all fields", {"color": "var(--red)"}, dash.no_update
 
         # Handle both string and date object (DMC may return either)
-        if hasattr(date_str, 'strftime'):
+        if hasattr(date_str, "strftime"):
             formatted_date = date_str.strftime("%Y-%m-%d")
         else:
             formatted_date = str(date_str).strip()
@@ -111,21 +114,21 @@ def register_callbacks(app):
             # FIX: use CSS token instead of hardcoded hex
             return f"❌ {error_msg}", {"color": "var(--red)"}, dash.no_update
 
-        success_msg = f"✅ Added {new_txn['type'].upper()} {new_txn['shares']:.2f} {new_txn['ticker']}"
+        success_msg = (
+            f"✅ Added {new_txn['type'].upper()} {new_txn['shares']:.2f} {new_txn['ticker']}"
+        )
         # FIX: use CSS token instead of hardcoded hex
         return success_msg, {"color": "var(--green)"}, True
-
 
     # Refresh transaction history table whenever txn-store changes
     @app.callback(
         Output("txn-log", "children"),
         Input("txn-store", "data"),
-        prevent_initial_call=True,   # runs on load
+        prevent_initial_call=True,  # runs on load
     )
     def update_transaction_log(history):
         """Always show latest transactions"""
         return txn_table(history or [])
-
 
     # Auto-clear message after ~60 seconds
     @app.callback(

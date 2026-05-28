@@ -15,13 +15,14 @@ Tier 3 – Unknown      : DDGS URL discovery + Playwright fallback
 """
 
 import io
-import re
 import json
 import logging
-import requests
-import pandas as pd
-from bs4 import BeautifulSoup
+import re
 from datetime import datetime
+
+import pandas as pd
+import requests
+from bs4 import BeautifulSoup
 
 from data.database import get_connection
 from services.intelligence_service import _get_cached_metadata, _save_metadata
@@ -61,13 +62,13 @@ _HEADERS = {
 
 # ── Throttle helpers ──────────────────────────────────────────────────────────
 
+
 def _check_throttle(ticker: str) -> bool:
     """Returns True if we should SKIP fetching due to recent failure."""
     conn = get_connection()
     try:
         cur = conn.execute(
-            "SELECT last_attempt FROM etf_holdings_attempts WHERE ticker = ?",
-            (ticker,)
+            "SELECT last_attempt FROM etf_holdings_attempts WHERE ticker = ?", (ticker,)
         )
         row = cur.fetchone()
         if not row:
@@ -90,7 +91,7 @@ def _record_attempt(ticker: str, error: str = None):
             last_attempt = CURRENT_TIMESTAMP,
             last_error = excluded.last_error
             """,
-            (ticker, error)
+            (ticker, error),
         )
         conn.commit()
     finally:
@@ -100,15 +101,14 @@ def _record_attempt(ticker: str, error: str = None):
 def _clear_throttle(ticker: str):
     conn = get_connection()
     try:
-        conn.execute(
-            "DELETE FROM etf_holdings_attempts WHERE ticker = ?", (ticker,)
-        )
+        conn.execute("DELETE FROM etf_holdings_attempts WHERE ticker = ?", (ticker,))
         conn.commit()
     finally:
         conn.close()
 
 
 # ── Normalisation ─────────────────────────────────────────────────────────────
+
 
 def _normalize_holdings(raw_dict: dict) -> dict:
     """Ensures holdings sum correctly, truncates small items into 'Other'."""
@@ -144,6 +144,7 @@ def _normalize_holdings(raw_dict: dict) -> dict:
 
 # ── Sector/Geo helpers ────────────────────────────────────────────────────────
 
+
 def _save_sector_geo_from_holdings(
     ticker_yf: str,
     sector_map: dict[str, float],
@@ -173,6 +174,7 @@ def _aggregate_weights(col_data: list[tuple[str, float]]) -> dict[str, float]:
 
 
 # ── Provider: BetaShares ──────────────────────────────────────────────────────
+
 
 def _fetch_betashares(ticker: str, url: str) -> tuple[dict, dict, dict]:
     """
@@ -236,6 +238,7 @@ def _fetch_betashares(ticker: str, url: str) -> tuple[dict, dict, dict]:
 
 # ── Provider: Global X ────────────────────────────────────────────────────────
 
+
 def _fetch_globalx(ticker: str, url: str) -> tuple[dict, dict, dict]:
     """
     Scrapes the Global X ETF fund page.
@@ -258,7 +261,9 @@ def _fetch_globalx(ticker: str, url: str) -> tuple[dict, dict, dict]:
             # Identify Global X table by its specific header pattern
             if len(header_cells) < 2:
                 continue
-            if "Net Assets" not in header_cells[0] and "Net Assets" not in " ".join(header_cells[:3]):
+            if "Net Assets" not in header_cells[0] and "Net Assets" not in " ".join(
+                header_cells[:3]
+            ):
                 continue
 
             holdings: dict[str, float] = {}
@@ -287,6 +292,7 @@ def _fetch_globalx(ticker: str, url: str) -> tuple[dict, dict, dict]:
 
 # ── Provider: BlackRock (iShares) ─────────────────────────────────────────────
 
+
 def _fetch_blackrock(ticker: str, url: str) -> tuple[dict, dict, dict]:
     """
     2-step BlackRock scrape:
@@ -303,8 +309,7 @@ def _fetch_blackrock(ticker: str, url: str) -> tuple[dict, dict, dict]:
 
         # Extract the holdings CSV AJAX path from the "Download Holdings" anchor
         csv_match = re.search(
-            r'href="(/au/products/\d+/fund/(\d+)\.ajax\?fileType=csv[^"]*)"',
-            r.text
+            r'href="(/au/products/\d+/fund/(\d+)\.ajax\?fileType=csv[^"]*)"', r.text
         )
         if not csv_match:
             logger.debug(f"[{ticker}] BlackRock: No CSV link found in product page.")
@@ -342,19 +347,17 @@ def _fetch_blackrock(ticker: str, url: str) -> tuple[dict, dict, dict]:
         df.columns = [c.strip() for c in df.columns]
         col_map = {c.lower(): c for c in df.columns}
 
-        name_col = next(
-            (col_map[k] for k in ["name"] if k in col_map), None
-        )
+        name_col = next((col_map[k] for k in ["name"] if k in col_map), None)
         weight_col = next(
             (col_map[k] for k in ["weight (%)", "weight(%)", "weight"] if k in col_map), None
         )
         sector_col = col_map.get("sector")
-        loc_col = next(
-            (col_map[k] for k in ["location"] if k in col_map), None
-        )
+        loc_col = next((col_map[k] for k in ["location"] if k in col_map), None)
 
         if not name_col or not weight_col:
-            logger.debug(f"[{ticker}] BlackRock: Could not identify Name/Weight columns. Cols: {list(df.columns)}")
+            logger.debug(
+                f"[{ticker}] BlackRock: Could not identify Name/Weight columns. Cols: {list(df.columns)}"
+            )
             return {}, {}, {}
 
         holdings: dict[str, float] = {}
@@ -404,6 +407,7 @@ def _fetch_blackrock(ticker: str, url: str) -> tuple[dict, dict, dict]:
 
 # ── Provider: VanEck ─────────────────────────────────────────────────────────
 
+
 def _fetch_vaneck(ticker: str, url: str) -> tuple[dict, dict, dict]:
     """
     2-step VanEck scrape:
@@ -420,7 +424,7 @@ def _fetch_vaneck(ticker: str, url: str) -> tuple[dict, dict, dict]:
 
         api_match = re.search(
             r'"contentUrl":\s*"(https://www\.vaneck\.com\.au/Main/FundDatasetBlock/Get/[^"]+)"',
-            r.text
+            r.text,
         )
         if not api_match:
             logger.debug(f"[{ticker}] VanEck: No JSON-LD contentUrl found.")
@@ -482,6 +486,7 @@ def _fetch_vaneck(ticker: str, url: str) -> tuple[dict, dict, dict]:
 
 # ── Provider: Vanguard (Playwright SPA) ───────────────────────────────────────
 
+
 def _fetch_vanguard_playwright(ticker: str, url: str) -> tuple[dict, dict, dict]:
     """
     Vanguard AU uses an Angular SPA. Instead of parsing the top-10 rendered table,
@@ -506,7 +511,8 @@ def _fetch_vanguard_playwright(ticker: str, url: str) -> tuple[dict, dict, dict]
     sectors: list[tuple[str, float]] = []
     geos: list[tuple[str, float]] = []
 
-    import tempfile, os
+    import os
+    import tempfile
 
     with sync_playwright() as p:
         browser = p.webkit.launch(headless=True)
@@ -543,7 +549,9 @@ def _fetch_vanguard_playwright(ticker: str, url: str) -> tuple[dict, dict, dict]
                         header_row = i
                         break
                 if header_row is None:
-                    logger.debug(f"[{ticker}] Vanguard: Could not find 'Holding Name' row in Excel.")
+                    logger.debug(
+                        f"[{ticker}] Vanguard: Could not find 'Holding Name' row in Excel."
+                    )
                     return {}, {}, {}
                 df = pd.read_excel(tmp_path, engine="openpyxl", header=header_row)
                 df.columns = [str(c).strip() for c in df.columns]
@@ -562,7 +570,9 @@ def _fetch_vanguard_playwright(ticker: str, url: str) -> tuple[dict, dict, dict]
             country_col = next((col_map[k] for k in col_map if "country" in k), None)
 
             if not name_col or not weight_col:
-                logger.debug(f"[{ticker}] Vanguard: Could not find Name/Weight cols. Cols={list(df.columns)}")
+                logger.debug(
+                    f"[{ticker}] Vanguard: Could not find Name/Weight cols. Cols={list(df.columns)}"
+                )
                 return {}, {}, {}
 
             for _, row in df.iterrows():
@@ -594,12 +604,7 @@ def _fetch_vanguard_playwright(ticker: str, url: str) -> tuple[dict, dict, dict]
     return holdings, _aggregate_weights(sectors), _aggregate_weights(geos)
 
 
-
-
 # ── Provider: Unknown — DDGS + Playwright fallback ────────────────────────────
-
-
-
 
 
 def _discover_url_ddgs(ticker: str) -> str:
@@ -607,11 +612,11 @@ def _discover_url_ddgs(ticker: str) -> str:
     try:
         logger.debug(f"[{ticker}] DDGS URL discovery...")
         from ddgs import DDGS
+
         with DDGS() as ddgs:
-            results = list(ddgs.text(
-                f"{ticker} ETF portfolio holdings site:com.au OR site:com",
-                max_results=5
-            ))
+            results = list(
+                ddgs.text(f"{ticker} ETF portfolio holdings site:com.au OR site:com", max_results=5)
+            )
             for res in results:
                 href = res.get("href", "")
                 if any(kw in href.lower() for kw in ["holdings", "portfolio", "fund"]):
@@ -652,12 +657,20 @@ def _fetch_playwright_generic(ticker: str, url: str) -> tuple[dict, dict, dict]:
                     continue
                 headers = [th.text.strip().lower() for th in rows[0].find_all(["th", "td"])]
                 name_idx = next(
-                    (i for i, h in enumerate(headers) if any(x in h for x in ["name", "security", "holding", "issuer"])),
-                    -1
+                    (
+                        i
+                        for i, h in enumerate(headers)
+                        if any(x in h for x in ["name", "security", "holding", "issuer"])
+                    ),
+                    -1,
                 )
                 weight_idx = next(
-                    (i for i, h in enumerate(headers) if any(x in h for x in ["weight", "%", "portfolio"])),
-                    -1
+                    (
+                        i
+                        for i, h in enumerate(headers)
+                        if any(x in h for x in ["weight", "%", "portfolio"])
+                    ),
+                    -1,
                 )
                 if name_idx == -1 or weight_idx == -1:
                     continue
@@ -689,6 +702,7 @@ def _fetch_playwright_generic(ticker: str, url: str) -> tuple[dict, dict, dict]:
 
 # ── Provider detection ────────────────────────────────────────────────────────
 
+
 def _detect_provider(url: str) -> str:
     """Identify provider from URL."""
     if not url:
@@ -711,6 +725,7 @@ def _detect_provider(url: str) -> str:
 
 # ── User-managed URL store ────────────────────────────────────────────────────
 
+
 def save_user_url(ticker: str, url: str) -> None:
     """
     Persist a user-provided fund page URL for a ticker.
@@ -726,16 +741,14 @@ def save_user_url(ticker: str, url: str) -> None:
             VALUES (?, ?, CURRENT_TIMESTAMP)
             ON CONFLICT(ticker) DO UPDATE SET url = excluded.url, updated_at = CURRENT_TIMESTAMP
             """,
-            (ticker, url.strip())
+            (ticker, url.strip()),
         )
         # Clear holdings cache so fresh scrape is triggered
         conn.execute(
             "DELETE FROM etf_metadata WHERE ticker = ? AND meta_type = 'holdings'",
-            (ticker + ".AX",)
+            (ticker + ".AX",),
         )
-        conn.execute(
-            "DELETE FROM etf_holdings_attempts WHERE ticker = ?", (ticker,)
-        )
+        conn.execute("DELETE FROM etf_holdings_attempts WHERE ticker = ?", (ticker,))
         conn.commit()
         logger.info(f"[{ticker}] User URL saved: {url}")
     finally:
@@ -759,15 +772,14 @@ def get_all_user_urls() -> dict[str, str]:
     """Return all user-provided ticker→URL mappings."""
     conn = get_connection()
     try:
-        rows = conn.execute(
-            "SELECT ticker, url FROM etf_holdings_urls ORDER BY ticker"
-        ).fetchall()
+        rows = conn.execute("SELECT ticker, url FROM etf_holdings_urls ORDER BY ticker").fetchall()
         return {r["ticker"]: r["url"] for r in rows}
     finally:
         conn.close()
 
 
 # ── Main entry point ──────────────────────────────────────────────────────────
+
 
 def fetch_holdings(ticker: str, allow_scrape: bool = False) -> dict:
     """
@@ -796,14 +808,15 @@ def fetch_holdings(ticker: str, allow_scrape: bool = False) -> dict:
     # 3. If from Dash (allow_scrape=False), enqueue task and return empty
     if not allow_scrape:
         from data.database import enqueue_task, get_connection
+
         conn = get_connection()
         try:
             # Check if already enqueued
             row = conn.execute(
                 "SELECT task_id FROM worker_tasks WHERE task_type = 'scrape_holdings' AND status IN ('pending', 'running') AND payload LIKE ?",
-                (f'%"{ticker_short}"%',)
+                (f'%"{ticker_short}"%',),
             ).fetchone()
-            
+
             if not row:
                 logger.info(f"[{ticker_short}] Enqueueing background holdings scrape.")
                 enqueue_task("scrape_holdings", {"ticker": ticker_short}, priority=6)

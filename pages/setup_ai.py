@@ -7,10 +7,11 @@ Route: /setup/ai
 """
 
 import dash
-from dash import html, dcc
 import dash_mantine_components as dmc
+from dash import dcc, html
 
 dash.register_page(__name__, path="/setup/ai", title="Folio — AI Setup")
+
 
 def layout() -> html.Div:
     return html.Div(
@@ -21,21 +22,28 @@ def layout() -> html.Div:
                     # Step indicators
                     html.Div(
                         [
-                            html.Div([html.Span("✓", className="setup-step-num"), "Portfolio"], className="setup-step completed"),
-                            html.Div([html.Span("2", className="setup-step-num"), "AI Analyst"], className="setup-step active"),
-                            html.Div([html.Span("3", className="setup-step-num"), "Ready"], className="setup-step"),
+                            html.Div(
+                                [html.Span("✓", className="setup-step-num"), "Portfolio"],
+                                className="setup-step completed",
+                            ),
+                            html.Div(
+                                [html.Span("2", className="setup-step-num"), "AI Analyst"],
+                                className="setup-step active",
+                            ),
+                            html.Div(
+                                [html.Span("3", className="setup-step-num"), "Ready"],
+                                className="setup-step",
+                            ),
                         ],
-                        className="setup-steps-header"
+                        className="setup-steps-header",
                     ),
-
                     # Title & Description
                     html.H1("Enable AI features (optional)", className="setup-title"),
                     html.P(
                         "Supercharge your portfolio strategy with an integrated AI investment analyst powered by Gemini. "
                         "This enables deep market explanations and custom risk evaluations.",
-                        className="setup-subtitle"
+                        className="setup-subtitle",
                     ),
-
                     # AI Key configuration container
                     html.Div(
                         [
@@ -47,35 +55,34 @@ def layout() -> html.Div:
                                             html.Span("🔍", className="setup-ai-feature-icon"),
                                             html.Div(
                                                 "<strong>Portfolio Insights:</strong> Explains complex technical indicators (RSI, MACD) and highlights key buy/sell/hold thresholds.",
-                                                className="setup-ai-feature-text"
-                                            )
+                                                className="setup-ai-feature-text",
+                                            ),
                                         ],
-                                        className="setup-ai-feature-item"
+                                        className="setup-ai-feature-item",
                                     ),
                                     html.Div(
                                         [
                                             html.Span("💬", className="setup-ai-feature-icon"),
                                             html.Div(
                                                 "<strong>Interactive Analyst Chat:</strong> Ask questions, run scenario tests, and research historical ETF metrics using live data.",
-                                                className="setup-ai-feature-text"
-                                            )
+                                                className="setup-ai-feature-text",
+                                            ),
                                         ],
-                                        className="setup-ai-feature-item"
+                                        className="setup-ai-feature-item",
                                     ),
                                     html.Div(
                                         [
                                             html.Span("🛡️", className="setup-ai-feature-icon"),
                                             html.Div(
                                                 "<strong>Secure Storage:</strong> Credentials are stored directly in your native macOS Keychain using hardware-level security.",
-                                                className="setup-ai-feature-text"
-                                            )
+                                                className="setup-ai-feature-text",
+                                            ),
                                         ],
-                                        className="setup-ai-feature-item"
-                                    )
+                                        className="setup-ai-feature-item",
+                                    ),
                                 ],
-                                className="setup-ai-features-list"
+                                className="setup-ai-features-list",
                             ),
-
                             # Gemini Key Input field
                             html.Div(
                                 [
@@ -85,12 +92,11 @@ def layout() -> html.Div:
                                         type="password",
                                         placeholder="Enter your Gemini API Key (AI_...) or Google AI Studio key",
                                         className="setup-row-input",
-                                        style={"width": "100%"}
-                                    )
+                                        style={"width": "100%"},
+                                    ),
                                 ],
-                                style={"marginBottom": "24px"}
+                                style={"marginBottom": "24px"},
                             ),
-
                             # Action buttons row
                             html.Div(
                                 [
@@ -98,7 +104,7 @@ def layout() -> html.Div:
                                         "Back",
                                         id="setup-ai-back-btn",
                                         className="setup-btn-secondary",
-                                        type="button"
+                                        type="button",
                                     ),
                                     html.Div(
                                         [
@@ -107,29 +113,28 @@ def layout() -> html.Div:
                                                 id="setup-ai-skip-btn",
                                                 className="setup-btn-secondary",
                                                 type="button",
-                                                style={"marginRight": "8px"}
+                                                style={"marginRight": "8px"},
                                             ),
                                             html.Button(
                                                 "Save & Continue",
                                                 id="setup-ai-save-btn",
                                                 className="setup-btn-primary",
-                                                type="button"
-                                            )
+                                                type="button",
+                                            ),
                                         ],
-                                        style={"display": "flex"}
-                                    )
+                                        style={"display": "flex"},
+                                    ),
                                 ],
-                                className="setup-actions-row"
+                                className="setup-actions-row",
                             ),
-
                             # Feedback / Errors
-                            html.Div(id="setup-ai-feedback", className="setup-feedback")
+                            html.Div(id="setup-ai-feedback", className="setup-feedback"),
                         ],
-                        id="setup-ai-container"
-                    )
+                        id="setup-ai-container",
+                    ),
                 ],
-                className="setup-card"
-            )
+                className="setup-card",
+            ),
         ],
-        className="setup-root"
+        className="setup-root",
     )

@@ -1,16 +1,20 @@
 import base64
-import os
-import logging
 import json
+import logging
+import os
 from datetime import datetime
-from dash import Input, Output, State, ctx, html, no_update
+
 import dash
-from services.research_service import get_ai_response, build_portfolio_context
-from services.research_memory import (
-    append_turn, load_conversation_log,
-    load_memory_summary, check_memory_size
-)
+from dash import Input, Output, State, ctx, html, no_update
+
 from data.database import enqueue_task, get_connection
+from services.research_memory import (
+    append_turn,
+    check_memory_size,
+    load_conversation_log,
+    load_memory_summary,
+)
+from services.research_service import build_portfolio_context, get_ai_response
 
 logger = logging.getLogger(__name__)
 
@@ -25,7 +29,7 @@ def register_callbacks(app):
         Input("url", "pathname"),
         State("portfolio-store", "data"),
         State("research-chat-store", "data"),
-        prevent_initial_call=True
+        prevent_initial_call=True,
     )
     def init_research_chat(pathname, portfolio_data, current_history):
         if pathname != AI_ANALYST_PATH:
@@ -52,16 +56,14 @@ def register_callbacks(app):
         recent_count = len(recent_log)
         if recent_count > 0:
             memory_note += (
-                f"\n\nI also have {recent_count} recent message(s) "
-                f"from the last 7 days in memory."
+                f"\n\nI also have {recent_count} recent message(s) from the last 7 days in memory."
             )
 
         welcome_msg = (
             f"Hi! I've loaded your portfolio — {n} holdings worth "
             f"${total_val:,.0f}. Ask me about your positions, or type "
             f"a ticker on the left to research it. You can also click "
-            f"**Generate Weekly Report** below to create a PDF summary."
-            + memory_note
+            f"**Generate Weekly Report** below to create a PDF summary." + memory_note
         )
 
         return [{"role": "assistant", "content": welcome_msg}]
@@ -88,46 +90,90 @@ def register_callbacks(app):
         State("research-ticker-store", "data"),
         State("research-usage-store", "data"),
         State("ai-pending-tasks-store", "data"),
-        prevent_initial_call=True
+        prevent_initial_call=True,
     )
-    def send_research_message(n_send, n_submit, n1, n2, n3, n4, n_report,
-                               input_val, current_history, portfolio_data,
-                               ticker, usage_data, ai_pending):
+    def send_research_message(
+        n_send,
+        n_submit,
+        n1,
+        n2,
+        n3,
+        n4,
+        n_report,
+        input_val,
+        current_history,
+        portfolio_data,
+        ticker,
+        usage_data,
+        ai_pending,
+    ):
         from datetime import date
+
         DAILY_LIMIT = 20
         today_str = str(date.today())
 
         if not ctx.triggered_id:
-            return (no_update, no_update, no_update,
-                    {"display": "none"}, False, no_update, no_update)
+            return (
+                no_update,
+                no_update,
+                no_update,
+                {"display": "none"},
+                False,
+                no_update,
+                no_update,
+            )
 
         # Guard against mount-time ghost fires for quick-prompt buttons
         triggered_val = ctx.triggered[0].get("value") or 0
         if str(ctx.triggered_id) in ("qp-1", "qp-2", "qp-3", "qp-4", "qp-report"):
             if not triggered_val or int(triggered_val) < 1:
-                return (no_update, no_update, no_update,
-                        {"display": "none"}, False, no_update, no_update)
+                return (
+                    no_update,
+                    no_update,
+                    no_update,
+                    {"display": "none"},
+                    False,
+                    no_update,
+                    no_update,
+                )
 
         # Guard for send button / enter key
         if str(ctx.triggered_id) in ("research-send-btn", "research-input"):
             if not triggered_val or int(triggered_val) < 1:
-                return (no_update, no_update, no_update,
-                        {"display": "none"}, False, no_update, no_update)
+                return (
+                    no_update,
+                    no_update,
+                    no_update,
+                    {"display": "none"},
+                    False,
+                    no_update,
+                    no_update,
+                )
 
         history = list(current_history or [])
 
         # ── Report generation branch ─────────────────────────────────────────
         if ctx.triggered_id == "qp-report":
             history.append({"role": "user", "content": "Generate Weekly Report"})
-            history.append({"role": "assistant", "content": "⌛ Preparing your report, please wait...", "type": "thinking"})
+            history.append(
+                {
+                    "role": "assistant",
+                    "content": "⌛ Preparing your report, please wait...",
+                    "type": "thinking",
+                }
+            )
             placeholder_idx = len(history) - 1
-            
+
             # Enqueue report task
-            task_id = enqueue_task("generate_report", {"tickers": [h["ticker"] for h in portfolio_data.get("holdings", [])]}, priority=2)
-            
+            task_id = enqueue_task(
+                "generate_report",
+                {"tickers": [h["ticker"] for h in portfolio_data.get("holdings", [])]},
+                priority=2,
+            )
+
             new_ai_pending = (ai_pending or {}).copy()
             new_ai_pending[task_id] = placeholder_idx
-            
+
             return (history, "", no_update, {"display": "none"}, False, no_update, new_ai_pending)
 
         # ── Standard chat branch ─────────────────────────────────────────────
@@ -145,8 +191,7 @@ def register_callbacks(app):
                 f"for today. Your limit resets tomorrow."
             )
             history.append({"role": "assistant", "content": limit_msg})
-            return (history, "", no_update,
-                    {"display": "none"}, False, no_update, no_update)
+            return (history, "", no_update, {"display": "none"}, False, no_update, no_update)
 
         message = None
         if ctx.triggered_id == "qp-1":
@@ -161,32 +206,41 @@ def register_callbacks(app):
             message = input_val
 
         if not message or not str(message).strip():
-            return (no_update, no_update, no_update,
-                    {"display": "none"}, False, no_update, no_update)
+            return (
+                no_update,
+                no_update,
+                no_update,
+                {"display": "none"},
+                False,
+                no_update,
+                no_update,
+            )
 
         history.append({"role": "user", "content": message})
         history.append({"role": "assistant", "content": "Thinking...", "type": "thinking"})
         placeholder_idx = len(history) - 1
-        
+
         append_turn("user", message)
-        
+
         # ── Build Compact Context ──
         holdings = portfolio_data.get("holdings", [])
         top_holdings = sorted(holdings, key=lambda x: x.get("mkt_value", 0), reverse=True)[:20]
-        context = {
-            "holdings": top_holdings
-        }
-        
+        context = {"holdings": top_holdings}
+
         # Enqueue AI task
-        task_id = enqueue_task("generate_ai_response", {
-            "messages": history[:-1], # History excluding placeholder
-            "context": context,
-            "ticker": ticker or "General"
-        }, priority=1) # Highest priority
-        
+        task_id = enqueue_task(
+            "generate_ai_response",
+            {
+                "messages": history[:-1],  # History excluding placeholder
+                "context": context,
+                "ticker": ticker or "General",
+            },
+            priority=1,
+        )  # Highest priority
+
         new_ai_pending = (ai_pending or {}).copy()
         new_ai_pending[task_id] = placeholder_idx
-        
+
         new_usage = {"count": current_count + 1, "reset_date": today_str}
         return (history, "", new_usage, {"display": "none"}, False, no_update, new_ai_pending)
 
@@ -221,41 +275,46 @@ def register_callbacks(app):
         Input("task-poll-interval", "n_intervals"),
         State("ai-pending-tasks-store", "data"),
         State("research-chat-store", "data"),
-        prevent_initial_call=True
+        prevent_initial_call=True,
     )
     def poll_ai_research_callback(n, pending, history):
         if not pending:
             return no_update, {}, no_update
-            
+
         history = list(history or [])
         conn = get_connection()
         try:
             still_pending = {}
             new_report = no_update
-            
+
             for task_id, placeholder_idx in pending.items():
-                row = conn.execute("SELECT status, result FROM worker_tasks WHERE task_id = ?", (task_id,)).fetchone()
-                
+                row = conn.execute(
+                    "SELECT status, result FROM worker_tasks WHERE task_id = ?", (task_id,)
+                ).fetchone()
+
                 if row:
                     status = row["status"]
                     if status == "complete":
                         res = json.loads(row["result"]) if row["result"] else {}
-                        
+
                         # Replace placeholder in history
                         if placeholder_idx < len(history):
                             if "response" in res:
                                 # AI Chat response
-                                history[placeholder_idx] = {"role": "assistant", "content": res["response"]}
+                                history[placeholder_idx] = {
+                                    "role": "assistant",
+                                    "content": res["response"],
+                                }
                                 append_turn("assistant", res["response"])
                             elif "pdf_b64" in res:
                                 # Report response
                                 history[placeholder_idx] = {
                                     "role": "assistant",
                                     "content": "✓ Your **Weekly Portfolio Report** is ready!",
-                                    "type": "report-ready"
+                                    "type": "report-ready",
                                 }
                                 new_report = res["pdf_b64"]
-                        
+
                     elif status == "failed":
                         res = json.loads(row["result"]) if row["result"] else {}
                         err = res.get("error", "AI failed.")
@@ -266,8 +325,11 @@ def register_callbacks(app):
                 else:
                     # Task not found
                     if placeholder_idx < len(history):
-                        history[placeholder_idx] = {"role": "assistant", "content": "❌ Assistant is temporarily unavailable (Task not found)."}
-            
+                        history[placeholder_idx] = {
+                            "role": "assistant",
+                            "content": "❌ Assistant is temporarily unavailable (Task not found).",
+                        }
+
             return history, still_pending, new_report
         finally:
             conn.close()
@@ -276,13 +338,12 @@ def register_callbacks(app):
     @app.callback(
         Output("research-chat-display", "children"),
         Input("research-chat-store", "data"),
-        prevent_initial_call=True
+        prevent_initial_call=True,
     )
     def render_chat(history):
         if not history:
             return html.Div(
-                "Your conversation will appear here.",
-                className="research-chat-placeholder"
+                "Your conversation will appear here.", className="research-chat-placeholder"
             )
 
         bubbles = []
@@ -293,38 +354,42 @@ def register_callbacks(app):
 
             if msg_type == "report-ready":
                 # Special "report ready" bubble with a download button
-                bubbles.append(html.Div([
-                    html.P(content, style={"margin": "0 0 10px", "color": "var(--green)"}),
-                    html.Button(
-                        "⬇ Download PDF Report",
-                        id="report-pdf-link",
-                        n_clicks=0,
-                        style={
-                            "background": "none",
-                            "border": "1px solid var(--cyan)",
-                            "color": "var(--cyan)",
-                            "borderRadius": "6px",
-                            "padding": "6px 14px",
-                            "fontSize": "12px",
-                            "cursor": "pointer",
-                        }
+                bubbles.append(
+                    html.Div(
+                        [
+                            html.P(content, style={"margin": "0 0 10px", "color": "var(--green)"}),
+                            html.Button(
+                                "⬇ Download PDF Report",
+                                id="report-pdf-link",
+                                n_clicks=0,
+                                style={
+                                    "background": "none",
+                                    "border": "1px solid var(--cyan)",
+                                    "color": "var(--cyan)",
+                                    "borderRadius": "6px",
+                                    "padding": "6px 14px",
+                                    "fontSize": "12px",
+                                    "cursor": "pointer",
+                                },
+                            ),
+                        ],
+                        className="chat-bubble-assistant",
                     )
-                ], className="chat-bubble-assistant"))
+                )
             elif role == "user":
                 bubbles.append(html.Div(content, className="chat-bubble-user"))
             else:
                 bubbles.append(html.Div(content, className="chat-bubble-assistant"))
 
         return html.Div(
-            bubbles,
-            style={"display": "flex", "flexDirection": "column", "gap": "12px"}
+            bubbles, style={"display": "flex", "flexDirection": "column", "gap": "12px"}
         )
 
     # --- CALLBACK 4: Store researched ticker ---
     @app.callback(
         Output("research-ticker-store", "data"),
         Input("research-ticker-input", "value"),
-        prevent_initial_call=True
+        prevent_initial_call=True,
     )
     def store_ticker(value):
         if not value or not str(value).strip():
@@ -336,31 +401,28 @@ def register_callbacks(app):
         Output("research-portfolio-summary", "children"),
         Input("portfolio-store", "data"),
         Input("url", "pathname"),
-        prevent_initial_call=True
+        prevent_initial_call=True,
     )
     def render_portfolio_summary(portfolio_data, pathname):
         if pathname != AI_ANALYST_PATH:
             return dash.no_update
 
         if not portfolio_data or not portfolio_data.get("holdings"):
-            return html.P(
-                "Loading...",
-                style={"color": "var(--t-sec)", "fontSize": "12px"}
-            )
+            return html.P("Loading...", style={"color": "var(--t-sec)", "fontSize": "12px"})
 
         holdings = portfolio_data["holdings"]
         total_val = sum(h.get("mkt_value", 0) for h in holdings)
-        sorted_holdings = sorted(
-            holdings, key=lambda x: x.get("mkt_value", 0), reverse=True
-        )
+        sorted_holdings = sorted(holdings, key=lambda x: x.get("mkt_value", 0), reverse=True)
 
         children = [
             html.P(
                 f"${total_val:,.0f}",
                 style={
-                    "fontSize": "18px", "fontWeight": "500",
-                    "color": "var(--t-pri)", "margin": "0 0 12px"
-                }
+                    "fontSize": "18px",
+                    "fontWeight": "500",
+                    "color": "var(--t-pri)",
+                    "margin": "0 0 12px",
+                },
             )
         ]
 
@@ -371,15 +433,18 @@ def register_callbacks(app):
             pnl_color = "var(--green)" if pnl_pct >= 0 else "var(--red)"
             pnl_sign = "+" if pnl_pct >= 0 else ""
 
-            row = html.Div([
-                html.Span(h.get("ticker", ""), className="research-portfolio-ticker"),
-                html.Span(f"{weight:.1f}%", className="research-portfolio-weight"),
-                html.Span(
-                    f"{pnl_sign}{pnl_pct:.1f}%",
-                    className="research-portfolio-pnl",
-                    style={"color": pnl_color}
-                ),
-            ], className="research-portfolio-row")
+            row = html.Div(
+                [
+                    html.Span(h.get("ticker", ""), className="research-portfolio-ticker"),
+                    html.Span(f"{weight:.1f}%", className="research-portfolio-weight"),
+                    html.Span(
+                        f"{pnl_sign}{pnl_pct:.1f}%",
+                        className="research-portfolio-pnl",
+                        style={"color": pnl_color},
+                    ),
+                ],
+                className="research-portfolio-row",
+            )
 
             children.append(row)
 
@@ -398,6 +463,7 @@ def register_callbacks(app):
         memory = check_memory_size()
 
         from datetime import date
+
         DAILY_LIMIT = 20
         today_str = str(date.today())
 
@@ -411,41 +477,48 @@ def register_callbacks(app):
 
         remaining = DAILY_LIMIT - count
         color = (
-            "var(--green)" if remaining > 10
-            else "var(--warning)" if remaining > 3
+            "var(--green)"
+            if remaining > 10
+            else "var(--warning)"
+            if remaining > 3
             else "var(--red)"
         )
 
         if memory.get("is_full"):
-            return html.Div([
-                html.Span(
-                    "⚠ Research memory is full (50MB). ",
-                    style={"color": "var(--red)", "fontSize": "11px", "fontWeight": "600"}
-                ),
-                html.Span(
-                    "Old conversations are being auto-summarised. "
-                    "If this persists, restart the app.",
-                    style={"color": "var(--t-sec)", "fontSize": "10px"}
-                ),
-            ], style={"padding": "6px 20px", "flexShrink": "0"})
+            return html.Div(
+                [
+                    html.Span(
+                        "⚠ Research memory is full (50MB). ",
+                        style={"color": "var(--red)", "fontSize": "11px", "fontWeight": "600"},
+                    ),
+                    html.Span(
+                        "Old conversations are being auto-summarised. "
+                        "If this persists, restart the app.",
+                        style={"color": "var(--t-sec)", "fontSize": "10px"},
+                    ),
+                ],
+                style={"padding": "6px 20px", "flexShrink": "0"},
+            )
 
-        return html.Div([
-            html.Span(
-                f"{remaining} of {DAILY_LIMIT} messages remaining today",
-                style={"fontSize": "10px", "color": color, "fontWeight": "500"}
-            ),
-            html.Span(
-                " · Resets at midnight",
-                style={"fontSize": "10px", "color": "var(--t-sec)"}
-            ),
-        ], style={
-            "padding": "6px 20px",
-            "borderBottom": "0.5px solid var(--border)",
-            "display": "flex",
-            "alignItems": "center",
-            "gap": "4px",
-            "flexShrink": "0",
-        })
+        return html.Div(
+            [
+                html.Span(
+                    f"{remaining} of {DAILY_LIMIT} messages remaining today",
+                    style={"fontSize": "10px", "color": color, "fontWeight": "500"},
+                ),
+                html.Span(
+                    " · Resets at midnight", style={"fontSize": "10px", "color": "var(--t-sec)"}
+                ),
+            ],
+            style={
+                "padding": "6px 20px",
+                "borderBottom": "0.5px solid var(--border)",
+                "display": "flex",
+                "alignItems": "center",
+                "gap": "4px",
+                "flexShrink": "0",
+            },
+        )
 
     # --- CALLBACK 7: Trigger PDF download from chat bubble button ---
     @app.callback(
@@ -475,7 +548,7 @@ def register_callbacks(app):
             return window.dash_clientside.no_update;
         }
         """,
-        Output("research-chat-display", "id"), # Dummy output
+        Output("research-chat-display", "id"),  # Dummy output
         Input("research-chat-display", "children"),
-        prevent_initial_call=True
+        prevent_initial_call=True,
     )

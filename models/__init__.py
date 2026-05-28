@@ -6,11 +6,13 @@ Portfolio and aggregated holding structures.
 """
 
 from typing import TypedDict
+
 from models.transaction import EnrichedHolding, Transaction
 
 
 class Portfolio(TypedDict):
     """Aggregated portfolio snapshot."""
+
     holdings: list[EnrichedHolding]
     histories: dict  # {ticker: [price records]}
     fetched_at: str  # Time of last fetch

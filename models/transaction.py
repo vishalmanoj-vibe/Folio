@@ -5,27 +5,30 @@ Data models for Folio.
 Type definitions and data schemas.
 """
 
-from typing import TypedDict
 from datetime import datetime
+from typing import TypedDict
 
 
 class Transaction(TypedDict):
     """Transaction data structure."""
-    type: str      # 'buy' or 'sell'
-    ticker: str    # ETF ticker (without .AX)
+
+    type: str  # 'buy' or 'sell'
+    ticker: str  # ETF ticker (without .AX)
     shares: float  # Number of shares
-    price: float   # Price per share
-    date: str      # YYYY-MM-DD format
+    price: float  # Price per share
+    date: str  # YYYY-MM-DD format
 
 
 class TransactionRecord(Transaction):
     """Full transaction record with metadata."""
+
     id: str | None  # Optional transaction ID
     created_at: datetime | None  # Optional timestamp
 
 
 class BuyTranche(TypedDict):
     """Individual buy tranche for P&L tracking."""
+
     ticker: str
     shares: float
     price: float
@@ -36,6 +39,7 @@ class BuyTranche(TypedDict):
 
 class Holding(TypedDict):
     """Portfolio holding."""
+
     ticker: str
     ticker_yf: str  # With .AX suffix
     name: str
@@ -49,6 +53,7 @@ class Holding(TypedDict):
 
 class EnrichedHolding(Holding):
     """Holding with market data enrichment."""
+
     last_price: float
     prev_close: float
     day_high: float

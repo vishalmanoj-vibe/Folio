@@ -6,6 +6,7 @@ Handles the rendering of the alert banner based on portfolio logic.
 """
 
 from dash import Input, Output, html
+
 from config.constants import RED
 from services.alert_service import check_alerts
 
@@ -30,7 +31,7 @@ def register_callbacks(app) -> None:
 
         alerts = check_alerts(data["holdings"])
         count = len(alerts)
-        
+
         # Badge logic
         badge_style = {"display": "inline-block"} if count > 0 else {"display": "none"}
         badge_text = str(count) if count > 0 else ""
@@ -38,7 +39,8 @@ def register_callbacks(app) -> None:
         if not alerts:
             return "", badge_text, badge_style
 
-        return html.Div(
-            [html.Div(a["message"]) for a in alerts],
-            className="alerts-banner"
-        ), badge_text, badge_style
+        return (
+            html.Div([html.Div(a["message"]) for a in alerts], className="alerts-banner"),
+            badge_text,
+            badge_style,
+        )

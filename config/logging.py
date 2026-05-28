@@ -11,9 +11,9 @@ Configure via environment variables:
 
 import logging.config
 import os
+import sys
 from pathlib import Path
 
-import sys
 from config.settings import get_data_dir
 
 DATA_DIR = get_data_dir()
@@ -86,7 +86,7 @@ def setup_logging():
 
     logging.config.dictConfig(CONFIG)
     logger = logging.getLogger(__name__)
-    
+
     if LOG_FILE_ENABLED:
         logger.info(f"Logging configured: console={LOG_LEVEL}, file={LOG_FILE}")
     else:

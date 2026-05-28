@@ -5,8 +5,10 @@ core/engine/utils.py
 Shared utilities for date handling, timezones, and calculations.
 """
 
-import pandas as pd
 from datetime import timedelta
+
+import pandas as pd
+
 
 def get_period_cutoff(period: str) -> pd.Timestamp | None:
     """
@@ -14,9 +16,10 @@ def get_period_cutoff(period: str) -> pd.Timestamp | None:
     If a Timestamp or date object is passed, return it as a pd.Timestamp.
     """
     import datetime
+
     if isinstance(period, (pd.Timestamp, datetime.date, datetime.datetime)):
         return pd.Timestamp(period)
-    
+
     # Handle ISO date strings (e.g. "2024-01-01" or "2024-01-01 00:00:00")
     if isinstance(period, str) and len(period) >= 10 and "-" in period:
         try:
@@ -33,25 +36,27 @@ def get_period_cutoff(period: str) -> pd.Timestamp | None:
         now_syd = pd.Timestamp.now()
 
     now_utc = now_syd.tz_convert("UTC").tz_localize(None)
-    
+
     mapping = {
-        "1d":  now_utc.floor("D"),
+        "1d": now_utc.floor("D"),
         "1mo": now_utc - timedelta(days=30),
         "3mo": now_utc - timedelta(days=91),
         "6mo": now_utc - timedelta(days=182),
         "ytd": pd.Timestamp(year=now_syd.year, month=1, day=1),
-        "1y":  now_utc - timedelta(days=365),
-        "2y":  now_utc - timedelta(days=730),
-        "5y":  now_utc - timedelta(days=1825),
+        "1y": now_utc - timedelta(days=365),
+        "2y": now_utc - timedelta(days=730),
+        "5y": now_utc - timedelta(days=1825),
         "max": None,
     }
     return mapping.get(period, None)
+
 
 def normalise_tz(index: pd.DatetimeIndex) -> pd.DatetimeIndex:
     """Strip timezone from a DatetimeIndex so comparisons with tz-naive values work."""
     if index.tz is not None:
         return index.tz_convert("UTC").tz_localize(None)
     return index
+
 
 def fmt_date_index(index: pd.DatetimeIndex) -> list[str]:
     """Format a DatetimeIndex into YYYY-MM-DD strings."""

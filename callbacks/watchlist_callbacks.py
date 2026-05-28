@@ -1,18 +1,22 @@
 # callbacks/watchlist_callbacks.py
 import logging
-import dash
-from dash import Input, Output, State, html, dcc, ctx, ALL
-import plotly.graph_objects as go
-from data.watchlist_repository import WatchlistRepository
-from services.market.data_fetcher import fetch_live, get_etf_name
-from services.history_cache import set_histories, get_latest_histories
-from config.constants import GREEN, RED
 
+import dash
 import pandas as pd
+import plotly.graph_objects as go
+from dash import ALL, Input, Output, State, ctx, dcc, html
+
+from config.constants import GREEN, RED
+from data.watchlist_repository import WatchlistRepository
+from services.history_cache import get_latest_histories, set_histories
+from services.market.data_fetcher import fetch_live, get_etf_name
+
 logger = logging.getLogger(__name__)
-from components.ui_helpers import tech_signal_badges
 from components.charts.helpers import create_empty_fig
+from components.ui_helpers import tech_signal_badges
+
 repo = WatchlistRepository()
+
 
 def register_callbacks(app) -> None:
     """
@@ -33,11 +37,14 @@ def register_callbacks(app) -> None:
         State("watchlist-store", "data"),
         prevent_initial_call=True,
     )
-    def update_watchlist_store(n_add, n_remove_list, n_submit, n_interval, n_startup, order_val, ticker_input, current_data):
+    def update_watchlist_store(
+        n_add, n_remove_list, n_submit, n_interval, n_startup, order_val, ticker_input, current_data
+    ):
         triggered_id = ctx.triggered_id
 
         # Skip periodic fetch if market is closed
         from services.market.market_status import is_market_open
+
         if triggered_id == "price-interval" and not is_market_open():
             return dash.no_update, dash.no_update
 
@@ -46,7 +53,7 @@ def register_callbacks(app) -> None:
             if not ticker_input:
                 return dash.no_update, dash.no_update
             repo.add_ticker(ticker_input.strip().upper())
-            
+
         # 2. Remove Ticker (Pattern Matching)
         elif isinstance(triggered_id, dict) and triggered_id.get("type") == "watchlist-remove-btn":
             trigger_val = ctx.triggered[0]["value"]
@@ -54,12 +61,13 @@ def register_callbacks(app) -> None:
                 return dash.no_update, dash.no_update
             ticker_to_remove = triggered_id.get("index")
             repo.remove_ticker(ticker_to_remove)
-            
+
         # 3. Reorder Tickers
         elif triggered_id == "watchlist-order-input":
             if order_val:
                 try:
                     import json
+
                     new_order = json.loads(order_val)
                     if isinstance(new_order, list) and new_order:
                         repo.update_watchlist_order(new_order)
@@ -76,15 +84,17 @@ def register_callbacks(app) -> None:
         holdings = [
             {
                 "ticker": item["ticker"],
-                "ticker_yf": f"{item['ticker']}.AX" if "." not in item["ticker"] else item["ticker"],
+                "ticker_yf": f"{item['ticker']}.AX"
+                if "." not in item["ticker"]
+                else item["ticker"],
                 "total_shares": 0,
                 "avg_cost": 0,
                 "total_cost": 0,
-                "buy_tranches": []
+                "buy_tranches": [],
             }
             for item in watchlist_items
         ]
-        
+
         try:
             live_data, _, _ = fetch_live(holdings, record_snapshots=False)
             triggered = ctx.triggered_id
@@ -110,19 +120,26 @@ def register_callbacks(app) -> None:
             return dash.no_update, dash.no_update
 
         if not data or "holdings" not in data or not data["holdings"]:
-            return html.Div("Your watchlist is empty. Add a ticker above to get started.", 
-                            className="c-muted", style={"padding": "40px", "textAlign": "center"}), ""
+            return html.Div(
+                "Your watchlist is empty. Add a ticker above to get started.",
+                className="c-muted",
+                style={"padding": "40px", "textAlign": "center"},
+            ), ""
 
         holdings = data["holdings"]
-        
+
         th_style = {
-            "fontSize": "11px", "color": "var(--t-sec)", "fontWeight": "600",
-            "padding": "12px", "textAlign": "left",
+            "fontSize": "11px",
+            "color": "var(--t-sec)",
+            "fontWeight": "600",
+            "padding": "12px",
+            "textAlign": "left",
             "borderBottom": "1px solid var(--border)",
             "backgroundColor": "var(--surface)",
         }
         td_style = {
-            "fontSize": "13px", "padding": "12px",
+            "fontSize": "13px",
+            "padding": "12px",
             "borderBottom": "0.5px solid var(--border)",
             "color": "var(--t-pri)",
         }
@@ -135,10 +152,10 @@ def register_callbacks(app) -> None:
             chg = h.get("day_chg", 0)
             chg_pct = h.get("day_chg_pct", 0)
             day_high = h.get("day_high", 0)
-            day_low  = h.get("day_low", 0)
+            day_low = h.get("day_low", 0)
             div_yield = h.get("div_yield", 0)
-            next_div  = h.get("next_div_date") or "—"
-            
+            h.get("next_div_date") or "—"
+
             color_cls = "c-pos" if chg >= 0 else "c-neg"
             sign = "+" if chg >= 0 else ""
 
@@ -146,85 +163,135 @@ def register_callbacks(app) -> None:
             sig = (signals_store or {}).get("raw", {}).get(ticker)
             if sig:
                 signal_val = sig.get("signal", "—")
-                badge_color = GREEN if signal_val == "BUY" else (RED if signal_val == "SELL" else "var(--t-sec)")
+                badge_color = (
+                    GREEN
+                    if signal_val == "BUY"
+                    else (RED if signal_val == "SELL" else "var(--t-sec)")
+                )
                 signal_cell = html.Span(
                     signal_val,
                     style={
-                        "fontSize": "10px", "fontWeight": "bold",
-                        "padding": "2px 6px", "borderRadius": "4px",
+                        "fontSize": "10px",
+                        "fontWeight": "bold",
+                        "padding": "2px 6px",
+                        "borderRadius": "4px",
                         "backgroundColor": "var(--surface-2)",
-                        "color": badge_color, "border": f"1px solid {badge_color}",
-                    }
+                        "color": badge_color,
+                        "border": f"1px solid {badge_color}",
+                    },
                 )
             else:
                 signal_cell = html.Span("—", style={"color": "var(--t-sec)", "fontSize": "12px"})
-            
+
             # High-density click target
-            is_active = (ticker == selected_ticker)
+            is_active = ticker == selected_ticker
 
             row_style = {
                 "backgroundColor": "var(--cyan-bg)" if is_active else "transparent",
                 "transition": "background-color 0.15s",
             }
-            rows.append(html.Tr([
-                html.Td("☰", className="drag-handle", style={**td_style, "cursor": "grab", "color": "var(--t-sec)", "width": "30px", "textAlign": "center"}),
-                html.Td(
-                    html.Div(ticker, 
-                             id={"type": "watchlist-select-ticker", "index": ticker}, 
-                             className="ticker-link", 
-                             style={
-                                 "cursor": "pointer",
-                                 "display": "inline-block",
-                                 "color": "var(--cyan)",
-                                 "fontWeight": "600" if is_active else "400",
-                              },
-                             n_clicks=0),
-                    style=td_style
-                ),
-                html.Td(name, style={**td_style, "color": "var(--t-sec)", "fontSize": "12px"}),
-                html.Td(f"${price:,.3f}", style=td_style),
-                html.Td([
-                    html.Span(f"{sign}${abs(chg):,.3f}", className=color_cls, style={"fontWeight": "500"}),
-                    html.Span(f" ({sign}{chg_pct:.2f}%)", className=color_cls, style={"fontSize": "11px", "marginLeft": "4px"})
-                ], style=td_style),
-                html.Td(
-                    f"${day_high:,.3f} / ${day_low:,.3f}",
-                    style={**td_style, "fontSize": "11px", "color": "var(--t-sec)"}
-                ),
-                html.Td(
-                    html.Div(
-                        f"{div_yield:.2f}%",
-                        style={"fontWeight": "500",
-                               "color": "var(--green)" if div_yield > 3 else "var(--t-pri)"}
-                    ),
-                    style=td_style),
-                html.Td(signal_cell, style=td_style),
-                html.Td(
-                    html.Button("✕", id={"type": "watchlist-remove-btn", "index": ticker}, 
-                                className="btn-sm", style={"color": "var(--red)", "padding": "2px 8px"}),
-                    style={**td_style, "textAlign": "right"}
+            rows.append(
+                html.Tr(
+                    [
+                        html.Td(
+                            "☰",
+                            className="drag-handle",
+                            style={
+                                **td_style,
+                                "cursor": "grab",
+                                "color": "var(--t-sec)",
+                                "width": "30px",
+                                "textAlign": "center",
+                            },
+                        ),
+                        html.Td(
+                            html.Div(
+                                ticker,
+                                id={"type": "watchlist-select-ticker", "index": ticker},
+                                className="ticker-link",
+                                style={
+                                    "cursor": "pointer",
+                                    "display": "inline-block",
+                                    "color": "var(--cyan)",
+                                    "fontWeight": "600" if is_active else "400",
+                                },
+                                n_clicks=0,
+                            ),
+                            style=td_style,
+                        ),
+                        html.Td(
+                            name, style={**td_style, "color": "var(--t-sec)", "fontSize": "12px"}
+                        ),
+                        html.Td(f"${price:,.3f}", style=td_style),
+                        html.Td(
+                            [
+                                html.Span(
+                                    f"{sign}${abs(chg):,.3f}",
+                                    className=color_cls,
+                                    style={"fontWeight": "500"},
+                                ),
+                                html.Span(
+                                    f" ({sign}{chg_pct:.2f}%)",
+                                    className=color_cls,
+                                    style={"fontSize": "11px", "marginLeft": "4px"},
+                                ),
+                            ],
+                            style=td_style,
+                        ),
+                        html.Td(
+                            f"${day_high:,.3f} / ${day_low:,.3f}",
+                            style={**td_style, "fontSize": "11px", "color": "var(--t-sec)"},
+                        ),
+                        html.Td(
+                            html.Div(
+                                f"{div_yield:.2f}%",
+                                style={
+                                    "fontWeight": "500",
+                                    "color": "var(--green)" if div_yield > 3 else "var(--t-pri)",
+                                },
+                            ),
+                            style=td_style,
+                        ),
+                        html.Td(signal_cell, style=td_style),
+                        html.Td(
+                            html.Button(
+                                "✕",
+                                id={"type": "watchlist-remove-btn", "index": ticker},
+                                className="btn-sm",
+                                style={"color": "var(--red)", "padding": "2px 8px"},
+                            ),
+                            style={**td_style, "textAlign": "right"},
+                        ),
+                    ],
+                    style=row_style,
+                    draggable="true",
+                    className="draggable-row",
+                    id={"type": "watchlist-row", "index": ticker},
+                    **{"data-ticker": ticker},
                 )
-            ],
-            style=row_style,
-            draggable="true",
-            className="draggable-row",
-            id={"type": "watchlist-row", "index": ticker},
-            **{"data-ticker": ticker}))
+            )
 
-        table = html.Table([
-            html.Thead(html.Tr([
-                html.Th("",           style={**th_style, "width": "30px"}),
-                html.Th("Ticker",     style=th_style),
-                html.Th("Name",       style=th_style),
-                html.Th("Price",      style=th_style),
-                html.Th("Day Change", style=th_style),
-                html.Th("High / Low", style=th_style),
-                html.Th("Div Yield",  style=th_style),
-                html.Th("Suggestion", style=th_style),
-                html.Th("",           style={**th_style, "textAlign": "right"}),
-            ])),
-            html.Tbody(rows)
-        ], style={"width": "100%", "borderCollapse": "collapse"})
+        table = html.Table(
+            [
+                html.Thead(
+                    html.Tr(
+                        [
+                            html.Th("", style={**th_style, "width": "30px"}),
+                            html.Th("Ticker", style=th_style),
+                            html.Th("Name", style=th_style),
+                            html.Th("Price", style=th_style),
+                            html.Th("Day Change", style=th_style),
+                            html.Th("High / Low", style=th_style),
+                            html.Th("Div Yield", style=th_style),
+                            html.Th("Suggestion", style=th_style),
+                            html.Th("", style={**th_style, "textAlign": "right"}),
+                        ]
+                    )
+                ),
+                html.Tbody(rows),
+            ],
+            style={"width": "100%", "borderCollapse": "collapse"},
+        )
 
         return table, ""
 
@@ -249,11 +316,10 @@ def register_callbacks(app) -> None:
         return current
 
     @app.callback(
-        Output("watchlist-selected-ticker", "data",
-               allow_duplicate=True),
+        Output("watchlist-selected-ticker", "data", allow_duplicate=True),
         Input("watchlist-store", "data"),
         State("watchlist-selected-ticker", "data"),
-        prevent_initial_call='initial_duplicate',
+        prevent_initial_call="initial_duplicate",
     )
     def seed_default_ticker(data, current):
         if current is not None:
@@ -271,11 +337,12 @@ def register_callbacks(app) -> None:
         Input("url", "pathname"),
         Input("theme-store", "data"),
         Input("watchlist-period-store", "data"),
-        prevent_initial_call=True
+        prevent_initial_call=True,
     )
     def update_watchlist_chart(selected_ticker, data, pathname, theme, period):
         # Resolve theme tokens
         from config.constants import get_theme
+
         t_ = get_theme(theme or "dark")
         T_SEC = t_["T_SEC"]
         CYAN = t_["CYAN"]
@@ -289,26 +356,31 @@ def register_callbacks(app) -> None:
             return create_empty_fig("", height=300, theme_tokens=t_), "Price Performance"
 
         # Lazy Fetch (Memory Optimized)
-        from data.repository import HistoryRepository
         from core.engine.utils import get_period_cutoff
+        from data.repository import HistoryRepository
+
         cutoff = get_period_cutoff(period or "1y")
         cutoff_str = cutoff.strftime("%Y-%m-%d") if cutoff else None
         history = HistoryRepository().load_close_series(selected_ticker, from_date=cutoff_str)
-        
+
         if history is None or history.empty:
-            return create_empty_fig(f"No historical data available for {selected_ticker}", height=300, theme_tokens=t_), "Price Performance"
+            return create_empty_fig(
+                f"No historical data available for {selected_ticker}", height=300, theme_tokens=t_
+            ), "Price Performance"
 
         # history is already a pd.Series with DatetimeIndex
         fig = go.Figure()
-        fig.add_trace(go.Scatter(
-            x=history.index,
-            y=history,
-            mode="lines",
-            line=dict(color=CYAN, width=2),
-            fill="tozeroy",
-            fillcolor=f"rgba(0, 201, 167, 0.05)", 
-            name=selected_ticker
-        ))
+        fig.add_trace(
+            go.Scatter(
+                x=history.index,
+                y=history,
+                mode="lines",
+                line=dict(color=CYAN, width=2),
+                fill="tozeroy",
+                fillcolor="rgba(0, 201, 167, 0.05)",
+                name=selected_ticker,
+            )
+        )
 
         layout_args = t_["PLOTLY_BASE"].copy()
         layout_args["margin"] = dict(t=10, b=10, l=10, r=10)
@@ -321,7 +393,7 @@ def register_callbacks(app) -> None:
         )
         y_min = history.min()
         y_max = history.max()
-        
+
         layout_args["yaxis"] = dict(
             showgrid=True,
             gridcolor=BORDER_COL,
@@ -329,15 +401,16 @@ def register_callbacks(app) -> None:
             zeroline=False,
             tickfont=dict(color=T_SEC, size=10),
             side="right",
-            range=[y_min * 0.98, y_max * 1.02]
+            range=[y_min * 0.98, y_max * 1.02],
         )
         layout_args["hovermode"] = "x unified"
         layout_args["showlegend"] = False
-        
+
         fig.update_layout(**layout_args)
-        
+
         # Memory Hygiene
         import gc
+
         gc.collect()
 
         return fig, f"Price Performance: {selected_ticker}"
@@ -362,15 +435,14 @@ def register_callbacks(app) -> None:
     )
     def update_period_btn_styles(active_period):
         periods = ["1mo", "6mo", "1y", "5y", "max"]
-        return [
-            "btn-sm btn-primary" if p == (active_period or "1y") else "btn-sm"
-            for p in periods
-        ]
+        return ["btn-sm btn-primary" if p == (active_period or "1y") else "btn-sm" for p in periods]
 
     @app.callback(
-        [Output("watchlist-stat-cards", "children"), 
-         Output("watchlist-tech-signals-container", "children"),
-         Output("watchlist-ai-insight-container", "children")],
+        [
+            Output("watchlist-stat-cards", "children"),
+            Output("watchlist-tech-signals-container", "children"),
+            Output("watchlist-ai-insight-container", "children"),
+        ],
         Input("watchlist-selected-ticker", "data"),
         Input("watchlist-store", "data"),
         Input("watchlist-signals-store", "data"),
@@ -378,27 +450,25 @@ def register_callbacks(app) -> None:
     )
     def render_watchlist_stat_cards(selected_ticker, data, signals_store):
         from components.ui_helpers import stat_card
+
         if not selected_ticker or not data or "holdings" not in data:
             return [], None, None
 
-        h = next(
-            (x for x in data["holdings"] if x["ticker"] == selected_ticker),
-            None
-        )
+        h = next((x for x in data["holdings"] if x["ticker"] == selected_ticker), None)
         if not h:
             return [], None, None
 
-        price      = h.get("last_price", 0)
-        day_chg    = h.get("day_chg", 0)
+        price = h.get("last_price", 0)
+        day_chg = h.get("day_chg", 0)
         day_chg_pct = h.get("day_chg_pct", 0)
-        div_yield  = h.get("div_yield", 0)
+        div_yield = h.get("div_yield", 0)
         annual_div = h.get("annual_div", 0)
-        day_high   = h.get("day_high", 0)
-        day_low    = h.get("day_low", 0)
-        freq       = h.get("div_frequency", "—")
+        day_high = h.get("day_high", 0)
+        day_low = h.get("day_low", 0)
+        freq = h.get("div_frequency", "—")
 
         day_color = "var(--green)" if day_chg >= 0 else "var(--red)"
-        day_sign  = "+" if day_chg >= 0 else ""
+        day_sign = "+" if day_chg >= 0 else ""
 
         cards = [
             stat_card(
@@ -432,40 +502,95 @@ def register_callbacks(app) -> None:
             ai_data = signals_store["ai"][selected_ticker]
             raw_sig = signals_store.get("raw", {}).get(selected_ticker, {})
             verdict = ai_data.get("verdict", "Mixed")
-            v_color = GREEN if verdict == "Confident" else (RED if verdict == "Risk flagged" else "var(--t-sec)")
+            v_color = (
+                GREEN
+                if verdict == "Confident"
+                else (RED if verdict == "Risk flagged" else "var(--t-sec)")
+            )
 
             # Build children dynamically — never pass None into a children list
             ai_children = [
-                html.Div([
-                    html.Span("🤖", style={"marginRight": "8px"}),
-                    "AI Analyst Insight"
-                ], className="etf-detail-label", style={"display": "flex", "alignItems": "center"}),
-                html.Div(verdict, className="etf-detail-value", style={"color": v_color, "fontSize": "16px"}),
-                html.Div(ai_data.get("explanation", ""),
-                         style={"marginTop": "8px", "whiteSpace": "normal", "fontSize": "13px", "color": "var(--t-sec)", "lineHeight": "1.5"}),
+                html.Div(
+                    [html.Span("🤖", style={"marginRight": "8px"}), "AI Analyst Insight"],
+                    className="etf-detail-label",
+                    style={"display": "flex", "alignItems": "center"},
+                ),
+                html.Div(
+                    verdict,
+                    className="etf-detail-value",
+                    style={"color": v_color, "fontSize": "16px"},
+                ),
+                html.Div(
+                    ai_data.get("explanation", ""),
+                    style={
+                        "marginTop": "8px",
+                        "whiteSpace": "normal",
+                        "fontSize": "13px",
+                        "color": "var(--t-sec)",
+                        "lineHeight": "1.5",
+                    },
+                ),
             ]
             if ai_data.get("risks"):
-                ai_children.append(html.Div([
-                    html.Div(f"• {r}", style={"color": "var(--red)", "marginTop": "4px", "fontSize": "12px"}) for r in ai_data["risks"]
-                ]))
+                ai_children.append(
+                    html.Div(
+                        [
+                            html.Div(
+                                f"• {r}",
+                                style={
+                                    "color": "var(--red)",
+                                    "marginTop": "4px",
+                                    "fontSize": "12px",
+                                },
+                            )
+                            for r in ai_data["risks"]
+                        ]
+                    )
+                )
             if raw_sig:
-                ai_children.append(html.Div([
-                    html.Div(f"Technical Score: {raw_sig.get('score', 0.0):.2f}",
-                             style={"marginTop": "8px", "fontWeight": "bold", "color": "var(--cyan)", "fontSize": "13px"}),
-                    html.Div([html.Div(f"• {r}") for r in raw_sig.get("reasons", [])],
-                             style={"marginTop": "4px", "color": "var(--t-sec)", "fontSize": "12px"})
-                ]))
+                ai_children.append(
+                    html.Div(
+                        [
+                            html.Div(
+                                f"Technical Score: {raw_sig.get('score', 0.0):.2f}",
+                                style={
+                                    "marginTop": "8px",
+                                    "fontWeight": "bold",
+                                    "color": "var(--cyan)",
+                                    "fontSize": "13px",
+                                },
+                            ),
+                            html.Div(
+                                [html.Div(f"• {r}") for r in raw_sig.get("reasons", [])],
+                                style={
+                                    "marginTop": "4px",
+                                    "color": "var(--t-sec)",
+                                    "fontSize": "12px",
+                                },
+                            ),
+                        ]
+                    )
+                )
 
-            ai_card = html.Div(ai_children, className="etf-detail-card", style={"marginTop": "10px", "marginBottom": "24px", "width": "100%"})
+            ai_card = html.Div(
+                ai_children,
+                className="etf-detail-card",
+                style={"marginTop": "10px", "marginBottom": "24px", "width": "100%"},
+            )
 
         # Generate Tech Signals (Memory Optimized)
         from data.repository import HistoryRepository
-        history_s = HistoryRepository().load_close_series(selected_ticker, from_date=(pd.Timestamp.now() - pd.DateOffset(years=1)).strftime("%Y-%m-%d"))
+
+        history_s = HistoryRepository().load_close_series(
+            selected_ticker,
+            from_date=(pd.Timestamp.now() - pd.DateOffset(years=1)).strftime("%Y-%m-%d"),
+        )
         if not history_s.empty:
             tech_signals = tech_signal_badges(selected_ticker, history_s)
-        
+
         # Memory Hygiene
         import gc
+
         gc.collect()
 
         return cards, tech_signals, ai_card
@@ -491,8 +616,7 @@ def register_callbacks(app) -> None:
         if not selected_ticker:
             return "No ticker selected"
         repo.save_note(selected_ticker, note_text or "")
-        return f"✓ Saved"
-
+        return "✓ Saved"
 
     # ── Ticker Discovery (Name) ─────────────────────────
     @app.callback(
@@ -503,11 +627,11 @@ def register_callbacks(app) -> None:
     def discover_watchlist_ticker(ticker):
         if not ticker or len(ticker.strip()) == 0:
             return ""
-        
+
         ticker = ticker.strip().upper()
         if len(ticker) < 2:
             return ""
-        
+
         try:
             name = get_etf_name(ticker)
             return name

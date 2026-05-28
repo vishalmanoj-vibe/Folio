@@ -1,23 +1,28 @@
 import io
-import os
 import logging
+import os
 from datetime import datetime, timedelta
 
-import pandas as pd
 import matplotlib
-matplotlib.use("Agg")
-import matplotlib.pyplot as plt
-import matplotlib.dates as mdates
+import pandas as pd
 
-from reportlab.lib.pagesizes import A4
-from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-from reportlab.lib.units import mm
+matplotlib.use("Agg")
+import matplotlib.dates as mdates
+import matplotlib.pyplot as plt
 from reportlab.lib import colors
 from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_RIGHT
+from reportlab.lib.pagesizes import A4
+from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
+from reportlab.lib.units import mm
 from reportlab.platypus import (
-    SimpleDocTemplate, Paragraph, Spacer,
-    Table, TableStyle, HRFlowable, Image,
+    HRFlowable,
+    Image,
     KeepTogether,
+    Paragraph,
+    SimpleDocTemplate,
+    Spacer,
+    Table,
+    TableStyle,
 )
 
 from services.technical_indicators import compute_signals
@@ -26,18 +31,19 @@ from services.web_search import search_financial_news
 logger = logging.getLogger(__name__)
 
 # ── Design tokens ─────────────────────────────────────────────────────────────
-_TEAL        = colors.HexColor("#00c9a7")
-_DARK        = colors.HexColor("#1c1c1a")
-_SURFACE     = colors.HexColor("#f4f4f2")
-_GREEN_HEX   = "#1D9E75"
-_RED_HEX     = "#E24B4A"
-_TEAL_HEX    = "#00c9a7"
-_GREY        = colors.HexColor("#8a8880")
-_WHITE       = colors.white
-_LIGHT_ROW   = colors.HexColor("#fafafa")
+_TEAL = colors.HexColor("#00c9a7")
+_DARK = colors.HexColor("#1c1c1a")
+_SURFACE = colors.HexColor("#f4f4f2")
+_GREEN_HEX = "#1D9E75"
+_RED_HEX = "#E24B4A"
+_TEAL_HEX = "#00c9a7"
+_GREY = colors.HexColor("#8a8880")
+_WHITE = colors.white
+_LIGHT_ROW = colors.HexColor("#fafafa")
 
 
 # ── 1. Data assembly ──────────────────────────────────────────────────────────
+
 
 def gather_report_data(portfolio_data: dict) -> dict:
     """
@@ -50,35 +56,37 @@ def gather_report_data(portfolio_data: dict) -> dict:
         if not holdings:
             return {}
 
-        total_val   = sum(h.get("mkt_value", 0)  for h in holdings)
-        total_cost  = sum(h["total_cost"] for h in holdings)
-        total_pnl   = total_val - total_cost
-        pnl_pct     = (total_pnl / total_cost * 100) if total_cost else 0
-        annual_div  = sum(h.get("annual_div", 0) for h in holdings)
-        port_yield  = (annual_div / total_val * 100) if total_val else 0
+        total_val = sum(h.get("mkt_value", 0) for h in holdings)
+        total_cost = sum(h["total_cost"] for h in holdings)
+        total_pnl = total_val - total_cost
+        pnl_pct = (total_pnl / total_cost * 100) if total_cost else 0
+        annual_div = sum(h.get("annual_div", 0) for h in holdings)
+        port_yield = (annual_div / total_val * 100) if total_val else 0
 
         holdings_data = []
         for h in holdings:
-            ticker  = h["ticker"]
+            ticker = h["ticker"]
             history = histories.get(ticker, [])
-            sig     = compute_signals(ticker, history)
-            holdings_data.append({
-                "ticker":     ticker,
-                "name":       h.get("name", ticker),
-                "weight":     (h.get("mkt_value", 0) / total_val * 100) if total_val else 0,
-                "mkt_value":  h.get("mkt_value", 0),
-                "pnl_pct":    h.get("pnl_pct", 0),
-                "day_chg_pct": h.get("day_chg_pct", 0),
-                "div_yield":  h.get("div_yield", 0),
-                "rsi":        sig.get("rsi", 0),
-                "rsi_label":  sig.get("rsi_label", "N/A"),
-                "macd_label": sig.get("macd_label", "N/A"),
-                "bb_label":   sig.get("bb_label", "N/A"),
-            })
+            sig = compute_signals(ticker, history)
+            holdings_data.append(
+                {
+                    "ticker": ticker,
+                    "name": h.get("name", ticker),
+                    "weight": (h.get("mkt_value", 0) / total_val * 100) if total_val else 0,
+                    "mkt_value": h.get("mkt_value", 0),
+                    "pnl_pct": h.get("pnl_pct", 0),
+                    "day_chg_pct": h.get("day_chg_pct", 0),
+                    "div_yield": h.get("div_yield", 0),
+                    "rsi": sig.get("rsi", 0),
+                    "rsi_label": sig.get("rsi_label", "N/A"),
+                    "macd_label": sig.get("macd_label", "N/A"),
+                    "bb_label": sig.get("bb_label", "N/A"),
+                }
+            )
 
         holdings_data.sort(key=lambda x: x["weight"], reverse=True)
 
-        top_performer   = max(holdings_data, key=lambda x: x["pnl_pct"])
+        top_performer = max(holdings_data, key=lambda x: x["pnl_pct"])
         worst_performer = min(holdings_data, key=lambda x: x["pnl_pct"])
 
         # Upcoming dividends (next 30 days)
@@ -90,12 +98,14 @@ def gather_report_data(portfolio_data: dict) -> dict:
                 try:
                     dt = pd.to_datetime(ndd)
                     if now <= dt <= now + timedelta(days=30):
-                        upcoming_dividends.append({
-                            "ticker":   h["ticker"],
-                            "ex_date":  ndd,
-                            "pay_date": h.get("payout_date", "TBC"),
-                            "amount":   h.get("last_div_amount", 0),
-                        })
+                        upcoming_dividends.append(
+                            {
+                                "ticker": h["ticker"],
+                                "ex_date": ndd,
+                                "pay_date": h.get("payout_date", "TBC"),
+                                "amount": h.get("last_div_amount", 0),
+                            }
+                        )
                 except Exception:
                     continue
         upcoming_dividends.sort(key=lambda x: x["ex_date"])
@@ -104,18 +114,18 @@ def gather_report_data(portfolio_data: dict) -> dict:
         pnl_series = _build_pnl_series(holdings, histories)
 
         return {
-            "generated_at":      datetime.now().strftime("%d %B %Y, %I:%M %p"),
-            "total_val":         total_val,
-            "total_cost":        total_cost,
-            "total_pnl":         total_pnl,
-            "pnl_pct":           pnl_pct,
-            "annual_div":        annual_div,
-            "port_yield":        port_yield,
-            "holdings_data":     holdings_data,
-            "top_performer":     top_performer,
-            "worst_performer":   worst_performer,
+            "generated_at": datetime.now().strftime("%d %B %Y, %I:%M %p"),
+            "total_val": total_val,
+            "total_cost": total_cost,
+            "total_pnl": total_pnl,
+            "pnl_pct": pnl_pct,
+            "annual_div": annual_div,
+            "port_yield": port_yield,
+            "holdings_data": holdings_data,
+            "top_performer": top_performer,
+            "worst_performer": worst_performer,
             "upcoming_dividends": upcoming_dividends,
-            "pnl_series":        pnl_series,
+            "pnl_series": pnl_series,
         }
 
     except Exception as e:
@@ -134,13 +144,13 @@ def _build_pnl_series(
     try:
         frames = {}
         for h in holdings:
-            ticker  = h["ticker"]
+            ticker = h["ticker"]
             history = histories.get(ticker, [])
             if not history:
                 continue
             df = pd.DataFrame(history)
-            df["Date"]  = pd.to_datetime(df["Date"])
-            df          = df.set_index("Date").sort_index()
+            df["Date"] = pd.to_datetime(df["Date"])
+            df = df.set_index("Date").sort_index()
             frames[ticker] = df["Close"]
 
         if not frames:
@@ -155,18 +165,14 @@ def _build_pnl_series(
 
         # Weight by current market value
         total_val = sum(h.get("mkt_value", 0) for h in holdings)
-        weights   = {}
+        weights = {}
         for h in holdings:
             if h["ticker"] in prices.columns and total_val:
                 weights[h["ticker"]] = h.get("mkt_value", 0) / total_val
 
         # Normalised return from period start (7 days ago)
         normed = prices / prices.iloc[0]
-        weighted = sum(
-            normed[t] * w
-            for t, w in weights.items()
-            if t in normed.columns
-        )
+        weighted = sum(normed[t] * w for t, w in weights.items() if t in normed.columns)
         pnl_pct = (weighted - 1) * 100
 
         return [
@@ -181,6 +187,7 @@ def _build_pnl_series(
 
 
 # ── 2. News fetching ──────────────────────────────────────────────────────────
+
 
 def fetch_news_for_holdings(
     holdings: list[dict],
@@ -204,8 +211,8 @@ def fetch_news_for_holdings(
             news_map[ticker] = [
                 {
                     "title": r.get("title", ""),
-                    "url":   r.get("href", ""),
-                    "body":  r.get("body", "")[:300],
+                    "url": r.get("href", ""),
+                    "body": r.get("body", "")[:300],
                 }
                 for r in (results or [])
             ]
@@ -231,11 +238,13 @@ def fetch_market_news() -> list[dict]:
         for q in queries:
             results = search_financial_news(q, max_results=2)
             for r in results or []:
-                combined.append({
-                    "title": r.get("title", ""),
-                    "url":   r.get("href", ""),
-                    "body":  r.get("body", "")[:250],
-                })
+                combined.append(
+                    {
+                        "title": r.get("title", ""),
+                        "url": r.get("href", ""),
+                        "body": r.get("body", "")[:250],
+                    }
+                )
         return combined[:6]
     except Exception as e:
         logger.warning(f"Market news fetch failed: {e}")
@@ -243,6 +252,7 @@ def fetch_market_news() -> list[dict]:
 
 
 # ── 3. AI commentary ──────────────────────────────────────────────────────────
+
 
 def get_ai_commentary(
     report_data: dict,
@@ -292,7 +302,7 @@ def get_ai_commentary(
             "Be specific and direct. Do not repeat the raw numbers — interpret them."
         )
 
-        client   = genai.Client(api_key=api_key)
+        client = genai.Client(api_key=api_key)
         response = client.models.generate_content(
             model="models/gemini-2.5-flash-lite",
             contents=prompt,
@@ -301,13 +311,11 @@ def get_ai_commentary(
 
     except Exception as e:
         logger.error(f"get_ai_commentary failed: {e}")
-        return (
-            "Market commentary is temporarily unavailable. "
-            "Please try regenerating the report."
-        )
+        return "Market commentary is temporarily unavailable. Please try regenerating the report."
 
 
 # ── 4. Chart builder ──────────────────────────────────────────────────────────
+
 
 def _build_pnl_chart_image(
     pnl_series: list[dict],
@@ -320,7 +328,7 @@ def _build_pnl_chart_image(
         if not pnl_series or len(pnl_series) < 2:
             return None
 
-        dates  = [datetime.strptime(p["date"], "%Y-%m-%d") for p in pnl_series]
+        dates = [datetime.strptime(p["date"], "%Y-%m-%d") for p in pnl_series]
         values = [p["pnl_pct"] for p in pnl_series]
 
         fig, ax = plt.subplots(figsize=(6.8, 2.4))
@@ -329,14 +337,22 @@ def _build_pnl_chart_image(
 
         # Fill positive / negative areas
         ax.fill_between(
-            dates, values, 0,
+            dates,
+            values,
+            0,
             where=[v >= 0 for v in values],
-            alpha=0.25, color=_GREEN_HEX, interpolate=True,
+            alpha=0.25,
+            color=_GREEN_HEX,
+            interpolate=True,
         )
         ax.fill_between(
-            dates, values, 0,
+            dates,
+            values,
+            0,
             where=[v < 0 for v in values],
-            alpha=0.25, color=_RED_HEX, interpolate=True,
+            alpha=0.25,
+            color=_RED_HEX,
+            interpolate=True,
         )
 
         # Main line
@@ -368,8 +384,11 @@ def _build_pnl_chart_image(
         ax.spines["left"].set_color("#dddddd")
         ax.spines["bottom"].set_color("#dddddd")
         ax.set_title(
-            "Weekly Portfolio P&L", fontsize=9,
-            color="#555", pad=6, loc="left",
+            "Weekly Portfolio P&L",
+            fontsize=9,
+            color="#555",
+            pad=6,
+            loc="left",
         )
 
         plt.tight_layout(pad=0.5)
@@ -385,6 +404,7 @@ def _build_pnl_chart_image(
 
 # ── 5. PDF builder ────────────────────────────────────────────────────────────
 
+
 def build_pdf(
     report_data: dict,
     news_map: dict[str, list[dict]],
@@ -395,10 +415,13 @@ def build_pdf(
     Assembles all sections into a PDF and returns raw bytes.
     """
     buffer = io.BytesIO()
-    doc    = SimpleDocTemplate(
-        buffer, pagesize=A4,
-        rightMargin=18*mm, leftMargin=18*mm,
-        topMargin=18*mm, bottomMargin=18*mm,
+    doc = SimpleDocTemplate(
+        buffer,
+        pagesize=A4,
+        rightMargin=18 * mm,
+        leftMargin=18 * mm,
+        topMargin=18 * mm,
+        bottomMargin=18 * mm,
     )
     styles = getSampleStyleSheet()
 
@@ -458,71 +481,87 @@ def build_pdf(
 
     # ── SECTION 1: Header ─────────────────────────────────────────────────────
     story.append(Paragraph("Portfolio Weekly Report", title_style))
-    story.append(Paragraph(
-        f"Generated: {report_data['generated_at']}",
-        muted_style,
-    ))
-    story.append(Spacer(1, 2*mm))
-    story.append(HRFlowable(
-        width="100%", thickness=1.5,
-        color=_TEAL, spaceAfter=3*mm,
-    ))
+    story.append(
+        Paragraph(
+            f"Generated: {report_data['generated_at']}",
+            muted_style,
+        )
+    )
+    story.append(Spacer(1, 2 * mm))
+    story.append(
+        HRFlowable(
+            width="100%",
+            thickness=1.5,
+            color=_TEAL,
+            spaceAfter=3 * mm,
+        )
+    )
 
     # ── SECTION 2: Portfolio Summary ─────────────────────────────────────────
     story.append(Paragraph("Portfolio Summary", h2_style))
 
-    pnl_sign  = "+" if report_data["total_pnl"] >= 0 else ""
+    pnl_sign = "+" if report_data["total_pnl"] >= 0 else ""
     pnl_color = _GREEN_HEX if report_data["total_pnl"] >= 0 else _RED_HEX
 
     summary_data = [
-        ["Total Value",  f"${report_data['total_val']:,.2f}"],
-        ["Cost Basis",   f"${report_data['total_cost']:,.2f}"],
-        ["Unrealised P&L",
-         f'<font color="{pnl_color}">'
-         f'{pnl_sign}${abs(report_data["total_pnl"]):,.2f} '
-         f'({pnl_sign}{report_data["pnl_pct"]:.2f}%)'
-         f'</font>'],
-        ["Annual Dividends",
-         f"${report_data['annual_div']:,.2f} "
-         f"({report_data['port_yield']:.2f}% yield)"],
-        ["Top Performer",
-         f"{report_data['top_performer']['ticker']} "
-         f'<font color="{_GREEN_HEX}">'
-         f"({report_data['top_performer']['pnl_pct']:+.2f}%)"
-         f"</font>"],
-        ["Worst Performer",
-         f"{report_data['worst_performer']['ticker']} "
-         f'<font color="{_RED_HEX}">'
-         f"({report_data['worst_performer']['pnl_pct']:+.2f}%)"
-         f"</font>"],
+        ["Total Value", f"${report_data['total_val']:,.2f}"],
+        ["Cost Basis", f"${report_data['total_cost']:,.2f}"],
+        [
+            "Unrealised P&L",
+            f'<font color="{pnl_color}">'
+            f"{pnl_sign}${abs(report_data['total_pnl']):,.2f} "
+            f"({pnl_sign}{report_data['pnl_pct']:.2f}%)"
+            f"</font>",
+        ],
+        [
+            "Annual Dividends",
+            f"${report_data['annual_div']:,.2f} ({report_data['port_yield']:.2f}% yield)",
+        ],
+        [
+            "Top Performer",
+            f"{report_data['top_performer']['ticker']} "
+            f'<font color="{_GREEN_HEX}">'
+            f"({report_data['top_performer']['pnl_pct']:+.2f}%)"
+            f"</font>",
+        ],
+        [
+            "Worst Performer",
+            f"{report_data['worst_performer']['ticker']} "
+            f'<font color="{_RED_HEX}">'
+            f"({report_data['worst_performer']['pnl_pct']:+.2f}%)"
+            f"</font>",
+        ],
     ]
 
     summary_rows = []
-    label_style = ParagraphStyle("SL", parent=body_style,
-                                 fontName="Helvetica-Bold", fontSize=8)
+    label_style = ParagraphStyle("SL", parent=body_style, fontName="Helvetica-Bold", fontSize=8)
     value_style = ParagraphStyle("SV", parent=body_style, fontSize=8)
 
     for label, value in summary_data:
-        summary_rows.append([
-            Paragraph(label, label_style),
-            Paragraph(value, value_style),
-        ])
+        summary_rows.append(
+            [
+                Paragraph(label, label_style),
+                Paragraph(value, value_style),
+            ]
+        )
 
     summary_table = Table(
         summary_rows,
-        colWidths=[55*mm, 100*mm],
+        colWidths=[55 * mm, 100 * mm],
     )
-    summary_table.setStyle(TableStyle([
-        ("VALIGN",      (0, 0), (-1, -1), "MIDDLE"),
-        ("TOPPADDING",  (0, 0), (-1, -1), 4),
-        ("BOTTOMPADDING",(0, 0), (-1, -1), 4),
-        ("ROWBACKGROUNDS", (0, 0), (-1, -1),
-         [_WHITE, _LIGHT_ROW]),
-        ("LINEBELOW",   (0, 0), (-1, -2),
-         0.25, colors.HexColor("#e0e0e0")),
-    ]))
+    summary_table.setStyle(
+        TableStyle(
+            [
+                ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+                ("TOPPADDING", (0, 0), (-1, -1), 4),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
+                ("ROWBACKGROUNDS", (0, 0), (-1, -1), [_WHITE, _LIGHT_ROW]),
+                ("LINEBELOW", (0, 0), (-1, -2), 0.25, colors.HexColor("#e0e0e0")),
+            ]
+        )
+    )
     story.append(summary_table)
-    story.append(Spacer(1, 4*mm))
+    story.append(Spacer(1, 4 * mm))
 
     # ── SECTION 3: P&L Chart ─────────────────────────────────────────────────
     pnl_series = report_data.get("pnl_series", [])
@@ -530,116 +569,134 @@ def build_pdf(
     if chart_bytes:
         story.append(Paragraph("Weekly P&L Performance", h2_style))
         chart_buf = io.BytesIO(chart_bytes)
-        chart_img = Image(chart_buf, width=168*mm, height=58*mm)
+        chart_img = Image(chart_buf, width=168 * mm, height=58 * mm)
         story.append(chart_img)
-        story.append(Spacer(1, 4*mm))
+        story.append(Spacer(1, 4 * mm))
 
     # ── SECTION 4: Holdings Table ─────────────────────────────────────────────
     story.append(Paragraph("Holdings Breakdown", h2_style))
 
-    col_w = [18*mm, 17*mm, 22*mm, 17*mm, 30*mm, 20*mm, 18*mm, 12*mm]
-    headers = ["Ticker", "Weight", "Value", "P&L",
-               "RSI", "MACD", "Div Yield", "Day Chg"]
+    col_w = [18 * mm, 17 * mm, 22 * mm, 17 * mm, 30 * mm, 20 * mm, 18 * mm, 12 * mm]
+    headers = ["Ticker", "Weight", "Value", "P&L", "RSI", "MACD", "Div Yield", "Day Chg"]
 
-    cell_style = ParagraphStyle("Cell", parent=body_style,
-                                fontSize=7.5, leading=10)
-    hdr_style  = ParagraphStyle("Hdr",  parent=cell_style,
-                                fontName="Helvetica-Bold",
-                                textColor=_WHITE)
+    cell_style = ParagraphStyle("Cell", parent=body_style, fontSize=7.5, leading=10)
+    hdr_style = ParagraphStyle(
+        "Hdr", parent=cell_style, fontName="Helvetica-Bold", textColor=_WHITE
+    )
 
     table_data = [[Paragraph(h, hdr_style) for h in headers]]
 
     for h in report_data.get("holdings_data", []):
-        pnl_s   = "+" if h["pnl_pct"] >= 0 else ""
-        pnl_c   = _GREEN_HEX if h["pnl_pct"] >= 0 else _RED_HEX
-        day_s   = "+" if h["day_chg_pct"] >= 0 else ""
-        day_c   = _GREEN_HEX if h["day_chg_pct"] >= 0 else _RED_HEX
-        rsi_c   = (
-            _GREEN_HEX if h["rsi_label"] == "Oversold"
-            else _RED_HEX if h["rsi_label"] == "Overbought"
+        pnl_s = "+" if h["pnl_pct"] >= 0 else ""
+        pnl_c = _GREEN_HEX if h["pnl_pct"] >= 0 else _RED_HEX
+        day_s = "+" if h["day_chg_pct"] >= 0 else ""
+        day_c = _GREEN_HEX if h["day_chg_pct"] >= 0 else _RED_HEX
+        rsi_c = (
+            _GREEN_HEX
+            if h["rsi_label"] == "Oversold"
+            else _RED_HEX
+            if h["rsi_label"] == "Overbought"
             else "#333333"
         )
-        macd_c  = _GREEN_HEX if h["macd_label"] == "Bullish" else _RED_HEX
+        macd_c = _GREEN_HEX if h["macd_label"] == "Bullish" else _RED_HEX
 
-        table_data.append([
-            Paragraph(h["ticker"], cell_style),
-            Paragraph(f"{h['weight']:.1f}%", cell_style),
-            Paragraph(f"${h['mkt_value']:,.0f}", cell_style),
-            Paragraph(
-                f'<font color="{pnl_c}">{pnl_s}{h["pnl_pct"]:.1f}%</font>',
-                cell_style,
-            ),
-            Paragraph(
-                f'<font color="{rsi_c}">{h["rsi"]:.0f} ({h["rsi_label"]})</font>',
-                cell_style,
-            ),
-            Paragraph(
-                f'<font color="{macd_c}">{h["macd_label"]}</font>',
-                cell_style,
-            ),
-            Paragraph(f"{h['div_yield']:.2f}%", cell_style),
-            Paragraph(
-                f'<font color="{day_c}">{day_s}{h["day_chg_pct"]:.1f}%</font>',
-                cell_style,
-            ),
-        ])
+        table_data.append(
+            [
+                Paragraph(h["ticker"], cell_style),
+                Paragraph(f"{h['weight']:.1f}%", cell_style),
+                Paragraph(f"${h['mkt_value']:,.0f}", cell_style),
+                Paragraph(
+                    f'<font color="{pnl_c}">{pnl_s}{h["pnl_pct"]:.1f}%</font>',
+                    cell_style,
+                ),
+                Paragraph(
+                    f'<font color="{rsi_c}">{h["rsi"]:.0f} ({h["rsi_label"]})</font>',
+                    cell_style,
+                ),
+                Paragraph(
+                    f'<font color="{macd_c}">{h["macd_label"]}</font>',
+                    cell_style,
+                ),
+                Paragraph(f"{h['div_yield']:.2f}%", cell_style),
+                Paragraph(
+                    f'<font color="{day_c}">{day_s}{h["day_chg_pct"]:.1f}%</font>',
+                    cell_style,
+                ),
+            ]
+        )
 
     holdings_table = Table(table_data, colWidths=col_w, repeatRows=1)
-    holdings_table.setStyle(TableStyle([
-        ("BACKGROUND",    (0, 0), (-1, 0),  _DARK),
-        ("TEXTCOLOR",     (0, 0), (-1, 0),  _WHITE),
-        ("FONTNAME",      (0, 0), (-1, 0),  "Helvetica-Bold"),
-        ("FONTSIZE",      (0, 0), (-1, -1), 7.5),
-        ("GRID",          (0, 0), (-1, -1), 0.25, colors.HexColor("#dddddd")),
-        ("ROWBACKGROUNDS",(0, 1), (-1, -1), [_WHITE, _LIGHT_ROW]),
-        ("VALIGN",        (0, 0), (-1, -1), "MIDDLE"),
-        ("ALIGN",         (1, 0), (-1, -1), "CENTER"),
-        ("TOPPADDING",    (0, 0), (-1, -1), 4),
-        ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
-        ("LINEBELOW",     (0, 0), (-1, 0),  1, _TEAL),
-    ]))
+    holdings_table.setStyle(
+        TableStyle(
+            [
+                ("BACKGROUND", (0, 0), (-1, 0), _DARK),
+                ("TEXTCOLOR", (0, 0), (-1, 0), _WHITE),
+                ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+                ("FONTSIZE", (0, 0), (-1, -1), 7.5),
+                ("GRID", (0, 0), (-1, -1), 0.25, colors.HexColor("#dddddd")),
+                ("ROWBACKGROUNDS", (0, 1), (-1, -1), [_WHITE, _LIGHT_ROW]),
+                ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+                ("ALIGN", (1, 0), (-1, -1), "CENTER"),
+                ("TOPPADDING", (0, 0), (-1, -1), 4),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
+                ("LINEBELOW", (0, 0), (-1, 0), 1, _TEAL),
+            ]
+        )
+    )
     story.append(holdings_table)
-    story.append(Spacer(1, 4*mm))
+    story.append(Spacer(1, 4 * mm))
 
     # ── SECTION 5: Dividend Calendar ─────────────────────────────────────────
     story.append(Paragraph("Upcoming Dividends (Next 30 Days)", h2_style))
     upcoming = report_data.get("upcoming_dividends", [])
     if upcoming:
         div_headers = ["Ticker", "Ex-Date", "Pay Date", "Per Share"]
-        div_col_w   = [35*mm, 45*mm, 45*mm, 35*mm]
-        div_data    = [[Paragraph(h, hdr_style) for h in div_headers]]
+        div_col_w = [35 * mm, 45 * mm, 45 * mm, 35 * mm]
+        div_data = [[Paragraph(h, hdr_style) for h in div_headers]]
         for d in upcoming:
-            div_data.append([
-                Paragraph(d["ticker"], cell_style),
-                Paragraph(d["ex_date"], cell_style),
-                Paragraph(d.get("pay_date", "TBC"), cell_style),
-                Paragraph(f"${d['amount']:.4f}", cell_style),
-            ])
+            div_data.append(
+                [
+                    Paragraph(d["ticker"], cell_style),
+                    Paragraph(d["ex_date"], cell_style),
+                    Paragraph(d.get("pay_date", "TBC"), cell_style),
+                    Paragraph(f"${d['amount']:.4f}", cell_style),
+                ]
+            )
         div_table = Table(div_data, colWidths=div_col_w, repeatRows=1)
-        div_table.setStyle(TableStyle([
-            ("BACKGROUND",    (0, 0), (-1, 0), _DARK),
-            ("GRID",          (0, 0), (-1, -1), 0.25, colors.HexColor("#dddddd")),
-            ("ROWBACKGROUNDS",(0, 1), (-1, -1), [_WHITE, _LIGHT_ROW]),
-            ("VALIGN",        (0, 0), (-1, -1), "MIDDLE"),
-            ("ALIGN",         (1, 0), (-1, -1), "CENTER"),
-            ("TOPPADDING",    (0, 0), (-1, -1), 4),
-            ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
-            ("LINEBELOW",     (0, 0), (-1, 0), 1, _TEAL),
-        ]))
+        div_table.setStyle(
+            TableStyle(
+                [
+                    ("BACKGROUND", (0, 0), (-1, 0), _DARK),
+                    ("GRID", (0, 0), (-1, -1), 0.25, colors.HexColor("#dddddd")),
+                    ("ROWBACKGROUNDS", (0, 1), (-1, -1), [_WHITE, _LIGHT_ROW]),
+                    ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+                    ("ALIGN", (1, 0), (-1, -1), "CENTER"),
+                    ("TOPPADDING", (0, 0), (-1, -1), 4),
+                    ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
+                    ("LINEBELOW", (0, 0), (-1, 0), 1, _TEAL),
+                ]
+            )
+        )
         story.append(div_table)
     else:
-        story.append(Paragraph(
-            "No dividend payments expected in the next 30 days.",
-            muted_style,
-        ))
-    story.append(Spacer(1, 4*mm))
+        story.append(
+            Paragraph(
+                "No dividend payments expected in the next 30 days.",
+                muted_style,
+            )
+        )
+    story.append(Spacer(1, 4 * mm))
 
     # ── SECTION 6: AI Commentary ──────────────────────────────────────────────
-    story.append(KeepTogether([
-        Paragraph("Weekly Market Commentary", h2_style),
-        Paragraph(ai_commentary, body_style),
-    ]))
-    story.append(Spacer(1, 4*mm))
+    story.append(
+        KeepTogether(
+            [
+                Paragraph("Weekly Market Commentary", h2_style),
+                Paragraph(ai_commentary, body_style),
+            ]
+        )
+    )
+    story.append(Spacer(1, 4 * mm))
 
     # ── SECTION 7: News Per Holding ───────────────────────────────────────────
     story.append(Paragraph("Recent News by Holding", h2_style))
@@ -649,58 +706,71 @@ def build_pdf(
         story.append(Paragraph(ticker, h3_style))
         for a in articles:
             title = a.get("title", "")
-            url   = a.get("url", "")
-            body  = a.get("body", "")
+            url = a.get("url", "")
+            body = a.get("body", "")
             if title and url:
-                story.append(Paragraph(
-                    f'<link href="{url}" color="{_TEAL_HEX}">'
-                    f'<b>{title}</b></link>',
-                    link_style,
-                ))
+                story.append(
+                    Paragraph(
+                        f'<link href="{url}" color="{_TEAL_HEX}"><b>{title}</b></link>',
+                        link_style,
+                    )
+                )
             if body:
                 story.append(Paragraph(body, muted_style))
-            story.append(Spacer(1, 1.5*mm))
-    story.append(Spacer(1, 4*mm))
+            story.append(Spacer(1, 1.5 * mm))
+    story.append(Spacer(1, 4 * mm))
 
     # ── SECTION 8: General Market News & Stocks to Watch ─────────────────────
     if market_news:
-        story.append(Paragraph(
-            "ASX Market News & Stocks to Watch", h2_style,
-        ))
+        story.append(
+            Paragraph(
+                "ASX Market News & Stocks to Watch",
+                h2_style,
+            )
+        )
         for item in market_news:
             title = item.get("title", "")
-            url   = item.get("url", "")
-            body  = item.get("body", "")
+            url = item.get("url", "")
+            body = item.get("body", "")
             if title and url:
-                story.append(Paragraph(
-                    f'<link href="{url}" color="{_TEAL_HEX}">'
-                    f'<b>{title}</b></link>',
-                    link_style,
-                ))
+                story.append(
+                    Paragraph(
+                        f'<link href="{url}" color="{_TEAL_HEX}"><b>{title}</b></link>',
+                        link_style,
+                    )
+                )
             if body:
                 story.append(Paragraph(body, muted_style))
-            story.append(Spacer(1, 2*mm))
-        story.append(Spacer(1, 2*mm))
+            story.append(Spacer(1, 2 * mm))
+        story.append(Spacer(1, 2 * mm))
 
     # ── SECTION 9: Disclaimer ─────────────────────────────────────────────────
-    story.append(HRFlowable(
-        width="100%", thickness=0.5,
-        color=_GREY, spaceBefore=4*mm, spaceAfter=2*mm,
-    ))
-    story.append(Paragraph(
-        "Disclaimer: This report is automatically generated for personal "
-        "use only and does not constitute financial advice. Data is sourced "
-        "from Yahoo Finance and public web sources. Always verify with a "
-        "licensed financial adviser before making investment decisions. "
-        "Past performance is not indicative of future results.",
-        disclaimer_style,
-    ))
+    story.append(
+        HRFlowable(
+            width="100%",
+            thickness=0.5,
+            color=_GREY,
+            spaceBefore=4 * mm,
+            spaceAfter=2 * mm,
+        )
+    )
+    story.append(
+        Paragraph(
+            "Disclaimer: This report is automatically generated for personal "
+            "use only and does not constitute financial advice. Data is sourced "
+            "from Yahoo Finance and public web sources. Always verify with a "
+            "licensed financial adviser before making investment decisions. "
+            "Past performance is not indicative of future results.",
+            disclaimer_style,
+        )
+    )
 
     doc.build(story)
     return buffer.getvalue()
 
 
 # ── 6. Orchestrator ───────────────────────────────────────────────────────────
+
 
 def generate_weekly_report(
     portfolio_data: dict,
@@ -715,20 +785,26 @@ def generate_weekly_report(
     if not report_data:
         raise ValueError("Could not gather portfolio data for report")
 
-    holdings   = report_data.get("holdings_data", [])
-    news_map   = fetch_news_for_holdings(holdings)
+    holdings = report_data.get("holdings_data", [])
+    news_map = fetch_news_for_holdings(holdings)
     logger.info(f"Fetched news for {len(news_map)} holdings")
 
     market_news = fetch_market_news()
     logger.info(f"Fetched {len(market_news)} general market news items")
 
     ai_commentary = get_ai_commentary(
-        report_data, news_map, market_news, api_key,
+        report_data,
+        news_map,
+        market_news,
+        api_key,
     )
     logger.info("AI commentary generated")
 
     pdf_bytes = build_pdf(
-        report_data, news_map, market_news, ai_commentary,
+        report_data,
+        news_map,
+        market_news,
+        ai_commentary,
     )
     logger.info(f"PDF built: {len(pdf_bytes):,} bytes")
 

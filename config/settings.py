@@ -7,6 +7,7 @@ Easily customizable via .env file.
 """
 
 import os
+
 from dotenv import load_dotenv
 
 # Load environment variables from .env file
@@ -14,12 +15,15 @@ load_dotenv()
 
 # ── Paths ─────────────────────────────────────────────────────────────────────
 import sys
+
 SCRIPT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
 
 def get_data_dir():
     path = SCRIPT_DIR
     os.makedirs(path, exist_ok=True)
     return path
+
 
 DATA_DIR = get_data_dir()
 
@@ -32,12 +36,12 @@ os.makedirs(DATA_CACHE_DIR, exist_ok=True)
 # ── Intervals ─────────────────────────────────────────────────────────────────
 REFRESH_INTERVAL = int(os.getenv("REFRESH_INTERVAL_MS", 300_000))  # 5 minutes in ms
 TECHNICALS_CACHE_TTL = int(os.getenv("TECHNICALS_CACHE_TTL", 86400))  # 24 hours in seconds
-DIVIDENDS_CACHE_TTL = int(os.getenv("DIVIDENDS_CACHE_TTL", 604800))   # 7 days in seconds
+DIVIDENDS_CACHE_TTL = int(os.getenv("DIVIDENDS_CACHE_TTL", 604800))  # 7 days in seconds
 
 # ── Market configuration ──────────────────────────────────────────────────────
 MARKET_TIMEZONE = os.getenv("MARKET_TIMEZONE", "Australia/Sydney")
 MARKET_WEEKDAYS = [0, 1, 2, 3, 4]  # Monday-Friday
-MARKET_HOURS = (10, 16)             # 10:00-16:00
+MARKET_HOURS = (10, 16)  # 10:00-16:00
 
 # ── API retry configuration ───────────────────────────────────────────────────
 API_MAX_RETRIES = int(os.getenv("API_MAX_RETRIES", 3))

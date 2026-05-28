@@ -1,17 +1,20 @@
 # data/repository.py
 import logging
 from datetime import datetime, timedelta
+
 import pandas as pd
+
 from data.database import get_connection, init_db
 
 logger = logging.getLogger(__name__)
+
 
 class PortfolioRepository:
     """
     Abstraction layer for portfolio data access.
     Now uses SQLite storage for improved performance and reliability.
     """
-    
+
     def __init__(self):
         # Ensure database is initialised on startup
         init_db()
@@ -37,12 +40,12 @@ class PortfolioRepository:
         try:
             # Clear existing data first
             conn.execute("DELETE FROM transactions")
-            
+
             # Re-insert all rows
             for txn in history:
                 conn.execute(
                     """
-                    INSERT INTO transactions (type, ticker, shares, price, date) 
+                    INSERT INTO transactions (type, ticker, shares, price, date)
                     VALUES (?, ?, ?, ?, ?)
                     """,
                     (
@@ -51,7 +54,7 @@ class PortfolioRepository:
                         float(txn["shares"]),
                         float(txn["price"]),
                         str(txn["date"]),
-                    )
+                    ),
                 )
             conn.commit()
             logger.info(f"Overwrote database with {len(history)} transactions")
@@ -67,7 +70,7 @@ class PortfolioRepository:
         try:
             conn.execute(
                 """
-                INSERT INTO transactions (type, ticker, shares, price, date) 
+                INSERT INTO transactions (type, ticker, shares, price, date)
                 VALUES (?, ?, ?, ?, ?)
                 """,
                 (
@@ -76,12 +79,10 @@ class PortfolioRepository:
                     float(txn["shares"]),
                     float(txn["price"]),
                     str(txn["date"]),
-                )
+                ),
             )
             conn.commit()
-            logger.info(
-                f"Transaction saved to DB: {txn['type']} {txn['shares']} {txn['ticker']}"
-            )
+            logger.info(f"Transaction saved to DB: {txn['type']} {txn['shares']} {txn['ticker']}")
         except Exception as e:
             logger.error(f"Failed to save transaction: {e}")
             conn.rollback()
@@ -128,7 +129,7 @@ class PortfolioRepository:
                 INSERT INTO app_metadata (key, value) VALUES ('onboarding_completed', ?)
                 ON CONFLICT(key) DO UPDATE SET value = ?
                 """,
-                (val_str, val_str)
+                (val_str, val_str),
             )
             conn.commit()
             logger.info(f"Onboarding completion status updated to: {val_str}")
@@ -166,7 +167,7 @@ class PortfolioRepository:
                 INSERT INTO app_metadata (key, value) VALUES ('gemini_api_key', ?)
                 ON CONFLICT(key) DO UPDATE SET value = ?
                 """,
-                (api_key, api_key)
+                (api_key, api_key),
             )
             conn.commit()
             logger.info("Successfully saved Gemini API key to database metadata.")
@@ -183,14 +184,15 @@ class PortfolioRepository:
         conn = get_connection()
         try:
             row = conn.execute(
-                "SELECT * FROM assets WHERE ticker = ?", 
-                (ticker.upper(),)
+                "SELECT * FROM assets WHERE ticker = ?", (ticker.upper(),)
             ).fetchone()
             return dict(row) if row else None
         finally:
             conn.close()
 
-    def upsert_asset(self, ticker: str, name: str = None, category: str = None, market: str = None) -> None:
+    def upsert_asset(
+        self, ticker: str, name: str = None, category: str = None, market: str = None
+    ) -> None:
         """Insert or update a ticker master record."""
         ticker = ticker.upper()
         conn = get_connection()
@@ -205,7 +207,7 @@ class PortfolioRepository:
                     market = COALESCE(?, market),
                     updated_at = CURRENT_TIMESTAMP
                 """,
-                (ticker, name, category, market, name, category, market)
+                (ticker, name, category, market, name, category, market),
             )
             conn.commit()
         finally:
@@ -216,6 +218,7 @@ class HistoryRepository:
     """
     Manages persistence of OHLC price histories in SQLite.
     """
+
     def __init__(self):
         init_db()
 
@@ -223,11 +226,11 @@ class HistoryRepository:
         """Bulk upsert OHLC records into price_history and update history_meta."""
         if not records:
             return
-            
+
         ticker = ticker.upper()
         conn = get_connection()
         now_iso = datetime.now().isoformat()
-        
+
         try:
             # 1. Upsert price records
             for r in records:
@@ -238,25 +241,26 @@ class HistoryRepository:
                 l = r.get("Low") or r.get("low_price") or r.get("low")
                 c = r.get("Close") or r.get("close_price") or r.get("close")
                 v = r.get("Volume") or r.get("volume")
-                
+
                 # Differentiate between missing and actual 0.0
                 dv = r.get("Dividends")
                 if dv is None:
                     dv = r.get("dividends")
-                
+
                 db_dv = dv if dv is not None else 0.0
                 update_dv = dv  # None (NULL) will preserve existing value on conflict COALESCE
-                
+
                 if not d or c is None:
                     continue
-                
+
                 # Strip time if it's just a date string for consistency in historical charts
                 if len(d) > 10 and " " in d:
                     d_clean = d.split(" ")[0]
                 else:
                     d_clean = d
-                    
-                conn.execute('''
+
+                conn.execute(
+                    """
                     INSERT INTO price_history (ticker, date, open_price, high_price, low_price, close_price, volume, dividends, fetched_at)
                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
                     ON CONFLICT(ticker, date) DO UPDATE SET
@@ -267,27 +271,63 @@ class HistoryRepository:
                         volume = COALESCE(?, volume),
                         dividends = COALESCE(?, dividends),
                         fetched_at = ?
-                ''', (ticker, d_clean, o, h, l, c, v, db_dv, now_iso, o, h, l, c, v, update_dv, now_iso))
-            
+                """,
+                    (
+                        ticker,
+                        d_clean,
+                        o,
+                        h,
+                        l,
+                        c,
+                        v,
+                        db_dv,
+                        now_iso,
+                        o,
+                        h,
+                        l,
+                        c,
+                        v,
+                        update_dv,
+                        now_iso,
+                    ),
+                )
+
             # 2. Update metadata
-            valid_dates = [r.get("Date") or r.get("date") for r in records if (r.get("Date") or r.get("date"))]
+            valid_dates = [
+                r.get("Date") or r.get("date") for r in records if (r.get("Date") or r.get("date"))
+            ]
             if not valid_dates:
                 return
 
             first_date = min(valid_dates).split(" ")[0]
             last_date = max(valid_dates).split(" ")[0]
-            
+
             if period == "5d":
-                conn.execute('''
+                conn.execute(
+                    """
                     INSERT INTO history_meta (ticker, first_date, last_date, last_fetched, period)
                     VALUES (?, ?, ?, ?, ?)
                     ON CONFLICT(ticker) DO UPDATE SET
                         first_date = CASE WHEN ? < first_date THEN ? ELSE first_date END,
                         last_date = CASE WHEN ? > last_date THEN ? ELSE last_date END,
                         period = COALESCE(period, ?)
-                ''', (ticker, first_date, last_date, None, period, first_date, first_date, last_date, last_date, period))
+                """,
+                    (
+                        ticker,
+                        first_date,
+                        last_date,
+                        None,
+                        period,
+                        first_date,
+                        first_date,
+                        last_date,
+                        last_date,
+                        period,
+                    ),
+                )
             else:
-                conn.execute('''
+                conn.execute(
+                    """
                     INSERT INTO history_meta (ticker, first_date, last_date, last_fetched, period)
                     VALUES (?, ?, ?, ?, ?)
                     ON CONFLICT(ticker) DO UPDATE SET
@@ -295,8 +335,22 @@ class HistoryRepository:
                         last_date = CASE WHEN ? > last_date THEN ? ELSE last_date END,
                         last_fetched = ?,
                         period = ?
-                ''', (ticker, first_date, last_date, now_iso, period, first_date, first_date, last_date, last_date, now_iso, period))
-            
+                """,
+                    (
+                        ticker,
+                        first_date,
+                        last_date,
+                        now_iso,
+                        period,
+                        first_date,
+                        first_date,
+                        last_date,
+                        last_date,
+                        now_iso,
+                        period,
+                    ),
+                )
+
             conn.commit()
         except Exception as e:
             logger.error(f"Failed to save history for {ticker}: {e}")
@@ -311,20 +365,20 @@ class HistoryRepository:
         try:
             query = "SELECT date, open_price, high_price, low_price, close_price, volume, dividends FROM price_history WHERE ticker = ?"
             params = [ticker]
-            
+
             if from_date:
                 query += " AND date >= ?"
                 params.append(from_date)
             if to_date:
                 query += " AND date <= ?"
                 params.append(to_date)
-                
+
             query += " ORDER BY date ASC"
             df = pd.read_sql_query(query, conn, params=params)
-            
+
             if df.empty:
                 return []
-                
+
             df.columns = ["Date", "Open", "High", "Low", "Close", "Volume", "Dividends"]
             return df.to_dict("records")
         finally:
@@ -343,11 +397,11 @@ class HistoryRepository:
                 query += " AND date >= ?"
                 params.append(from_date)
             query += " ORDER BY date ASC"
-            
+
             df = pd.read_sql_query(query, conn, params=params)
             if df.empty:
                 return pd.Series(dtype=float)
-            
+
             df["date"] = pd.to_datetime(df["date"])
             return df.set_index("date")["close_price"]
         finally:
@@ -358,7 +412,8 @@ class HistoryRepository:
         Retrieves the latest price, prev close, and day range for a list of tickers.
         Efficiently fetches only the last 2 records per ticker from price_history.
         """
-        if not tickers: return {}
+        if not tickers:
+            return {}
         tickers = [t.upper() for t in tickers]
         conn = get_connection()
         try:
@@ -375,19 +430,20 @@ class HistoryRepository:
                 WHERE rn <= 2
             """
             df = pd.read_sql_query(query, conn, params=tickers)
-            if df.empty: return {}
+            if df.empty:
+                return {}
 
             results = {}
             for ticker, group in df.groupby("ticker"):
                 group = group.sort_values("date", ascending=False)
                 latest = group.iloc[0]
                 prev = group.iloc[1] if len(group) > 1 else latest
-                
+
                 results[ticker] = {
                     "last_price": float(latest["close_price"]),
                     "prev_close": float(prev["close_price"]),
                     "day_high": float(latest["high_price"]),
-                    "day_low": float(latest["low_price"])
+                    "day_low": float(latest["low_price"]),
                 }
             return results
         finally:
@@ -409,21 +465,21 @@ class HistoryRepository:
         Threshold: 5 minutes if market is open, 24 hours if closed.
         Also triggers if stored history does not cover the requested period.
         """
-        from services.market.market_status import is_market_open
         from core.engine.utils import get_period_cutoff
-        
+        from services.market.market_status import is_market_open
+
         meta = self.get_meta(ticker)
         if not meta or not meta.get("last_fetched"):
             return True
-            
+
         # 1. Recency check
         try:
             last_fetched = datetime.fromisoformat(meta["last_fetched"])
             age = datetime.now() - last_fetched
-            
+
             # Recency threshold: Daily history only needs once-per-day refresh
             # Intraday data is handled separately by fetch_live.
-            recency_limit = 86400 # 24 hours
+            recency_limit = 86400  # 24 hours
             if age.total_seconds() > recency_limit:
                 return True
         except Exception:
@@ -433,18 +489,22 @@ class HistoryRepository:
         stored_first = meta.get("first_date")
         if not stored_first:
             return True
-            
+
         # If stored period is '5d' but we request a deeper period (e.g., 'max'), it is stale
         stored_period = meta.get("period")
         if stored_period == "5d" and requested_period != "5d":
-            logger.info(f"Depth stale for {ticker}: requested {requested_period} but stored period is '5d'.")
+            logger.info(
+                f"Depth stale for {ticker}: requested {requested_period} but stored period is '5d'."
+            )
             return True
-            
+
         cutoff = get_period_cutoff(requested_period)
         if cutoff:
             cutoff_str = cutoff.strftime("%Y-%m-%d")
             if stored_first > cutoff_str:
-                logger.debug(f"Depth stale for {ticker}: stored_first({stored_first}) > cutoff({cutoff_str})")
+                logger.debug(
+                    f"Depth stale for {ticker}: stored_first({stored_first}) > cutoff({cutoff_str})"
+                )
                 return True
         else:
             # Requested period is "max" (Since purchase)
@@ -459,11 +519,13 @@ class HistoryRepository:
                     if days < 220:
                         # Check if we already tried a 'max' fetch
                         if meta.get("period") != "max":
-                            logger.info(f"Depth stale for {ticker}: requested max but only {days} days stored. Attempting full history recovery.")
+                            logger.info(
+                                f"Depth stale for {ticker}: requested max but only {days} days stored. Attempting full history recovery."
+                            )
                             return True
                 except Exception:
                     pass
-                
+
         return False
 
     def has_dividends(self, ticker: str) -> bool:
@@ -472,7 +534,7 @@ class HistoryRepository:
         try:
             row = conn.execute(
                 "SELECT COUNT(*) as count FROM price_history WHERE ticker = ? AND dividends > 0",
-                (ticker.upper(),)
+                (ticker.upper(),),
             ).fetchone()
             return row["count"] > 0
         except:
@@ -488,7 +550,9 @@ class HistoryRepository:
             cursor = conn.execute("DELETE FROM price_history WHERE date < ?", (cutoff,))
             conn.commit()
             if cursor.rowcount > 0:
-                logger.info(f"Cleaned up {cursor.rowcount} stale history records older than {cutoff}")
+                logger.info(
+                    f"Cleaned up {cursor.rowcount} stale history records older than {cutoff}"
+                )
         except Exception as e:
             logger.error(f"History cleanup failed: {e}")
             conn.rollback()

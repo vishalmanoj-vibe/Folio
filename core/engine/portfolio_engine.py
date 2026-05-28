@@ -28,6 +28,7 @@ build_tranches(ticker, buys)
 from __future__ import annotations
 
 import logging
+
 import pandas as pd
 
 from config.constants import NAMES
@@ -39,6 +40,7 @@ logger = logging.getLogger(__name__)
 # ─────────────────────────────────────────────────────────────────────────────
 # 1.  Holdings aggregation
 # ─────────────────────────────────────────────────────────────────────────────
+
 
 def build_holdings(history: list[dict], include_tranches: bool = True) -> list[dict]:
     """
@@ -87,11 +89,9 @@ def build_holdings(history: list[dict], include_tranches: bool = True) -> list[d
     results: list[dict] = []
 
     for ticker, grp in df.groupby("ticker"):
-        buys  = grp[grp["type"] == "buy"].copy()
+        buys = grp[grp["type"] == "buy"].copy()
         sells = (
-            grp[grp["type"] == "sell"].copy()
-            if "sell" in grp["type"].values
-            else pd.DataFrame()
+            grp[grp["type"] == "sell"].copy() if "sell" in grp["type"].values else pd.DataFrame()
         )
 
         if buys.empty:
@@ -100,20 +100,20 @@ def build_holdings(history: list[dict], include_tranches: bool = True) -> list[d
         total_bought, total_cost, total_sold, net_shares = aggregate_shares(buys, sells)
 
         if net_shares <= 0:
-            continue   # fully sold — exclude
+            continue  # fully sold — exclude
 
         avg_cost = round(total_cost / total_bought, 4)
         # Proportional cost: preserves correct cost basis when shares are sold
         remaining_cost = round(total_cost * (net_shares / total_bought), 2)
 
         holding = {
-            "ticker":         ticker,
-            "ticker_yf":      ticker + ".AX",
-            "name":           NAMES.get(ticker, ticker),   # static fallback only
-            "market":         "ETF/ASX",
-            "total_shares":   net_shares,
-            "total_cost":     remaining_cost,
-            "avg_cost":       avg_cost,
+            "ticker": ticker,
+            "ticker_yf": ticker + ".AX",
+            "name": NAMES.get(ticker, ticker),  # static fallback only
+            "market": "ETF/ASX",
+            "total_shares": net_shares,
+            "total_cost": remaining_cost,
+            "avg_cost": avg_cost,
             "first_purchase": buys["date"].min(),
         }
         if include_tranches:
@@ -127,6 +127,7 @@ def build_holdings(history: list[dict], include_tranches: bool = True) -> list[d
 # ─────────────────────────────────────────────────────────────────────────────
 # 2.  Per-tranche P&L history
 # ─────────────────────────────────────────────────────────────────────────────
+
 
 def compute_tranche_pnl(
     close_series: pd.Series,
@@ -163,21 +164,24 @@ def compute_tranche_pnl(
         if sub.empty:
             logger.debug(
                 "Tranche %s @ %s: no history on or after buy date",
-                tr.get("ticker", "?"), tr["date"],
+                tr.get("ticker", "?"),
+                tr["date"],
             )
             continue
 
         pnl_s = (sub - tr["price"]) * tr["shares"]
         pct_s = (sub - tr["price"]) / tr["price"] * 100
 
-        result.append({
-            "dates":     sub.index.strftime(date_fmt).tolist(),
-            "pnl":       pnl_s.round(2).tolist(),
-            "pct":       pct_s.round(2).tolist(),
-            "shares":    float(tr["shares"]),
-            "buy_price": float(tr["price"]),
-            "buy_date":  tr["date"],
-        })
+        result.append(
+            {
+                "dates": sub.index.strftime(date_fmt).tolist(),
+                "pnl": pnl_s.round(2).tolist(),
+                "pct": pct_s.round(2).tolist(),
+                "shares": float(tr["shares"]),
+                "buy_price": float(tr["price"]),
+                "buy_date": tr["date"],
+            }
+        )
 
     return result
 
@@ -185,6 +189,7 @@ def compute_tranche_pnl(
 # ─────────────────────────────────────────────────────────────────────────────
 # 3.  Snapshot P&L for a single holding
 # ─────────────────────────────────────────────────────────────────────────────
+
 
 def compute_holding_pnl(
     holding: dict,
@@ -207,29 +212,30 @@ def compute_holding_pnl(
         day_chg (float), day_chg_pct (float), day_pnl (float)
     """
     shares = holding["total_shares"]
-    cost   = holding["total_cost"]
+    cost = holding["total_cost"]
 
-    mkt_value   = round(shares * last_price, 2)
-    pnl         = round(mkt_value - cost, 2)
-    pnl_pct     = round((pnl / cost * 100) if cost else 0, 2)
+    mkt_value = round(shares * last_price, 2)
+    pnl = round(mkt_value - cost, 2)
+    pnl_pct = round((pnl / cost * 100) if cost else 0, 2)
 
-    day_chg     = round(last_price - prev_close, 4)
+    day_chg = round(last_price - prev_close, 4)
     day_chg_pct = round((day_chg / prev_close * 100) if prev_close else 0, 2)
-    day_pnl     = round(day_chg * shares, 2)
+    day_pnl = round(day_chg * shares, 2)
 
     return {
-        "mkt_value":   mkt_value,
-        "pnl":         pnl,
-        "pnl_pct":     pnl_pct,
-        "day_chg":     day_chg,
+        "mkt_value": mkt_value,
+        "pnl": pnl,
+        "pnl_pct": pnl_pct,
+        "day_chg": day_chg,
         "day_chg_pct": day_chg_pct,
-        "day_pnl":     day_pnl,
+        "day_pnl": day_pnl,
     }
 
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Private / low-level helpers (exported for testing)
 # ─────────────────────────────────────────────────────────────────────────────
+
 
 def aggregate_shares(
     buys: pd.DataFrame,
@@ -243,9 +249,9 @@ def aggregate_shares(
     (total_bought, total_cost, total_sold, net_shares)
     """
     total_bought = float(buys["shares"].sum())
-    total_cost   = float((buys["shares"] * buys["price"]).sum())
-    total_sold   = float(sells["shares"].sum()) if not sells.empty else 0.0
-    net_shares   = total_bought - total_sold
+    total_cost = float((buys["shares"] * buys["price"]).sum())
+    total_sold = float(sells["shares"].sum()) if not sells.empty else 0.0
+    net_shares = total_bought - total_sold
     return total_bought, total_cost, total_sold, net_shares
 
 
@@ -258,13 +264,12 @@ def build_tranches(ticker: str, buys: pd.DataFrame) -> list[dict]:
     """
     return [
         {
-            "ticker":    ticker,
-            "shares":    float(r["shares"]),
-            "price":     float(r["price"]),
-            "date":      str(r["date"]),
-            "buy_price": float(r["price"]),   # alias — chart compat
-            "buy_date":  str(r["date"]),       # alias — chart compat
+            "ticker": ticker,
+            "shares": float(r["shares"]),
+            "price": float(r["price"]),
+            "date": str(r["date"]),
+            "buy_price": float(r["price"]),  # alias — chart compat
+            "buy_date": str(r["date"]),  # alias — chart compat
         }
         for _, r in buys.iterrows()
     ]
-

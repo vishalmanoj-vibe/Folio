@@ -10,9 +10,10 @@ used as part of the portfolio cache key to detect when history has changed.
 
 import hashlib
 import json
-import time
 import sys
 import threading
+import time
+
 from config.settings import CACHE_TTL_SECONDS
 
 MAX_CACHE_ENTRIES = 200
@@ -30,7 +31,7 @@ def cache_stats() -> dict:
     total_mb = 0.0
     oldest_age = 0.0
     now = time.time()
-    
+
     with _CACHE_LOCK:
         if _CACHE:
             try:
@@ -50,7 +51,7 @@ def cache_stats() -> dict:
         "entries": len(_CACHE),
         "memory_mb": round(total_mb, 2),
         "oldest_age_sec": round(oldest_age, 2),
-        "hit_ratio": round(hit_ratio, 2)
+        "hit_ratio": round(hit_ratio, 2),
     }
 
 
@@ -86,17 +87,17 @@ def set_cache(key: str, value, ttl: int | None = None) -> None:
     global _WRITE_COUNTER
     if ttl is None:
         ttl = CACHE_TTL_SECONDS
-        
+
     with _CACHE_LOCK:
         _WRITE_COUNTER += 1
         if _WRITE_COUNTER >= 100:
             evict_expired()
             _WRITE_COUNTER = 0
-            
+
         if len(_CACHE) >= MAX_CACHE_ENTRIES:
             # First pass: remove expired
             evict_expired()
-            
+
             # Second pass: remove oldest if still over limit
             if len(_CACHE) >= MAX_CACHE_ENTRIES:
                 target_size = int(MAX_CACHE_ENTRIES * 0.8)

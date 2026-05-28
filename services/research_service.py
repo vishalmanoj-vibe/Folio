@@ -1,16 +1,12 @@
-import os
-import logging
 import copy
-import pandas as pd
+import logging
+import os
+
 import google.genai as genai
-from services.technical_indicators import (
-    compute_signals
-)
-from services.web_search import (
-    search_financial_news,
-    format_search_results,
-    should_search_web
-)
+import pandas as pd
+
+from services.technical_indicators import compute_signals
+from services.web_search import format_search_results, search_financial_news, should_search_web
 
 logger = logging.getLogger(__name__)
 
@@ -33,12 +29,12 @@ def build_portfolio_context(portfolio_data: dict, ticker: str = "") -> str:
 
     holdings = portfolio_data["holdings"]
     fetched_at = portfolio_data.get("fetched_at", "Unknown")
-    
+
     total_val = sum(float(h.get("mkt_value", 0)) for h in holdings)
-    
+
     lines = [f"=== PORTFOLIO SNAPSHOT (Live as at {fetched_at}) ==="]
     lines.append(f"Total value: ${total_val:,.0f}")
-    
+
     # FIX: limit context to top 20 holdings by weight to prevent context window overflow
     sorted_holdings = sorted(holdings, key=lambda x: float(x.get("mkt_value", 0)), reverse=True)
     for h in sorted_holdings[:20]:
@@ -47,11 +43,13 @@ def build_portfolio_context(portfolio_data: dict, ticker: str = "") -> str:
         mkt_value = float(h.get("mkt_value", 0))
         div_yield = float(h.get("div_yield", 0)) if h.get("div_yield") is not None else 0.0
         pnl_pct = float(h.get("pnl_pct", 0)) if h.get("pnl_pct") is not None else 0.0
-        
+
         weight = (mkt_value / total_val * 100) if total_val > 0 else 0.0
-        
-        lines.append(f"{t} — {name}  {weight:.1f}%  |  yield {div_yield:.1f}%  |  P&L {pnl_pct:+.1f}%")
-        
+
+        lines.append(
+            f"{t} — {name}  {weight:.1f}%  |  yield {div_yield:.1f}%  |  P&L {pnl_pct:+.1f}%"
+        )
+
     # Add technical signals for each holding
     sig_lines = []
     histories = portfolio_data.get("histories", {})
@@ -68,18 +66,18 @@ def build_portfolio_context(portfolio_data: dict, ticker: str = "") -> str:
                 f"MACD={sig['macd_label']}, "
                 f"Bollinger={sig['bb_label']}"
             )
-    
+
     # ── Performance Context (7-Day) ──
     perf_lines = []
     total_7d_chg = 0.0
     valid_count = 0
-    
+
     for h in sorted_holdings:
         ticker_h = h["ticker"]
         history = histories.get(ticker_h, [])
         if len(history) < 2:
             continue
-            
+
         # Get price from ~7 days ago
         target_date = (pd.Timestamp.now() - pd.Timedelta(days=7)).strftime("%Y-%m-%d")
         start_price = None
@@ -87,45 +85,48 @@ def build_portfolio_context(portfolio_data: dict, ticker: str = "") -> str:
             if entry["Date"] <= target_date:
                 start_price = float(entry["Close"])
                 break
-        
+
         if not start_price:
             # Fallback to the oldest available in our 14d window
             start_price = float(history[0]["Close"])
-            
+
         curr_price = float(h.get("last_price", 0))
         if start_price > 0:
             chg_pct = (curr_price - start_price) / start_price * 100
             weight = (float(h.get("mkt_value", 0)) / total_val) if total_val > 0 else 0
             total_7d_chg += chg_pct * weight
             valid_count += 1
-            if weight > 0.02: # Only list holdings > 2% weight in perf summary
+            if weight > 0.02:  # Only list holdings > 2% weight in perf summary
                 perf_lines.append(f"  {ticker_h}: {chg_pct:+.1f}%")
 
     if valid_count > 0:
-        lines.append(f"\nRECENT PERFORMANCE (Estimated 7-Day Trend):")
+        lines.append("\nRECENT PERFORMANCE (Estimated 7-Day Trend):")
         lines.append(f"Portfolio Total: {total_7d_chg:+.2f}%")
         if perf_lines:
-            lines.extend(perf_lines[:10]) # Top 10 movers/weights
+            lines.extend(perf_lines[:10])  # Top 10 movers/weights
         lines.append("")
 
     if sig_lines:
         lines.append("Technical Signals (from price history):")
         lines.extend(sig_lines)
         lines.append("")
-        
+
     if ticker:
         lines.append(f"=== TICKER USER IS CONSIDERING BUYING: {ticker.upper()} ===")
         lines.append("This ticker is NOT currently in the user's portfolio.")
-        lines.append("The user wants to know if it would be a good addition to their existing holdings shown above.")
-        lines.append("Evaluate fit based on: sector overlap, geographic overlap, yield impact, diversification benefit, and risk profile.")
-        
+        lines.append(
+            "The user wants to know if it would be a good addition to their existing holdings shown above."
+        )
+        lines.append(
+            "Evaluate fit based on: sector overlap, geographic overlap, yield impact, diversification benefit, and risk profile."
+        )
+
     context = "\n".join(lines)
     logger.info(f"Generated portfolio context (length {len(context)}): {context[:200]}...")
     return context
 
 
-def get_ai_response(history: list[dict], portfolio_data: dict,
-                    ticker: str = "") -> str:
+def get_ai_response(history: list[dict], portfolio_data: dict, ticker: str = "") -> str:
     logger.info(
         f"get_ai_response called — "
         f"holdings: {len(portfolio_data.get('holdings', []))}, "
@@ -140,51 +141,40 @@ def get_ai_response(history: list[dict], portfolio_data: dict,
 
         # Build context and inject into a copy of the last user message
         context = build_portfolio_context(portfolio_data, ticker)
-        
+
         # Auto web search if message needs live data
         current_message_search = history[-1]["content"] if history else ""
-        
+
         search_context = ""
         if should_search_web(current_message_search):
             # Build smart query from message + ticker
             search_query = current_message_search[:100]
             if ticker:
-                search_query = (
-                    f"{ticker} ASX {search_query}"
-                )
-            
-            results = search_financial_news(
-                search_query, max_results=3
-            )
-            search_context = format_search_results(
-                results
-            )
+                search_query = f"{ticker} ASX {search_query}"
+
+            results = search_financial_news(search_query, max_results=3)
+            search_context = format_search_results(results)
             if search_context:
-                logger.info(
-                    f"Web search added: "
-                    f"{len(results)} results"
-                )
+                logger.info(f"Web search added: {len(results)} results")
         logger.info(
             f"Context length: {len(context)} chars, "
             f"History turns: {len(history)}, "
             f"Ticker: '{ticker}'"
         )
-        
+
         # Separate history into past turns and current message
         if not history:
             return "No message to respond to."
-        
+
         past_turns = history[:-1]
         current_message = history[-1]["content"]
 
-        # Prepend the full portfolio context (including TA signals) to the 
-        # last user message. This ensures the AI reasons with fresh data 
+        # Prepend the full portfolio context (including TA signals) to the
+        # last user message. This ensures the AI reasons with fresh data
         # while keeping the actual chat history (past_turns) clean and lean.
         full_context = context
         if search_context:
-            full_context += (
-                "\n\n" + search_context
-            )
+            full_context += "\n\n" + search_context
         full_message = full_context + "\n\n" + current_message
 
         # Convert past turns to google-genai Content objects
@@ -193,10 +183,7 @@ def get_ai_response(history: list[dict], portfolio_data: dict,
         for msg in past_turns:
             role = "model" if msg["role"] == "assistant" else "user"
             chat_history.append(
-                genai.types.Content(
-                    role=role,
-                    parts=[genai.types.Part(text=msg["content"])]
-                )
+                genai.types.Content(role=role, parts=[genai.types.Part(text=msg["content"])])
             )
 
         # Create chat session with history
@@ -206,7 +193,7 @@ def get_ai_response(history: list[dict], portfolio_data: dict,
             config=genai.types.GenerateContentConfig(
                 system_instruction=SYSTEM_PROMPT,
                 max_output_tokens=2048,
-            )
+            ),
         )
 
         # Send the current message with context prepended
