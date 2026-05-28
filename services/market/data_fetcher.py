@@ -1179,7 +1179,7 @@ def fetch_live(holdings: list[dict], record_snapshots: bool = True) -> tuple[dic
     set_cache(cache_key, result, ttl=CACHE_TTL_SECONDS)
     
     # ── Save snapshot for fast startup ───────────────────────────────────────
-    if result.get("holdings"):
+    if record_snapshots and result.get("holdings"):
         save_portfolio_snapshot(result)
         
     logger.info("Done — %d enriched (no global history)", len(enriched))

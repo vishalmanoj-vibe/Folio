@@ -60,6 +60,7 @@ def init_db():
                 ticker      TEXT PRIMARY KEY,
                 added_date  TEXT NOT NULL,
                 notes       TEXT DEFAULT '',
+                order_index INTEGER DEFAULT 0,
                 created_at  TEXT DEFAULT CURRENT_TIMESTAMP,
                 updated_at  TEXT DEFAULT CURRENT_TIMESTAMP
             )
@@ -288,6 +289,17 @@ def init_db():
             conn.commit()
         except Exception as e:
             logger.warning(f"Migration for etf_holdings_urls failed: {e}")
+
+        # 16. Migration — Add order_index to watchlist if missing
+        try:
+            cursor = conn.execute("PRAGMA table_info(watchlist)")
+            columns = [row[1] for row in cursor.fetchall()]
+            if "order_index" not in columns:
+                logger.info("Migrating watchlist: Adding order_index column")
+                conn.execute("ALTER TABLE watchlist ADD COLUMN order_index INTEGER DEFAULT 0")
+                conn.commit()
+        except Exception as e:
+            logger.warning(f"Migration for watchlist order_index failed: {e}")
 
         # 13. Legacy JSON Migration
         migrate_json_to_sqlite()

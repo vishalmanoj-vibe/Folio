@@ -28,11 +28,12 @@ def register_callbacks(app) -> None:
         Input("watchlist-input", "n_submit"),
         Input("price-interval", "n_intervals"),
         Input("startup-interval", "n_intervals"),
+        Input("watchlist-order-input", "value"),
         State("watchlist-input", "value"),
         State("watchlist-store", "data"),
         prevent_initial_call=True,
     )
-    def update_watchlist_store(n_add, n_remove_list, n_submit, n_interval, n_startup, ticker_input, current_data):
+    def update_watchlist_store(n_add, n_remove_list, n_submit, n_interval, n_startup, order_val, ticker_input, current_data):
         triggered_id = ctx.triggered_id
 
         # Skip periodic fetch if market is closed
@@ -53,6 +54,17 @@ def register_callbacks(app) -> None:
                 return dash.no_update, dash.no_update
             ticker_to_remove = triggered_id.get("index")
             repo.remove_ticker(ticker_to_remove)
+            
+        # 3. Reorder Tickers
+        elif triggered_id == "watchlist-order-input":
+            if order_val:
+                try:
+                    import json
+                    new_order = json.loads(order_val)
+                    if isinstance(new_order, list) and new_order:
+                        repo.update_watchlist_order(new_order)
+                except Exception as e:
+                    logger.error(f"Failed to update order from input: {e}")
 
         # 3. Fetch Live Data (Periodic or after mutation)
         watchlist_items = repo.load_watchlist()
@@ -155,6 +167,7 @@ def register_callbacks(app) -> None:
                 "transition": "background-color 0.15s",
             }
             rows.append(html.Tr([
+                html.Td("☰", className="drag-handle", style={**td_style, "cursor": "grab", "color": "var(--t-sec)", "width": "30px", "textAlign": "center"}),
                 html.Td(
                     html.Div(ticker, 
                              id={"type": "watchlist-select-ticker", "index": ticker}, 
@@ -164,7 +177,7 @@ def register_callbacks(app) -> None:
                                  "display": "inline-block",
                                  "color": "var(--cyan)",
                                  "fontWeight": "600" if is_active else "400",
-                             },
+                              },
                              n_clicks=0),
                     style=td_style
                 ),
@@ -191,10 +204,16 @@ def register_callbacks(app) -> None:
                                 className="btn-sm", style={"color": "var(--red)", "padding": "2px 8px"}),
                     style={**td_style, "textAlign": "right"}
                 )
-            ], style=row_style))
+            ],
+            style=row_style,
+            draggable="true",
+            className="draggable-row",
+            id={"type": "watchlist-row", "index": ticker},
+            **{"data-ticker": ticker}))
 
         table = html.Table([
             html.Thead(html.Tr([
+                html.Th("",           style={**th_style, "width": "30px"}),
                 html.Th("Ticker",     style=th_style),
                 html.Th("Name",       style=th_style),
                 html.Th("Price",      style=th_style),

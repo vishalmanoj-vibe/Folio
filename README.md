@@ -15,7 +15,7 @@ Built with Dash, Plotly, yfinance, and Gemini.
 - **Allocation Analysis** — Hierarchical Sector and Geographic treemaps with smart concentration alerts.
 - **Dividend Tracking** — Tranche-accurate realized income engine matched against actual ex-dividend dates, not just yield estimates.
 - **Trading Signals** — Weighted BUY/SELL/HOLD engine using trend, momentum, drawdown, moving averages, and cost basis analysis. Includes optional AI-generated explanations.
-- **Watchlist** — Track tickers you don't own yet with live pricing, signals, and research notes.
+- **Watchlist** — Track tickers you don't own yet with live pricing, signals, and research notes. Supports premium manual drag-and-drop reordering.
 - **AI Assistant** — Chat interface powered by Gemini 2.5 Flash Lite for portfolio analysis and ticker research, with persistent conversation memory and optional web search.
 - **Weekly PDF Report** — AI-generated portfolio summary with holdings breakdown, technical signals, dividend calendar, and market news.
 - **Premium Aesthetics** — High-fidelity UI with glassmorphism navigation, smooth 200ms theme transitions, Inter typography (tabular numerals), and interactive hover depth.

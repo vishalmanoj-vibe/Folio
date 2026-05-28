@@ -115,7 +115,7 @@ This enables multiple readers and one writer to coexist safely.
 ### 2. Schema Overview
 - **`transactions`**: Historical buys/sells.
 - **`assets`**: Persistent cache for ticker names and categories (lazy-loaded via `get_etf_name`).
-- **`watchlist`**: Ticker membership and merged notes.
+- **`watchlist`**: Ticker membership, custom sorting order (`order_index`), and merged notes.
 - **`etf_metadata`**: Blended sector/geographic weights.
 
 ### 3. Persistent Metadata Caching
@@ -470,3 +470,13 @@ To ensure a professional "Day 1" experience and prevent UI flicker during update
 - **Fixed-Column Skeletons**: To prevent layout shift (vertical stacking) during loading, `custom_spinner` containers utilize fixed-column grids (e.g., `repeat(6, 1fr)`) with explicit `width: 100%`. This ensures skeletons occupy the exact same space as the final data.
 - **Stable Charts (uirevision)**: All major Plotly figures implement `uirevision=True` (or a context-stable string like `ticker`). This ensures that background data updates do NOT reset the user's zoom or pan position, allowing for seamless background refreshes.
 - **Skeleton Helpers**: Standard placeholders are available in `components/ui_helpers.py` (`stat_card_skeleton`, `chart_skeleton`, `table_skeleton`) and should be used as the `custom_spinner` for all `dcc.Loading` wrappers.
+
+### 20. Manual Watchlist Drag-and-Drop Reordering
+
+To provide a premium and interactive fintech feel, users can manually click-and-drag rows in the **Market Watchlist** to reorder their watched assets.
+- **Visual Drag Handles**: Leftmost column displays grab handles (`☰`) that change cursor to `grab` on hover and `grabbing` on active hold.
+- **Event Delegation Engine**: A custom JavaScript asset `assets/drag_drop.js` attaches listeners to the document body. This event-delegation pattern survives Dash complete DOM refreshes when the watchlist data is periodically refetched or mutated.
+- **Mousedown Click-Source Tracking**: Due to HTML5 drag-and-drop mechanics triggering `dragstart` on the draggable `Tr` container, click-source target tracking (`mousedown`) is used to restrict drag sequences exclusively to clicking the `.drag-handle` element, preventing accidental text-selection drags.
+- **State Synchronization Bridge**: When dropped, the reordered array of tickers is written to a hidden `dcc.Input(id="watchlist-order-input")` component. Setting the value and dispatching an `input`/`change` event triggers the corresponding Python callback.
+- **Relational Persistence**: The `update_watchlist_store` callback intercepts the trigger, invokes `repo.update_watchlist_order()`, and updates the persistent `order_index` SQLite table values under a transactional block.
+

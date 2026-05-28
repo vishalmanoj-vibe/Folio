@@ -176,6 +176,12 @@
 - `core/cache.py` — Enforced bounded memory caching with automated eviction passes.
 - **History Gating**: Enforced 24h staleness for historical data to eliminate redundant network churn.
 
+### Watchlist Drag & Drop Reordering (Complete)
+- **Database Migration**: Added `order_index` column (default 0) to `watchlist` table in SQLite (`portfolio.db`) automatically migrating existing systems on startup.
+- **Repository Integration**: Enabled ordering by `order_index ASC, added_date ASC` on loading, dynamic next index calculation on adding, and implemented `update_watchlist_order(ticker_order)` under a clean transactional block with connection hygiene.
+- **Draggable UI Layout**: Added premium grab handle (`☰`) column. Enabled row `draggable="true"`, custom `data-ticker` attributes, and glassmorphic dragging states in CSS resets.
+- **HTML5 Event Delegation Engine**: Added `assets/drag_drop.js` with document-level event delegation (survives Dash complete DOM refreshes) to reorder row elements locally and notify Python callbacks via a hidden `#watchlist-order-input` dcc.Input component.
+
 ## Surgical Edit Rules — NEVER violate these
 
 - NEVER rewrite a file. Only edit the specific function or block that is broken.

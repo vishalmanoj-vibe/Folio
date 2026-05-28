@@ -15,10 +15,10 @@ class WatchlistRepository:
     """
     
     def load_watchlist(self) -> list[dict]:
-        """Load all tickers from watchlist table."""
+        """Load all tickers from watchlist table sorted by order_index and added_date."""
         conn = get_connection()
         try:
-            cursor = conn.execute("SELECT ticker, added_date, notes FROM watchlist")
+            cursor = conn.execute("SELECT ticker, added_date, notes, order_index FROM watchlist ORDER BY order_index ASC, added_date ASC")
             return [dict(row) for row in cursor.fetchall()]
         finally:
             conn.close()
@@ -107,9 +107,14 @@ class WatchlistRepository:
         
         conn = get_connection()
         try:
+            # Find next order index (append to bottom)
+            row = conn.execute("SELECT MAX(order_index) FROM watchlist").fetchone()
+            max_order = row[0] if row and row[0] is not None else -1
+            new_order = max_order + 1
+
             conn.execute(
-                "INSERT OR IGNORE INTO watchlist (ticker, added_date) VALUES (?, ?)",
-                (ticker, added_date)
+                "INSERT OR IGNORE INTO watchlist (ticker, added_date, order_index) VALUES (?, ?, ?)",
+                (ticker, added_date, new_order)
             )
             conn.commit()
         finally:
@@ -128,3 +133,19 @@ class WatchlistRepository:
             conn.close()
             
         return self.load_watchlist()
+
+    def update_watchlist_order(self, ticker_order: list[str]) -> None:
+        """Update the order_index of all tickers in the watchlist."""
+        conn = get_connection()
+        try:
+            for index, ticker in enumerate(ticker_order):
+                conn.execute(
+                    "UPDATE watchlist SET order_index = ?, updated_at = CURRENT_TIMESTAMP WHERE ticker = ?",
+                    (index, ticker.upper())
+                )
+            conn.commit()
+        except Exception as e:
+            logger.error(f"Failed to update watchlist order: {e}")
+            conn.rollback()
+        finally:
+            conn.close()

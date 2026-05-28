@@ -474,3 +474,39 @@
   border-bottom: 0.5px solid var(--border);
   background: var(--surface-2);
 }
+
+/* ── Watchlist Drag & Drop Reordering ── */
+.draggable-row {
+  cursor: grab;
+  transition: transform 0.15s ease, background-color 0.15s ease;
+}
+
+.draggable-row:active {
+  cursor: grabbing;
+}
+
+.draggable-row.dragging {
+  opacity: 0.4;
+  background-color: var(--surface-3) !important;
+  border: 1px dashed var(--cyan) !important;
+}
+
+.draggable-row.drag-over-above {
+  border-top: 2px solid var(--cyan) !important;
+}
+
+.draggable-row.drag-over-below {
+  border-bottom: 2px solid var(--cyan) !important;
+}
+
+.drag-handle {
+  user-select: none;
+  font-size: 14px;
+  color: var(--t-sec);
+  transition: color 0.15s ease;
+}
+
+.drag-handle:hover {
+  color: var(--cyan);
+}
+

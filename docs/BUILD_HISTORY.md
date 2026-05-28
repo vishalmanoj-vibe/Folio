@@ -121,3 +121,5 @@ This document chronicles the technical evolution of Folio, transitioning from a 
 *   **Metadata Truncation**: Implemented aggressive truncation for yfinance `info` objects. Only essential metadata (name, sector, yield) is persisted to SQLite, preventing "Heap Bloat" from unused nested dictionaries.
 *   **Historical Staleness Gating**: Enforced a strict 24-hour staleness threshold for historical data, while maintaining 5-minute resolution for intraday P&L tracking.
 *   **UI Hover Stability**: Standardized Plotly `hovertemplate` syntax to use doubled-braces (`%{{y}}`), eliminating `NameError` crashes during normalized chart rendering.
+*   **Watchlist Drag-and-Drop Reordering**: Introduced manual, interactive grab-handle (`☰`) reordering for watchlist tickers. Added a custom, Event-Delegated HTML5 drag-and-drop client script (`assets/drag_drop.js`) that persists across Dash DOM refreshes and gates starts on drag handles via mousedown target tracking. Synchronizes the new order with a SQLite `order_index` column via a hidden `#watchlist-order-input` dcc.Input state bridge under a clean transactional block.
+

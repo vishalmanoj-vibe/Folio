@@ -15,6 +15,9 @@ def create_watchlist_layout() -> html.Div:
     """
     return html.Div(
         [
+            # Hidden input to receive reordered ticker list from Javascript
+            dcc.Input(id="watchlist-order-input", type="text", style={"display": "none"}),
+
             # ── Page Header Row ───────────────────────────────────────────────
             html.Div(
                 [
