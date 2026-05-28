@@ -36,6 +36,7 @@ data/*.db*
 *.zip
 *.tar.gz
 *.txt
+!requirements.txt
 *.md
 !README.md
 !GEMINI.md

@@ -8,7 +8,7 @@ def build_holdings_bubble_chart(blended_data: dict, theme_tokens: dict) -> go.Fi
     Creates a bubble chart of top underlying company holdings.
     """
     if not blended_data:
-        return create_empty_fig("No data available", 600, theme_tokens)
+        return create_empty_fig("No data available", 600, theme_tokens=theme_tokens)
 
     # Top 50 items
     top_items = list(blended_data.items())[:50]

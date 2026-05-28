@@ -1,21 +1,31 @@
-dash>=2.16.0
-plotly>=5.20.0
-pandas>=2.0.0
-yfinance>=0.2.38
-pytz>=2024.1
-prophet>=1.1.5
-dash-mantine-components>=0.14.0
-dash-bootstrap-components>=1.6.0
-python-dotenv>=1.0.0
-google-genai>=1.30.0
-holidays
-matplotlib>=3.8.0
-reportlab>=4.1.0
-playwright>=1.40.0
-ddgs>=9.14.0
+# ── Core Web App & UI ────────────────────────────────────────────────────────
+dash>=2.16.0                         # Core framework for multi-page dashboard UI
+dash-mantine-components>=0.14.0       # Premium Mantine components (cards, dark mode toggles)
+dash-bootstrap-components>=1.6.0      # Bootstrap layout grids and responsive containers
+dash-iconify                         # Modern scalable icon sets for dashboard elements
 
-# Testing
-pytest>=7.0.0
-pytest-cov>=4.0.0
-beautifulsoup4
-dash-iconify
+# ── Data, Mathematics & Charts ──────────────────────────────────────────────
+pandas>=2.0.0                        # Core data structures and technical indicator math
+plotly>=5.20.0                       # Premium dynamic charting engine
+yfinance>=0.2.38                     # Bulk downloader for Yahoo Finance market data
+prophet>=1.1.5                       # Time series forecasting model for portfolio insights
+pytz>=2024.1                         # Timezone management and market hours tracking
+holidays                             # Tracking ASX market holiday exceptions
+matplotlib>=3.8.0                    # Helper plotting framework for static chart exports
+
+# ── AI Analyst & Document Generation ──────────────────────────────────────────
+google-genai>=1.30.0                 # Official SDK for Gemini AI portfolio risk analysis
+python-dotenv>=1.0.0                 # Secure env variable loader (.env secrets)
+reportlab>=4.1.0                     # PDF rendering engine for weekly report downloads
+
+# ── Distributed Scraping ──────────────────────────────────────────────────────
+playwright>=1.40.0                   # Headless WebKit fallbacks for ETF metadata scraping
+ddgs>=9.14.0                         # DuckDuckGo search API wrapper for ETF discovery
+
+# ── Testing & Code Quality ───────────────────────────────────────────────────
+pytest>=7.0.0                        # Core suite for running unit tests
+pytest-cov>=4.0.0                    # Generating test coverage percentage reports
+beautifulsoup4                       # HTML parser used for testing Dash component outputs
+ruff>=0.4.0                          # Ultra-fast Python code linter & formatter (Rust-based)
+pre-commit>=3.5.0                    # Intercepts commits to run automatic code checks
+mypy>=1.10.0                         # Standard static type checker for type-safety

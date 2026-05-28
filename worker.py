@@ -271,22 +271,29 @@ def handle_generate_report(payload: dict):
         # 1. Build context from DB
         repo = PortfolioRepository()
         txns = repo.load_transactions()
-        build_holdings(txns)  # This includes latest market_prices if called via repository?
-        # Actually build_holdings just does txn math. We need live metrics.
-        # repository.load_transactions doesn't fetch live.
+        holdings = build_holdings(txns)
 
-        # We'll use AIEngine logic to build a report-ready context
-        from services.research_service import build_portfolio_context
+        # Fetch live prices & historical metrics for technical report generation
+        from services.market.data_fetcher import fetch_live, fetch_portfolio_history
 
-        # We need a portfolio-store-like dict: {holdings, histories}
-        # build_portfolio_context returns exactly this.
-        portfolio_context = build_portfolio_context()
+        live_data, _, _ = fetch_live(holdings)
+        enriched_holdings = live_data.get("holdings", [])
+        fetched_at = live_data.get("fetched_at", "Unknown")
+
+        # Fetch histories for technical signals & P&L trend charts
+        histories = fetch_portfolio_history(enriched_holdings, "max")
+
+        portfolio_data = {
+            "holdings": enriched_holdings,
+            "fetched_at": fetched_at,
+            "histories": histories,
+        }
 
         api_key = os.getenv("GEMINI_API_KEY", "")
         if not api_key:
             return {"error": "Missing GEMINI_API_KEY"}
 
-        pdf_bytes = generate_weekly_report(portfolio_context, api_key)
+        pdf_bytes = generate_weekly_report(portfolio_data, api_key)
         b64 = base64.b64encode(pdf_bytes).decode("utf-8")
 
         return {"status": "success", "pdf_b64": b64}
