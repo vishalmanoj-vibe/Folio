@@ -105,9 +105,13 @@ def layout() -> html.Div:
                                             className="flex-row flex-center",
                                             style={"marginBottom": "12px", "display": "none"},
                                         ),
-                                        dcc.Loading(
-                                            html.Div(id="positions-price-chart-container"),
-                                            custom_spinner=chart_skeleton(350),
+                                        html.Div(
+                                            dcc.Graph(
+                                                id="positions-price-chart",
+                                                config={"displayModeBar": False},
+                                                style={"height": "350px"},
+                                            ),
+                                            id="positions-price-chart-container",
                                         ),
                                     ],
                                     style={"marginTop": "24px"},

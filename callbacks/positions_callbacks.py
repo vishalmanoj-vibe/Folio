@@ -50,7 +50,6 @@ _TD = {
 
 
 def register_callbacks(app) -> None:
-
     # ── 1. Card Grid Population ───────────────────────────────────────────────
     @app.callback(
         Output("positions-card-grid", "children"),
@@ -416,7 +415,7 @@ def register_callbacks(app) -> None:
 
     @app.callback(
         [
-            Output("positions-price-chart-container", "children"),
+            Output("positions-price-chart", "figure"),
             Output("positions-price-chart-header", "style"),
         ],
         Input("positions-selected-ticker", "data"),
@@ -449,11 +448,18 @@ def register_callbacks(app) -> None:
                 yaxis=dict(gridcolor="rgba(255,255,255,0.05)", tickprefix="$"),
                 hovermode="x unified",
                 height=350,
-                uirevision=ticker,
+                uirevision=f"{ticker}_{period}",
                 hoverlabel=t_["PLOTLY_BASE"].get("hoverlabel"),
             )
         )
         fig.update_layout(layout)
+        fig.update_layout(
+            transition=dict(
+                duration=400,
+                easing="cubic-in-out",
+                ordering="layout first",
+            )
+        )
 
         try:
             # ── Lazy Fetch ──
@@ -526,9 +532,7 @@ def register_callbacks(app) -> None:
             logger.error(f"Failed to lazy fetch history for {ticker}: {e}")
             fig = create_empty_fig("Error loading chart data", height=350, theme_tokens=t_)
 
-        return dcc.Graph(
-            id="positions-price-chart", figure=fig, config={"displayModeBar": False}
-        ), {"display": "flex"}
+        return fig, {"display": "flex"}
 
     # ── 5. Detail Panel — Transaction Table ──────────────────────────────────
     @app.callback(

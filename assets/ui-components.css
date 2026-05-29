@@ -56,7 +56,11 @@ button:active { transform: scale(0.97); }
 }
 
 .stat-card-container {
-  background: var(--surface-2);
+  background: radial-gradient(
+    800px circle at var(--mouse-x, -999px) var(--mouse-y, -999px),
+    rgba(0, 201, 167, 0.04),
+    transparent 40%
+  ), var(--surface-2);
   border-radius: 8px;
   padding: 12px 14px;
   border: 0.5px solid var(--border);
@@ -100,7 +104,11 @@ button:active { transform: scale(0.97); }
 
 /* ── Cards & Panels ── */
 .card {
-  background: var(--surface-2);
+  background: radial-gradient(
+    800px circle at var(--mouse-x, -999px) var(--mouse-y, -999px),
+    rgba(0, 201, 167, 0.04),
+    transparent 40%
+  ), var(--surface-2);
   border: 0.5px solid var(--border);
   border-radius: 10px;
   padding: 16px 18px;

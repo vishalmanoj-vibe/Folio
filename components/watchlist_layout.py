@@ -178,14 +178,11 @@ def create_watchlist_layout() -> html.Div:
                                         "marginBottom": "12px",
                                     },
                                 ),
-                                dcc.Loading(
-                                    html.Div(
-                                        id="watchlist-chart-container",
-                                        children=dcc.Graph(
-                                            id="watchlist-chart", config={"displayModeBar": False}
-                                        ),
+                                html.Div(
+                                    id="watchlist-chart-container",
+                                    children=dcc.Graph(
+                                        id="watchlist-chart", config={"displayModeBar": False}
                                     ),
-                                    custom_spinner=chart_skeleton(300),
                                 ),
                                 dcc.Loading(
                                     html.Div(

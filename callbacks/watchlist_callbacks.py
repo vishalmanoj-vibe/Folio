@@ -405,6 +405,12 @@ def register_callbacks(app) -> None:
         )
         layout_args["hovermode"] = "x unified"
         layout_args["showlegend"] = False
+        layout_args["transition"] = dict(
+            duration=400,
+            easing="cubic-in-out",
+            ordering="layout first",
+        )
+        layout_args["uirevision"] = f"{selected_ticker}_{period}"
 
         fig.update_layout(**layout_args)
 

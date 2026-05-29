@@ -185,6 +185,12 @@ def apply_standard_layout(
         "height": height,
         "showlegend": show_legend,
         "margin": margin,
+        "transition": dict(
+            duration=400,
+            easing="cubic-in-out",
+            ordering="layout first",
+        ),
+        "uirevision": True,
     }
 
     if title:
