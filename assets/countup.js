@@ -9,15 +9,40 @@
 (function () {
     const observer = new MutationObserver((mutations) => {
         for (const mutation of mutations) {
-            let target = mutation.target;
+            // 1. Direct characterData mutation on text node inside .stat-card-value
             if (mutation.type === 'characterData') {
-                target = mutation.target.parentElement;
+                const parent = mutation.target.parentElement;
+                if (parent && parent.classList && parent.classList.contains('stat-card-value')) {
+                    if (parent.dataset.animating) continue;
+                    animateValue(parent);
+                }
+                continue;
             }
 
-            const statValueEl = target.closest ? target.closest('.stat-card-value') : null;
-            if (statValueEl) {
-                if (statValueEl.dataset.animating) continue;
-                animateValue(statValueEl);
+            // 2. Child node additions (e.g., when card wrapper is rendered)
+            if (mutation.type === 'childList' && mutation.addedNodes.length > 0) {
+                // If the target itself is a stat-card-value
+                if (mutation.target.classList && mutation.target.classList.contains('stat-card-value')) {
+                    if (mutation.target.dataset.animating) continue;
+                    animateValue(mutation.target);
+                    continue;
+                }
+
+                // Or if wrappers containing stat-card-value were added
+                for (const node of mutation.addedNodes) {
+                    if (node.classList) {
+                        if (node.classList.contains('stat-card-value')) {
+                            if (node.dataset.animating) continue;
+                            animateValue(node);
+                        } else if (node.querySelector) {
+                            const nestedVal = node.querySelector('.stat-card-value');
+                            if (nestedVal) {
+                                if (nestedVal.dataset.animating) continue;
+                                animateValue(nestedVal);
+                            }
+                        }
+                    }
+                }
             }
         }
     });

@@ -45,10 +45,11 @@ def register_callbacks(app) -> None:
         Input("theme-store", "data"),
         Input("intel-pred-store", "data"),
         Input("url", "pathname"),
-        Input("task-poll-interval", "n_intervals"),
+        Input(
+            "benchmark-pending-store", "data"
+        ),  # Changed from State to Input to redraw when benchmarks complete
         State("intel-pred-toggle", "checked"),
         State("intel-period-picker", "value"),
-        State("benchmark-pending-store", "data"),
         prevent_initial_call=True,
     )
     def update_intelligence(
@@ -57,10 +58,9 @@ def register_callbacks(app) -> None:
         theme,
         pred_st,
         url_pathname,
-        n_tasks,
+        bench_pending,
         pred_ui,
         period_ui,
-        bench_pending,
     ):
         try:
             import dash

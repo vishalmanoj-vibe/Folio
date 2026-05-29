@@ -1,12 +1,12 @@
 # Callback Output Index — Auto-Generated
 
-> **Generated**: 2026-05-29 13:59  
+> **Generated**: 2026-05-29 14:06  
 > **Do not edit** — run `python .agents/generated/sync_docs.py` to refresh.
 > For ownership intent and architecture notes, see `docs/callback_ownership.md`.
 
 ---
 
-**Total outputs indexed**: 133 across 12 files
+**Total outputs indexed**: 134 across 12 files
 
 ## `app.py`
 
@@ -40,20 +40,21 @@
 | Output ID | Property | Line | Duplicate? | Pattern? |
 |-----------|----------|------|-----------|---------|
 | `ticker-selector` | `data` | 44 |  |  |
-| `pnl-history-chart` | `figure` | 61 |  |  |
-| `benchmark-pending-store` | `data` | 62 | ✓ |  |
-| `price-chart` | `figure` | 172 |  |  |
-| `portfolio-treemap` | `figure` | 207 |  |  |
-| `analytics-vol-chart` | `children` | 242 |  |  |
-| `corr-chart` | `figure` | 312 |  |  |
-| `holdings-bubble-chart` | `figure` | 339 |  |  |
-| `holdings-freshness-note` | `children` | 340 |  |  |
-| `holdings-url-collapse` | `opened` | 341 | ✓ |  |
-| `holdings-url-collapse` | `opened` | 403 | ✓ |  |
-| `holdings-url-table` | `children` | 413 |  |  |
-| `holdings-url-save-status` | `children` | 516 |  |  |
-| `holdings-url-ticker-input` | `value` | 517 |  |  |
-| `holdings-url-input` | `value` | 518 |  |  |
+| `benchmark-pending-store` | `data` | 61 | ✓ |  |
+| `pnl-history-chart` | `figure` | 85 |  |  |
+| `benchmark-pending-store` | `data` | 86 | ✓ |  |
+| `price-chart` | `figure` | 195 |  |  |
+| `portfolio-treemap` | `figure` | 230 |  |  |
+| `analytics-vol-chart` | `children` | 265 |  |  |
+| `corr-chart` | `figure` | 335 |  |  |
+| `holdings-bubble-chart` | `figure` | 362 |  |  |
+| `holdings-freshness-note` | `children` | 363 |  |  |
+| `holdings-url-collapse` | `opened` | 364 | ✓ |  |
+| `holdings-url-collapse` | `opened` | 426 | ✓ |  |
+| `holdings-url-table` | `children` | 436 |  |  |
+| `holdings-url-save-status` | `children` | 539 |  |  |
+| `holdings-url-ticker-input` | `value` | 540 |  |  |
+| `holdings-url-input` | `value` | 541 |  |  |
 
 ## `intelligence_callbacks.py`
 

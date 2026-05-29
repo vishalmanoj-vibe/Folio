@@ -62,8 +62,30 @@
     }
 
     // Monitor page mutations to re-bind when charts are destroyed and recreated
-    const observer = new MutationObserver(() => {
-        setupSync();
+    let debounceTimer;
+    const observer = new MutationObserver((mutations) => {
+        let shouldSync = false;
+        for (const mutation of mutations) {
+            if (mutation.addedNodes) {
+                for (const node of mutation.addedNodes) {
+                    if (
+                        node.classList &&
+                        (node.classList.contains('js-plotly-plot') ||
+                         (node.closest && node.closest('.js-plotly-plot')) ||
+                         (node.querySelector && node.querySelector('.js-plotly-plot')))
+                    ) {
+                        shouldSync = true;
+                        break;
+                    }
+                }
+            }
+            if (shouldSync) break;
+        }
+
+        if (shouldSync) {
+            clearTimeout(debounceTimer);
+            debounceTimer = setTimeout(setupSync, 100);
+        }
     });
 
     document.addEventListener('DOMContentLoaded', () => {

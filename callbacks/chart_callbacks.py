@@ -56,6 +56,31 @@ def register_callbacks(app) -> None:
         tickers = ["Portfolio"] + sorted([h["ticker"] for h in data["holdings"]])
         return [{"label": t, "value": t} for t in tickers]
 
+    # ── Benchmark Polling status ──────────────────────────────────────────────
+    @app.callback(
+        Output("benchmark-pending-store", "data", allow_duplicate=True),
+        Input("task-poll-interval", "n_intervals"),
+        State("benchmark-pending-store", "data"),
+        prevent_initial_call=True,
+    )
+    def poll_benchmark_status(n_intervals, pending_task_id):
+        """Lighter status checker: does not touch charts, transactions, or pandas."""
+        import dash
+
+        if not pending_task_id:
+            return dash.no_update
+
+        from data.cache_manager import get_benchmarks_db
+
+        bench_data = get_benchmarks_db()
+        if bench_data is not None:
+            # Task finished and saved to SQLite! Clear the pending store.
+            logger.info("Benchmark polling: benchmarks successfully fetched and loaded.")
+            return None
+
+        # Still pending
+        return dash.no_update
+
     # ── P&L history ───────────────────────────────────────────────────────────
     @app.callback(
         Output("pnl-history-chart", "figure"),
@@ -67,11 +92,12 @@ def register_callbacks(app) -> None:
         Input("pnl-mode-store", "data"),
         Input("ticker-store", "data"),
         Input("url", "pathname"),
-        Input("task-poll-interval", "n_intervals"),
-        State("benchmark-pending-store", "data"),
+        Input(
+            "benchmark-pending-store", "data"
+        ),  # Changed from State to Input to trigger redraw when ready
         prevent_initial_call=True,
     )
-    def pnl_history_chart(data, theme, period, mode, selected, pathname, n_tasks, bench_pending):
+    def pnl_history_chart(data, theme, period, mode, selected, pathname, bench_pending):
         import dash
 
         if pathname != "/":

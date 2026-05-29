@@ -206,3 +206,31 @@ if not price or price == 0.0:
 **Root Cause**: The Gemini Python SDK does not accept a `request_options` kwarg in `generate_content()`. Passing it causes an immediate crash.
 
 **Fix**: Remove `request_options` entirely. Implement timeout logic at the `try/except` level instead.
+
+---
+
+## BUG-011 · Backend Memory Thrashing via task-poll-interval Feedback Loop
+
+**Status**: Fixed  
+**Files affected**: `callbacks/chart_callbacks.py`  
+**Symptom**: RAM usage on landing page balloons from 200MB to 1.2GB.
+
+**Root Cause**: Wrapping a heavy graph generation callback (like `pnl_history_chart`) with a high-frequency polling trigger `Input("task-poll-interval", "n_intervals")` causes the entire chart to rebuild every 2 seconds when any background task is running. This creates massive pandas and Plotly figure allocations that Python's memory manager cannot reclaim fast enough.
+
+**Fix**: Decouple the chart callback from the polling trigger. Create an ultra-lightweight status checker callback to handle polling database benchmarks and only update `benchmark-pending-store`. Have the chart callback listen only to changes in data stores (`portfolio-store` and `benchmark-pending-store`), preventing unnecessary high-frequency rebuilds.
+
+---
+
+## BUG-012 · MutationObserver Cascade Feedback Loop (Browser Tab Freeze)
+
+**Status**: Fixed  
+**Files affected**: `assets/sync_hover.js`, `assets/countup.js`  
+**Symptom**: Browser tab chews up high CPU and memory, sometimes freezing.
+
+**Root Cause**: Setting `MutationObserver` on `document.body` with `{ childList: true, subtree: true }` intercepts every DOM update. Because Plotly rendering generates hundreds of minor DOM updates during creation, the observer fires continuously. If the observer callback queries the DOM and unbinds/re-binds event listeners (or updates text node content), it creates an infinite feedback loop of mutations.
+
+**Fix**:
+1. Filter added nodes in the observer to ensure they match target selectors (e.g. `.js-plotly-plot`) before acting.
+2. Add debouncing (e.g. 100ms) to event-listener setup calls to avoid re-triggering during a single render sweep.
+3. Observe only specific, relevant mutations (avoid broad `characterData` and `childList` observation of `document.body` simultaneously when updating inner text).
+
