@@ -60,7 +60,8 @@ def register_callbacks(app) -> None:
             if not trigger_val or int(trigger_val) < 1:
                 return dash.no_update, dash.no_update
             ticker_to_remove = triggered_id.get("index")
-            repo.remove_ticker(ticker_to_remove)
+            if ticker_to_remove and isinstance(ticker_to_remove, str):
+                repo.remove_ticker(ticker_to_remove)
 
         # 3. Reorder Tickers
         elif triggered_id == "watchlist-order-input":
@@ -360,7 +361,7 @@ def register_callbacks(app) -> None:
         from data.repository import HistoryRepository
 
         cutoff = get_period_cutoff(period or "1y")
-        cutoff_str = cutoff.strftime("%Y-%m-%d") if cutoff else None
+        cutoff_str = cutoff.strftime("%Y-%m-%d") if cutoff else "1900-01-01"
         history = HistoryRepository().load_close_series(selected_ticker, from_date=cutoff_str)
 
         if history is None or history.empty:

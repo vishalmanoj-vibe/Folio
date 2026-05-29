@@ -1,5 +1,5 @@
-# callbacks/positions_callbacks.py
 import logging
+from typing import Any, cast
 
 import dash
 import dash_mantine_components as dmc
@@ -153,8 +153,8 @@ def register_callbacks(app) -> None:
 
                 card_children.append(
                     dcc.Graph(
-                        figure=spark_fig,
-                        config={"displayModeBar": False},
+                        figure=cast(Any, spark_fig),
+                        config=cast(Any, {"displayModeBar": False}),
                         className="holding-card-sparkline",
                     )
                 )
@@ -244,6 +244,7 @@ def register_callbacks(app) -> None:
 
         df_txn = pd.DataFrame(txn_data)
         ticker_buys = df_txn[(df_txn["ticker"] == ticker) & (df_txn["type"] == "buy")]
+        assert isinstance(ticker_buys, pd.DataFrame)
         h["buy_tranches"] = build_tranches(ticker, ticker_buys)
 
         total_cost = float(h.get("total_cost") or 0.0)
@@ -441,24 +442,19 @@ def register_callbacks(app) -> None:
         fig = go.Figure()
 
         # Merge theme base with local overrides
-        layout = _CHART_LAYOUT.copy()
-        layout.update(
-            dict(
-                xaxis=dict(showgrid=False, rangeslider_visible=False),
-                yaxis=dict(gridcolor="rgba(255,255,255,0.05)", tickprefix="$"),
-                hovermode="x unified",
-                height=350,
-                uirevision=f"{ticker}_{period}",
-                hoverlabel=t_["PLOTLY_BASE"].get("hoverlabel"),
-            )
-        )
-        fig.update_layout(layout)
+        fig.update_layout(**_CHART_LAYOUT)
         fig.update_layout(
+            xaxis=dict(showgrid=False, rangeslider_visible=False),
+            yaxis=dict(gridcolor="rgba(255,255,255,0.05)", tickprefix="$"),
+            hovermode="x unified",
+            height=350,
+            uirevision=f"{ticker}_{period}",
+            hoverlabel=t_["PLOTLY_BASE"].get("hoverlabel"),
             transition=dict(
                 duration=400,
                 easing="cubic-in-out",
                 ordering="layout first",
-            )
+            ),
         )
 
         try:
@@ -701,6 +697,7 @@ def register_callbacks(app) -> None:
 
         df_txn = pd.DataFrame(txn_data)
         ticker_buys = df_txn[(df_txn["ticker"] == ticker) & (df_txn["type"] == "buy")]
+        assert isinstance(ticker_buys, pd.DataFrame)
         h["buy_tranches"] = build_tranches(ticker, ticker_buys)
 
         df = get_ticker_dividend_data(ticker, h["ticker_yf"])
@@ -781,7 +778,12 @@ def register_callbacks(app) -> None:
                 html.Div(
                     [
                         html.Div(
-                            [dcc.Graph(figure=fig, config={"displayModeBar": False})],
+                            [
+                                dcc.Graph(
+                                    figure=cast(Any, fig),
+                                    config=cast(Any, {"displayModeBar": False}),
+                                )
+                            ],
                             style={"flex": "1", "minWidth": "200px"},
                         ),
                         html.Div([table], style={"flex": "1.2", "minWidth": "250px"}),
@@ -940,7 +942,7 @@ def register_callbacks(app) -> None:
         from components.charts.dividend_history import build_portfolio_dividend_chart
 
         fig = build_portfolio_dividend_chart(df_full, t_)
-        chart = dcc.Graph(figure=fig, config={"displayModeBar": False})
+        chart = dcc.Graph(figure=cast(Any, fig), config=cast(Any, {"displayModeBar": False}))
 
         # Memory Hygiene
         import gc

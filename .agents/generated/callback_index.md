@@ -1,6 +1,6 @@
 # Callback Output Index — Auto-Generated
 
-> **Generated**: 2026-05-29 13:23  
+> **Generated**: 2026-05-29 13:34  
 > **Do not edit** — run `python .agents/generated/sync_docs.py` to refresh.
 > For ownership intent and architecture notes, see `docs/callback_ownership.md`.
 
@@ -80,22 +80,22 @@
 
 | Output ID | Property | Line | Duplicate? | Pattern? |
 |-----------|----------|------|-----------|---------|
-| `positions-card-grid` | `children` | 56 |  |  |
-| `positions-selected-ticker` | `data` | 183 |  |  |
-| `etf-detail-cards` | `children` | 214 |  |  |
-| `positions-tech-signals-container` | `children` | 215 |  |  |
+| `positions-card-grid` | `children` | 55 |  |  |
+| `positions-selected-ticker` | `data` | 182 |  |  |
+| `etf-detail-cards` | `children` | 213 |  |  |
+| `positions-tech-signals-container` | `children` | 214 |  |  |
 | `ai-insight-container` | `children` | 329 |  |  |
 | `positions-price-chart` | `figure` | 419 |  |  |
 | `positions-price-chart-header` | `style` | 420 |  |  |
-| `positions-txn-table-container` | `children` | 540 |  |  |
-| `positions-period-store` | `data` | 605 |  |  |
-| `positions-period-btns` | `children` | 625 |  |  |
-| `positions-detail-title` | `children` | 657 |  |  |
-| `positions-ticker-dividend-container` | `children` | 673 |  |  |
-| `positions-portfolio-dividend-chart-container` | `children` | 809 |  |  |
-| `positions-dividend-income-chart` | `children` | 810 |  |  |
-| `positions-dividend-yield-chart` | `children` | 811 |  |  |
-| `positions-dividend-table` | `children` | 812 |  |  |
+| `positions-txn-table-container` | `children` | 535 |  |  |
+| `positions-period-store` | `data` | 600 |  |  |
+| `positions-period-btns` | `children` | 620 |  |  |
+| `positions-detail-title` | `children` | 652 |  |  |
+| `positions-ticker-dividend-container` | `children` | 668 |  |  |
+| `positions-portfolio-dividend-chart-container` | `children` | 810 |  |  |
+| `positions-dividend-income-chart` | `children` | 811 |  |  |
+| `positions-dividend-yield-chart` | `children` | 812 |  |  |
+| `positions-dividend-table` | `children` | 813 |  |  |
 
 ## `research_callbacks.py`
 
@@ -186,17 +186,17 @@
 |-----------|----------|------|-----------|---------|
 | `watchlist-store` | `data` | 28 |  |  |
 | `watchlist-input` | `value` | 29 |  |  |
-| `watchlist-table-container` | `children` | 109 |  |  |
-| `watchlist-msg` | `children` | 110 |  |  |
-| `watchlist-selected-ticker` | `data` | 300 |  |  |
-| `watchlist-selected-ticker` | `data` | 319 | ✓ |  |
-| `watchlist-chart` | `figure` | 333 |  |  |
-| `watchlist-chart-title` | `children` | 334 |  |  |
-| `watchlist-period-store` | `data` | 426 |  |  |
-| `{"type": "wl-period-btn", "index": ALL}` | `className` | 439 |  | ✓ |
-| `watchlist-stat-cards` | `children` | 448 |  |  |
-| `watchlist-tech-signals-container` | `children` | 449 |  |  |
-| `watchlist-ai-insight-container` | `children` | 450 |  |  |
-| `watchlist-notes-input` | `value` | 605 |  |  |
-| `watchlist-notes-msg` | `children` | 615 |  |  |
-| `watchlist-ticker-hint` | `children` | 629 |  |  |
+| `watchlist-table-container` | `children` | 110 |  |  |
+| `watchlist-msg` | `children` | 111 |  |  |
+| `watchlist-selected-ticker` | `data` | 301 |  |  |
+| `watchlist-selected-ticker` | `data` | 320 | ✓ |  |
+| `watchlist-chart` | `figure` | 334 |  |  |
+| `watchlist-chart-title` | `children` | 335 |  |  |
+| `watchlist-period-store` | `data` | 427 |  |  |
+| `{"type": "wl-period-btn", "index": ALL}` | `className` | 440 |  | ✓ |
+| `watchlist-stat-cards` | `children` | 449 |  |  |
+| `watchlist-tech-signals-container` | `children` | 450 |  |  |
+| `watchlist-ai-insight-container` | `children` | 451 |  |  |
+| `watchlist-notes-input` | `value` | 606 |  |  |
+| `watchlist-notes-msg` | `children` | 616 |  |  |
+| `watchlist-ticker-hint` | `children` | 630 |  |  |
