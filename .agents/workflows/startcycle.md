@@ -11,15 +11,21 @@ When the user runs `/startcycle [idea]`, the team will follow this high-density 
 ### Stage 1 — @agent-pm: Design & Spec
 1. **Research**: Read `GEMINI.md` (full read-order preamble) and existing layout/callback files to ensure architectural fit.
 2. **Conflict Check**: Check `docs/callback_ownership.md` for any Output IDs the spec plans to add or modify. Resolve conflicts before approval — do not leave them for the engineer.
-3. **Spec**: Write a technical spec to `.agents/production_artifacts/spec.md`:
+3. **Ideator Consultation**: Prior to finalizing the technical spec, the PM MUST consult with `@agent-ideator` to conduct a design and feasibility review. `@agent-ideator` will generate a structured ideation artifact evaluating:
+   - Technical advantages, disadvantages, and visual ROI of the proposed changes.
+   - Critical pain points (e.g., server callback latency, rendering layout shifts, Plotly limitations, or cache stale/lock states).
+   - Feasibility checks against the current Python, Dash, and SQLite stack.
+4. **Pain Point Resolution**: The PM must address the Ideator's feedback, refine the layout/routing strategy, and document structural solutions to mitigate each highlighted pain point before writing the spec.
+5. **Spec**: Write a technical spec to `.agents/production_artifacts/spec.md`:
    - Feature summary (2-3 sentences).
    - Modified/New files list.
    - **Component IDs**: Define all new Dash IDs.
    - **Data Strategy**: holdings, histories, or dcc.Store?
-4. **Approval**: PAUSE and get explicit user approval before any code is written.
-5. **Fallback States**: For every new UI component, define explicitly what renders when data is empty, loading, or errored.
-6. **External Dependencies**: If the feature requires any new pip install package, list it explicitly in the spec and get approval before Stage 2 begins.
-7. **External URLs**: If the feature calls any external URL, list every URL in the spec. Engineer agent must verify each URL returns a 200 before using it in code.
+   - **Resolved Pain Points**: Specific structural or logical solutions addressing the critical issues identified by the Ideator.
+6. **Fallback States**: For every new UI component, define explicitly what renders when data is empty, loading, or errored.
+7. **External Dependencies**: If the feature requires any new pip install package, list it explicitly in the spec and get approval before Stage 2 begins.
+8. **External URLs**: If the feature calls any external URL, list every URL in the spec. Engineer agent must verify each URL returns a 200 before using it in code.
+9. **Approval**: PAUSE and get explicit user approval on the spec before any code is written.
 
 ### Stage 2 — @agent-engineer: Build
 1. **Blueprint**: Read `.agents/production_artifacts/spec.md`.
