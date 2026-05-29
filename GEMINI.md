@@ -1,7 +1,31 @@
 # Project Rules — Folio
 
+## ⚡ READ THIS FIRST — Required Read Order
+
+**Step 0 — Refresh the auto-generated indexes (always do this first):**
+
+```bash
+python3 .agents/generated/sync_docs.py
+```
+
+This regenerates `.agents/generated/callback_index.md` and `.agents/generated/store_index.md` from the live codebase. Run it before reading anything else — the indexes must reflect the current state of the code, not a stale snapshot.
+
+Then read these documents **in order**:
+
+0. **`.agents/project_map.md`** — Navigation index. Find which doc and which file to look at for any task.
+1. **`.agents/skills/registry.md`** — Component ID registry. Check for ID collisions before writing any layout.
+2. **`docs/callback_ownership.md`** — Output ownership map. Verify the Output ID is not already owned before adding a callback. For exact line numbers, also check `.agents/generated/callback_index.md`.
+3. **`docs/store_contracts.md`** — Exact JSON shapes for `portfolio-store`, `signals-store`, `watchlist-store`. Never guess the shape.
+4. **`docs/known_issues.md`** — Bug registry. If you're touching a chart, callback, or store, confirm you're not re-introducing a known bug.
+5. **This file (GEMINI.md)** — Architecture rules. Read the relevant section for what you're changing.
+6. **The specific file you're editing** — Read the full function/callback before changing any line.
+
+> Skipping steps 1–4 is the single biggest source of regressions in this project.
+
+---
+
 ## Stack
-- Python 3.11, Dash (multi-page), Plotly, yfinance, pandas
+- Python 3.12.13, Dash (multi-page), Plotly, yfinance, pandas
 - Entry: app.py → pages/ (portfolio.py, etf_detail.py, intelligence.py)
 - Data: SQLite (`portfolio.db`) → `database.py` → `repository.py` → `fetch_live()`
 - All chart figures live in components/charts/ and return go.Figure
@@ -73,6 +97,9 @@
 - **Strict Process Management**: All browser sessions MUST be wrapped in `try/finally` blocks to guarantee `browser.close()` and prevent memory leaks.
 ## When making changes
 - Read the relevant callback file before touching it — don't guess at existing IDs
+- **Path Finding**: Use `grep -r` to locate the exact file and function before editing. Never guess a path. See `.agents/skills/surgical_edit.md` for grep patterns.
+- **Skills First**: When a task matches a skill in `.agents/skills/`, read that skill file before writing code. Skills contain tested patterns — use them instead of reinventing.
+- **Known Issues Gate**: Before touching a chart builder, pattern-matched callback, or store callback, read `docs/known_issues.md` to confirm you are not re-introducing a known bug.
 - Preserve all existing Dash component IDs exactly
 - If adding a new chart: add figure builder in components/charts/, wire in chart_callbacks.py
 - If adding a store: seed it at startup in app.py alongside txn-store
@@ -93,6 +120,23 @@
 
 ## Self-Improvement
 - After every task, evaluate if a new Rule or Skill should be added to the `.agents/` directory to prevent repeating mistakes or to codify successful new patterns.
+
+## Context Document Maintenance — After Every Build
+
+After completing any task that adds, removes, or renames a component:
+
+**Always update (no approval needed — factual changes only):**
+- `docs/callback_ownership.md` — add any new Output IDs with their owning callback file. Remove entries for deleted outputs.
+- `.agents/skills/registry.md` — add any new component IDs introduced.
+
+**Append only if a new bug pattern was discovered and fixed:**
+- `docs/known_issues.md` — one entry per bug: root cause, affected file, fix pattern. Never edit existing entries.
+
+**Never auto-update (require explicit instruction):**
+- `docs/store_contracts.md` — store shapes only change intentionally. A wrong auto-update here breaks all consumers silently.
+- `GEMINI.md` itself — architectural rules require human judgment.
+
+> **The update is part of the task. A build is not complete until the relevant context documents reflect the current state of the code.**
 
 - **Rule-Based Engine** (`services/strategy_engine.py`): Single source of truth for signals. Never override with AI output.
 - **AI Assistant** (`services/ai_engine.py`): Sits *after* the engine. Explains and critiques signals only — does NOT generate them.
@@ -186,6 +230,39 @@
 - **Unified Test Runner**: Implemented `scratch/run_tests.sh` to dynamically handle virtualenv environments, offline pytest triggers, and HTML/XML coverage reporting.
 - **Isolated Mocks**: Developed 9 mock-isolated unit test suites located strictly in `scratch/tests/` evaluating 61 core test cases spanning Repositories, Services, Technical Indicators, and UI callbacks without live network or external database requests.
 - **Quality & Pre-Commit Hooks**: Configured mypy types (`mypy.ini`) and ruff lints to check code structure and format as an automated Git pre-commit barrier.
+
+## Minimal Edit Mode — Default for All Changes
+
+> **Default behaviour**: Every edit MUST be minimal. Only change the exact lines required to fix the bug or add the feature. Assume everything around the target is correct and tested.
+
+### Do Not Touch Zones
+
+These areas are frozen. **Do NOT modify them unless the user explicitly names them in their request.**
+
+| Zone | File | Reason |
+|------|------|---------|
+| App layout scaffold | `app.py` lines 176–242 | Store seeds and interval registration. Changing breaks all pages. |
+| `txn-store` writer | `app.py` `update_txn_store()` | Single owner. Adding a second writer causes data corruption. |
+| `portfolio-store` writer | `app.py` `update_portfolio_store()` | Single owner. Side-effect writes cause race conditions. |
+| CSS variable definitions | `assets/base.css` | Load order is alphabetical; variables must exist before any component uses them. |
+| `apply_standard_layout()` | `components/charts/helpers.py` | Shared by all charts. Changing it breaks every chart simultaneously. |
+| `create_header()` | `components/header.py` | Shared singleton. Changing breaks global nav on all pages. |
+| `get_connection()` | `data/database.py` | WAL mode + busy_timeout must stay. Removing breaks SQLite concurrency. |
+| Signal boundary constants | `services/strategy_engine.py` | BUY ≥ 0.5, SELL ≤ −0.5. Do not adjust thresholds without explicit instruction. |
+| `VERDICT_MAP` | `services/ai_engine.py` | Hardcoded to 3 values. Adding values breaks normalisation logic. |
+| Store IDs | anywhere | Never rename a `dcc.Store` ID — it breaks all consuming callbacks silently. |
+
+### Minimal Edit Checklist
+
+Before submitting any edit, confirm:
+- [ ] I read the file before editing it
+- [ ] I changed only the specific function/block that is broken
+- [ ] I did not touch any Do Not Touch Zone
+- [ ] I did not rename any component ID, variable, or function signature
+- [ ] I did not add imports outside the edited block
+- [ ] I ran `ruff check <file> --fix && ruff format <file>`
+
+---
 
 ## Surgical Edit Rules — NEVER violate these
 

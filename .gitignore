@@ -42,6 +42,9 @@ data/*.db*
 !README.md
 !GEMINI.md
 !docs/**/*.md
+!.agents/
+!.agents/**/*.md
+!.agents/**/*.py
 
 # ── One-off / scratch scripts ─────────────────────────────────────────────────
 scratch/*
