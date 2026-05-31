@@ -232,5 +232,27 @@ if not price or price == 0.0:
 **Fix**:
 1. Filter added nodes in the observer to ensure they match target selectors (e.g. `.js-plotly-plot`) before acting.
 2. Add debouncing (e.g. 100ms) to event-listener setup calls to avoid re-triggering during a single render sweep.
-3. Observe only specific, relevant mutations (avoid broad `characterData` and `childList` observation of `document.body` simultaneously when updating inner text).
+235: 3. Observe only specific, relevant mutations (avoid broad `characterData` and `childList` observation of `document.body` simultaneously when updating inner text).
+236: 
+237: 
+238: ---
+239: 
+240: ## BUG-013 · Missing Previous-Day Lookback in Intraday P&L Chart (1d)
+241: 
+242: **Status**: Fixed  
+243: **Files affected**: `components/charts/pnl_history.py`  
+244: **Symptom**: Today's P&L chart starts exactly at 10:00 AM of the current session, missing the final hour (15:00 onwards) of the previous trading day for context.
+245: 
+246: **Root Cause**:
+247: Refactoring for offline context normalization hardcoded `chart_start` to `effective_start.replace(hour=10)`. This completely excluded previous session points from database querying and filtered them out of the Plotly rendering range.
+248: 
+249: **Fix**:
+250: Query and set the Plotly `xaxis` range start using `get_previous_trading_session_start(relative_to=effective_start)` which dynamically returns 15:00 of the previous trading day (handling live/closed/weekend context flawlessly):
+251: 
+252: ```python
+253: # ✅ Correct Lookback Start Calculation
+254: from services.market.market_status import get_previous_trading_session_start
+255: chart_start = get_previous_trading_session_start(relative_to=effective_start)
+256: ```
+257: 
 

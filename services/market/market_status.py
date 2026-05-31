@@ -37,14 +37,22 @@ def is_market_open(include_auction: bool = True) -> bool:
     return start_time <= current_time <= end_time
 
 
-def get_previous_trading_session_start() -> pd.Timestamp:
+def get_previous_trading_session_start(relative_to: pd.Timestamp = None) -> pd.Timestamp:
     """
-    Finds the start time (15:00) of the previous trading session relative to today.
+    Finds the start time (15:00) of the previous trading session relative to today or a given base date.
     Skips weekends automatically.
     Used for providing context on 1d charts.
     """
-    now_syd = pd.Timestamp.now(tz=MARKET_TIMEZONE)
-    today = now_syd.floor("D")
+    if relative_to is None:
+        relative_to = pd.Timestamp.now(tz=MARKET_TIMEZONE)
+    else:
+        # Ensure it has the correct timezone
+        if relative_to.tzinfo is None:
+            relative_to = relative_to.tz_localize(MARKET_TIMEZONE)
+        else:
+            relative_to = relative_to.tz_convert(MARKET_TIMEZONE)
+
+    today = relative_to.floor("D")
 
     # Start looking from yesterday
     prev_day = today - pd.Timedelta(days=1)

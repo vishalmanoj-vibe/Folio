@@ -36,7 +36,9 @@ def _build_intraday_figure(
 
     ctx = get_effective_session_context()
     effective_start = ctx["effective_date"]  # Already normalized to 00:00
-    chart_start = effective_start.replace(hour=10)
+    from services.market.market_status import get_previous_trading_session_start
+
+    chart_start = get_previous_trading_session_start(relative_to=effective_start)
     chart_start_str = chart_start.strftime("%Y-%m-%d %H:%M:%S")
 
     # We want to show until the end of the effective day
@@ -274,11 +276,13 @@ def build_pnl_history_figure(
     )
 
     if period == "1d":
-        # Ensure x-axis shows the full effective session window (10:00 - 16:15)
-        # instead of just the last few hours.
+        # Ensure x-axis shows the full extended session window (from previous day 15:00 to today 16:15)
         ctx = get_effective_session_context()
         effective_start = ctx["effective_date"]
-        range_start = effective_start.replace(hour=10).isoformat()
+        from services.market.market_status import get_previous_trading_session_start
+
+        chart_start = get_previous_trading_session_start(relative_to=effective_start)
+        range_start = chart_start.isoformat()
         range_end = effective_start.replace(hour=16, minute=15).isoformat()
 
         fig.update_layout(

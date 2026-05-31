@@ -1,6 +1,6 @@
 # Callback Output Index — Auto-Generated
 
-> **Generated**: 2026-05-29 14:06  
+> **Generated**: 2026-05-31 19:17  
 > **Do not edit** — run `python .agents/generated/sync_docs.py` to refresh.
 > For ownership intent and architecture notes, see `docs/callback_ownership.md`.
 
@@ -41,20 +41,20 @@
 |-----------|----------|------|-----------|---------|
 | `ticker-selector` | `data` | 44 |  |  |
 | `benchmark-pending-store` | `data` | 61 | ✓ |  |
-| `pnl-history-chart` | `figure` | 85 |  |  |
-| `benchmark-pending-store` | `data` | 86 | ✓ |  |
-| `price-chart` | `figure` | 195 |  |  |
-| `portfolio-treemap` | `figure` | 230 |  |  |
-| `analytics-vol-chart` | `children` | 265 |  |  |
-| `corr-chart` | `figure` | 335 |  |  |
-| `holdings-bubble-chart` | `figure` | 362 |  |  |
-| `holdings-freshness-note` | `children` | 363 |  |  |
-| `holdings-url-collapse` | `opened` | 364 | ✓ |  |
-| `holdings-url-collapse` | `opened` | 426 | ✓ |  |
-| `holdings-url-table` | `children` | 436 |  |  |
-| `holdings-url-save-status` | `children` | 539 |  |  |
-| `holdings-url-ticker-input` | `value` | 540 |  |  |
-| `holdings-url-input` | `value` | 541 |  |  |
+| `pnl-history-chart` | `figure` | 86 |  |  |
+| `benchmark-pending-store` | `data` | 87 | ✓ |  |
+| `price-chart` | `figure` | 198 |  |  |
+| `portfolio-treemap` | `figure` | 233 |  |  |
+| `analytics-vol-chart` | `children` | 268 |  |  |
+| `corr-chart` | `figure` | 338 |  |  |
+| `holdings-bubble-chart` | `figure` | 365 |  |  |
+| `holdings-freshness-note` | `children` | 366 |  |  |
+| `holdings-url-collapse` | `opened` | 367 | ✓ |  |
+| `holdings-url-collapse` | `opened` | 429 | ✓ |  |
+| `holdings-url-table` | `children` | 439 |  |  |
+| `holdings-url-save-status` | `children` | 542 |  |  |
+| `holdings-url-ticker-input` | `value` | 543 |  |  |
+| `holdings-url-input` | `value` | 544 |  |  |
 
 ## `intelligence_callbacks.py`
 
