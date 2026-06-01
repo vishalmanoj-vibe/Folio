@@ -11,12 +11,13 @@ import json
 import logging
 import os
 from datetime import datetime, timedelta
+from typing import Any, cast
 
 import pandas as pd
 
 logger = logging.getLogger(__name__)
 
-_PROPHET_AVAILABLE = None
+_PROPHET_AVAILABLE: bool | None = None
 
 # Cache configuration
 # No longer using disk JSON file. Using predictions_cache table in portfolio.db.
@@ -47,7 +48,7 @@ def get_forecast(dates: list, values: list, horizon_str: str, read_only: bool = 
     Optimized with stable caching, 24h staleness checks, and data downsampling.
     """
     global _PROPHET_AVAILABLE
-    if _PROPHET_AVAILABLE is False:
+    if cast(Any, _PROPHET_AVAILABLE) is False:
         return {}
 
     # 1. Validate inputs

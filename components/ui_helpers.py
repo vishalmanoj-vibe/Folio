@@ -5,6 +5,8 @@ components/ui_helpers.py
 Refined UI helpers for the Folio Dashboard.
 """
 
+from typing import Any, cast
+
 import dash_mantine_components as dmc
 import pandas as pd
 from dash import html
@@ -38,7 +40,7 @@ def stat_card(
     tip: str = "",
 ) -> html.Div:
     """Creates a styled stat card component."""
-    label_children = [html.Span(label, className="stat-card-title")]
+    label_children: list = [html.Span(label, className="stat-card-title")]
     if tip:
         label_children.append(
             dmc.Tooltip(
@@ -46,7 +48,7 @@ def stat_card(
                 multiline=True,
                 w=240,
                 withArrow=True,
-                transitionProps={"transition": "fade", "duration": 200},
+                transitionProps=cast(Any, {"transition": "fade", "duration": 200}),
                 position="top",
                 zIndex=2000,
                 children=html.Span("ℹ", className="chart-info-icon"),
@@ -69,7 +71,7 @@ def chart_title(label: str, info_key: str = "") -> html.Div:
     else:
         tip = info_key
 
-    children = [html.Span(label, className="chart-title-text")]
+    children: list = [html.Span(label, className="chart-title-text")]
     if tip:
         children.append(
             dmc.Tooltip(
@@ -77,7 +79,7 @@ def chart_title(label: str, info_key: str = "") -> html.Div:
                 multiline=True,
                 w=280,
                 withArrow=True,
-                transitionProps={"transition": "fade", "duration": 200},
+                transitionProps=cast(Any, {"transition": "fade", "duration": 200}),
                 position="top",
                 zIndex=2000,
                 children=html.Span("ℹ", className="chart-info-icon"),
@@ -330,7 +332,7 @@ def tech_signal_badges(ticker: str, history: list[dict] | pd.Series) -> html.Div
             multiline=True,
             w=240,
             withArrow=True,
-            transitionProps={"transition": "fade", "duration": 200},
+            transitionProps=cast(Any, {"transition": "fade", "duration": 200}),
             position="top",
             zIndex=2000,
             children=html.Div(

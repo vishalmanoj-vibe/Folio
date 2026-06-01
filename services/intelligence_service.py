@@ -435,7 +435,8 @@ def portfolio_returns(histories: dict, holdings: list[dict]) -> pd.Series:
     # We use min_count=1 to allow calculation even if some tickers are missing
     # data for certain days (e.g. newly listed or trading halt).
     # This prevents the whole backtest from disappearing.
-    return ret_df[common].mul(w, axis=1).sum(axis=1, min_count=1).dropna()
+    weighted_df: pd.DataFrame = ret_df[common].mul(w, axis=1)
+    return weighted_df.sum(axis=1, min_count=1).dropna()
 
 
 def annualised_volatility(returns: pd.Series) -> float:
@@ -452,7 +453,7 @@ def annualised_volatility(returns: pd.Series) -> float:
     """
     if returns.empty or len(returns) < 5:
         return float("nan")
-    return round(float(returns.std() * math.sqrt(252) * 100), 2)
+    return round(returns.std() * math.sqrt(252) * 100, 2)
 
 
 def sharpe_ratio(returns: pd.Series) -> float:
@@ -472,7 +473,7 @@ def sharpe_ratio(returns: pd.Series) -> float:
     excess = returns - RISK_FREE_DAILY
     if excess.std() == 0:
         return float("nan")
-    return round(float(excess.mean() / excess.std() * math.sqrt(252)), 2)
+    return round(excess.mean() / excess.std() * math.sqrt(252), 2)
 
 
 def max_drawdown(returns: pd.Series) -> float:
@@ -491,7 +492,7 @@ def max_drawdown(returns: pd.Series) -> float:
     if returns.empty:
         return float("nan")
     equity = (1 + returns).cumprod()
-    return round(float(((equity - equity.cummax()) / equity.cummax() * 100).min()), 2)
+    return round(((equity - equity.cummax()) / equity.cummax() * 100).min(), 2)
 
 
 def drawdown_series(returns: pd.Series) -> pd.Series:
@@ -504,7 +505,7 @@ def drawdown_series(returns: pd.Series) -> pd.Series:
 def per_ticker_volatility(histories: dict) -> dict[str, float]:
     ret_df = _histories_to_returns(histories)
     return {
-        col: round(float(ret_df[col].dropna().std() * math.sqrt(252) * 100), 2)
+        col: round(ret_df[col].dropna().std() * math.sqrt(252) * 100, 2)
         if len(ret_df[col].dropna()) >= 5
         else float("nan")
         for col in ret_df.columns
@@ -544,7 +545,7 @@ def compute_risk_metrics(
         sharpe_ratio(port_ret),
         max_drawdown(port_ret),
     )
-    cur_dd = round(float(drawdown_series(port_ret).iloc[-1]), 2) if not port_ret.empty else None
+    cur_dd = round(drawdown_series(port_ret).iloc[-1], 2) if not port_ret.empty else None
     chart_ret = port_ret
     cutoff = get_period_cutoff(period)
     if cutoff is not None:
@@ -569,9 +570,9 @@ def compute_risk_metrics(
         "max_dd": max_dd,
         "current_dd": cur_dd,
         "ticker_vols": per_ticker_volatility(histories),
-        "dd_dates": fmt_date_index(dd_s.index),
+        "dd_dates": fmt_date_index(pd.DatetimeIndex(dd_s.index)),
         "dd_values": dd_s.tolist(),
-        "ret_dates": fmt_date_index(cum_ret.index),
+        "ret_dates": fmt_date_index(pd.DatetimeIndex(cum_ret.index)),
         "ret_values": cum_ret.round(2).tolist(),
         "n_days": len(port_ret),
     }

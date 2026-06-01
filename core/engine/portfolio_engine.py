@@ -89,8 +89,8 @@ def build_holdings(history: list[dict], include_tranches: bool = True) -> list[d
     results: list[dict] = []
 
     for ticker, grp in df.groupby("ticker"):
-        buys = grp[grp["type"] == "buy"].copy()
-        sells = (
+        buys: pd.DataFrame = grp[grp["type"] == "buy"].copy()
+        sells: pd.DataFrame = (
             grp[grp["type"] == "sell"].copy() if "sell" in grp["type"].values else pd.DataFrame()
         )
 

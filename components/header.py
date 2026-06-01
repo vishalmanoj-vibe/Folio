@@ -5,6 +5,8 @@ components/header.py
 Global navigation bar for the Folio dashboard.
 """
 
+from typing import Any, cast
+
 import dash_mantine_components as dmc
 from dash import dcc, html
 
@@ -102,7 +104,7 @@ def create_header(
         trigger="click",
         position="bottom-end",
         offset=8,
-        transitionProps={"transition": "fade", "duration": 150},
+        transitionProps=cast(Any, {"transition": "fade", "duration": 150}),
     )
 
     # Intelligence Action (Consolidated Button + Status Box)

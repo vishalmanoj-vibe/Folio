@@ -44,14 +44,14 @@ def compute_indicators(price_df: pd.DataFrame) -> dict:
         float(current_price),
         float(sma_50),
         float(sma_200),
-        float(rsi_val),
+        rsi_val,
     )
 
     return {
         "price": float(current_price),
         "sma_50": float(sma_50),
         "sma_200": float(sma_200),
-        "rsi": float(rsi_val),
+        "rsi": rsi_val,
         "drawdown_pct": float(drawdown),
     }
 
@@ -77,7 +77,8 @@ def score_signal(indicators: dict, holding: dict) -> dict:
     sma_200 = indicators["sma_200"]
     rsi = indicators["rsi"]
     drawdown = indicators["drawdown_pct"]
-    avg_cost = holding.get("avg_cost", price)  # Fallback to current price if missing
+    raw_cost = holding.get("avg_cost")
+    avg_cost = price if raw_cost is None else raw_cost  # Fallback to current price if missing
 
     # --- 1. Trend (0.35) ---
     trend_val = 0
@@ -107,7 +108,7 @@ def score_signal(indicators: dict, holding: dict) -> dict:
         reasons.append("Price extended (>10% above 200MA)")
 
     # --- 4. Price vs Cost (0.15) ---
-    if avg_cost > 0:
+    if avg_cost is not None and avg_cost > 0:
         if price < avg_cost and trend_val == 1:
             score += 0.15
             reasons.append("Averaging down opportunity in uptrend")

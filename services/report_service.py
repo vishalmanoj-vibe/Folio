@@ -330,6 +330,7 @@ def _build_pnl_chart_image(
 
         dates = [datetime.strptime(p["date"], "%Y-%m-%d") for p in pnl_series]
         values = [p["pnl_pct"] for p in pnl_series]
+        x_values = mdates.date2num(dates)
 
         fig, ax = plt.subplots(figsize=(6.8, 2.4))
         fig.patch.set_facecolor("white")
@@ -337,7 +338,7 @@ def _build_pnl_chart_image(
 
         # Fill positive / negative areas
         ax.fill_between(
-            dates,
+            x_values,
             values,
             0,
             where=[v >= 0 for v in values],
@@ -346,7 +347,7 @@ def _build_pnl_chart_image(
             interpolate=True,
         )
         ax.fill_between(
-            dates,
+            x_values,
             values,
             0,
             where=[v < 0 for v in values],
@@ -357,7 +358,7 @@ def _build_pnl_chart_image(
 
         # Main line
         line_color = _GREEN_HEX if values[-1] >= 0 else _RED_HEX
-        ax.plot(dates, values, color=line_color, linewidth=1.8, zorder=3)
+        ax.plot(x_values, values, color=line_color, linewidth=1.8, zorder=3)
 
         # Zero baseline
         ax.axhline(0, color="#bbbbbb", linewidth=0.6, linestyle="--")
@@ -365,7 +366,7 @@ def _build_pnl_chart_image(
         # Final value label
         ax.annotate(
             f"{values[-1]:+.2f}%",
-            xy=(dates[-1], values[-1]),
+            xy=(x_values[-1], values[-1]),
             fontsize=8,
             color=line_color,
             fontweight="bold",
@@ -477,7 +478,7 @@ def build_pdf(
         leading=11,
     )
 
-    story = []
+    story: list = []
 
     # ── SECTION 1: Header ─────────────────────────────────────────────────────
     story.append(Paragraph("Portfolio Weekly Report", title_style))

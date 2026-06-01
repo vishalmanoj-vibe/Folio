@@ -5,6 +5,8 @@ components/watchlist_layout.py
 Layout for the Watchlist page.
 """
 
+from typing import Any, cast
+
 import dash_mantine_components as dmc
 from dash import dcc, html
 
@@ -181,7 +183,8 @@ def create_watchlist_layout() -> html.Div:
                                 html.Div(
                                     id="watchlist-chart-container",
                                     children=dcc.Graph(
-                                        id="watchlist-chart", config={"displayModeBar": False}
+                                        id="watchlist-chart",
+                                        config=cast(Any, {"displayModeBar": False}),
                                     ),
                                 ),
                                 dcc.Loading(

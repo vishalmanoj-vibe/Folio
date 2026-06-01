@@ -6,6 +6,8 @@ Deep-dive charts and secondary metrics.
 Route: /analytics
 """
 
+from typing import Any, cast
+
 import dash
 import dash_mantine_components as dmc
 from dash import dcc, html
@@ -173,10 +175,13 @@ def layout():
                                             dcc.Loading(
                                                 dcc.Graph(
                                                     id="portfolio-treemap",
-                                                    config={
-                                                        "displayModeBar": False,
-                                                        "doubleClick": "reset",
-                                                    },
+                                                    config=cast(
+                                                        Any,
+                                                        {
+                                                            "displayModeBar": False,
+                                                            "doubleClick": "reset",
+                                                        },
+                                                    ),
                                                     style={"height": "600px"},
                                                     className="treemap-canvas",
                                                 ),
@@ -226,7 +231,7 @@ def layout():
                                             dcc.Loading(
                                                 dcc.Graph(
                                                     id="holdings-bubble-chart",
-                                                    config={"displayModeBar": False},
+                                                    config=cast(Any, {"displayModeBar": False}),
                                                     style={"height": "600px"},
                                                 ),
                                                 custom_spinner=chart_skeleton(600),
@@ -283,7 +288,7 @@ def layout():
                                     dcc.Loading(
                                         dcc.Graph(
                                             id="price-chart",
-                                            config={"displayModeBar": False},
+                                            config=cast(Any, {"displayModeBar": False}),
                                             style={"height": "400px"},
                                         ),
                                         custom_spinner=chart_skeleton(400),
@@ -302,7 +307,9 @@ def layout():
                                                     dcc.Loading(
                                                         dcc.Graph(
                                                             id="corr-chart",
-                                                            config={"displayModeBar": False},
+                                                            config=cast(
+                                                                Any, {"displayModeBar": False}
+                                                            ),
                                                         ),
                                                         custom_spinner=chart_skeleton(300),
                                                     ),

@@ -6,6 +6,8 @@ Portfolio Intelligence page — risk analytics and return forecasting.
 Route: /intelligence
 """
 
+from typing import Any, cast
+
 import dash_bootstrap_components as dbc
 import dash_mantine_components as dmc
 from dash import dcc, html, register_page
@@ -133,7 +135,8 @@ def layout() -> html.Div:
                             html.Div(
                                 id="intel-equity-chart-container",
                                 children=dcc.Graph(
-                                    id="intel-equity-chart", config={"displayModeBar": False}
+                                    id="intel-equity-chart",
+                                    config=cast(Any, {"displayModeBar": False}),
                                 ),
                             ),
                             custom_spinner=chart_skeleton(400),
@@ -149,7 +152,8 @@ def layout() -> html.Div:
                             html.Div(
                                 id="intel-drawdown-chart-container",
                                 children=dcc.Graph(
-                                    id="intel-drawdown-chart", config={"displayModeBar": False}
+                                    id="intel-drawdown-chart",
+                                    config=cast(Any, {"displayModeBar": False}),
                                 ),
                             ),
                             custom_spinner=chart_skeleton(300),

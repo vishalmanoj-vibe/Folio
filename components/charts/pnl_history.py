@@ -103,7 +103,7 @@ def _build_intraday_figure(
         else:
             price_s.index = price_s.index.tz_convert("Australia/Sydney")
         price_s = price_s.sort_index()
-        price_s = price_s[~price_s.index.duplicated(keep="last")]
+        price_s = price_s.groupby(level=0).last()
         price_s = price_s[(price_s.index >= chart_start_tz) & (price_s.index <= market_close_tz)]
 
         if price_s.empty:
@@ -393,7 +393,7 @@ def build_pnl_history_figure(
             if buy_dt in y.index:
                 marker_y = float(y.loc[buy_dt])
             elif len(y) > 0:
-                pos = y.index.get_indexer([buy_dt], method="nearest")[0]
+                pos = y.index.get_indexer(pd.Index([buy_dt]), method="nearest")[0]
                 marker_y = float(y.iloc[pos])
             else:
                 marker_y = 0.0

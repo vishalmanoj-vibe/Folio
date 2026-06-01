@@ -37,7 +37,7 @@ def is_market_open(include_auction: bool = True) -> bool:
     return start_time <= current_time <= end_time
 
 
-def get_previous_trading_session_start(relative_to: pd.Timestamp = None) -> pd.Timestamp:
+def get_previous_trading_session_start(relative_to: pd.Timestamp | None = None) -> pd.Timestamp:
     """
     Finds the start time (15:00) of the previous trading session relative to today or a given base date.
     Skips weekends automatically.

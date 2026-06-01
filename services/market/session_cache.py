@@ -69,7 +69,9 @@ def record_snapshot(enriched_holdings: list[dict]):
         conn.close()
 
 
-def backfill_session_cache(tickers_data: dict[str, pd.Series], start_limit: pd.Timestamp = None):
+def backfill_session_cache(
+    tickers_data: dict[str, pd.Series], start_limit: pd.Timestamp | None = None
+):
     """
     Backfill the session cache in SQLite with historical intraday data.
     """

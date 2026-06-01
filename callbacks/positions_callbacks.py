@@ -133,7 +133,7 @@ def register_callbacks(app) -> None:
                     showlegend=False,
                 )
 
-                card_children = [
+                card_children: list = [
                     html.Div(ticker, className="holding-card-ticker"),
                     html.Div(name, className="holding-card-name"),
                     html.Div(

@@ -22,7 +22,6 @@ AI_ANALYST_PATH = "/ai-analyst"
 
 
 def register_callbacks(app):
-
     # --- CALLBACK 1: Welcome message on first navigation to /ai-analyst ---
     @app.callback(
         Output("research-chat-store", "data"),
@@ -414,7 +413,7 @@ def register_callbacks(app):
         total_val = sum(h.get("mkt_value", 0) for h in holdings)
         sorted_holdings = sorted(holdings, key=lambda x: x.get("mkt_value", 0), reverse=True)
 
-        children = [
+        children: list = [
             html.P(
                 f"${total_val:,.0f}",
                 style={

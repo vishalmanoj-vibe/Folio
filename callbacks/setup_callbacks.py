@@ -10,6 +10,7 @@ import logging
 import os
 import sys
 from datetime import datetime
+from typing import Any, cast
 
 import dash
 from dash import ALL, Input, Output, State, dcc, html, no_update
@@ -55,7 +56,7 @@ def make_setup_row(i):
             html.Td(
                 dcc.Input(
                     id={"type": "setup-date", "index": i},
-                    type="date",
+                    type=cast(Any, "date"),
                     className="setup-row-input",
                     value=datetime.now().strftime("%Y-%m-%d"),
                 )

@@ -6,8 +6,8 @@ def build_portfolio_treemap(
     holdings: list[dict],
     theme_tokens: dict,
     mode: str = "flat",
-    sector_data: dict[str, dict] = None,
-    geo_data: dict[str, dict] = None,
+    sector_data: dict[str, dict] | None = None,
+    geo_data: dict[str, dict] | None = None,
 ) -> go.Figure:
     """
     Build a unified portfolio treemap with optional hierarchical grouping.

@@ -454,7 +454,7 @@ def migrate_json_to_sqlite():
         conn.close()
 
 
-def enqueue_task(task_type: str, payload: dict = None, priority: int = 5) -> str:
+def enqueue_task(task_type: str, payload: dict | None = None, priority: int = 5) -> str:
     """Insert a new task into the worker_tasks table. Returns the task_id."""
     import json
     import uuid

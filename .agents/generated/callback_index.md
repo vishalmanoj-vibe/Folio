@@ -1,6 +1,6 @@
 # Callback Output Index — Auto-Generated
 
-> **Generated**: 2026-06-01 23:17  
+> **Generated**: 2026-06-01 23:49  
 > **Do not edit** — run `python .agents/generated/sync_docs.py` to refresh.
 > For ownership intent and architecture notes, see `docs/callback_ownership.md`.
 
@@ -126,20 +126,20 @@
 
 | Output ID | Property | Line | Duplicate? | Pattern? |
 |-----------|----------|------|-----------|---------|
-| `dummy-redirect-output` | `children` | 115 |  |  |
-| `setup-portfolio-table-body` | `children` | 122 |  |  |
-| `setup-portfolio-rows-store` | `data` | 131 |  |  |
-| `setup-portfolio-rows-store` | `data` | 145 | ✓ |  |
-| `setup-portfolio-continue-btn` | `disabled` | 173 |  |  |
-| `url` | `pathname` | 194 | ✓ |  |
-| `setup-portfolio-feedback` | `children` | 195 |  |  |
-| `txn-store` | `data` | 196 | ✓ |  |
-| `url` | `pathname` | 251 | ✓ |  |
-| `setup-ai-feedback` | `children` | 252 |  |  |
-| `setup-ready-summary` | `children` | 303 |  |  |
-| `url` | `pathname` | 345 | ✓ |  |
-| `setup-is-first-run-store` | `data` | 346 | ✓ |  |
-| `setup-ready-feedback` | `children` | 347 |  |  |
+| `dummy-redirect-output` | `children` | 116 |  |  |
+| `setup-portfolio-table-body` | `children` | 123 |  |  |
+| `setup-portfolio-rows-store` | `data` | 132 |  |  |
+| `setup-portfolio-rows-store` | `data` | 146 | ✓ |  |
+| `setup-portfolio-continue-btn` | `disabled` | 174 |  |  |
+| `url` | `pathname` | 195 | ✓ |  |
+| `setup-portfolio-feedback` | `children` | 196 |  |  |
+| `txn-store` | `data` | 197 | ✓ |  |
+| `url` | `pathname` | 252 | ✓ |  |
+| `setup-ai-feedback` | `children` | 253 |  |  |
+| `setup-ready-summary` | `children` | 304 |  |  |
+| `url` | `pathname` | 346 | ✓ |  |
+| `setup-is-first-run-store` | `data` | 347 | ✓ |  |
+| `setup-ready-feedback` | `children` | 348 |  |  |
 
 ## `signals_callbacks.py`
 

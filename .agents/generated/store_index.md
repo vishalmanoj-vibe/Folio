@@ -1,6 +1,6 @@
 # Store Index — Auto-Generated
 
-> **Generated**: 2026-06-01 23:17  
+> **Generated**: 2026-06-01 23:49  
 > **Do not edit** — run `python .agents/generated/sync_docs.py` to refresh.
 > For exact JSON shapes and safe access patterns, see `docs/store_contracts.md`.
 

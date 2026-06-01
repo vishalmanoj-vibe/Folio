@@ -6,6 +6,8 @@ Positions overview page — card grid and detailed ETF breakdown.
 Route: /positions
 """
 
+from typing import Any, cast
+
 import dash
 import dash_mantine_components as dmc
 from dash import dcc, html
@@ -108,7 +110,7 @@ def layout() -> html.Div:
                                         html.Div(
                                             dcc.Graph(
                                                 id="positions-price-chart",
-                                                config={"displayModeBar": False},
+                                                config=cast(Any, {"displayModeBar": False}),
                                                 style={"height": "350px"},
                                             ),
                                             id="positions-price-chart-container",

@@ -191,7 +191,11 @@ class PortfolioRepository:
             conn.close()
 
     def upsert_asset(
-        self, ticker: str, name: str = None, category: str = None, market: str = None
+        self,
+        ticker: str,
+        name: str | None = None,
+        category: str | None = None,
+        market: str | None = None,
     ) -> None:
         """Insert or update a ticker master record."""
         ticker = ticker.upper()
@@ -222,7 +226,7 @@ class HistoryRepository:
     def __init__(self):
         init_db()
 
-    def save_history(self, ticker: str, records: list[dict], period: str = None) -> None:
+    def save_history(self, ticker: str, records: list[dict], period: str | None = None) -> None:
         """Bulk upsert OHLC records into price_history and update history_meta."""
         if not records:
             return
@@ -358,7 +362,9 @@ class HistoryRepository:
         finally:
             conn.close()
 
-    def load_history(self, ticker: str, from_date: str = None, to_date: str = None) -> list[dict]:
+    def load_history(
+        self, ticker: str, from_date: str | None = None, to_date: str | None = None
+    ) -> list[dict]:
         """Fetch historical records for a ticker within an optional date range."""
         ticker = ticker.upper()
         conn = get_connection()
@@ -384,7 +390,7 @@ class HistoryRepository:
         finally:
             conn.close()
 
-    def load_close_series(self, ticker: str, from_date: str = None) -> pd.Series:
+    def load_close_series(self, ticker: str, from_date: str | None = None) -> pd.Series:
         """Efficiently fetch only the Close price series for a ticker."""
         if not ticker:
             return pd.Series(dtype=float)

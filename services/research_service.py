@@ -179,7 +179,7 @@ def get_ai_response(history: list[dict], portfolio_data: dict, ticker: str = "")
 
         # Convert past turns to google-genai Content objects
         # google-genai uses "model" not "assistant" for AI role
-        chat_history = []
+        chat_history: list[genai.types.ContentOrDict] = []
         for msg in past_turns:
             role = "model" if msg["role"] == "assistant" else "user"
             chat_history.append(

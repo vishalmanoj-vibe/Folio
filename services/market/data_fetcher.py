@@ -8,6 +8,7 @@ from datetime import datetime, timedelta
 import pandas as pd
 import requests
 import yfinance as yf
+import yfinance.data
 
 from config.settings import (
     API_MAX_RETRIES,
@@ -496,7 +497,9 @@ def fetch_benchmarks(period: str = "max") -> dict[str, list[dict]]:
             if close.empty:
                 continue
 
-            close.index = normalise_tz(pd.to_datetime(close.index))
+            idx = pd.to_datetime(close.index)
+            if isinstance(idx, pd.DatetimeIndex):
+                close.index = normalise_tz(idx)
             result[label] = [
                 {"Date": d.strftime("%Y-%m-%d"), "Close": round(float(v), 4)}
                 for d, v in close.items()
@@ -548,12 +551,13 @@ def _enrich_single_holding(
             sess_1d = get_session_history(ticker)
             if not sess_1d.empty:
                 sess_1d = sess_1d[sess_1d > 0]
-                sess_1d.index = pd.to_datetime(sess_1d.index).tz_localize("Australia/Sydney")
-                sess_1d.index = normalise_tz(sess_1d.index)
+                idx_sess = pd.to_datetime(sess_1d.index).tz_localize("Australia/Sydney")
+                if isinstance(idx_sess, pd.DatetimeIndex):
+                    sess_1d.index = normalise_tz(idx_sess)
 
             if not yf_1d.empty and not sess_1d.empty:
                 close_p = pd.concat([yf_1d, sess_1d]).sort_index()
-                close_p = close_p[~close_p.index.duplicated(keep="last")]
+                close_p = close_p.groupby(level=0).last()
             else:
                 close_p = sess_1d if not sess_1d.empty else yf_1d
 
@@ -593,7 +597,9 @@ def _enrich_single_holding(
                 # Combine and drop rows where Close is missing (minimum requirement)
                 df_combined = pd.concat(dfs, axis=1).dropna(subset=["Close"])
                 if not df_combined.empty:
-                    df_combined.index = normalise_tz(pd.to_datetime(df_combined.index))
+                    idx_combined = pd.to_datetime(df_combined.index)
+                    if isinstance(idx_combined, pd.DatetimeIndex):
+                        df_combined.index = normalise_tz(idx_combined)
                     history_data = df_combined.reset_index().to_dict("records")
                     close_p = df_combined["Close"]
 
@@ -629,7 +635,9 @@ def _enrich_single_holding(
                 div_f = pd.Series(dtype=float)
 
         if not close_f.empty:
-            close_f.index = normalise_tz(pd.to_datetime(close_f.index))
+            idx_close = pd.to_datetime(close_f.index)
+            if isinstance(idx_close, pd.DatetimeIndex):
+                close_f.index = normalise_tz(idx_close)
 
         live_close = _extract_col(multi_live, ticker_yf, "Close")
         live_high = _extract_col(multi_live, ticker_yf, "High")
@@ -929,7 +937,7 @@ def get_full_history_cache(holdings: list[dict]) -> pd.DataFrame:
         return pd.DataFrame()
 
     df = pd.DataFrame(series_dict)
-    df.columns = pd.MultiIndex.from_tuples(df.columns)
+    df.columns = pd.MultiIndex.from_tuples(list(series_dict.keys()))
     return df
 
 
@@ -1066,7 +1074,9 @@ def fetch_ticker_history(ticker: str, period: str) -> list[dict]:
                 if dfs:
                     df_combined = pd.concat(dfs, axis=1).dropna(subset=["Close"])
                     if not df_combined.empty:
-                        df_combined.index = normalise_tz(pd.to_datetime(df_combined.index))
+                        idx_combined = pd.to_datetime(df_combined.index)
+                        if isinstance(idx_combined, pd.DatetimeIndex):
+                            df_combined.index = normalise_tz(idx_combined)
                         df_combined.index.name = "Date"
                         records = df_combined.reset_index().to_dict("records")
                         # Format Date as string for repository
@@ -1166,7 +1176,9 @@ def fetch_live(holdings: list[dict], record_snapshots: bool = True) -> tuple[dic
                 if dfs:
                     df_combined = pd.concat(dfs, axis=1).dropna(subset=["Close"])
                     if not df_combined.empty:
-                        df_combined.index = normalise_tz(pd.to_datetime(df_combined.index))
+                        idx_combined = pd.to_datetime(df_combined.index)
+                        if isinstance(idx_combined, pd.DatetimeIndex):
+                            df_combined.index = normalise_tz(idx_combined)
                         df_combined.index.name = "Date"
                         records = df_combined.reset_index().to_dict("records")
                         for r in records:

@@ -80,7 +80,7 @@ def _check_throttle(ticker: str) -> bool:
         conn.close()
 
 
-def _record_attempt(ticker: str, error: str = None):
+def _record_attempt(ticker: str, error: str | None = None):
     conn = get_connection()
     try:
         conn.execute(
@@ -537,7 +537,8 @@ def _fetch_vanguard_playwright(ticker: str, url: str) -> tuple[dict, dict, dict]
                 return {}, {}, {}
 
             # Save to temp file and parse
-            tmp_path = tempfile.mktemp(suffix=".xlsx")
+            with tempfile.NamedTemporaryFile(delete=False, suffix=".xlsx") as tmp_file:
+                tmp_path = tmp_file.name
             try:
                 download.save_as(tmp_path)
                 # Dynamically find the header row (contains 'Holding Name')
@@ -551,6 +552,11 @@ def _fetch_vanguard_playwright(ticker: str, url: str) -> tuple[dict, dict, dict]
                 if header_row is None:
                     logger.debug(
                         f"[{ticker}] Vanguard: Could not find 'Holding Name' row in Excel."
+                    )
+                    return {}, {}, {}
+                if not isinstance(header_row, int):
+                    logger.debug(
+                        f"[{ticker}] Vanguard: Found header row is not an integer: {header_row}"
                     )
                     return {}, {}, {}
                 df = pd.read_excel(tmp_path, engine="openpyxl", header=header_row)

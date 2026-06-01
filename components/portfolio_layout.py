@@ -6,6 +6,7 @@ Portfolio page layout for the Overview page.
 """
 
 from datetime import datetime
+from typing import Any, cast
 
 import dash_mantine_components as dmc
 from dash import dcc, html
@@ -143,7 +144,8 @@ def create_layout(initial_history: list[dict] | None = None) -> html.Div:
                                         },
                                     ),
                                     dcc.Graph(
-                                        id="pnl-history-chart", config={"displayModeBar": False}
+                                        id="pnl-history-chart",
+                                        config=cast(Any, {"displayModeBar": False}),
                                     ),
                                 ]
                             ),
@@ -258,7 +260,9 @@ def create_layout(initial_history: list[dict] | None = None) -> html.Div:
                                                         html.P("Date", className="txn-label"),
                                                         dmc.DateInput(
                                                             id="txn-date",
-                                                            value=datetime.now().date(),
+                                                            value=datetime.now().strftime(
+                                                                "%Y-%m-%d"
+                                                            ),
                                                             valueFormat="YYYY-MM-DD",
                                                             className="txn-input-date",
                                                         ),
