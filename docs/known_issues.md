@@ -232,27 +232,48 @@ if not price or price == 0.0:
 **Fix**:
 1. Filter added nodes in the observer to ensure they match target selectors (e.g. `.js-plotly-plot`) before acting.
 2. Add debouncing (e.g. 100ms) to event-listener setup calls to avoid re-triggering during a single render sweep.
-235: 3. Observe only specific, relevant mutations (avoid broad `characterData` and `childList` observation of `document.body` simultaneously when updating inner text).
-236: 
-237: 
-238: ---
-239: 
-240: ## BUG-013 · Missing Previous-Day Lookback in Intraday P&L Chart (1d)
-241: 
-242: **Status**: Fixed  
-243: **Files affected**: `components/charts/pnl_history.py`  
-244: **Symptom**: Today's P&L chart starts exactly at 10:00 AM of the current session, missing the final hour (15:00 onwards) of the previous trading day for context.
-245: 
-246: **Root Cause**:
-247: Refactoring for offline context normalization hardcoded `chart_start` to `effective_start.replace(hour=10)`. This completely excluded previous session points from database querying and filtered them out of the Plotly rendering range.
-248: 
-249: **Fix**:
-250: Query and set the Plotly `xaxis` range start using `get_previous_trading_session_start(relative_to=effective_start)` which dynamically returns 15:00 of the previous trading day (handling live/closed/weekend context flawlessly):
-251: 
-252: ```python
-253: # ✅ Correct Lookback Start Calculation
-254: from services.market.market_status import get_previous_trading_session_start
-255: chart_start = get_previous_trading_session_start(relative_to=effective_start)
-256: ```
-257: 
+3. Observe only specific, relevant mutations (avoid broad `characterData` and `childList` observation of `document.body` simultaneously when updating inner text).
 
+
+---
+
+## BUG-013 · Missing Previous-Day Lookback in Intraday P&L Chart (1d)
+
+**Status**: Fixed  
+**Files affected**: `components/charts/pnl_history.py`, `services/market/data_fetcher.py`  
+**Symptom**: Today's P&L chart starts exactly at 10:00 AM of the current session, missing the final hour (15:00 onwards) of the previous trading day for context. On weekends or closed market periods, the previous day hour scale is rendered but no data points are plotted for it (appearing empty).
+
+**Root Cause**:
+1. Chart Builder: Refactoring for offline context normalization hardcoded `chart_start` to `effective_start.replace(hour=10)`. This completely excluded previous session points from database querying and filtered them out of the Plotly rendering range.
+2. Data Backfill: `fetch_live()` called `get_previous_trading_session_start()` without arguments. On weekends (e.g. Saturday), this returns Friday at 15:00. However, the chart's effective date on weekends is Friday, which expects lookback data starting from Thursday at 15:00. The backfill only loaded data from Friday at 15:00 onwards, causing the previous day section of the weekend chart to remain blank.
+
+**Fix**:
+Both the chart builder and the data fetcher backfill logic must resolve the previous trading day starting point relative to the timezone-aware `effective_date` or `effective_start` date:
+
+```python
+# ✅ Correct Lookback Start Calculation relative to effective context
+from services.market.market_status import get_previous_trading_session_start
+chart_start = get_previous_trading_session_start(relative_to=effective_start)
+```
+
+---
+
+## BUG-014 · P&L Chart Axis Auto-scaling Blocked by uirevision
+
+**Status**: Fixed  
+**Files affected**: `components/charts/pnl_history.py`  
+**Symptom**: Changing the chart period filters (e.g. from "max" to "1y") updates the data correctly but doesn't adjust the x-axis and y-axis scale. The chart only resets and scales properly when the browser page is hard refreshed.
+
+**Root Cause**:
+Plotly's `uirevision` parameter preserves the user's view state (zoom, pan, axis ranges) across updates. Since `apply_standard_layout()` hardcoded a static `uirevision=True`, Plotly "helpfully" preserved the previous view state's axis ranges even when the active period was changed.
+
+**Fix**:
+Make `uirevision` dynamic so it changes whenever a filter that affects the date range or metric units changes. By including the selected ticker, the period, and the value/percentage mode in the revision key, Plotly will re-calculate optimal scales whenever these change, while still preserving zoom/pan during background live data refreshes:
+
+```python
+# ❌ BROKEN — static uirevision prevents re-scaling when period/mode changes
+fig.update_layout(uirevision=True)
+
+# ✅ FIXED — uirevision changes when active filters change, forcing axis re-scale
+fig.update_layout(uirevision=f"{selected}_{period}_{mode}")
+```

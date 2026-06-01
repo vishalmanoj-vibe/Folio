@@ -262,6 +262,7 @@ def build_pnl_history_figure(
     # Custom P&L overrides
     fig.update_layout(
         margin=dict(t=30, b=30, l=60, r=20),
+        uirevision=f"{selected}_{period}_{mode}",
         xaxis=dict(
             type="date",
             showspikes=True,

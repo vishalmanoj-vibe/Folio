@@ -533,11 +533,10 @@ def _enrich_single_holding(
                 yf_1d = yf_1d[yf_1d > 0]
                 yf_1d.index = normalise_tz(yf_1d.index)
 
-                # Determine cutoff based on live context
                 ctx = get_effective_session_context()
                 if ctx["is_live"]:
                     # During market or after hours: show from 15:00 previous day for context
-                    cutoff = get_previous_trading_session_start()
+                    cutoff = get_previous_trading_session_start(relative_to=ctx["effective_date"])
                 else:
                     # Weekend or before market: show the FULL effective session (e.g. all of Friday)
                     # Use 00:00 of the effective date as the cutoff
@@ -1132,7 +1131,8 @@ def fetch_live(holdings: list[dict], record_snapshots: bool = True) -> tuple[dic
 
         if backfill_map:
             # Backfill from 15:00 previous trading day to ensure continuity
-            start_limit = get_previous_trading_session_start()
+            ctx = get_effective_session_context()
+            start_limit = get_previous_trading_session_start(relative_to=ctx["effective_date"])
             backfill_session_cache(backfill_map, start_limit=start_limit)
     except Exception as e:
         logger.error("Backfill failed in fetch_live: %s", e)
