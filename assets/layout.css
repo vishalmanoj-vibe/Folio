@@ -441,3 +441,16 @@
   font-family: 'JetBrains Mono', 'Roboto Mono', monospace;
 }
 
+.cp-group-label {
+  font-size: 9px;
+  font-weight: 700;
+  color: var(--t-sec);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: 10px 14px 4px;
+  user-select: none;
+}
+
+.cp-group-label:first-child {
+  padding-top: 4px;
+}

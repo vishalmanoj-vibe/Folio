@@ -70,6 +70,7 @@ import callbacks.intelligence_callbacks as intell_cb
 import callbacks.portfolio_callbacks as portfolio
 import callbacks.positions_callbacks as positions_cb
 import callbacks.research_callbacks as research_cb
+import callbacks.settings_callbacks as settings_cb
 import callbacks.setup_callbacks as setup_cb
 import callbacks.signals_callbacks as signals_cb
 import callbacks.transaction_callbacks as txn
@@ -230,6 +231,8 @@ app.layout = dmc.MantineProvider(
                 data={"count": 0, "reset_date": ""},
                 storage_type="local",
             ),
+            # Command Palette — ticker data for dynamic search
+            dcc.Store(id="palette-ticker-store", data=[], storage_type="memory"),
             # Global Navigation
             create_header(),
             # Page Content with Loading Indicator
@@ -493,6 +496,7 @@ intell_cb.register_callbacks(app)
 watchlist_cb.register_callbacks(app)
 research_cb.register_callbacks(app)
 signals_cb.register_callbacks(app)
+settings_cb.register_callbacks(app)
 
 
 @app.callback(

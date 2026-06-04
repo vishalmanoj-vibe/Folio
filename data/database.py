@@ -247,6 +247,27 @@ def init_db():
             )
         """)
 
+        # 14. User Settings (Investor Profile)
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS user_settings (
+                key   TEXT PRIMARY KEY,
+                value TEXT NOT NULL
+            )
+        """)
+
+        # 15. Sentiment Cache (News Sentiment per ticker)
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS sentiment_cache (
+                ticker       TEXT PRIMARY KEY,
+                sentiment    TEXT NOT NULL,
+                score        REAL NOT NULL,
+                headline_1   TEXT,
+                headline_2   TEXT,
+                rationale    TEXT,
+                fetched_at   TEXT NOT NULL
+            )
+        """)
+
         conn.commit()
 
         # 12. Migrations — Add missing columns to existing tables

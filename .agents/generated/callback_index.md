@@ -1,31 +1,31 @@
 # Callback Output Index — Auto-Generated
 
-> **Generated**: 2026-06-01 23:49  
+> **Generated**: 2026-06-04 20:06  
 > **Do not edit** — run `python .agents/generated/sync_docs.py` to refresh.
 > For ownership intent and architecture notes, see `docs/callback_ownership.md`.
 
 ---
 
-**Total outputs indexed**: 134 across 12 files
+**Total outputs indexed**: 140 across 13 files
 
 ## `app.py`
 
 | Output ID | Property | Line | Duplicate? | Pattern? |
 |-----------|----------|------|-----------|---------|
-| `txn-store` | `data` | 250 | ✓ |  |
-| `portfolio-store` | `data` | 322 | ✓ |  |
-| `period-store` | `data` | 395 |  |  |
-| `pnl-mode-store` | `data` | 405 |  |  |
-| `ticker-store` | `data` | 415 |  |  |
-| `treemap-mode-store` | `data` | 425 |  |  |
-| `analytics-period-store` | `data` | 435 |  |  |
-| `intel-period-store` | `data` | 445 |  |  |
-| `intel-pred-store` | `data` | 474 |  |  |
-| `intel-forecast-label` | `children` | 475 |  |  |
-| `url` | `search` | 499 |  |  |
-| `pending-tasks-store` | `data` | 517 | ✓ |  |
-| `nav-link-store` | `data` | 551 | ✓ |  |
-| `task-poll-interval` | `disabled` | 601 |  |  |
+| `txn-store` | `data` | 253 | ✓ |  |
+| `portfolio-store` | `data` | 325 | ✓ |  |
+| `period-store` | `data` | 398 |  |  |
+| `pnl-mode-store` | `data` | 408 |  |  |
+| `ticker-store` | `data` | 418 |  |  |
+| `treemap-mode-store` | `data` | 428 |  |  |
+| `analytics-period-store` | `data` | 438 |  |  |
+| `intel-period-store` | `data` | 448 |  |  |
+| `intel-pred-store` | `data` | 477 |  |  |
+| `intel-forecast-label` | `children` | 478 |  |  |
+| `url` | `search` | 503 |  |  |
+| `pending-tasks-store` | `data` | 521 | ✓ |  |
+| `nav-link-store` | `data` | 555 | ✓ |  |
+| `task-poll-interval` | `disabled` | 605 |  |  |
 
 ## `alert_callbacks.py`
 
@@ -102,25 +102,35 @@
 
 | Output ID | Property | Line | Duplicate? | Pattern? |
 |-----------|----------|------|-----------|---------|
-| `research-chat-store` | `data` | 28 |  |  |
-| `research-chat-store` | `data` | 73 | ✓ |  |
-| `research-input` | `value` | 74 |  |  |
-| `research-usage-store` | `data` | 75 | ✓ |  |
-| `research-typing-indicator` | `style` | 76 |  |  |
-| `research-send-btn` | `disabled` | 77 |  |  |
-| `report-cache-store` | `data` | 78 | ✓ |  |
-| `ai-pending-tasks-store` | `data` | 79 | ✓ |  |
-| `research-typing-indicator` | `style` | 258 | ✓ |  |
-| `research-send-btn` | `disabled` | 259 | ✓ |  |
-| `research-chat-store` | `data` | 272 | ✓ |  |
-| `ai-pending-tasks-store` | `data` | 273 | ✓ |  |
-| `report-cache-store` | `data` | 274 | ✓ |  |
-| `research-chat-display` | `children` | 339 |  |  |
-| `research-ticker-store` | `data` | 390 |  |  |
-| `research-portfolio-summary` | `children` | 401 |  |  |
-| `research-usage-display` | `children` | 455 |  |  |
-| `report-download` | `data` | 525 |  |  |
-| `research-chat-display` | `id` | 551 |  |  |
+| `research-chat-store` | `data` | 27 |  |  |
+| `research-chat-store` | `data` | 72 | ✓ |  |
+| `research-input` | `value` | 73 |  |  |
+| `research-usage-store` | `data` | 74 | ✓ |  |
+| `research-typing-indicator` | `style` | 75 |  |  |
+| `research-send-btn` | `disabled` | 76 |  |  |
+| `report-cache-store` | `data` | 77 | ✓ |  |
+| `ai-pending-tasks-store` | `data` | 78 | ✓ |  |
+| `research-typing-indicator` | `style` | 257 | ✓ |  |
+| `research-send-btn` | `disabled` | 258 | ✓ |  |
+| `research-chat-store` | `data` | 271 | ✓ |  |
+| `ai-pending-tasks-store` | `data` | 272 | ✓ |  |
+| `report-cache-store` | `data` | 273 | ✓ |  |
+| `research-chat-display` | `children` | 338 |  |  |
+| `research-ticker-store` | `data` | 389 |  |  |
+| `research-portfolio-summary` | `children` | 400 |  |  |
+| `research-usage-display` | `children` | 454 |  |  |
+| `report-download` | `data` | 524 |  |  |
+| `research-chat-display` | `id` | 550 |  |  |
+
+## `settings_callbacks.py`
+
+| Output ID | Property | Line | Duplicate? | Pattern? |
+|-----------|----------|------|-----------|---------|
+| `settings-investment-goal` | `value` | 44 |  |  |
+| `settings-risk-tolerance` | `value` | 45 |  |  |
+| `settings-tax-bracket` | `value` | 46 |  |  |
+| `settings-weights-preview-container` | `children` | 64 |  |  |
+| `settings-save-status` | `children` | 90 |  |  |
 
 ## `setup_callbacks.py`
 
@@ -180,6 +190,7 @@
 | `folio-table-state-v3` | `data` | 89 |  |  |
 | `nav-link-store` | `data` | 153 |  |  |
 | `pending-tasks-store` | `data` | 159 | ✓ |  |
+| `palette-ticker-store` | `data` | 217 |  |  |
 
 ## `watchlist_callbacks.py`
 
@@ -189,15 +200,15 @@
 | `watchlist-input` | `value` | 29 |  |  |
 | `watchlist-table-container` | `children` | 110 |  |  |
 | `watchlist-msg` | `children` | 111 |  |  |
-| `watchlist-selected-ticker` | `data` | 301 |  |  |
-| `watchlist-selected-ticker` | `data` | 320 | ✓ |  |
-| `watchlist-chart` | `figure` | 334 |  |  |
-| `watchlist-chart-title` | `children` | 335 |  |  |
-| `watchlist-period-store` | `data` | 427 |  |  |
-| `{"type": "wl-period-btn", "index": ALL}` | `className` | 440 |  | ✓ |
-| `watchlist-stat-cards` | `children` | 449 |  |  |
-| `watchlist-tech-signals-container` | `children` | 450 |  |  |
-| `watchlist-ai-insight-container` | `children` | 451 |  |  |
-| `watchlist-notes-input` | `value` | 606 |  |  |
-| `watchlist-notes-msg` | `children` | 616 |  |  |
-| `watchlist-ticker-hint` | `children` | 630 |  |  |
+| `watchlist-selected-ticker` | `data` | 334 |  |  |
+| `watchlist-selected-ticker` | `data` | 353 | ✓ |  |
+| `watchlist-chart` | `figure` | 367 |  |  |
+| `watchlist-chart-title` | `children` | 368 |  |  |
+| `watchlist-period-store` | `data` | 460 |  |  |
+| `{"type": "wl-period-btn", "index": ALL}` | `className` | 473 |  | ✓ |
+| `watchlist-stat-cards` | `children` | 482 |  |  |
+| `watchlist-tech-signals-container` | `children` | 483 |  |  |
+| `watchlist-ai-insight-container` | `children` | 484 |  |  |
+| `watchlist-notes-input` | `value` | 639 |  |  |
+| `watchlist-notes-msg` | `children` | 649 |  |  |
+| `watchlist-ticker-hint` | `children` | 663 |  |  |

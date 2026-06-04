@@ -158,6 +158,7 @@ def layout():
                                                     {"label": "Flat Tickers", "value": "flat"},
                                                     {"label": "By Sector", "value": "sector"},
                                                     {"label": "By Region", "value": "geo"},
+                                                    {"label": "Day Change", "value": "heatmap"},
                                                 ],
                                                 value="sector",
                                                 size="xs",

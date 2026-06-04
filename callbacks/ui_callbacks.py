@@ -171,3 +171,53 @@ def register_callbacks(app) -> None:
         new_pending = pending or []
         new_pending.append({"id": task_id, "type": "refresh_portfolio"})
         return new_pending
+
+    # ── Populate command palette ticker store ──
+    app.clientside_callback(
+        """
+        function(portfolioData, watchlistData, signalsStore, watchlistSignalsStore) {
+            const items = [];
+            const seen = new Set();
+
+            const rawSignals = (signalsStore && signalsStore.raw) ? signalsStore.raw : {};
+            const watchSignals = (watchlistSignalsStore && watchlistSignalsStore.raw) ? watchlistSignalsStore.raw : {};
+
+            if (portfolioData && portfolioData.holdings) {
+                portfolioData.holdings.forEach(h => {
+                    if (h.ticker && !seen.has(h.ticker + '_holdings')) {
+                        seen.add(h.ticker + '_holdings');
+                        const pnl = h.unrealised_pnl_pct || h.pnl_pct || 0;
+                        const sig = rawSignals[h.ticker] ? rawSignals[h.ticker].signal : null;
+                        items.push({
+                            ticker: h.ticker.toUpperCase(),
+                            group: 'holdings',
+                            pnl_pct: pnl,
+                            signal: sig
+                        });
+                    }
+                });
+            }
+            if (watchlistData && watchlistData.holdings) {
+                watchlistData.holdings.forEach(h => {
+                    if (h.ticker && !seen.has(h.ticker + '_watchlist')) {
+                        seen.add(h.ticker + '_watchlist');
+                        const sig = watchSignals[h.ticker] ? watchSignals[h.ticker].signal : null;
+                        items.push({
+                            ticker: h.ticker.toUpperCase(),
+                            group: 'watchlist',
+                            pnl_pct: 0,
+                            signal: sig
+                        });
+                    }
+                });
+            }
+            window.paletteTickerData = items;
+            return items;
+        }
+        """,
+        Output("palette-ticker-store", "data"),
+        Input("portfolio-store", "data"),
+        Input("watchlist-store", "data"),
+        Input("signals-store", "data"),
+        Input("watchlist-signals-store", "data"),
+    )

@@ -231,6 +231,22 @@ After completing any task that adds, removes, or renames a component:
 - **Isolated Mocks**: Developed 9 mock-isolated unit test suites located strictly in `scratch/tests/` evaluating 61 core test cases spanning Repositories, Services, Technical Indicators, and UI callbacks without live network or external database requests.
 - **Quality & Pre-Commit Hooks**: Configured mypy types (`mypy.ini`) and ruff lints to check code structure and format as an automated Git pre-commit barrier.
 
+### NEW Features 
+- **Feature 1: Dynamic Ticker-Aware Command Palette**:
+  - Populated `palette-ticker-store` with grouped holding/watchlist metadata and active strategy signals via a clientside callback.
+  - Upgraded `assets/command_palette.js` to parse these dynamic groups and enable keyboard navigation (CMD+K) and selection.
+- **Feature 2: Portfolio Day-Change Heatmap**:
+  - Enabled "Day Change" option on segmented control on the Analytics page.
+  - Implemented the heatmap treemap mode with diverging red/green color scaling based on day change percent.
+- **Feature 3: Investor Profile Settings Page**:
+  - Implemented the settings page `/settings` with Dropdowns for Investment Goal, Risk Tolerance, and Tax Bracket, saved to a SQLite `user_settings` table.
+  - Added dynamic weight previews (Trend, Momentum, Value, Cost, Risk) on goal/risk selection.
+  - Embedded profile settings into technical signal generation in `worker.py` and research assistant prompt context in `research_service.py`.
+- **Feature 5: News Sentiment Score Overlay**:
+  - Integrated news sentiment analysis (Positive/Neutral/Negative, and score float) using DDGS news search and Gemini scoring, cached for 24h.
+  - Triggered news sentiment automatically in signal generation batch refreshes in the background worker.
+  - Rendered colored sentiment score columns on the main portfolio table and watchlist table.
+
 ## Minimal Edit Mode — Default for All Changes
 
 > **Default behaviour**: Every edit MUST be minimal. Only change the exact lines required to fix the bug or add the feature. Assume everything around the target is correct and tested.

@@ -72,6 +72,15 @@ def create_header(
                             "textTransform": "uppercase",
                         },
                     ),
+                    html.A(
+                        dmc.MenuItem(
+                            "Investor Profile",
+                            leftSection=html.Span("👤"),
+                            style={"fontSize": "11px", "color": "var(--t-pri)"},
+                        ),
+                        href="/settings",
+                        style={"textDecoration": "none"},
+                    ),
                     dmc.MenuItem(
                         "Switch Theme",
                         id="theme-toggle",

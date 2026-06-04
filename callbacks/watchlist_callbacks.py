@@ -127,6 +127,20 @@ def register_callbacks(app) -> None:
                 style={"padding": "40px", "textAlign": "center"},
             ), ""
 
+        # Load all cached sentiments from DB to avoid N+1 queries
+        from data.database import get_connection
+
+        conn = get_connection()
+        sentiment_dict = {}
+        try:
+            rows = conn.execute("SELECT ticker, sentiment, score FROM sentiment_cache").fetchall()
+            for r in rows:
+                sentiment_dict[r["ticker"]] = {"sentiment": r["sentiment"], "score": r["score"]}
+        except Exception as e:
+            logger.warning(f"Failed to load sentiment cache for watchlist table: {e}")
+        finally:
+            conn.close()
+
         holdings = data["holdings"]
 
         th_style = {
@@ -183,6 +197,23 @@ def register_callbacks(app) -> None:
                 )
             else:
                 signal_cell = html.Span("—", style={"color": "var(--t-sec)", "fontSize": "12px"})
+
+            # Sentiment cell
+            sent_data = sentiment_dict.get(ticker)
+            if sent_data:
+                sent_val = sent_data["sentiment"]
+                sent_score = sent_data["score"]
+                sent_color = (
+                    "var(--green)"
+                    if sent_val == "Positive"
+                    else ("var(--red)" if sent_val == "Negative" else "var(--t-sec)")
+                )
+                sentiment_cell = html.Span(
+                    f"{sent_val} ({sent_score:+.2f})",
+                    style={"color": sent_color, "fontWeight": "500", "fontSize": "12px"},
+                )
+            else:
+                sentiment_cell = html.Span("—", style={"color": "var(--t-sec)", "fontSize": "12px"})
 
             # High-density click target
             is_active = ticker == selected_ticker
@@ -253,6 +284,7 @@ def register_callbacks(app) -> None:
                             ),
                             style=td_style,
                         ),
+                        html.Td(sentiment_cell, style=td_style),
                         html.Td(signal_cell, style=td_style),
                         html.Td(
                             html.Button(
@@ -284,6 +316,7 @@ def register_callbacks(app) -> None:
                             html.Th("Day Change", style=th_style),
                             html.Th("High / Low", style=th_style),
                             html.Th("Div Yield", style=th_style),
+                            html.Th("Sentiment", style=th_style),
                             html.Th("Suggestion", style=th_style),
                             html.Th("", style={**th_style, "textAlign": "right"}),
                         ]

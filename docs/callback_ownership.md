@@ -147,6 +147,7 @@
 | `folio-table-state-v3` | `data` | Table sort/search state. |
 | `nav-link-store` | `data` | Active nav tracking. |
 | `pending-tasks-store` | `data` | Task poll (allow_duplicate). |
+| `palette-ticker-store` | `data` | Sync tickers for command palette. |
 
 ---
 
@@ -205,6 +206,18 @@
 | `research-portfolio-summary` | `children` | Portfolio left panel. |
 | `research-usage-display` | `children` | Usage counter display. |
 | `report-download` | `data` | File download trigger. |
+
+---
+
+## `callbacks/settings_callbacks.py`
+
+| Output ID | Property | Notes |
+|-----------|----------|-------|
+| `settings-investment-goal` | `value` | Initial settings load. |
+| `settings-risk-tolerance` | `value` | Initial settings load. |
+| `settings-tax-bracket` | `value` | Initial settings load. |
+| `settings-weights-preview-container` | `children` | Dynamic strategy weights preview. |
+| `settings-save-status` | `children` | Settings save confirmation message. |
 
 ---
 

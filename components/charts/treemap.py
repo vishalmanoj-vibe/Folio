@@ -23,7 +23,7 @@ def build_portfolio_treemap(
     labels = []
     parents = []
     values = []
-    colors = []
+    colors: list[float] = []
     hover_texts = []
     custom_data_list = []
     font_colors = []
@@ -49,7 +49,7 @@ def build_portfolio_treemap(
             labels.append(s)
             parents.append("")
             values.append(parent_sums[s])
-            colors.append(-10)
+            colors.append(-10.0)
             hover_texts.append(f"<b>Sector: {s}</b><br>Total Value: ${parent_sums[s]:,.2f}")
             custom_data_list.append("")
             font_colors.append(theme_tokens["T_PRI"])
@@ -93,7 +93,7 @@ def build_portfolio_treemap(
             labels.append(r)
             parents.append("")
             values.append(parent_sums[r])
-            colors.append(-10)
+            colors.append(-10.0)
             hover_texts.append(f"<b>Region: {r}</b><br>Total Value: ${parent_sums[r]:,.2f}")
             custom_data_list.append("")
             font_colors.append(theme_tokens["T_PRI"])
@@ -115,6 +115,30 @@ def build_portfolio_treemap(
                 f"Value in Region: ${val:,.2f}<br>"
                 f"Weight in Region: {pct_of_parent:.1f}%<br>"
                 f"P&L: {sign}${h['pnl']:,.2f} ({h['pnl_pct']:+.2f}%)"
+            )
+            font_colors.append("white")
+
+    elif mode == "heatmap":
+        # Day-change heatmap: diverging red/green color scale
+        total_val = sum(h.get("mkt_value", 0) for h in holdings)
+        for h in holdings:
+            val = round(h.get("mkt_value", 0), 2)
+            ids.append(h["ticker"])
+            labels.append(h["ticker"])
+            parents.append("")
+            values.append(val)
+
+            day_chg = h.get("day_chg_pct") or h.get("day_change_pct") or 0.0
+            colors.append(float(day_chg))
+
+            sign = "+" if day_chg >= 0 else ""
+            weight = (val / total_val * 100) if total_val > 0 else 0.0
+            custom_data_list.append(f"{sign}{day_chg:.1f}%")
+            hover_texts.append(
+                f"<b>{h['ticker']}</b><br>"
+                f"Market Value: ${val:,.2f}<br>"
+                f"Weight: {weight:.1f}%<br>"
+                f"Day Change: {sign}{day_chg:.2f}%"
             )
             font_colors.append("white")
 
@@ -141,6 +165,46 @@ def build_portfolio_treemap(
 
     # 2. Build Figure
     # ─────────────────────────────────────────────────────────────────────────
+    if mode == "heatmap":
+        marker_cfg = dict(
+            colors=colors,
+            colorscale="RdYlGn",
+            cauto=False,
+            cmid=0,
+            cmin=-5,
+            cmax=5,
+            showscale=True,
+            colorbar=dict(
+                title=dict(text="Day %", font=dict(size=10, color=theme_tokens["T_SEC"])),
+                thickness=10,
+                len=0.5,
+                tickfont=dict(size=9, color=theme_tokens["T_SEC"]),
+                ticksuffix="%",
+                outlinewidth=0,
+                bgcolor="rgba(0,0,0,0)",
+            ),
+            line=dict(color=theme_tokens["BORDER"], width=1),
+            pad=dict(b=8, l=8, r=8, t=20),
+        )
+    else:
+        marker_cfg = dict(
+            colors=colors,
+            colorscale=[
+                [0.0, theme_tokens["BG"]],
+                [0.09, theme_tokens["BG"]],
+                [0.091, theme_tokens["RED"]],
+                [0.36, theme_tokens["WARNING"]],
+                [0.63, theme_tokens["GREEN"]],
+                [1.0, theme_tokens["CYAN"]],
+            ],
+            cauto=False,
+            cmid=None,  # Disabled to allow the custom offset
+            cmin=-10,
+            cmax=100,
+            line=dict(color=theme_tokens["BORDER"], width=1),
+            pad=dict(b=8, l=8, r=8, t=20),
+        )
+
     fig = go.Figure(
         go.Treemap(
             ids=ids,
@@ -150,23 +214,7 @@ def build_portfolio_treemap(
             customdata=custom_data_list,
             branchvalues="total",
             maxdepth=2,
-            marker=dict(
-                colors=colors,
-                colorscale=[
-                    [0.0, theme_tokens["BG"]],
-                    [0.09, theme_tokens["BG"]],
-                    [0.091, theme_tokens["RED"]],
-                    [0.36, theme_tokens["WARNING"]],
-                    [0.63, theme_tokens["GREEN"]],
-                    [1.0, theme_tokens["CYAN"]],
-                ],
-                cauto=False,
-                cmid=None,  # Disabled to allow the custom offset
-                cmin=-10,
-                cmax=100,
-                line=dict(color=theme_tokens["BORDER"], width=1),
-                pad=dict(b=8, l=8, r=8, t=20),
-            ),
+            marker=marker_cfg,
             textinfo="label+text",
             texttemplate="<b>%{label}</b><br>%{customdata}",
             textfont=dict(size=14, color=font_colors),
@@ -182,7 +230,7 @@ def build_portfolio_treemap(
         treemapcolorway=None,
         margin=dict(t=0, b=0, l=0, r=0),
         height=600,
-        uirevision=True,
+        uirevision=f"treemap_{mode}",
     )
 
     return fig

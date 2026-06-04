@@ -14,6 +14,7 @@ Prevent "Duplicate ID" errors and callback collisions by maintaining a central m
 - `watchlist-store`: Global store for watchlist market data.
 - `alerts-store`: Active alert list.
 - `signals-store`: Rule-based + AI trading signals (session storage). Structure: `{"raw": {...}, "ai": {...}}`. Populated only on manual trigger.
+- `palette-ticker-store`: Sync tickers for command palette (holdings, watchlist, signals).
 - `theme-store`: Light/Dark mode state (local storage).
 - `compact-mode-store`: Compact UI toggle state (local storage).
 - `table-state-store`: Holdings table sort column + direction (local storage).
@@ -154,6 +155,14 @@ Prevent "Duplicate ID" errors and callback collisions by maintaining a central m
 - `qp-report`: Special chip to trigger weekly report generation.
 - `report-download`: dcc.Download component for file exports.
 - `report-cache-store`: dcc.Store for session-based report caching.
+
+### Settings Page (`/settings`)
+- `settings-investment-goal`: Dropdown selector for investment goal.
+- `settings-risk-tolerance`: Dropdown selector for risk tolerance.
+- `settings-tax-bracket`: Dropdown selector for tax bracket.
+- `settings-save-btn`: Save button for profile settings.
+- `settings-save-status`: Save confirmation feedback text.
+- `settings-weights-preview-container`: Strategy weights bar charts container.
 
 ## Pattern-Matched IDs (Dynamic — do not hardcode)
 - `{"type": "pos-card", "index": <ticker>}`: Holding selection cards on Positions page.

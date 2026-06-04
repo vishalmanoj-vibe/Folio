@@ -510,3 +510,104 @@
   color: var(--cyan);
 }
 
+/* ── Settings Page ── */
+.settings-section-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--t-pri);
+  margin: 0 0 16px;
+  border-bottom: 0.5px solid var(--border);
+  padding-bottom: 8px;
+}
+
+.settings-form-container {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.settings-form-row {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.settings-dropdown .Select-control {
+  background-color: var(--surface) !important;
+  border-color: var(--border) !important;
+  color: var(--t-pri) !important;
+  border-radius: 6px !important;
+  height: 38px !important;
+}
+
+.settings-dropdown .Select-menu-outer {
+  background-color: var(--surface-2) !important;
+  border-color: var(--border) !important;
+}
+
+.settings-dropdown .Select-option {
+  background-color: transparent !important;
+  color: var(--t-sec) !important;
+}
+
+.settings-dropdown .Select-option:hover,
+.settings-dropdown .Select-option.is-focused {
+  background-color: rgba(0, 201, 167, 0.1) !important;
+  color: var(--cyan) !important;
+}
+
+.settings-dropdown .Select-value-label,
+.settings-dropdown .has-value > .Select-control > .Select-value {
+  color: var(--t-pri) !important;
+}
+
+.settings-preview-description {
+  font-size: 11.5px;
+  color: var(--t-sec);
+  line-height: 1.5;
+  margin-bottom: 20px;
+}
+
+.settings-weight-bar-row {
+  margin-bottom: 12px;
+}
+
+.settings-weight-bar-label-container {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  margin-bottom: 4px;
+}
+
+.settings-weight-bar-name {
+  font-weight: 500;
+  color: var(--t-pri);
+}
+
+.settings-weight-bar-value {
+  color: var(--cyan);
+}
+
+.settings-weight-bar-bg {
+  height: 8px;
+  background-color: var(--surface-3);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.settings-weight-bar-fill {
+  height: 100%;
+  background-color: var(--cyan);
+  border-radius: 4px;
+  transition: width 0.3s ease;
+}
+
+.settings-status-message {
+  font-size: 12px;
+  margin-top: 10px;
+  min-height: 18px;
+  color: var(--green);
+  transition: opacity 0.2s ease;
+}
+
+

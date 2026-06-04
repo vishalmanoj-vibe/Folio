@@ -189,6 +189,20 @@ def register_callbacks(app) -> None:
         if not holdings:
             return table_skeleton(rows=5)
 
+        # Load all cached sentiments from DB to avoid N+1 queries
+        from data.database import get_connection
+
+        conn = get_connection()
+        sentiment_dict = {}
+        try:
+            rows = conn.execute("SELECT ticker, sentiment, score FROM sentiment_cache").fetchall()
+            for r in rows:
+                sentiment_dict[r["ticker"]] = {"sentiment": r["sentiment"], "score": r["score"]}
+        except Exception as e:
+            logger.warning(f"Failed to load sentiment cache for portfolio table: {e}")
+        finally:
+            conn.close()
+
         # ── Filtering ─────────────────────────────────────────────────────────
         if isinstance(filter_query, str) and filter_query:
             q = filter_query.lower()
@@ -271,6 +285,25 @@ def register_callbacks(app) -> None:
                 className="table-th-sortable",
             )
 
+        def _sentiment_badge_td(ticker, td_style):
+            sent_data = sentiment_dict.get(ticker)
+            if not sent_data:
+                return html.Td(html.Span("—", style={"color": "var(--t-sec)"}), style=td_style)
+            sent_val = sent_data["sentiment"]
+            sent_score = sent_data["score"]
+            sent_color = (
+                "var(--green)"
+                if sent_val == "Positive"
+                else ("var(--red)" if sent_val == "Negative" else "var(--t-sec)")
+            )
+            return html.Td(
+                html.Span(
+                    f"{sent_val} ({sent_score:+.2f})",
+                    style={"color": sent_color, "fontWeight": "500", "fontSize": "12px"},
+                ),
+                style=td_style,
+            )
+
         def _signal_badge_td(ticker, signals_store, td_style):
             sig = (signals_store or {}).get("raw", {}).get(ticker)
             if not sig:
@@ -346,6 +379,7 @@ def register_callbacks(app) -> None:
                         pnl_td(
                             x["day_pnl"], x["day_chg_pct"], x["day_pnl_color"], x["day_pnl_sign"]
                         ),
+                        _sentiment_badge_td(x["ticker"], td_style),
                         _signal_badge_td(x["ticker"], signals_store, td_style),
                         html.Td(f"{x['div_yield']:.2f}%", style=td_style),
                         html.Td(f"${x['realized_div']:,.2f}", style=td_style),
@@ -373,6 +407,7 @@ def register_callbacks(app) -> None:
             ("Realized div", "realized_div"),
             ("Freq", "div_frequency"),
         ]
+        sentiment_th = html.Th("Sentiment", style=th_style)
         suggestion_th = html.Th("Suggestion", style=th_style)
 
         return html.Div(
@@ -381,7 +416,7 @@ def register_callbacks(app) -> None:
                     html.Thead(
                         html.Tr(
                             [sortable_th(label, col_id) for label, col_id in headers[:11]]
-                            + [suggestion_th]
+                            + [sentiment_th, suggestion_th]
                             + [sortable_th(label, col_id) for label, col_id in headers[11:]]
                         )
                     ),

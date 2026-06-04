@@ -186,12 +186,29 @@ def get_ai_response(history: list[dict], portfolio_data: dict, ticker: str = "")
                 genai.types.Content(role=role, parts=[genai.types.Part(text=msg["content"])])
             )
 
+        # Load user profile settings for customized AI context
+        from data.settings_repository import get_all_settings
+
+        settings = get_all_settings()
+        goal = settings.get("investment_goal", "Balanced")
+        risk = settings.get("risk_tolerance", "Moderate")
+        tax = settings.get("tax_bracket", "37%")
+
+        profile_instruction = (
+            f"\n\nUSER'S INVESTOR PROFILE:\n"
+            f"- Investment Goal: {goal}\n"
+            f"- Risk Tolerance: {risk}\n"
+            f"- Tax Bracket: {tax}\n"
+            f"Please customize your advice, risk evaluation, and portfolio suggestions to align with this investor profile."
+        )
+        system_prompt_dynamic = SYSTEM_PROMPT + profile_instruction
+
         # Create chat session with history
         chat = client.chats.create(
             model="models/gemini-2.5-flash-lite",
             history=chat_history,
             config=genai.types.GenerateContentConfig(
-                system_instruction=SYSTEM_PROMPT,
+                system_instruction=system_prompt_dynamic,
                 max_output_tokens=2048,
             ),
         )

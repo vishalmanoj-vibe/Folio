@@ -56,7 +56,67 @@ def compute_indicators(price_df: pd.DataFrame) -> dict:
     }
 
 
-def score_signal(indicators: dict, holding: dict) -> dict:
+def get_profile_weights(
+    investment_goal: str = "Balanced", risk_tolerance: str = "Moderate"
+) -> dict:
+    """
+    Computes modified weights for Trend, Momentum, Value, Cost, and Risk
+    based on the user's investment goal and risk tolerance profile.
+    """
+    # Standard base weights:
+    # Trend: 0.35, Momentum: 0.20, Value (Price vs 200MA): 0.15, Cost (Price vs Cost): 0.15, Risk: 0.15
+    weights = {"trend": 0.35, "momentum": 0.20, "value": 0.15, "cost": 0.15, "risk": 0.15}
+
+    # Adjust based on investment goal
+    if investment_goal == "Growth":
+        weights["trend"] = 0.40
+        weights["momentum"] = 0.25
+        weights["value"] = 0.15
+        weights["cost"] = 0.10
+        weights["risk"] = 0.10
+    elif investment_goal == "Income":
+        weights["trend"] = 0.25
+        weights["momentum"] = 0.15
+        weights["value"] = 0.20
+        weights["cost"] = 0.25
+        weights["risk"] = 0.15
+    elif investment_goal == "Capital Preservation":
+        weights["trend"] = 0.20
+        weights["momentum"] = 0.10
+        weights["value"] = 0.25
+        weights["cost"] = 0.15
+        weights["risk"] = 0.30
+
+    # Adjust based on risk tolerance
+    if risk_tolerance == "Low":
+        weights["risk"] = min(0.40, weights["risk"] + 0.10)
+        total_remaining = 1.0 - weights["risk"]
+        other_sum = weights["trend"] + weights["momentum"] + weights["value"] + weights["cost"]
+        if other_sum > 0:
+            weights["trend"] = (weights["trend"] / other_sum) * total_remaining
+            weights["momentum"] = (weights["momentum"] / other_sum) * total_remaining
+            weights["value"] = (weights["value"] / other_sum) * total_remaining
+            weights["cost"] = (weights["cost"] / other_sum) * total_remaining
+    elif risk_tolerance == "High":
+        weights["risk"] = max(0.05, weights["risk"] - 0.08)
+        total_remaining = 1.0 - weights["risk"]
+        other_sum = weights["trend"] + weights["momentum"] + weights["value"] + weights["cost"]
+        if other_sum > 0:
+            weights["trend"] = (weights["trend"] / other_sum) * total_remaining
+            weights["momentum"] = (weights["momentum"] / other_sum) * total_remaining
+            weights["value"] = (weights["value"] / other_sum) * total_remaining
+            weights["cost"] = (weights["cost"] / other_sum) * total_remaining
+
+    # Normalize weights to sum to 1.0
+    total = sum(weights.values())
+    if total > 0:
+        for k in weights:
+            weights[k] = round(weights[k] / total, 3)
+
+    return weights
+
+
+def score_signal(indicators: dict, holding: dict, weights: dict | None = None) -> dict:
     """
     Evaluates indicators against strict thresholds to generate a signal.
     """
@@ -69,6 +129,9 @@ def score_signal(indicators: dict, holding: dict) -> dict:
             "indicators": indicators,
         }
 
+    if weights is None:
+        weights = {"trend": 0.35, "momentum": 0.20, "value": 0.15, "cost": 0.15, "risk": 0.15}
+
     score = 0.0
     reasons = []
 
@@ -80,49 +143,54 @@ def score_signal(indicators: dict, holding: dict) -> dict:
     raw_cost = holding.get("avg_cost")
     avg_cost = price if raw_cost is None else raw_cost  # Fallback to current price if missing
 
-    # --- 1. Trend (0.35) ---
+    # --- 1. Trend ---
     trend_val = 0
+    w_trend = weights.get("trend", 0.35)
     if sma_50 > sma_200:
         trend_val = 1
-        score += 0.35
+        score += w_trend
         reasons.append("Bullish trend (50MA > 200MA)")
     elif sma_50 < sma_200:
         trend_val = -1
-        score -= 0.35
+        score -= w_trend
         reasons.append("Bearish trend (50MA < 200MA)")
 
-    # --- 2. Momentum/RSI (0.20) ---
+    # --- 2. Momentum/RSI ---
+    w_momentum = weights.get("momentum", 0.20)
     if rsi < 30 and trend_val == 1:
-        score += 0.20
+        score += w_momentum
         reasons.append(f"Oversold in bullish trend (RSI: {rsi:.1f})")
     elif rsi > 70 and trend_val == -1:
-        score -= 0.20
+        score -= w_momentum
         reasons.append(f"Overbought in bearish trend (RSI: {rsi:.1f})")
 
-    # --- 3. Price vs 200MA (0.15) ---
+    # --- 3. Price vs 200MA ---
+    w_value = weights.get("value", 0.15)
     if price < sma_200 and trend_val == 1:
-        score += 0.15
+        score += w_value
         reasons.append("Price at discount to 200MA in uptrend")
     elif price > (sma_200 * 1.1):
-        score -= 0.15
+        score -= w_value
         reasons.append("Price extended (>10% above 200MA)")
 
-    # --- 4. Price vs Cost (0.15) ---
+    # --- 4. Price vs Cost ---
+    w_cost = weights.get("cost", 0.15)
     if avg_cost is not None and avg_cost > 0:
         if price < avg_cost and trend_val == 1:
-            score += 0.15
+            score += w_cost
             reasons.append("Averaging down opportunity in uptrend")
         elif price > (avg_cost * 1.2):
-            score -= 0.15
+            score -= w_cost
             reasons.append("Significant profit margin (>20%) reached")
 
-    # --- 5. Risk / Drawdown (0.15) ---
+    # --- 5. Risk / Drawdown ---
+    w_risk = weights.get("risk", 0.15)
     if drawdown > 20.0:
         if trend_val == 1:
-            score += 0.15
+            score += w_risk
             reasons.append(f"Significant pullback in uptrend ({drawdown:.1f}%)")
         else:
-            score -= 0.15
+            score -= w_risk
             reasons.append(f"High risk drawdown in downtrend ({drawdown:.1f}%)")
 
     # --- Final Classification ---
@@ -157,7 +225,10 @@ def score_signal(indicators: dict, holding: dict) -> dict:
 
 
 def generate_portfolio_signals(
-    multi_full: pd.DataFrame, holdings: list[dict], previous_signals: dict
+    multi_full: pd.DataFrame,
+    holdings: list[dict],
+    previous_signals: dict,
+    weights: dict | None = None,
 ) -> dict:
     """
     Processes all holdings through the strategy engine to generate signals.
@@ -185,7 +256,7 @@ def generate_portfolio_signals(
 
         # 2. Compute and Score
         inds = compute_indicators(df)
-        sig_data = score_signal(inds, h)
+        sig_data = score_signal(inds, h, weights=weights)
 
         # 3. Hysteresis (Flip-prevention)
         previous = previous_signals.get(ticker)

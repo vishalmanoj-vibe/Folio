@@ -128,8 +128,16 @@ def handle_generate_signals(payload: dict):
     finally:
         conn.close()
 
-    # 2. Strategy Engine
-    signals = generate_portfolio_signals(multi_full, holdings, prev_signals)
+    # 2. Strategy Engine (incorporating investor profile settings)
+    from data.settings_repository import get_all_settings
+    from services.strategy_engine import get_profile_weights
+
+    settings = get_all_settings()
+    weights = get_profile_weights(
+        investment_goal=settings.get("investment_goal", "Balanced"),
+        risk_tolerance=settings.get("risk_tolerance", "Moderate"),
+    )
+    signals = generate_portfolio_signals(multi_full, holdings, prev_signals, weights=weights)
 
     # 3. AI Analysis
     ai_results = analyze_signals(signals)
@@ -165,6 +173,15 @@ def handle_generate_signals(payload: dict):
         conn.commit()
     finally:
         conn.close()
+
+    # 4. News Sentiment Analysis (runs as part of signal generation)
+    from services.sentiment_service import get_sentiment
+
+    for ticker in signals.keys():
+        try:
+            get_sentiment(ticker, force_refresh=True)
+        except Exception as e:
+            logger.error(f"Failed to fetch sentiment for {ticker} in batch: {e}")
 
     return {"status": "success", "tickers": list(signals.keys()), "scope": scope}
 
@@ -385,6 +402,27 @@ def handle_refresh_portfolio(payload: dict):
     return {"status": "success"}
 
 
+def handle_sentiment_batch(payload: dict):
+    """Batch sentiment refresh."""
+    tickers = payload.get("tickers", [])
+    if not tickers:
+        return {"error": "No tickers provided"}
+
+    logger.info(f"Task: Analyzing news sentiment for {len(tickers)} tickers")
+    from services.sentiment_service import get_sentiment
+
+    results = {}
+    for t in tickers:
+        try:
+            res = get_sentiment(t, force_refresh=True)
+            results[t] = res
+        except Exception as e:
+            logger.error(f"Failed to get sentiment for {t}: {e}")
+            results[t] = {"error": str(e)}
+
+    return {"status": "success", "results": results}
+
+
 TASK_HANDLERS = {
     "fetch_history": handle_fetch_history,
     "generate_signals": handle_generate_signals,
@@ -395,6 +433,7 @@ TASK_HANDLERS = {
     "generate_prediction": handle_generate_prediction,
     "maintenance": handle_maintenance,
     "refresh_portfolio": handle_refresh_portfolio,
+    "sentiment_batch": handle_sentiment_batch,
 }
 
 # ── Main Worker Loops ────────────────────────────────────────────────────────
