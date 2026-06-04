@@ -50,12 +50,11 @@
 | `pnl-history-chart` | `figure` | Core P&L equity curve. |
 | `benchmark-pending-store` | `data` | Benchmark task ID (shared write, see also `intelligence_callbacks`). |
 | `price-chart` | `figure` | Analytics normalised price chart. |
-| `portfolio-treemap` | `figure` | Allocation treemap. |
+| `portfolio-treemap` | `figure` | Allocation treemap. Also outputs to `holdings-freshness-note` (`children`) and `holdings-url-collapse` (`opened`). |
 | `analytics-vol-chart` | `figure` | Volatility bar chart. |
 | `corr-chart` | `figure` | Correlation heatmap. |
-| `holdings-bubble-chart` | `figure` | ETF holdings bubble chart. |
-| `holdings-freshness-note` | `children` | ETF data freshness note. |
-| `holdings-url-collapse` | `is_open` | ETF URL form toggle (2 callbacks — `allow_duplicate` implied by Dash pattern). |
+| `holdings-freshness-note` | `children` | ETF data freshness note (owned by `portfolio_treemap`). |
+| `holdings-url-collapse` | `opened` | ETF URL form toggle (2 callbacks: `toggle_url_collapse` and `portfolio_treemap` with `allow_duplicate=True`). |
 | `holdings-url-table` | `children` | ETF URL table. |
 | `holdings-url-save-status` | `children` | ETF URL save status. |
 | `holdings-url-ticker-input` | `value` | ETF URL ticker field reset. |

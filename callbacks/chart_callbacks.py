@@ -20,7 +20,6 @@ from components.charts import (
     build_price_chart_figure,
 )
 from components.charts.helpers import create_empty_fig
-from components.charts.intel_holdings import build_holdings_bubble_chart
 from components.ui_helpers import chart_skeleton, interpolate_color, progress_row
 from config.constants import COLORS, get_theme
 from services.history_cache import get_latest_histories
@@ -231,24 +230,35 @@ def register_callbacks(app) -> None:
     # ── Portfolio Treemap ─────────────────────────────────────────────────────
     @app.callback(
         Output("portfolio-treemap", "figure"),
+        Output("holdings-freshness-note", "children"),
+        Output("holdings-url-collapse", "opened", allow_duplicate=True),
         Input("portfolio-store", "data"),
         Input("theme-store", "data"),
         Input("treemap-mode-store", "data"),
         Input("url", "pathname"),
+        Input("holdings-url-save-status", "children"),  # re-trigger after URL save
+        State("holdings-url-collapse", "opened"),
+        prevent_initial_call=True,
     )
-    def portfolio_treemap(data, theme, mode, pathname):
+    def portfolio_treemap(data, theme, mode, pathname, _save_status, collapse_open):
         import dash
 
         if pathname.rstrip("/") != "/analytics":
-            return dash.no_update
+            return dash.no_update, dash.no_update, dash.no_update
         t_ = get_theme(theme or "dark")
         mode = mode or "sector"
         if not data or "holdings" not in data or not data["holdings"]:
-            return create_empty_fig("No holdings data available", height=450, theme_tokens=t_)
+            return (
+                create_empty_fig("No holdings data available", height=450, theme_tokens=t_),
+                "",
+                dash.no_update,
+            )
 
-        mode = mode or "sector"
         sector_map = {}
         geo_map = {}
+        holdings_map = {}
+        freshness_note = ""
+        should_open_collapse = dash.no_update
 
         if mode == "sector":
             for h in data["holdings"]:
@@ -258,10 +268,50 @@ def register_callbacks(app) -> None:
             for h in data["holdings"]:
                 ticker_yf = h.get("ticker_yf", h["ticker"] + ".AX")
                 geo_map[h["ticker"]] = fetch_etf_geo_weights(ticker_yf)
+        elif mode == "holdings":
+            holdings_map = holdings_blended_data(data)
+            if not holdings_map:
+                # Determine which tickers still have no holdings data
+                from services.intelligence_service import _get_cached_metadata
+                from services.market.holdings_fetcher import PROVIDER_SEED_URLS, get_user_url
 
-        return build_portfolio_treemap(
-            data["holdings"], t_, mode=mode, sector_data=sector_map, geo_data=geo_map
+                missing = []
+                for h in data["holdings"]:
+                    ticker = h["ticker"]
+                    cached = _get_cached_metadata(ticker + ".AX", "holdings", ttl_days=30)
+                    if not cached:
+                        has_seed = ticker in PROVIDER_SEED_URLS
+                        has_user = bool(get_user_url(ticker))
+                        if not has_seed and not has_user:
+                            missing.append(ticker)
+
+                if missing:
+                    freshness_note = (
+                        f"⚠ No holdings data for: {', '.join(missing)}. "
+                        "Please expand ⚙ Configure Sources and add a fund page URL."
+                    )
+                else:
+                    freshness_note = "⚠ Holdings data unavailable — scrape may be in progress or throttled (retries every 24 h)."
+
+                empty_fig = create_empty_fig(
+                    "No holdings data — add a source URL in ⚙ Configure Sources",
+                    height=600,
+                    theme_tokens=t_,
+                )
+                should_open_collapse = bool(missing) or collapse_open
+                return empty_fig, freshness_note, should_open_collapse
+            else:
+                freshness_note = "Holdings data loaded successfully."
+
+        fig = build_portfolio_treemap(
+            data["holdings"],
+            t_,
+            mode=mode,
+            sector_data=sector_map,
+            geo_data=geo_map,
+            holdings_data=holdings_map,
         )
+        return fig, freshness_note, should_open_collapse
 
     # ── Analytics Risk ────────────────────────────────────────────────────────
     @app.callback(
@@ -359,70 +409,6 @@ def register_callbacks(app) -> None:
         if not histories:
             return create_empty_fig("No shared history found", height=380, theme_tokens=t_)
         return build_corr_figure(histories, period, t_)
-
-    # ── ETF Holdings Bubble Chart ─────────────────────────────────────────────
-    @app.callback(
-        Output("holdings-bubble-chart", "figure"),
-        Output("holdings-freshness-note", "children"),
-        Output("holdings-url-collapse", "opened", allow_duplicate=True),
-        Input("portfolio-store", "data"),
-        Input("theme-store", "data"),
-        Input("url", "pathname"),
-        Input("holdings-url-save-status", "children"),  # re-trigger after URL save
-        State("holdings-url-collapse", "opened"),
-        prevent_initial_call=True,
-    )
-    def update_holdings_bubble_chart(data, theme, pathname, _save_status, collapse_open):
-        import dash
-
-        if pathname.rstrip("/") != "/analytics":
-            return dash.no_update, dash.no_update, dash.no_update
-
-        t_ = get_theme(theme or "dark")
-
-        if not data or "holdings" not in data or not data["holdings"]:
-            return (
-                create_empty_fig("No portfolio data", height=600, theme_tokens=t_),
-                "",
-                dash.no_update,
-            )
-
-        blended_data = holdings_blended_data(data)
-
-        if not blended_data:
-            # Determine which tickers still have no holdings data after the scrape
-            from services.intelligence_service import _get_cached_metadata
-            from services.market.holdings_fetcher import PROVIDER_SEED_URLS, get_user_url
-
-            missing = []
-            for h in data["holdings"]:
-                ticker = h["ticker"]
-                cached = _get_cached_metadata(ticker + ".AX", "holdings", ttl_days=30)
-                if not cached:
-                    has_seed = ticker in PROVIDER_SEED_URLS
-                    has_user = bool(get_user_url(ticker))
-                    if not has_seed and not has_user:
-                        missing.append(ticker)
-
-            if missing:
-                note = (
-                    f"⚠ No holdings data for: {', '.join(missing)}. "
-                    "Please expand ⚙ Configure Sources and add a fund page URL."
-                )
-            else:
-                note = "⚠ Holdings data unavailable — scrape may be in progress or throttled (retries every 24 h)."
-
-            empty_fig = create_empty_fig(
-                "No holdings data — add a source URL in ⚙ Configure Sources",
-                height=600,
-                theme_tokens=t_,
-            )
-            # Auto-open the configure panel only when tickers are genuinely missing a URL
-            should_open = bool(missing) or collapse_open
-            return empty_fig, note, should_open
-
-        fig = build_holdings_bubble_chart(blended_data, t_)
-        return fig, "Holdings data loaded successfully.", dash.no_update
 
     # ── Holdings URL Config — Toggle collapse ─────────────────────────────────
     @app.callback(

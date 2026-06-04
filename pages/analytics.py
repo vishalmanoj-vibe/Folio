@@ -106,7 +106,6 @@ def layout():
                     dmc.TabsList(
                         [
                             dmc.TabsTab("Allocation", value="allocation"),
-                            dmc.TabsTab("ETF Holdings", value="holdings"),
                             dmc.TabsTab("Risk & Performance", value="performance"),
                             # Spacer pushes the configure button to the far right
                             html.Div(style={"flex": "1"}),
@@ -158,6 +157,10 @@ def layout():
                                                     {"label": "Flat Tickers", "value": "flat"},
                                                     {"label": "By Sector", "value": "sector"},
                                                     {"label": "By Region", "value": "geo"},
+                                                    {
+                                                        "label": "Underlying Holdings",
+                                                        "value": "holdings",
+                                                    },
                                                     {"label": "Day Change", "value": "heatmap"},
                                                 ],
                                                 value="sector",
@@ -197,52 +200,12 @@ def layout():
                                                     "textAlign": "center",
                                                 },
                                             ),
-                                        ]
-                                    ),
-                                ),
-                            ]
-                        ),
-                        value="allocation",
-                    ),
-                    # ── Tab 2: ETF Holdings ───────────────────────────────────────
-                    dmc.TabsPanel(
-                        html.Div(
-                            [
-                                section(
-                                    html.Div(
-                                        [
-                                            chart_title("ETF Holdings Exposure", "holdings-desc"),
                                             html.Div(
                                                 id="holdings-freshness-note",
                                                 style={
                                                     "fontSize": "12px",
                                                     "color": "var(--t-muted)",
-                                                },
-                                            ),
-                                        ],
-                                        style={
-                                            "display": "flex",
-                                            "justifyContent": "space-between",
-                                            "alignItems": "center",
-                                            "marginBottom": "20px",
-                                        },
-                                    ),
-                                    html.Div(
-                                        [
-                                            dcc.Loading(
-                                                dcc.Graph(
-                                                    id="holdings-bubble-chart",
-                                                    config=cast(Any, {"displayModeBar": False}),
-                                                    style={"height": "600px"},
-                                                ),
-                                                custom_spinner=chart_skeleton(600),
-                                            ),
-                                            html.Div(
-                                                "Bubble size represents the blended portfolio exposure to each underlying company.",
-                                                style={
-                                                    "fontSize": "11px",
-                                                    "color": "var(--t-muted)",
-                                                    "marginTop": "12px",
+                                                    "marginTop": "8px",
                                                     "textAlign": "center",
                                                 },
                                             ),
@@ -251,7 +214,7 @@ def layout():
                                 ),
                             ]
                         ),
-                        value="holdings",
+                        value="allocation",
                     ),
                     # ── Tab 3: Performance & Risk ─────────────────────────────────
                     dmc.TabsPanel(

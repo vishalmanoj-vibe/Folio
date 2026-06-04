@@ -11,7 +11,7 @@ Each callback module operates under a thin orchestration paradigm, containing ze
 | File Name | Target Page / Element | The One Thing It Does |
 | :--- | :--- | :--- |
 | **`alert_callbacks.py`** | Global header banner & alerts badge | Scans current holdings data to render warning banners and update the global intelligence notification count. |
-| **`chart_callbacks.py`** | Dashboard Home (`/`) & Analytics (`/analytics`) | Renders and updates all core statistical figures (P&L history, normalized price comparison, sector/geo treemaps, volatility, correlation heatmaps, and ETF bubble charts) and configures fund URL paths. |
+| **`chart_callbacks.py`** | Dashboard Home (`/`) & Analytics (`/analytics`) | Renders and updates all core statistical figures (P&L history, normalized price comparison, sector/geo treemaps, volatility, correlation heatmaps, and ETF underlying holdings treemaps) and configures fund URL paths. |
 | **`intelligence_callbacks.py`** | Portfolio Intelligence (`/intelligence`) | Computes portfolio-wide risk ratios (volatility, Sharpe, drawdowns), renders the equity curve (including ML prediction overlays), and generates optimization alerts. |
 | **`portfolio_callbacks.py`** | Dashboard Home (`/`) | Updates global portfolio stats and renders the primary sortable, filterable holdings table containing color-coded AI recommendation badges. |
 | **`positions_callbacks.py`** | Positions & Dividends (`/positions`) | Manages the interactive sidebar holding cards (with sparklines), details selected assets, renders Candlestick history, and displays individual/portfolio dividend metrics. |

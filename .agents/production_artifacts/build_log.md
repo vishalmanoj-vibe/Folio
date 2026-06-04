@@ -1,20 +1,23 @@
-# Build Log: Watchlist Drag-and-Drop Reordering
+# Build Log: Underlying Holdings Integration in Allocation Treemap
 
-This build successfully introduces manual drag-and-drop reordering for the market watchlist tickers.
+This build successfully integrates underlying ETF holdings data directly into the Allocation Treemap under the new "Underlying Holdings" filter option, removing the separate ETF Holdings tab and its bubble chart.
 
 ## Changed Files
-- **[database.py](file:///Users/vishal/Library/CloudStorage/OneDrive-Personal/Projects/portfolio_dashboard/data/database.py)**: Added `order_index` to `watchlist` table creation and added Migration 16.
-- **[watchlist_repository.py](file:///Users/vishal/Library/CloudStorage/OneDrive-Personal/Projects/portfolio_dashboard/data/watchlist_repository.py)**: Added `order_index` sorting inside `load_watchlist()`, dynamically computed next index on `add_ticker()`, and implemented transactional `update_watchlist_order()`.
-- **[watchlist_layout.py](file:///Users/vishal/Library/CloudStorage/OneDrive-Personal/Projects/portfolio_dashboard/components/watchlist_layout.py)**: Injected hidden input element `#watchlist-order-input`.
-- **[watchlist_callbacks.py](file:///Users/vishal/Library/CloudStorage/OneDrive-Personal/Projects/portfolio_dashboard/callbacks/watchlist_callbacks.py)**: Enabled row `draggable="true"`, rendered grab handle column `☰` with cursor helpers, and registered reorder callback handler within `update_watchlist_store()`.
-- **[view-pages.css](file:///Users/vishal/Library/CloudStorage/OneDrive-Personal/Projects/portfolio_dashboard/assets/view-pages.css)**: Appended styles for grabbing cursor states, transparent active dragging row states, and high-contrast insertion line highlights.
+- **[pages/analytics.py](file:///Users/vishal/Library/CloudStorage/OneDrive-Personal/Projects/portfolio_dashboard/pages/analytics.py)**: Removed "ETF Holdings" tab header and tab panel, added "Underlying Holdings" filter option to the segmented control, and moved the freshness note directly below the treemap canvas description.
+- **[components/charts/treemap.py](file:///Users/vishal/Library/CloudStorage/OneDrive-Personal/Projects/portfolio_dashboard/components/charts/treemap.py)**: Added `holdings_data` support to `build_portfolio_treemap()`. Implemented calculations to group smaller exposures into "Other Underlying", computed absolute market values, and formatted hover tooltips listing source ETFs.
+- **[callbacks/chart_callbacks.py](file:///Users/vishal/Library/CloudStorage/OneDrive-Personal/Projects/portfolio_dashboard/callbacks/chart_callbacks.py)**: Removed the `update_holdings_bubble_chart` callback and its imports. Updated the `portfolio_treemap` callback to accept multi-output parameters for the figure, freshness note, and sources collapse state.
+- **[scratch/tests/test_chart_components.py](file:///Users/vishal/Library/CloudStorage/OneDrive-Personal/Projects/portfolio_dashboard/scratch/tests/test_chart_components.py)**: Replaced `test_build_holdings_bubble_chart` with `test_build_portfolio_treemap_holdings` to test underlying holdings nodes, dollar sizing, and fallback behavior.
+- **[docs/callback_ownership.md](file:///Users/vishal/Library/CloudStorage/OneDrive-Personal/Projects/portfolio_dashboard/docs/callback_ownership.md)**: Updated output mappings for `portfolio-treemap`, `holdings-freshness-note`, and `holdings-url-collapse` to reflect the updated callback definitions.
 
-## New Files
-- **[drag_drop.js](file:///Users/vishal/Library/CloudStorage/OneDrive-Personal/Projects/portfolio_dashboard/assets/drag_drop.js)**: Created client-side HTML5 drag-and-drop event-delegated engine that hooks row drops to Dash state updates.
+## Removed Files
+- None.
 
-## Component IDs Registered
-- `#watchlist-order-input`
-- `{"type": "watchlist-row", "index": TICKER}`
+## Component IDs & Properties Updated
+- `treemap-mode` (data options updated)
+- `portfolio-treemap` (figure output)
+- `holdings-freshness-note` (children output relocation)
+- `holdings-url-collapse` (opened output with allow_duplicate=True)
 
 ## Verifications Passed
-- Python 3 compile syntax check: Passed.
+- Pytest suite passes: 61/61 tests pass.
+- Browser subagent checklist completed successfully, capturing visual proof of correct rendering.

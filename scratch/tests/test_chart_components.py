@@ -250,22 +250,45 @@ def test_build_intel_sector_chart(mock_theme_tokens: dict[str, Any]) -> None:
     assert isinstance(fig_sec, go.Figure)
 
 
-# ── Intelligence Holdings bubble Tests ────────────────────────────────────────
+# ── Treemap Underlying Holdings Tests ─────────────────────────────────────────
 
 
-def test_build_holdings_bubble_chart(mock_theme_tokens: dict[str, Any]) -> None:
-    """Assert underlying holdings bubble scatter maps weights and annotations."""
-    from components.charts.intel_holdings import build_holdings_bubble_chart
-
-    fig_empty = build_holdings_bubble_chart({}, mock_theme_tokens)
-    assert isinstance(fig_empty, go.Figure)
-
-    blended = {
+def test_build_portfolio_treemap_holdings(
+    mock_holdings: list[dict[str, Any]], mock_theme_tokens: dict[str, Any]
+) -> None:
+    """Assert underlying holdings mode builds correct flat nodes and hover texts."""
+    blended: dict[str, dict[str, Any]] = {
         "Apple Inc.": {"weight": 5.5, "sources": {"VAS.AX": 2.5, "VGS.AX": 3.0}},
         "Microsoft Corp.": {"weight": 4.0},
     }
-    fig_bub = build_holdings_bubble_chart(blended, mock_theme_tokens)
-    assert isinstance(fig_bub, go.Figure)
+    # Test valid holdings mode
+    fig: go.Figure = build_portfolio_treemap(
+        mock_holdings,
+        theme_tokens=mock_theme_tokens,
+        mode="holdings",
+        holdings_data=blended,
+    )
+    assert isinstance(fig, go.Figure)
+    data = fig.data[0]
+    assert len(data.ids) == 2
+    assert "Apple Inc." in data.ids
+    assert "Microsoft Corp." in data.ids
+    # Sizing by value: mock_holdings total_val = 3000.0 (1000.0 + 2000.0)
+    # Apple Inc. val = 3000 * 5.5 / 100 = 165.0
+    # Microsoft Corp. val = 3000 * 4.0 / 100 = 120.0
+    assert data.values[0] == 165.0
+    assert data.values[1] == 120.0
+
+    # Test empty holdings data fallback
+    fig_empty: go.Figure = build_portfolio_treemap(
+        mock_holdings,
+        theme_tokens=mock_theme_tokens,
+        mode="holdings",
+        holdings_data={},
+    )
+    assert isinstance(fig_empty, go.Figure)
+    assert len(fig_empty.layout.annotations) == 1
+    assert "No underlying holdings" in fig_empty.layout.annotations[0].text
 
 
 # ── Intelligence Geographic allocation Tests ───────────────────────────────

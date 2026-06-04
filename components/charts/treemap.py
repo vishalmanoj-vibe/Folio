@@ -8,6 +8,7 @@ def build_portfolio_treemap(
     mode: str = "flat",
     sector_data: dict[str, dict] | None = None,
     geo_data: dict[str, dict] | None = None,
+    holdings_data: dict[str, dict] | None = None,
 ) -> go.Figure:
     """
     Build a unified portfolio treemap with optional hierarchical grouping.
@@ -17,6 +18,15 @@ def build_portfolio_treemap(
 
         return create_empty_fig(
             "No holdings data available for treemap", height=600, theme_tokens=theme_tokens
+        )
+
+    if mode == "holdings" and not holdings_data:
+        from components.charts.helpers import create_empty_fig
+
+        return create_empty_fig(
+            "No underlying holdings data — add a source URL in ⚙ Configure Sources",
+            height=600,
+            theme_tokens=theme_tokens,
         )
 
     ids = []
@@ -115,6 +125,50 @@ def build_portfolio_treemap(
                 f"Value in Region: ${val:,.2f}<br>"
                 f"Weight in Region: {pct_of_parent:.1f}%<br>"
                 f"P&L: {sign}${h['pnl']:,.2f} ({h['pnl_pct']:+.2f}%)"
+            )
+            font_colors.append("white")
+
+    elif mode == "holdings" and holdings_data:
+        total_val = sum(h.get("mkt_value", 0) for h in holdings)
+
+        # Take top 50 items and group the rest
+        top_items = list(holdings_data.items())[:50]
+        sum_top_weights = sum(d["weight"] for name, d in top_items)
+        all_weights = sum(d["weight"] for name, d in holdings_data.items())
+        other_weight = all_weights - sum_top_weights
+
+        for comp_name, d in top_items:
+            weight = d["weight"]
+            val = round(total_val * (weight / 100.0), 2)
+            ids.append(comp_name)
+            labels.append(comp_name)
+            parents.append("")
+            values.append(val)
+            colors.append(weight)
+            custom_data_list.append(f"{weight:.2f}%")
+
+            sources = d.get("sources", {})
+            source_str = "<br>".join([f" • {k}: {v:.2f}%" for k, v in sources.items()])
+            hover_texts.append(
+                f"<b>{comp_name}</b><br>"
+                f"Market Value: ${val:,.2f}<br>"
+                f"Total Exposure: {weight:.2f}%<br>"
+                f"Sources:<br>{source_str}"
+            )
+            font_colors.append("white")
+
+        if other_weight > 0.01:
+            val = round(total_val * (other_weight / 100.0), 2)
+            ids.append("Other Underlying")
+            labels.append("Other Underlying")
+            parents.append("")
+            values.append(val)
+            colors.append(other_weight)
+            custom_data_list.append(f"{other_weight:.2f}%")
+            hover_texts.append(
+                f"<b>Other Underlying Holdings</b><br>"
+                f"Market Value: ${val:,.2f}<br>"
+                f"Total Exposure: {other_weight:.2f}%"
             )
             font_colors.append("white")
 

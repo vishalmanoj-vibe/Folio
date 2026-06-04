@@ -1,12 +1,12 @@
 # Callback Output Index — Auto-Generated
 
-> **Generated**: 2026-06-04 23:42  
+> **Generated**: 2026-06-04 23:49  
 > **Do not edit** — run `python .agents/generated/sync_docs.py` to refresh.
 > For ownership intent and architecture notes, see `docs/callback_ownership.md`.
 
 ---
 
-**Total outputs indexed**: 140 across 13 files
+**Total outputs indexed**: 139 across 13 files
 
 ## `app.py`
 
@@ -39,22 +39,21 @@
 
 | Output ID | Property | Line | Duplicate? | Pattern? |
 |-----------|----------|------|-----------|---------|
-| `ticker-selector` | `data` | 44 |  |  |
-| `benchmark-pending-store` | `data` | 61 | ✓ |  |
-| `pnl-history-chart` | `figure` | 86 |  |  |
-| `benchmark-pending-store` | `data` | 87 | ✓ |  |
-| `price-chart` | `figure` | 198 |  |  |
-| `portfolio-treemap` | `figure` | 233 |  |  |
-| `analytics-vol-chart` | `children` | 268 |  |  |
-| `corr-chart` | `figure` | 338 |  |  |
-| `holdings-bubble-chart` | `figure` | 365 |  |  |
-| `holdings-freshness-note` | `children` | 366 |  |  |
-| `holdings-url-collapse` | `opened` | 367 | ✓ |  |
-| `holdings-url-collapse` | `opened` | 429 | ✓ |  |
-| `holdings-url-table` | `children` | 439 |  |  |
-| `holdings-url-save-status` | `children` | 542 |  |  |
-| `holdings-url-ticker-input` | `value` | 543 |  |  |
-| `holdings-url-input` | `value` | 544 |  |  |
+| `ticker-selector` | `data` | 43 |  |  |
+| `benchmark-pending-store` | `data` | 60 | ✓ |  |
+| `pnl-history-chart` | `figure` | 85 |  |  |
+| `benchmark-pending-store` | `data` | 86 | ✓ |  |
+| `price-chart` | `figure` | 197 |  |  |
+| `portfolio-treemap` | `figure` | 232 |  |  |
+| `holdings-freshness-note` | `children` | 233 |  |  |
+| `holdings-url-collapse` | `opened` | 234 | ✓ |  |
+| `analytics-vol-chart` | `children` | 318 |  |  |
+| `corr-chart` | `figure` | 388 |  |  |
+| `holdings-url-collapse` | `opened` | 415 | ✓ |  |
+| `holdings-url-table` | `children` | 425 |  |  |
+| `holdings-url-save-status` | `children` | 528 |  |  |
+| `holdings-url-ticker-input` | `value` | 529 |  |  |
+| `holdings-url-input` | `value` | 530 |  |  |
 
 ## `intelligence_callbacks.py`
 
