@@ -233,6 +233,10 @@ app.layout = dmc.MantineProvider(
             ),
             # Command Palette — ticker data for dynamic search
             dcc.Store(id="palette-ticker-store", data=[], storage_type="memory"),
+            # Permanent hidden buttons for command palette actions
+            html.Button(id="theme-toggle-hidden", style={"display": "none"}),
+            html.Button(id="refresh-btn-hidden", style={"display": "none"}),
+            html.Button(id="pdf-btn-hidden", style={"display": "none"}),
             # Global Navigation
             create_header(),
             # Page Content with Loading Indicator

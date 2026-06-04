@@ -19,9 +19,9 @@
         { id: 'nav_deepdive', label: 'Go to Deep Dive (Analytics)', icon: '📉', type: 'nav', target: '/analytics', group: 'Navigation' },
         { id: 'nav_assistant', label: 'Go to AI Chat Assistant', icon: '💬', type: 'nav', target: '/ai-analyst', group: 'Navigation' },
         { id: 'nav_settings', label: 'Go to Settings & Profile', icon: '⚙', type: 'nav', target: '/settings', group: 'Navigation' },
-        { id: 'action_theme', label: 'Toggle Dark / Light Theme', icon: '🌓', type: 'action', target: 'theme-toggle', shortcut: '⌘T', group: 'Actions' },
-        { id: 'action_refresh', label: 'Refresh Live Portfolio Data', icon: '🔄', type: 'action', target: 'refresh-btn', shortcut: '⌘R', group: 'Actions' },
-        { id: 'action_pdf', label: 'Export PDF Summary Report', icon: '📥', type: 'action', target: 'pdf-btn', group: 'Actions' },
+        { id: 'action_theme', label: 'Toggle Dark / Light Theme', icon: '🌓', type: 'action', target: 'theme-toggle-hidden', shortcut: '⌘T', group: 'Actions' },
+        { id: 'action_refresh', label: 'Refresh Live Portfolio Data', icon: '🔄', type: 'action', target: 'refresh-btn-hidden', shortcut: '⌘R', group: 'Actions' },
+        { id: 'action_pdf', label: 'Export PDF Summary Report', icon: '📥', type: 'action', target: 'pdf-btn-hidden', group: 'Actions' },
         { id: 'action_signals', label: 'Trigger Global Signal Analysis', icon: '🤖', type: 'action', target: 'global-generate-signals-btn', group: 'Actions' }
     ];
 
@@ -338,12 +338,26 @@
         }
     }
 
-    // Global Key Bindings for opening the palette
+    // Global Key Bindings for opening the palette and global shortcuts
     document.addEventListener('keydown', function (e) {
         // Toggle open on CMD+K (macOS) or CTRL+K (Windows/Linux)
         if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
             e.preventDefault();
             toggleOpen();
+        }
+
+        // Trigger action_theme on CMD+T (macOS) or CTRL+T (Windows/Linux)
+        if ((e.metaKey || e.ctrlKey) && e.key === 't') {
+            e.preventDefault();
+            const el = document.getElementById('theme-toggle-hidden');
+            if (el) el.click();
+        }
+
+        // Trigger action_refresh on CMD+R (macOS) or CTRL+R (Windows/Linux)
+        if ((e.metaKey || e.ctrlKey) && e.key === 'r') {
+            e.preventDefault();
+            const el = document.getElementById('refresh-btn-hidden');
+            if (el) el.click();
         }
     });
 

@@ -139,8 +139,8 @@
 | Output ID | Property | Notes |
 |-----------|----------|-------|
 | `theme-store` | `data` | Light/dark toggle. |
-| `theme-icon-indicator` | `children` | Theme icon. |
-| `pdf-btn` | `n_clicks` | Export button reset. |
+| `theme-toggle-hidden` | `children` | Clientside theme synchronizer hook. |
+| `pdf-btn-hidden` | `children` | Clientside print export trigger hook. |
 | `compact-mode-store` | `data` | Compact toggle. |
 | `txn-collapse` | `is_open` | Transaction form collapse. |
 | `compact-toggle-btn` | `children` | Button label + style. |

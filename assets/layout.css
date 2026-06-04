@@ -454,3 +454,7 @@
 .cp-group-label:first-child {
   padding-top: 4px;
 }
+
+#theme-icon-indicator::before {
+  content: var(--theme-icon);
+}

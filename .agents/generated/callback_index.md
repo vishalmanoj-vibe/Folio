@@ -1,6 +1,6 @@
 # Callback Output Index — Auto-Generated
 
-> **Generated**: 2026-06-04 20:06  
+> **Generated**: 2026-06-04 23:42  
 > **Do not edit** — run `python .agents/generated/sync_docs.py` to refresh.
 > For ownership intent and architecture notes, see `docs/callback_ownership.md`.
 
@@ -12,20 +12,20 @@
 
 | Output ID | Property | Line | Duplicate? | Pattern? |
 |-----------|----------|------|-----------|---------|
-| `txn-store` | `data` | 253 | ✓ |  |
-| `portfolio-store` | `data` | 325 | ✓ |  |
-| `period-store` | `data` | 398 |  |  |
-| `pnl-mode-store` | `data` | 408 |  |  |
-| `ticker-store` | `data` | 418 |  |  |
-| `treemap-mode-store` | `data` | 428 |  |  |
-| `analytics-period-store` | `data` | 438 |  |  |
-| `intel-period-store` | `data` | 448 |  |  |
-| `intel-pred-store` | `data` | 477 |  |  |
-| `intel-forecast-label` | `children` | 478 |  |  |
-| `url` | `search` | 503 |  |  |
-| `pending-tasks-store` | `data` | 521 | ✓ |  |
-| `nav-link-store` | `data` | 555 | ✓ |  |
-| `task-poll-interval` | `disabled` | 605 |  |  |
+| `txn-store` | `data` | 257 | ✓ |  |
+| `portfolio-store` | `data` | 329 | ✓ |  |
+| `period-store` | `data` | 402 |  |  |
+| `pnl-mode-store` | `data` | 412 |  |  |
+| `ticker-store` | `data` | 422 |  |  |
+| `treemap-mode-store` | `data` | 432 |  |  |
+| `analytics-period-store` | `data` | 442 |  |  |
+| `intel-period-store` | `data` | 452 |  |  |
+| `intel-pred-store` | `data` | 481 |  |  |
+| `intel-forecast-label` | `children` | 482 |  |  |
+| `url` | `search` | 507 |  |  |
+| `pending-tasks-store` | `data` | 525 | ✓ |  |
+| `nav-link-store` | `data` | 559 | ✓ |  |
+| `task-poll-interval` | `disabled` | 609 |  |  |
 
 ## `alert_callbacks.py`
 
@@ -126,11 +126,11 @@
 
 | Output ID | Property | Line | Duplicate? | Pattern? |
 |-----------|----------|------|-----------|---------|
-| `settings-investment-goal` | `value` | 44 |  |  |
-| `settings-risk-tolerance` | `value` | 45 |  |  |
-| `settings-tax-bracket` | `value` | 46 |  |  |
-| `settings-weights-preview-container` | `children` | 64 |  |  |
-| `settings-save-status` | `children` | 90 |  |  |
+| `settings-investment-goal` | `value` | 43 |  |  |
+| `settings-risk-tolerance` | `value` | 44 |  |  |
+| `settings-tax-bracket` | `value` | 45 |  |  |
+| `settings-weights-preview-container` | `children` | 63 |  |  |
+| `settings-save-status` | `children` | 89 |  |  |
 
 ## `setup_callbacks.py`
 
@@ -181,16 +181,16 @@
 | Output ID | Property | Line | Duplicate? | Pattern? |
 |-----------|----------|------|-----------|---------|
 | `theme-store` | `data` | 22 |  |  |
-| `theme-icon-indicator` | `children` | 40 |  |  |
-| `pdf-btn` | `children` | 47 |  |  |
-| `compact-mode-store` | `data` | 54 |  |  |
-| `txn-collapse` | `opened` | 55 |  |  |
-| `compact-toggle-btn` | `children` | 56 |  |  |
-| `compact-toggle-btn` | `className` | 57 |  |  |
-| `folio-table-state-v3` | `data` | 89 |  |  |
-| `nav-link-store` | `data` | 153 |  |  |
-| `pending-tasks-store` | `data` | 159 | ✓ |  |
-| `palette-ticker-store` | `data` | 217 |  |  |
+| `theme-toggle-hidden` | `children` | 41 |  |  |
+| `pdf-btn-hidden` | `children` | 48 |  |  |
+| `compact-mode-store` | `data` | 56 |  |  |
+| `txn-collapse` | `opened` | 57 |  |  |
+| `compact-toggle-btn` | `children` | 58 |  |  |
+| `compact-toggle-btn` | `className` | 59 |  |  |
+| `folio-table-state-v3` | `data` | 91 |  |  |
+| `nav-link-store` | `data` | 155 |  |  |
+| `pending-tasks-store` | `data` | 161 | ✓ |  |
+| `palette-ticker-store` | `data` | 221 |  |  |
 
 ## `watchlist_callbacks.py`
 

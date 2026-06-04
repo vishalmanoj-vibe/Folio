@@ -21,31 +21,33 @@ def register_callbacks(app) -> None:
     @app.callback(
         Output("theme-store", "data"),
         Input("theme-toggle", "n_clicks"),
+        Input("theme-toggle-hidden", "n_clicks"),
         State("theme-store", "data"),
         prevent_initial_call=True,
     )
-    def toggle_theme_store(n, current):
+    def toggle_theme_store(n, n_hidden, current):
         return "light" if current == "dark" else "dark"
 
-    # ── 2. Sync UI attributes and icon with theme store (Fires on load) ──
+    # ── 2. Sync UI attributes with theme store (Fires on load) ──
     app.clientside_callback(
         """
         function(theme) {
             const t = theme || 'dark';
             document.body.setAttribute('data-theme', t);
             document.documentElement.setAttribute('data-theme', t);
-            return (t === 'dark') ? '☾' : '☀';
+            return '';
         }
         """,
-        Output("theme-icon-indicator", "children"),
+        Output("theme-toggle-hidden", "children"),
         Input("theme-store", "data"),
     )
 
     # ── PDF / print button ────────────────────────────────────────────────────
     app.clientside_callback(
-        "function(n) { if(n) window.print(); return ''; }",
-        Output("pdf-btn", "children"),  # dummy output — just needs somewhere to write
+        "function(n, n_hidden) { if(n || n_hidden) window.print(); return ''; }",
+        Output("pdf-btn-hidden", "children"),
         Input("pdf-btn", "n_clicks"),
+        Input("pdf-btn-hidden", "n_clicks"),
         prevent_initial_call=True,
     )
 
@@ -158,11 +160,12 @@ def register_callbacks(app) -> None:
     @app.callback(
         Output("pending-tasks-store", "data", allow_duplicate=True),
         Input("refresh-btn", "n_clicks"),
+        Input("refresh-btn-hidden", "n_clicks"),
         State("pending-tasks-store", "data"),
         prevent_initial_call=True,
     )
-    def handle_refresh_click(n, pending):
-        if not n:
+    def handle_refresh_click(n, n_hidden, pending):
+        if not n and not n_hidden:
             return dash.no_update
         from data.database import enqueue_task
 
