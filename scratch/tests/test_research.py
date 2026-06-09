@@ -118,9 +118,15 @@ def test_summarise_old_turns(mock_client_class: MagicMock) -> None:
     mock_client.models.generate_content.assert_called_once()
 
 
-@patch("services.research_memory.summarise_old_turns", return_value="Gemini summarised this.")
+@patch("services.research_memory.summarise_old_turns")
 def test_run_startup_maintenance(mock_summarise: MagicMock) -> None:
-    """Assert weekly maintenance prunes logs and appends summaries dynamically."""
+    """Assert weekly maintenance prunes logs and consolidates summaries dynamically."""
+
+    def mock_summarise_fn(old_turns, api_key, existing_summary=""):
+        return f"Consolidated: {existing_summary} and new turns."
+
+    mock_summarise.side_effect = mock_summarise_fn
+
     old_str = (datetime.now() - timedelta(days=10)).strftime("%Y-%m-%d %H:%M:%S")
     turns = [{"role": "user", "content": "Prune me", "timestamp": old_str}]
     save_conversation_log(turns)
@@ -128,9 +134,9 @@ def test_run_startup_maintenance(mock_summarise: MagicMock) -> None:
 
     run_startup_maintenance(api_key="dummy")
 
-    # Assert logs pruned and summaries merged
+    # Assert logs pruned and summaries consolidated
     assert load_conversation_log() == []
-    assert "Gemini summarised this." in load_memory_summary()
+    assert "Consolidated:" in load_memory_summary()
     assert "Previous summary." in load_memory_summary()
 
 

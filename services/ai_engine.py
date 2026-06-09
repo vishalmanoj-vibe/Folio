@@ -6,6 +6,7 @@ import re
 
 import google.genai as genai
 
+from config.settings import GEMINI_FLASH_MODEL
 from core.cache import get_cache, set_cache
 
 logger = logging.getLogger(__name__)
@@ -168,7 +169,7 @@ Return ONLY valid JSON in this format:
 
     try:
         response = client.models.generate_content(
-            model="models/gemini-2.5-flash-lite",
+            model=GEMINI_FLASH_MODEL,
             contents=prompt,
             config=genai.types.GenerateContentConfig(
                 system_instruction=SYSTEM_PROMPT,

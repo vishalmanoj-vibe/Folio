@@ -89,7 +89,7 @@ def chart_title(label: str, info_key: str = "") -> html.Div:
     return html.Div(children, className="chart-title-container")
 
 
-def section(title_node: html.Div | None, children) -> html.Div:
+def section(title_node: Any, children) -> html.Div:
     """Standard section wrapper."""
     content = [title_node, children] if title_node is not None else [children]
     return html.Div(content, className="section-container")

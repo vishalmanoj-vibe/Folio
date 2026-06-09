@@ -10,7 +10,7 @@ Implement a suite of new dashboard enhancements, adapting them to our Dash/Pytho
 ## Stack & Technologies
 - Dash/Plotly Python callbacks
 - SQLite (`user_settings` and `sentiment_cache` tables)
-- Google Gemini API (`models/gemini-2.5-flash-lite`)
+- Google Gemini API (`models/gemini-3.1-flash-lite`)
 - DuckDuckGo Search API (`services/web_search.py`)
 - Clientside JavaScript (`assets/command_palette.js` and `callbacks/ui_callbacks.py`)
 

@@ -58,3 +58,9 @@ ALERT_THRESHOLDS = {
 
 # ── Logging configuration ─────────────────────────────────────────────────────
 LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO").upper()
+
+# ── AI Model configuration ────────────────────────────────────────────────────
+# Standard model: used for background batch operations and the chatbot.
+GEMINI_FLASH_MODEL = os.getenv("GEMINI_FLASH_MODEL", "gemini-2.5-flash")
+# Enhanced model: default for manually-triggered PDF reports (higher quality).
+GEMINI_REPORT_MODEL = os.getenv("GEMINI_REPORT_MODEL", "gemini-3.1-flash-lite")

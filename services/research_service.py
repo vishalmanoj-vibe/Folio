@@ -5,6 +5,7 @@ import os
 import google.genai as genai
 import pandas as pd
 
+from config.settings import GEMINI_FLASH_MODEL
 from services.technical_indicators import compute_signals
 from services.web_search import format_search_results, search_financial_news, should_search_web
 
@@ -50,7 +51,7 @@ def build_portfolio_context(portfolio_data: dict, ticker: str = "") -> str:
             f"{t} — {name}  {weight:.1f}%  |  yield {div_yield:.1f}%  |  P&L {pnl_pct:+.1f}%"
         )
 
-    # Add technical signals for each holding
+    # Add technical signals for each holding (enriched with numerics)
     sig_lines = []
     histories = portfolio_data.get("histories", {})
     for h in sorted_holdings[:10]:
@@ -61,10 +62,10 @@ def build_portfolio_context(portfolio_data: dict, ticker: str = "") -> str:
         sig = compute_signals(ticker_h, history)
         if "error" not in sig:
             sig_lines.append(
-                f"  {ticker_h}: RSI={sig['rsi']:.0f} "
-                f"({sig['rsi_label']}), "
-                f"MACD={sig['macd_label']}, "
-                f"Bollinger={sig['bb_label']}"
+                f"  {ticker_h}: RSI={sig['rsi']:.0f} ({sig['rsi_label']}), "
+                f"MACD={sig['macd']:.3f} vs Signal={sig['macd_signal']:.3f} ({sig['macd_label']}), "
+                f"BB={sig['bb_label']} [upper={sig['bb_upper']:.2f} lower={sig['bb_lower']:.2f}], "
+                f"last=${sig['last_price']:.2f}"
             )
 
     # ── Performance Context (7-Day) ──
@@ -110,6 +111,42 @@ def build_portfolio_context(portfolio_data: dict, ticker: str = "") -> str:
         lines.append("Technical Signals (from price history):")
         lines.extend(sig_lines)
         lines.append("")
+
+    # ── 52-Week Range Context ──────────────────────────────────────────────────
+    range_lines = []
+    for h in sorted_holdings[:10]:
+        hi = h.get("week_52_high")
+        lo = h.get("week_52_low")
+        price = h.get("last_price")
+        if hi and lo and price and float(hi) > 0:
+            pct_from_high = (float(price) - float(hi)) / float(hi) * 100
+            range_lines.append(
+                f"  {h['ticker']}: ${float(price):.2f}  "
+                f"52w High=${float(hi):.2f} ({pct_from_high:+.1f}% from high)  "
+                f"52w Low=${float(lo):.2f}"
+            )
+    if range_lines:
+        lines.append("52-Week Price Ranges:")
+        lines.extend(range_lines)
+        lines.append("")
+
+    # ── News Sentiment (reads SQLite cache — zero extra API calls) ─────────────
+    try:
+        from services.sentiment_service import get_cached_sentiment
+
+        sentiment_lines = []
+        for h in sorted_holdings[:10]:
+            cached = get_cached_sentiment(h["ticker"])
+            if cached:
+                sentiment_lines.append(
+                    f"  {h['ticker']}: {cached['sentiment']} (score {cached['score']:+.2f}) — {cached.get('rationale', '')[:80]}"
+                )
+        if sentiment_lines:
+            lines.append("News Sentiment (cached):")
+            lines.extend(sentiment_lines)
+            lines.append("")
+    except Exception:
+        pass  # Sentiment is best-effort — never block the context builder
 
     if ticker:
         lines.append(f"=== TICKER USER IS CONSIDERING BUYING: {ticker.upper()} ===")
@@ -203,9 +240,15 @@ def get_ai_response(history: list[dict], portfolio_data: dict, ticker: str = "")
         )
         system_prompt_dynamic = SYSTEM_PROMPT + profile_instruction
 
+        # Resolve chat model from user settings (fallback to Flash).
+        # The `or` guard narrows the type from `str | None` → `str` to satisfy the SDK.
+        from data.settings_repository import get_setting
+
+        ai_chat_model = get_setting("ai_chat_model", GEMINI_FLASH_MODEL) or GEMINI_FLASH_MODEL
+
         # Create chat session with history
         chat = client.chats.create(
-            model="models/gemini-2.5-flash-lite",
+            model=ai_chat_model,
             history=chat_history,
             config=genai.types.GenerateContentConfig(
                 system_instruction=system_prompt_dynamic,

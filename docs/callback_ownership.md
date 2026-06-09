@@ -4,7 +4,7 @@
 > Before adding any callback, check this map. Duplicate Outputs cause silent
 > Dash crashes. If using `allow_duplicate=True`, document the reason inline.
 >
-> **Last synced**: 2026-05-29
+> **Last synced**: 2026-06-09
 
 ---
 
@@ -215,6 +215,8 @@
 | `settings-investment-goal` | `value` | Initial settings load. |
 | `settings-risk-tolerance` | `value` | Initial settings load. |
 | `settings-tax-bracket` | `value` | Initial settings load. |
+| `settings-chat-model` | `value` | AI chat model selection (Standard/Enhanced). |
+| `settings-report-model` | `value` | AI report model selection (Standard/Enhanced). |
 | `settings-weights-preview-container` | `children` | Dynamic strategy weights preview. |
 | `settings-save-status` | `children` | Settings save confirmation message. |
 

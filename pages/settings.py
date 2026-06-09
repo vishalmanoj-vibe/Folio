@@ -131,6 +131,68 @@ def layout() -> html.Div:
                                             ],
                                             className="settings-form-row",
                                         ),
+                                        # ── AI Model Selection ──────────────
+                                        html.Div(
+                                            [
+                                                html.Label(
+                                                    "AI Chat Model",
+                                                    className="txn-label",
+                                                ),
+                                                html.P(
+                                                    "Used by the AI Research Assistant chatbot.",
+                                                    className="settings-preview-description",
+                                                    style={"marginBottom": "6px"},
+                                                ),
+                                                dcc.Dropdown(
+                                                    id="settings-chat-model",
+                                                    options=[
+                                                        {
+                                                            "label": "Standard (2.5 Flash) — Fast, low cost",
+                                                            "value": "gemini-2.5-flash",
+                                                        },
+                                                        {
+                                                            "label": "Enhanced (3.1 Flash) — Higher quality",
+                                                            "value": "gemini-3.1-flash-lite",
+                                                        },
+                                                    ],
+                                                    value="gemini-2.5-flash",
+                                                    clearable=False,
+                                                    className="settings-dropdown",
+                                                ),
+                                            ],
+                                            className="settings-form-row",
+                                        ),
+                                        # Report Model
+                                        html.Div(
+                                            [
+                                                html.Label(
+                                                    "AI Report Model",
+                                                    className="txn-label",
+                                                ),
+                                                html.P(
+                                                    "Used when generating the weekly PDF commentary.",
+                                                    className="settings-preview-description",
+                                                    style={"marginBottom": "6px"},
+                                                ),
+                                                dcc.Dropdown(
+                                                    id="settings-report-model",
+                                                    options=[
+                                                        {
+                                                            "label": "Standard (2.5 Flash) — Fast, low cost",
+                                                            "value": "gemini-2.5-flash",
+                                                        },
+                                                        {
+                                                            "label": "Enhanced (3.1 Flash) — Higher quality",
+                                                            "value": "gemini-3.1-flash-lite",
+                                                        },
+                                                    ],
+                                                    value="gemini-3.1-flash-lite",
+                                                    clearable=False,
+                                                    className="settings-dropdown",
+                                                ),
+                                            ],
+                                            className="settings-form-row",
+                                        ),
                                         # Save Button & Success notification
                                         html.Div(
                                             [

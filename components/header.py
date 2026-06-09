@@ -84,7 +84,7 @@ def create_header(
                     dmc.MenuItem(
                         "Switch Theme",
                         id="theme-toggle",
-                        leftSection=html.Span("☾", id="theme-icon-indicator"),
+                        leftSection=html.Span(id="theme-icon-indicator"),
                         style={"fontSize": "11px"},
                     ),
                     dmc.MenuItem(

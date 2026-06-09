@@ -199,20 +199,23 @@ def fetch_news_for_holdings(
     for h in holdings[:8]:
         ticker = h["ticker"]
         try:
+            # Query for weekly news first with a fallback to general ETF terms
             results = search_financial_news(
-                f"{ticker} ASX ETF",
-                max_results=2,
+                f"{ticker} ASX ETF news",
+                max_results=3,
+                timelimit="w",
             )
             if not results:
                 results = search_financial_news(
-                    f"{ticker} ASX ETF news announcement",
-                    max_results=2,
+                    f"{ticker} ASX ETF",
+                    max_results=3,
+                    timelimit="w",
                 )
             news_map[ticker] = [
                 {
                     "title": r.get("title", ""),
                     "url": r.get("href", ""),
-                    "body": r.get("body", "")[:300],
+                    "body": r.get("body", "")[:400],
                 }
                 for r in (results or [])
             ]
@@ -236,7 +239,7 @@ def fetch_market_news() -> list[dict]:
         ]
         combined = []
         for q in queries:
-            results = search_financial_news(q, max_results=2)
+            results = search_financial_news(q, max_results=2, timelimit="w")
             for r in results or []:
                 combined.append(
                     {
@@ -266,11 +269,43 @@ def get_ai_commentary(
     try:
         import google.genai as genai
 
+        from config.settings import GEMINI_REPORT_MODEL
+        from data.settings_repository import get_all_settings, get_setting
+        from services.sentiment_service import get_cached_sentiment
+
+        # ── Investor profile context ─────────────────────────────────────────
+        settings = get_all_settings()
+        goal = settings.get("investment_goal", "Balanced")
+        risk = settings.get("risk_tolerance", "Moderate")
+        tax = settings.get("tax_bracket", "37%")
+        investor_profile_text = (
+            f"\nINVESTOR PROFILE:\n"
+            f"- Goal: {goal}\n"
+            f"- Risk Tolerance: {risk}\n"
+            f"- Tax Bracket: {tax}\n"
+            "Tailor the commentary tone and risk warnings to this profile.\n\n"
+        )
+
+        # ── News sentiment context (cached — zero extra API calls) ────────────
+        sentiment_lines = []
+        for h in report_data.get("holdings_data", [])[:5]:
+            cached = get_cached_sentiment(h["ticker"])
+            if cached:
+                sentiment_lines.append(
+                    f"  {h['ticker']}: {cached['sentiment']} (score {cached['score']:+.2f})"
+                )
+        sentiment_text = ""
+        if sentiment_lines:
+            sentiment_text = (
+                "\nRecent News Sentiment (cached):\n" + "\n".join(sentiment_lines) + "\n"
+            )
+
         prompt = (
             "Write a concise 3-paragraph weekly portfolio commentary "
             "for an Australian retail ETF investor. Plain text only, "
             "no markdown, no bullet points, no asterisks.\n\n"
-            f"Total Portfolio Value: ${report_data['total_val']:,.0f}\n"
+            + investor_profile_text
+            + f"Total Portfolio Value: ${report_data['total_val']:,.0f}\n"
             f"Unrealised P&L: {report_data['pnl_pct']:+.1f}%\n"
             f"Portfolio Yield: {report_data['port_yield']:.2f}%\n"
             f"Top performer: {report_data['top_performer']['ticker']} "
@@ -291,20 +326,26 @@ def get_ai_commentary(
             for a in articles[:1]:
                 prompt += f"- {ticker}: {a['body'][:150]}\n"
 
+        prompt += sentiment_text
+
         prompt += "\nGeneral ASX market news this week:\n"
         for item in market_news[:3]:
             prompt += f"- {item['body'][:150]}\n"
 
         prompt += (
             "\nParagraph 1: Overall portfolio performance this week. "
-            "Paragraph 2: Key movers and technical signals (RSI/MACD). "
-            "Paragraph 3: Week ahead — what to watch, any risks or opportunities. "
+            "Paragraph 2: Key movers and technical signals (RSI/MACD) and news sentiment. "
+            "Paragraph 3: Week ahead — what to watch, any risks or opportunities relevant to this investor's goal and risk tolerance. "
             "Be specific and direct. Do not repeat the raw numbers — interpret them."
         )
 
+        # ── Resolve report model from user settings ───────────────────────────
+        # The `or` guard narrows `str | None` → `str` to satisfy the SDK type check.
+        ai_report_model = get_setting("ai_report_model", GEMINI_REPORT_MODEL) or GEMINI_REPORT_MODEL
+
         client = genai.Client(api_key=api_key)
         response = client.models.generate_content(
-            model="models/gemini-2.5-flash-lite",
+            model=ai_report_model,
             contents=prompt,
         )
         return response.text.strip()
@@ -312,6 +353,70 @@ def get_ai_commentary(
     except Exception as e:
         logger.error(f"get_ai_commentary failed: {e}")
         return "Market commentary is temporarily unavailable. Please try regenerating the report."
+
+
+def generate_news_summaries(
+    news_map: dict[str, list[dict]],
+    api_key: str,
+) -> dict[str, str]:
+    """
+    Calls Gemini to generate a brief 200-300 word news summary for each ticker based on the articles in news_map.
+    Returns {ticker: summary_text}.
+    """
+    try:
+        import json
+
+        import google.genai as genai
+
+        from config.settings import GEMINI_REPORT_MODEL
+        from data.settings_repository import get_setting
+
+        client = genai.Client(api_key=api_key)
+
+        # Prepare context for prompt
+        news_context = ""
+        for ticker, articles in news_map.items():
+            if not articles:
+                continue
+            news_context += f"Ticker: {ticker}\n"
+            for idx, a in enumerate(articles):
+                news_context += f"  Article {idx+1}: {a.get('title', '')}\n"
+                news_context += f"  Snippet: {a.get('body', '')}\n\n"
+
+        if not news_context:
+            return {}
+
+        prompt = (
+            "You are a professional financial analyst. For each ETF ticker listed below, analyze the provided recent news headlines and snippets. "
+            "Write a brief, insightful news summary of exactly 200 to 300 words per ticker. "
+            "Explain what the news/theme means for the ETF's holdings, industry trends, and outlook. "
+            "If the provided snippets are brief, supplement the summary with general knowledge about the ETF's theme (e.g., semiconductor trends for SEMI, tech giants for ASIA, high-yield Australian equities for VHY). "
+            "Ensure the tone is professional and objective. Do NOT use markdown, bullet points, or asterisks. Write in continuous paragraphs. "
+            "Return the results as a raw JSON object where the keys are the tickers and the values are the 200-300 word summary strings.\n\n"
+            "Here is the news data:\n\n" + news_context
+        )
+
+        ai_report_model = get_setting("ai_report_model", GEMINI_REPORT_MODEL) or GEMINI_REPORT_MODEL
+
+        response = client.models.generate_content(
+            model=ai_report_model,
+            contents=prompt,
+            config=genai.types.GenerateContentConfig(
+                response_mime_type="application/json",
+            ),
+        )
+
+        raw_text = response.text.strip()
+        # Clean up code block wrappers if any
+        if raw_text.startswith("```"):
+            raw_text = raw_text.strip("`").replace("json\n", "", 1).strip()
+
+        data = json.loads(raw_text)
+        return {k.upper(): str(v).strip() for k, v in data.items()}
+
+    except Exception as e:
+        logger.error(f"generate_news_summaries failed: {e}")
+        return {}
 
 
 # ── 4. Chart builder ──────────────────────────────────────────────────────────
@@ -411,6 +516,7 @@ def build_pdf(
     news_map: dict[str, list[dict]],
     market_news: list[dict],
     ai_commentary: str,
+    news_summaries: dict[str, str],
 ) -> bytes:
     """
     Assembles all sections into a PDF and returns raw bytes.
@@ -704,21 +810,29 @@ def build_pdf(
     for ticker, articles in news_map.items():
         if not articles:
             continue
+
+        # Get AI summary if available, otherwise fallback to joining snippets
+        ticker_summary = news_summaries.get(ticker.upper())
+        if not ticker_summary:
+            ticker_summary = " ".join([a.get("body", "") for a in articles])[:400] + "..."
+
         story.append(Paragraph(ticker, h3_style))
+        story.append(Paragraph(ticker_summary, body_style))
+        story.append(Spacer(1, 1.5 * mm))
+
+        # List news links below the summary
+        story.append(Paragraph("<b>News links:</b>", muted_style))
         for a in articles:
             title = a.get("title", "")
             url = a.get("url", "")
-            body = a.get("body", "")
             if title and url:
                 story.append(
                     Paragraph(
-                        f'<link href="{url}" color="{_TEAL_HEX}"><b>{title}</b></link>',
+                        f'<link href="{url}" color="{_TEAL_HEX}">• {title}</link>',
                         link_style,
                     )
                 )
-            if body:
-                story.append(Paragraph(body, muted_style))
-            story.append(Spacer(1, 1.5 * mm))
+        story.append(Spacer(1, 3 * mm))
     story.append(Spacer(1, 4 * mm))
 
     # ── SECTION 8: General Market News & Stocks to Watch ─────────────────────
@@ -801,11 +915,16 @@ def generate_weekly_report(
     )
     logger.info("AI commentary generated")
 
+    # Fetch AI summaries of the news articles for each ticker
+    logger.info("Generating AI summaries of ticker news")
+    news_summaries = generate_news_summaries(news_map, api_key)
+
     pdf_bytes = build_pdf(
         report_data,
         news_map,
         market_news,
         ai_commentary,
+        news_summaries,
     )
     logger.info(f"PDF built: {len(pdf_bytes):,} bytes")
 

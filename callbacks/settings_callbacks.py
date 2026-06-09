@@ -43,12 +43,14 @@ def register_callbacks(app):
         Output("settings-investment-goal", "value"),
         Output("settings-risk-tolerance", "value"),
         Output("settings-tax-bracket", "value"),
+        Output("settings-chat-model", "value"),
+        Output("settings-report-model", "value"),
         Input("url", "pathname"),
         prevent_initial_call=True,
     )
     def load_user_settings(pathname):
         if pathname != "/settings":
-            return dash.no_update, dash.no_update, dash.no_update
+            return dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update
 
         logger.debug("Loading user settings for Settings page.")
         settings = get_all_settings()
@@ -56,6 +58,8 @@ def register_callbacks(app):
             settings.get("investment_goal", "Balanced"),
             settings.get("risk_tolerance", "Moderate"),
             settings.get("tax_bracket", "37%"),
+            settings.get("ai_chat_model", "gemini-2.5-flash"),
+            settings.get("ai_report_model", "gemini-3.1-flash-lite"),
         )
 
     # ── Callback 2: Dynamic weight preview ──
@@ -92,16 +96,22 @@ def register_callbacks(app):
         State("settings-investment-goal", "value"),
         State("settings-risk-tolerance", "value"),
         State("settings-tax-bracket", "value"),
+        State("settings-chat-model", "value"),
+        State("settings-report-model", "value"),
         prevent_initial_call=True,
     )
-    def save_user_settings(n_clicks, pathname, goal, risk, tax):
+    def save_user_settings(n_clicks, pathname, goal, risk, tax, chat_model, report_model):
         if pathname != "/settings" or not n_clicks:
             return dash.no_update
 
-        logger.info(f"Saving user settings: Goal={goal}, Risk={risk}, Tax={tax}")
+        logger.info(
+            f"Saving user settings: Goal={goal}, Risk={risk}, Tax={tax}, ChatModel={chat_model}, ReportModel={report_model}"
+        )
         save_setting("investment_goal", goal)
         save_setting("risk_tolerance", risk)
         save_setting("tax_bracket", tax)
+        save_setting("ai_chat_model", chat_model or "gemini-2.5-flash")
+        save_setting("ai_report_model", report_model or "gemini-3.1-flash-lite")
 
         time_str = datetime.now().strftime("%H:%M:%S")
         return f"✓ Profile settings saved successfully at {time_str}"

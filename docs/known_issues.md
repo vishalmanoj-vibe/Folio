@@ -277,3 +277,17 @@ fig.update_layout(uirevision=True)
 # ✅ FIXED — uirevision changes when active filters change, forcing axis re-scale
 fig.update_layout(uirevision=f"{selected}_{period}_{mode}")
 ```
+
+---
+
+## BUG-015 · Appending Memory Summaries Duplication
+
+**Status**: Fixed  
+**Files affected**: `services/research_memory.py`  
+**Symptom**: The Welcome message of the Assistant shows multiple stacked, duplicate "Here's a summary of the investment research conversations" sections that grow indefinitely over time.
+
+**Root Cause**:
+The startup maintenance process previously cleaned up expired conversation turns (older than 7 days) and generated a summary chunk for them. However, it simply appended this new block to the existing summary file using string concatenation (`combined = existing + "\n\n" + new_summary_chunk`), leading to a compounding list of duplicate headers and bullet points.
+
+**Fix**:
+Updated `summarise_old_turns` to accept the `existing_summary` as an optional parameter. When present, the prompt instructs the Gemini model to perform an intelligent merge, returning a single, unified, consolidated summary (3-5 bullet points) instead of appending. Added a self-healing check in `run_startup_maintenance` to automatically detect and consolidate any stacked legacy summaries upon application startup.

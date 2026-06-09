@@ -5,13 +5,28 @@ from ddgs import DDGS
 logger = logging.getLogger(__name__)
 
 
-def search_financial_news(query: str, max_results: int = 3) -> list[dict]:
+def search_financial_news(query: str, max_results: int = 3, timelimit: str = "w") -> list[dict]:
     """
     Search for recent financial news using DuckDuckGo.
+    Uses progressive timelimit fallbacks to ensure fresh results first, with guarantee of returning data.
     """
     try:
         with DDGS() as ddgs:
-            results = ddgs.text(query, region="au-en", timelimit="m", max_results=max_results)
+            # 1. Try with the requested timelimit (default 'w' / weekly)
+            results = list(
+                ddgs.text(query, region="au-en", timelimit=timelimit, max_results=max_results)
+            )
+
+            # 2. If no results, try fallback timelimit (weekly or monthly)
+            if not results and timelimit in ["d", "w"]:
+                next_limit = "w" if timelimit == "d" else "m"
+                results = list(
+                    ddgs.text(query, region="au-en", timelimit=next_limit, max_results=max_results)
+                )
+
+            # 3. Final absolute fallback without time restriction
+            if not results:
+                results = list(ddgs.text(query, region="au-en", max_results=max_results))
 
             # Ensure each dict has the required keys and return as a list
             search_data = []
@@ -49,16 +64,28 @@ def should_search_web(message: str) -> bool:
     Checks if the user message is asking about something that needs live web data.
     """
     keywords = [
+        # Live market events
         "news",
         "announcement",
         "announced",
         "today",
         "latest",
         "recent",
+        # ASX-specific
         "asx",
+        "asx 200",
+        # Corporate actions
         "dividend",
         "report",
         "results",
+        "earnings",
+        "guidance",
+        "merger",
+        "acquisition",
+        "merge",
+        "ipo",
+        "listing",
+        # Price & analyst
         "price",
         "forecast",
         "prediction",
@@ -68,8 +95,24 @@ def should_search_web(message: str) -> bool:
         "sell",
         "upgrade",
         "downgrade",
-        "merge",
-        "acquisition",
+        "target",
+        # Macro / policy
+        "rba",
+        "interest rate",
+        "rate cut",
+        "rate hike",
+        "cpi",
+        "inflation",
+        "gdp",
+        "unemployment",
+        "recession",
+        "macro",
+        "federal reserve",
+        "fed",
+        # Funds & sectors
+        "etf",
+        "sector",
+        "watchlist",
         "outlook",
     ]
     message_lower = message.lower()

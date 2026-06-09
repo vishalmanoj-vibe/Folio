@@ -160,6 +160,8 @@ Prevent "Duplicate ID" errors and callback collisions by maintaining a central m
 - `settings-investment-goal`: Dropdown selector for investment goal.
 - `settings-risk-tolerance`: Dropdown selector for risk tolerance.
 - `settings-tax-bracket`: Dropdown selector for tax bracket.
+- `settings-chat-model`: Dropdown selector for AI chat model (Standard/Enhanced).
+- `settings-report-model`: Dropdown selector for AI report model (Standard/Enhanced).
 - `settings-save-btn`: Save button for profile settings.
 - `settings-save-status`: Save confirmation feedback text.
 - `settings-weights-preview-container`: Strategy weights bar charts container.

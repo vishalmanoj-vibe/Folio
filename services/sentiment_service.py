@@ -14,6 +14,7 @@ from datetime import datetime, timedelta
 
 import google.genai as genai
 
+from config.settings import GEMINI_FLASH_MODEL
 from data.database import get_connection
 from services.web_search import search_financial_news
 
@@ -127,7 +128,7 @@ Return ONLY valid JSON in this exact structure:
     try:
         client = genai.Client(api_key=api_key)
         response = client.models.generate_content(
-            model="models/gemini-2.5-flash-lite",
+            model=GEMINI_FLASH_MODEL,
             contents=prompt,
             config=genai.types.GenerateContentConfig(
                 temperature=0.1,
