@@ -1,12 +1,12 @@
 # Callback Output Index — Auto-Generated
 
-> **Generated**: 2026-06-09 20:29  
+> **Generated**: 2026-06-09 22:47  
 > **Do not edit** — run `python .agents/generated/sync_docs.py` to refresh.
 > For ownership intent and architecture notes, see `docs/callback_ownership.md`.
 
 ---
 
-**Total outputs indexed**: 139 across 13 files
+**Total outputs indexed**: 141 across 13 files
 
 ## `app.py`
 
@@ -128,8 +128,10 @@
 | `settings-investment-goal` | `value` | 43 |  |  |
 | `settings-risk-tolerance` | `value` | 44 |  |  |
 | `settings-tax-bracket` | `value` | 45 |  |  |
-| `settings-weights-preview-container` | `children` | 63 |  |  |
-| `settings-save-status` | `children` | 89 |  |  |
+| `settings-chat-model` | `value` | 46 |  |  |
+| `settings-report-model` | `value` | 47 |  |  |
+| `settings-weights-preview-container` | `children` | 67 |  |  |
+| `settings-save-status` | `children` | 93 |  |  |
 
 ## `setup_callbacks.py`
 
