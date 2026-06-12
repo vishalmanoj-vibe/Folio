@@ -1,6 +1,6 @@
 # Callback Output Index — Auto-Generated
 
-> **Generated**: 2026-06-09 22:47  
+> **Generated**: 2026-06-12 13:59  
 > **Do not edit** — run `python .agents/generated/sync_docs.py` to refresh.
 > For ownership intent and architecture notes, see `docs/callback_ownership.md`.
 
@@ -13,19 +13,19 @@
 | Output ID | Property | Line | Duplicate? | Pattern? |
 |-----------|----------|------|-----------|---------|
 | `txn-store` | `data` | 257 | ✓ |  |
-| `portfolio-store` | `data` | 329 | ✓ |  |
-| `period-store` | `data` | 402 |  |  |
-| `pnl-mode-store` | `data` | 412 |  |  |
-| `ticker-store` | `data` | 422 |  |  |
-| `treemap-mode-store` | `data` | 432 |  |  |
-| `analytics-period-store` | `data` | 442 |  |  |
-| `intel-period-store` | `data` | 452 |  |  |
-| `intel-pred-store` | `data` | 481 |  |  |
-| `intel-forecast-label` | `children` | 482 |  |  |
-| `url` | `search` | 507 |  |  |
-| `pending-tasks-store` | `data` | 525 | ✓ |  |
-| `nav-link-store` | `data` | 559 | ✓ |  |
-| `task-poll-interval` | `disabled` | 609 |  |  |
+| `portfolio-store` | `data` | 332 | ✓ |  |
+| `period-store` | `data` | 405 |  |  |
+| `pnl-mode-store` | `data` | 415 |  |  |
+| `ticker-store` | `data` | 425 |  |  |
+| `treemap-mode-store` | `data` | 435 |  |  |
+| `analytics-period-store` | `data` | 445 |  |  |
+| `intel-period-store` | `data` | 455 |  |  |
+| `intel-pred-store` | `data` | 484 |  |  |
+| `intel-forecast-label` | `children` | 485 |  |  |
+| `url` | `search` | 510 |  |  |
+| `pending-tasks-store` | `data` | 528 | ✓ |  |
+| `nav-link-store` | `data` | 562 | ✓ |  |
+| `task-poll-interval` | `disabled` | 612 |  |  |
 
 ## `alert_callbacks.py`
 
@@ -47,13 +47,13 @@
 | `portfolio-treemap` | `figure` | 232 |  |  |
 | `holdings-freshness-note` | `children` | 233 |  |  |
 | `holdings-url-collapse` | `opened` | 234 | ✓ |  |
-| `analytics-vol-chart` | `children` | 318 |  |  |
-| `corr-chart` | `figure` | 388 |  |  |
-| `holdings-url-collapse` | `opened` | 415 | ✓ |  |
-| `holdings-url-table` | `children` | 425 |  |  |
-| `holdings-url-save-status` | `children` | 528 |  |  |
-| `holdings-url-ticker-input` | `value` | 529 |  |  |
-| `holdings-url-input` | `value` | 530 |  |  |
+| `analytics-vol-chart` | `children` | 329 |  |  |
+| `corr-chart` | `figure` | 398 |  |  |
+| `holdings-url-collapse` | `opened` | 424 | ✓ |  |
+| `holdings-url-table` | `children` | 434 |  |  |
+| `holdings-url-save-status` | `children` | 560 |  |  |
+| `holdings-url-ticker-input` | `value` | 561 |  |  |
+| `holdings-url-input` | `value` | 562 |  |  |
 
 ## `intelligence_callbacks.py`
 
@@ -171,11 +171,11 @@
 |-----------|----------|------|-----------|---------|
 | `txn-ticker-hint` | `children` | 30 |  |  |
 | `txn-price` | `value` | 31 |  |  |
-| `txn-msg` | `children` | 79 |  |  |
-| `txn-msg` | `style` | 80 |  |  |
-| `compact-mode-store` | `data` | 81 | ✓ |  |
-| `txn-log` | `children` | 125 |  |  |
-| `txn-msg` | `children` | 135 | ✓ |  |
+| `txn-msg` | `children` | 81 |  |  |
+| `txn-msg` | `style` | 82 |  |  |
+| `compact-mode-store` | `data` | 83 | ✓ |  |
+| `txn-log` | `children` | 130 |  |  |
+| `txn-msg` | `children` | 140 | ✓ |  |
 
 ## `ui_callbacks.py`
 

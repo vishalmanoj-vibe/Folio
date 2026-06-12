@@ -256,28 +256,40 @@ def test_build_intel_sector_chart(mock_theme_tokens: dict[str, Any]) -> None:
 def test_build_portfolio_treemap_holdings(
     mock_holdings: list[dict[str, Any]], mock_theme_tokens: dict[str, Any]
 ) -> None:
-    """Assert underlying holdings mode builds correct flat nodes and hover texts."""
-    blended: dict[str, dict[str, Any]] = {
-        "Apple Inc.": {"weight": 5.5, "sources": {"VAS.AX": 2.5, "VGS.AX": 3.0}},
-        "Microsoft Corp.": {"weight": 4.0},
+    """Assert underlying holdings mode builds correct hierarchical nodes and values."""
+    holdings_data = {
+        "VAS": {"Apple Inc.": 2.5, "Microsoft Corp.": 1.5, "Other": 96.0},
+        "VGS": {"Apple Inc.": 3.0, "Microsoft Corp.": 2.5, "Other": 94.5},
     }
     # Test valid holdings mode
     fig: go.Figure = build_portfolio_treemap(
         mock_holdings,
         theme_tokens=mock_theme_tokens,
         mode="holdings",
-        holdings_data=blended,
+        holdings_data=holdings_data,
     )
     assert isinstance(fig, go.Figure)
     data = fig.data[0]
-    assert len(data.ids) == 2
-    assert "Apple Inc." in data.ids
-    assert "Microsoft Corp." in data.ids
-    # Sizing by value: mock_holdings total_val = 3000.0 (1000.0 + 2000.0)
-    # Apple Inc. val = 3000 * 5.5 / 100 = 165.0
-    # Microsoft Corp. val = 3000 * 4.0 / 100 = 120.0
-    assert data.values[0] == 165.0
-    assert data.values[1] == 120.0
+
+    # Parents: "VAS" and "VGS" under root ""
+    # Children: "VAS_Apple Inc.", "VAS_Microsoft Corp.", "VGS_Apple Inc.", "VGS_Microsoft Corp."
+    assert "VAS" in data.ids
+    assert "VGS" in data.ids
+    assert "VAS_Apple Inc." in data.ids
+    assert "VGS_Microsoft Corp." in data.ids
+
+    # Sizing:
+    # VAS total value = 1000.0. Apple Inc. weight in VAS = 2.5% -> 25.0
+    # VGS total value = 2000.0. Microsoft Corp. weight in VGS = 2.5% -> 50.0
+    vas_idx = data.ids.index("VAS")
+    vgs_idx = data.ids.index("VGS")
+    vas_apple_idx = data.ids.index("VAS_Apple Inc.")
+    vgs_msft_idx = data.ids.index("VGS_Microsoft Corp.")
+
+    assert data.values[vas_idx] == 1000.0
+    assert data.values[vgs_idx] == 2000.0
+    assert data.values[vas_apple_idx] == 25.0
+    assert data.values[vgs_msft_idx] == 50.0
 
     # Test empty holdings data fallback
     fig_empty: go.Figure = build_portfolio_treemap(
@@ -345,3 +357,38 @@ def test_intel_helpers() -> None:
 
     assert get_bar_height(1) == 200  # Enforces lower bounds
     assert get_bar_height(10) == 10 * 36 + 60
+
+
+# ── Correlation Chart Tests ──────────────────────────────────────────────────
+
+
+def test_build_corr_figure(mock_theme_tokens: dict[str, Any]) -> None:
+    """Assert correlation heatmap figures build successfully under various inputs."""
+    from components.charts.correlation import build_corr_figure
+
+    # 1. Empty histories fallback
+    fig_empty = build_corr_figure({}, "1mo", mock_theme_tokens)
+    assert isinstance(fig_empty, go.Figure)
+    assert len(fig_empty.layout.annotations) == 1
+    assert "Need at least 2 holdings" in fig_empty.layout.annotations[0].text
+
+    # 2. Valid histories data
+    dates = pd.date_range(end="2026-06-12", periods=30, freq="D")
+    histories = {
+        "VAS": pd.DataFrame({"Close": [100.0 + i * 0.5 for i in range(30)], "Date": dates}),
+        "VGS": pd.DataFrame({"Close": [200.0 - i * 0.3 for i in range(30)], "Date": dates}),
+    }
+
+    fig = build_corr_figure(histories, "1mo", mock_theme_tokens)
+    assert isinstance(fig, go.Figure)
+    assert len(fig.data) == 1
+    scatter = fig.data[0]
+    assert isinstance(scatter, go.Scatter)
+
+    # Assert colorscale contains the new custom stops
+    colorscale = scatter.marker.colorscale
+    assert len(colorscale) == 4
+    assert colorscale[0][0] == 0.0
+    assert colorscale[1][0] == 0.6
+    assert colorscale[2][0] == 0.75
+    assert colorscale[3][0] == 1.0

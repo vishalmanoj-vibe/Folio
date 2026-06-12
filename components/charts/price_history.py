@@ -29,6 +29,7 @@ def build_price_chart_figure(
 
     # Custom tweaks for price chart
     fig.update_layout(
+        uirevision=f"price_chart_{period}",
         margin=dict(t=60, b=30, l=10, r=40),
         legend=dict(
             orientation="h",
@@ -39,7 +40,10 @@ def build_price_chart_figure(
             font=dict(size=10, color=theme_tokens["T_SEC"]),
         ),
     )
-    fig.update_xaxes(tickformat="%b %y", nticks=6)
+    if period in ["1mo", "3mo"]:
+        fig.update_xaxes(tickformat="%d %b", nticks=6)
+    else:
+        fig.update_xaxes(tickformat="%b %y", nticks=6)
     fig.update_yaxes(side="right", fixedrange=True)
 
     # Build a lookup of ticker → first_purchase date for "max" (since purchase) mode

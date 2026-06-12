@@ -130,47 +130,93 @@ def build_portfolio_treemap(
 
     elif mode == "holdings" and holdings_data:
         total_val = sum(h.get("mkt_value", 0) for h in holdings)
+        if total_val <= 0:
+            from components.charts.helpers import create_empty_fig
 
-        # Take top 50 items and group the rest
-        top_items = list(holdings_data.items())[:50]
-        sum_top_weights = sum(d["weight"] for name, d in top_items)
-        all_weights = sum(d["weight"] for name, d in holdings_data.items())
-        other_weight = all_weights - sum_top_weights
-
-        for comp_name, d in top_items:
-            weight = d["weight"]
-            val = round(total_val * (weight / 100.0), 2)
-            ids.append(comp_name)
-            labels.append(comp_name)
-            parents.append("")
-            values.append(val)
-            colors.append(weight)
-            custom_data_list.append(f"{weight:.2f}%")
-
-            sources = d.get("sources", {})
-            source_str = "<br>".join([f" • {k}: {v:.2f}%" for k, v in sources.items()])
-            hover_texts.append(
-                f"<b>{comp_name}</b><br>"
-                f"Market Value: ${val:,.2f}<br>"
-                f"Total Exposure: {weight:.2f}%<br>"
-                f"Sources:<br>{source_str}"
+            return create_empty_fig(
+                "Portfolio value is zero", height=600, theme_tokens=theme_tokens
             )
-            font_colors.append("white")
 
-        if other_weight > 0.01:
-            val = round(total_val * (other_weight / 100.0), 2)
-            ids.append("Other Underlying")
-            labels.append("Other Underlying")
+        for h in holdings:
+            ticker = h["ticker"]
+            etf_val = h.get("mkt_value", 0)
+            if etf_val < 0.01:
+                continue
+
+            etf_holdings = holdings_data.get(ticker)
+            if not etf_holdings:
+                # ETF without holdings details: render as a leaf node under root
+                ids.append(ticker)
+                labels.append(ticker)
+                parents.append("")
+                values.append(etf_val)
+                colors.append(-10.0)
+                custom_data_list.append("100.00%")
+                hover_texts.append(
+                    f"<b>{ticker} (No holdings details)</b><br>"
+                    f"Market Value: ${etf_val:,.2f}<br>"
+                    f"Portfolio Weight: {(etf_val / total_val * 100):.2f}%"
+                )
+                font_colors.append(theme_tokens["T_PRI"])
+                continue
+
+            # Add parent node for the ETF
+            ids.append(ticker)
+            labels.append(ticker)
             parents.append("")
-            values.append(val)
-            colors.append(other_weight)
-            custom_data_list.append(f"{other_weight:.2f}%")
+            values.append(etf_val)
+            colors.append(-10.0)
+            port_weight = etf_val / total_val * 100
+            custom_data_list.append(f"{port_weight:.2f}%")
             hover_texts.append(
-                f"<b>Other Underlying Holdings</b><br>"
-                f"Market Value: ${val:,.2f}<br>"
-                f"Total Exposure: {other_weight:.2f}%"
+                f"<b>ETF: {ticker}</b><br>"
+                f"Market Value: ${etf_val:,.2f}<br>"
+                f"Portfolio Weight: {port_weight:.2f}%"
             )
-            font_colors.append("white")
+            font_colors.append(theme_tokens["T_PRI"])
+
+            # Sort holdings of this ETF descending
+            sorted_holdings = sorted(etf_holdings.items(), key=lambda x: x[1], reverse=True)
+            top_n = 20
+            top_holdings = sorted_holdings[:top_n]
+            other_holdings = sorted_holdings[top_n:]
+            other_weight = sum(w for _, w in other_holdings)
+
+            # Generate child nodes, ensuring exact mathematical sum matches etf_val
+            children_specs = [(comp, w) for comp, w in top_holdings]
+            if other_weight > 0.01:
+                children_specs.append(("Other", other_weight))
+
+            remaining_val = etf_val
+            for idx, (label, weight) in enumerate(children_specs):
+                if idx == len(children_specs) - 1:
+                    val = max(0.0, round(remaining_val, 2))
+                else:
+                    val = round(etf_val * (weight / 100.0), 2)
+                    remaining_val -= val
+
+                node_id = f"{ticker}_{label}"
+                ids.append(node_id)
+                labels.append(label)
+                parents.append(ticker)
+                values.append(val)
+                colors.append(weight)
+                custom_data_list.append(f"{weight:.2f}%")
+
+                if label == "Other":
+                    hover_texts.append(
+                        f"<b>Other Holdings ({ticker})</b><br>"
+                        f"Exposure in {ticker}: {weight:.2f}%<br>"
+                        f"Value in {ticker}: ${val:,.2f}"
+                    )
+                else:
+                    hover_texts.append(
+                        f"<b>{label} ({ticker})</b><br>"
+                        f"Exposure in {ticker}: {weight:.2f}%<br>"
+                        f"Value in {ticker}: ${val:,.2f}<br>"
+                        f"Total ETF Value: ${etf_val:,.2f}"
+                    )
+                font_colors.append("white")
 
     elif mode == "heatmap":
         # Day-change heatmap: diverging red/green color scale

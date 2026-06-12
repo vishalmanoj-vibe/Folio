@@ -71,6 +71,8 @@ def get_etf_name(ticker: str) -> str:
     from config.constants import NAMES
 
     ticker_upper = ticker.strip().upper()
+    if ticker_upper.endswith(".AX"):
+        ticker_upper = ticker_upper[:-3]
     cache_key = f"name_{ticker_upper}"
 
     # 1. Check local memory cache (Hot)
@@ -159,6 +161,7 @@ def load_portfolio_snapshot(initial_holdings: list[dict]) -> dict:
         # We ensure last_price and prev_close are NEVER None by falling back to avg_cost or 0
         merged = {
             **h,
+            "name": p.get("name") or h.get("name"),
             "last_price": p.get("last_price") or h.get("avg_cost") or 0.0,
             "prev_close": p.get("prev_close") or h.get("avg_cost") or 0.0,
             "day_high": p.get("day_high") or h.get("avg_cost") or 0.0,

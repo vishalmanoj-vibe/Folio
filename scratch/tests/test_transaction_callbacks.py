@@ -162,3 +162,19 @@ def test_clear_message(mock_app: MockDashApp) -> None:
     # Should not clear or update if not matching pattern
     assert clear_func(1, "Processing...") == dash.no_update
     assert clear_func(1, None) == dash.no_update
+
+
+@patch("callbacks.transaction_callbacks.validate_transaction", return_value=(True, ""))
+def test_add_transaction_normalization(mock_val: MagicMock, mock_app: MockDashApp) -> None:
+    add_func = mock_app.callbacks.get("add_transaction")
+    assert add_func is not None
+
+    # Ticker with .ax or .AX should be normalized to VAS
+    res_msg, res_style, res_store = add_func(1, "buy", "VAS.ax", 10, 95.0, "2026-01-01")
+    assert "Added BUY 10.00 VAS" in res_msg
+    assert res_store is True
+
+    # Validate that validate_transaction was called with the normalized ticker
+    mock_val.assert_called_with(
+        {"type": "buy", "ticker": "VAS", "shares": 10.0, "price": 95.0, "date": "2026-01-01"}
+    )

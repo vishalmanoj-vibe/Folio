@@ -34,6 +34,7 @@ logger = logging.getLogger(__name__)
 # Unknown tickers fall through to DDGS + Playwright automatically.
 PROVIDER_SEED_URLS: dict[str, str] = {
     # BetaShares
+    "URNM": "https://www.betashares.com.au/fund/global-uranium-etf/",
     "XMET": "https://www.betashares.com.au/fund/energy-transition-metals-etf/",
     "ASIA": "https://www.betashares.com.au/fund/asia-technology-tigers-etf/",
     # Global X
@@ -858,6 +859,7 @@ def fetch_holdings(ticker: str, allow_scrape: bool = False) -> dict:
         holdings, sector_map, geo_map = _fetch_vanguard_playwright(ticker_short, url)
 
     # 6. Tier 1.5 + Tier 2 — Unknown provider or Tier 1 failed
+    discovered_url = ""
     if not holdings and provider == "unknown":
         discovered_url = _discover_url_ddgs(ticker_short)
         target_url = discovered_url or url
@@ -876,6 +878,25 @@ def fetch_holdings(ticker: str, allow_scrape: bool = False) -> dict:
             f"[{ticker}] Fetched {len(holdings)} holdings via '{provider}'. "
             f"Sector: {len(sector_map)} cats, Geo: {len(geo_map)} regions."
         )
+        # Auto-persist discovered URL to etf_holdings_urls table
+        if discovered_url:
+            try:
+                conn = get_connection()
+                try:
+                    conn.execute(
+                        """
+                        INSERT INTO etf_holdings_urls (ticker, url, updated_at)
+                        VALUES (?, ?, CURRENT_TIMESTAMP)
+                        ON CONFLICT(ticker) DO UPDATE SET url = excluded.url, updated_at = CURRENT_TIMESTAMP
+                        """,
+                        (ticker_short, discovered_url),
+                    )
+                    conn.commit()
+                    logger.info(f"[{ticker_short}] Discovered URL saved to DB: {discovered_url}")
+                finally:
+                    conn.close()
+            except Exception as ex:
+                logger.error(f"[{ticker_short}] Failed to save discovered URL: {ex}")
     else:
         _record_attempt(ticker, f"Failed all tiers (provider={provider})")
         logger.warning(f"[{ticker}] All fetch strategies failed.")

@@ -96,8 +96,9 @@ def build_corr_figure(histories: dict, period: str, theme_tokens: dict) -> go.Fi
                 color=color_data,
                 colorscale=[
                     [0.0, theme_tokens["GREEN"]],
-                    [0.5, theme_tokens["WARNING"]],
-                    [1.0, theme_tokens["RED"]],
+                    [0.6, theme_tokens["GREEN"]],  # Correlation <= 0.2 is green
+                    [0.75, theme_tokens["WARNING"]],  # Correlation = 0.5 is yellow/orange
+                    [1.0, theme_tokens["RED"]],  # Correlation = 1.0 is red
                 ],
                 cmin=-1,
                 cmax=1,

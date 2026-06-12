@@ -37,6 +37,8 @@ def register_callbacks(app):
             return "", dash.no_update
 
         ticker = ticker.strip().upper()
+        if ticker.endswith(".AX"):
+            ticker = ticker[:-3]
         if len(ticker) < 2:
             return "", dash.no_update
 
@@ -101,9 +103,12 @@ def register_callbacks(app):
         else:
             formatted_date = str(date_str).strip()
 
+        ticker_clean = str(ticker).strip().upper()
+        if ticker_clean.endswith(".AX"):
+            ticker_clean = ticker_clean[:-3]
         new_txn = {
             "type": str(txn_type).strip().lower(),
-            "ticker": str(ticker).strip().upper(),
+            "ticker": ticker_clean,
             "shares": float(shares),
             "price": float(price),
             "date": formatted_date,

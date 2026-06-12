@@ -115,7 +115,7 @@ def layout():
                                         "⚙", style={"marginRight": "6px", "fontSize": "13px"}
                                     ),
                                     html.Span(
-                                        "Configure Sources",
+                                        "Sources",
                                         style={"fontSize": "12px", "fontWeight": "600"},
                                     ),
                                 ],

@@ -269,15 +269,22 @@ def register_callbacks(app) -> None:
                 ticker_yf = h.get("ticker_yf", h["ticker"] + ".AX")
                 geo_map[h["ticker"]] = fetch_etf_geo_weights(ticker_yf)
         elif mode == "holdings":
-            holdings_map = holdings_blended_data(data)
-            if not holdings_map:
-                # Determine which tickers still have no holdings data
-                from services.intelligence_service import _get_cached_metadata
-                from services.market.holdings_fetcher import PROVIDER_SEED_URLS, get_user_url
+            from services.intelligence_service import _get_cached_metadata
+            from services.market.holdings_fetcher import (
+                PROVIDER_SEED_URLS,
+                fetch_holdings,
+                get_user_url,
+            )
 
-                missing = []
-                for h in data["holdings"]:
-                    ticker = h["ticker"]
+            holdings_map = {}
+            missing = []
+            for h in data["holdings"]:
+                ticker = h["ticker"]
+                etf_holdings = fetch_holdings(ticker)
+                if etf_holdings:
+                    holdings_map[ticker] = etf_holdings
+                else:
+                    # ETF has no holdings in cache/fetched yet
                     cached = _get_cached_metadata(ticker + ".AX", "holdings", ttl_days=30)
                     if not cached:
                         has_seed = ticker in PROVIDER_SEED_URLS
@@ -285,6 +292,7 @@ def register_callbacks(app) -> None:
                         if not has_seed and not has_user:
                             missing.append(ticker)
 
+            if not holdings_map:
                 if missing:
                     freshness_note = (
                         f"⚠ No holdings data for: {', '.join(missing)}. "
@@ -301,7 +309,10 @@ def register_callbacks(app) -> None:
                 should_open_collapse = bool(missing) or collapse_open
                 return empty_fig, freshness_note, should_open_collapse
             else:
-                freshness_note = "Holdings data loaded successfully."
+                if missing:
+                    freshness_note = f"⚠ Missing holdings data for: {', '.join(missing)}. Set URLs in ⚙ Configure Sources."
+                else:
+                    freshness_note = "Holdings data loaded successfully."
 
         fig = build_portfolio_treemap(
             data["holdings"],
@@ -318,8 +329,7 @@ def register_callbacks(app) -> None:
         Output("analytics-vol-chart", "children"),
         Input("portfolio-store", "data"),
         Input("theme-store", "data"),
-        # FIX: change to State to prevent double-rendering
-        State("analytics-period-store", "data"),
+        Input("analytics-period-store", "data"),
         Input("url", "pathname"),
     )
     def update_analytics_volatility(data, theme, period, pathname):
@@ -388,8 +398,7 @@ def register_callbacks(app) -> None:
         Output("corr-chart", "figure"),
         Input("portfolio-store", "data"),
         Input("theme-store", "data"),
-        # FIX: change to State to prevent double-rendering
-        State("analytics-period-store", "data"),
+        Input("analytics-period-store", "data"),
         Input("url", "pathname"),
     )
     def update_corr_chart(data, theme, period, pathname):
@@ -426,9 +435,10 @@ def register_callbacks(app) -> None:
         Input("holdings-url-collapse", "opened"),
         Input("holdings-url-save-btn", "n_clicks"),
         Input("url", "pathname"),
+        State("portfolio-store", "data"),
         prevent_initial_call=True,
     )
-    def load_url_table(is_open, _save, pathname):
+    def load_url_table(is_open, _save, pathname, portfolio_data):
         import dash
 
         if pathname.rstrip("/") != "/analytics":
@@ -439,8 +449,16 @@ def register_callbacks(app) -> None:
         from services.market.holdings_fetcher import PROVIDER_SEED_URLS, get_all_user_urls
 
         user_urls = get_all_user_urls()
-        # Merge with defaults, user URLs override
-        all_tickers = sorted(set(list(PROVIDER_SEED_URLS.keys()) + list(user_urls.keys())))
+
+        # Extract tickers from portfolio data
+        portfolio_tickers = []
+        if portfolio_data and "holdings" in portfolio_data:
+            portfolio_tickers = [h["ticker"] for h in portfolio_data["holdings"]]
+
+        # Merge with defaults and portfolio, user URLs override
+        all_tickers = sorted(
+            set(list(PROVIDER_SEED_URLS.keys()) + list(user_urls.keys()) + portfolio_tickers)
+        )
 
         if not all_tickers:
             return html.P(
@@ -480,6 +498,14 @@ def register_callbacks(app) -> None:
         for t in all_tickers:
             is_user = t in user_urls
             display_url = user_urls.get(t) or PROVIDER_SEED_URLS.get(t, "—")
+
+            if is_user:
+                badge_text = "Custom"
+            elif t in PROVIDER_SEED_URLS:
+                badge_text = "Default"
+            else:
+                badge_text = "None"
+
             badge_style = {
                 "fontSize": "10px",
                 "padding": "2px 8px",
@@ -488,6 +514,21 @@ def register_callbacks(app) -> None:
                 "color": "var(--bg)" if is_user else "var(--t-muted)",
                 "fontWeight": "600",
             }
+
+            if display_url == "—":
+                url_cell = html.Span("—", style={"fontSize": "12px", "color": "var(--t-muted)"})
+            else:
+                url_cell = html.A(
+                    display_url[:60] + ("…" if len(display_url) > 60 else ""),
+                    href=display_url,
+                    target="_blank",
+                    style={
+                        "fontSize": "12px",
+                        "color": "var(--cyan)",
+                        "textDecoration": "none",
+                    },
+                )
+
             rows.append(
                 html.Tr(
                     [
@@ -501,20 +542,11 @@ def register_callbacks(app) -> None:
                             },
                         ),
                         html.Td(
-                            html.A(
-                                display_url[:60] + ("…" if len(display_url) > 60 else ""),
-                                href=display_url,
-                                target="_blank",
-                                style={
-                                    "fontSize": "12px",
-                                    "color": "var(--cyan)",
-                                    "textDecoration": "none",
-                                },
-                            ),
+                            url_cell,
                             style={"paddingBottom": "8px"},
                         ),
                         html.Td(
-                            html.Span("Custom" if is_user else "Default", style=badge_style),
+                            html.Span(badge_text, style=badge_style),
                             style={"textAlign": "center", "paddingBottom": "8px"},
                         ),
                     ]

@@ -258,10 +258,10 @@ chart_start = get_previous_trading_session_start(relative_to=effective_start)
 
 ---
 
-## BUG-014 · P&L Chart Axis Auto-scaling Blocked by uirevision
+## BUG-014 · P&L and Normalized Price Chart Axis Auto-scaling Blocked by uirevision
 
 **Status**: Fixed  
-**Files affected**: `components/charts/pnl_history.py`  
+**Files affected**: `components/charts/pnl_history.py`, `components/charts/price_history.py`  
 **Symptom**: Changing the chart period filters (e.g. from "max" to "1y") updates the data correctly but doesn't adjust the x-axis and y-axis scale. The chart only resets and scales properly when the browser page is hard refreshed.
 
 **Root Cause**:
@@ -291,3 +291,38 @@ The startup maintenance process previously cleaned up expired conversation turns
 
 **Fix**:
 Updated `summarise_old_turns` to accept the `existing_summary` as an optional parameter. When present, the prompt instructs the Gemini model to perform an intelligent merge, returning a single, unified, consolidated summary (3-5 bullet points) instead of appending. Added a self-healing check in `run_startup_maintenance` to automatically detect and consolidate any stacked legacy summaries upon application startup.
+
+---
+
+## BUG-016 · Ticker Suffix Corruption & Missing Display Name Merge
+
+**Status**: Fixed  
+**Files affected**: `app.py`, `callbacks/transaction_callbacks.py`, `data/cache_manager.py`, `services/market/data_fetcher.py`, `data/database.py`  
+**Symptom**: Adding a new ticker with `.ax` or `.AX` suffix (e.g. `URNM.ax`) does not update its long name in the main holdings table, and fails to populate the Positions detail panel and Analytics price charts.
+
+**Root Cause**:
+1. **Suffix Corruption**: Transaction submission callbacks in `app.py` and `transaction_callbacks.py` did not normalize user input tickers, saving them as `URNM.AX`. The holdings aggregation engine `build_holdings` appended `.AX` unconditionally, producing `URNM.AX.AX` which broke all yfinance downloads.
+2. **Missing Name Merging**: The central `get_live_prices` query selected strictly from the `market_prices` table (which does not store names) and omitted a join with the `assets` metadata table. Thus, the name field fell back to a hardcoded constants list.
+3. **Blanked OHLC Fields**: `save_live_prices` omitted `prev_close`, `day_high`, and `day_low` columns during `INSERT OR REPLACE` operations, causing these columns to be reset to `NULL` upon every refresh.
+
+**Fix**:
+1. Normalize user inputs by stripping trailing `.AX` / `.ax` (case-insensitive) in all transaction submission and ticker discovery callbacks.
+2. Formally declare `prev_close`, `day_high`, and `day_low` in `market_prices` schema/migrations, and write them in `save_live_prices`.
+3. Add a `LEFT JOIN assets a ON mp.ticker = a.ticker` to `get_live_prices` queries to fetch long names, and merge them in `load_portfolio_snapshot` for the holdings table.
+
+---
+
+## BUG-017 · Plotly `branchvalues="total"` Validation Failure (Blank Treemap)
+
+**Status**: Fixed  
+**Files affected**: `components/charts/treemap.py`  
+**Symptom**: The treemap visual does not render (displays a blank screen or console errors) when trying to view hierarchical layouts like Underlying Holdings.
+
+**Root Cause**:
+When using `branchvalues="total"`, Plotly strictly validates that the value of each parent node matches exactly the sum of its children nodes. Minor floating-point rounding discrepancies or incomplete mocked data weights in unit tests (where weights sum to less than 100%) violate this validation rule, causing Plotly to fail rendering the entire figure.
+
+**Fix**:
+1. Ensure the mock weights in unit tests always sum to exactly 100%.
+2. In the chart builder code, calculate the value of the last child node dynamically as the residual of the parent's value minus the sum of the previous children's values (`val = parent_val - sum(previous_child_vals)`). This guarantees that the sum matches the parent's value exactly, even in the presence of floating-point inaccuracies.
+
+

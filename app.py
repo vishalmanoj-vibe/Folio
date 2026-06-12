@@ -276,9 +276,12 @@ def update_txn_store(n_startup, n_submit, t_type, ticker, shares, price, date_st
             if hasattr(date_str, "strftime")
             else str(date_str).strip()
         )
+        ticker_clean = str(ticker).strip().upper()
+        if ticker_clean.endswith(".AX"):
+            ticker_clean = ticker_clean[:-3]
         new_txn = {
             "type": str(t_type).lower(),
-            "ticker": str(ticker).upper(),
+            "ticker": ticker_clean,
             "shares": float(shares),
             "price": float(price),
             "date": d_val,

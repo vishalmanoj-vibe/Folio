@@ -134,6 +134,9 @@ def init_db():
             CREATE TABLE IF NOT EXISTS market_prices (
                 ticker           TEXT PRIMARY KEY,
                 last_price       REAL,
+                prev_close       REAL,
+                day_high         REAL,
+                day_low          REAL,
                 day_chg          REAL,
                 day_chg_pct      REAL,
                 day_pnl          REAL,
@@ -281,6 +284,15 @@ def init_db():
             if "last_price" not in columns:
                 logger.info("Migrating market_prices: Adding last_price column")
                 conn.execute("ALTER TABLE market_prices ADD COLUMN last_price REAL")
+            if "prev_close" not in columns:
+                logger.info("Migrating market_prices: Adding prev_close column")
+                conn.execute("ALTER TABLE market_prices ADD COLUMN prev_close REAL")
+            if "day_high" not in columns:
+                logger.info("Migrating market_prices: Adding day_high column")
+                conn.execute("ALTER TABLE market_prices ADD COLUMN day_high REAL")
+            if "day_low" not in columns:
+                logger.info("Migrating market_prices: Adding day_low column")
+                conn.execute("ALTER TABLE market_prices ADD COLUMN day_low REAL")
             conn.commit()
         except Exception as e:
             logger.warning(f"Migration for market_prices failed: {e}")

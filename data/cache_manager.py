@@ -28,7 +28,12 @@ def get_live_prices(tickers: list[str]) -> dict:
     try:
         placeholders = ",".join(["?"] * len(tickers))
         cursor = conn.execute(
-            f"SELECT * FROM market_prices WHERE ticker IN ({placeholders})",
+            f"""
+            SELECT mp.*, a.name
+            FROM market_prices mp
+            LEFT JOIN assets a ON mp.ticker = a.ticker
+            WHERE mp.ticker IN ({placeholders})
+            """,
             [t.upper() for t in tickers],
         )
         rows = cursor.fetchall()
@@ -85,7 +90,12 @@ def get_live_prices(tickers: list[str]) -> dict:
                         conn.close()
                         conn = get_connection()
                         cursor = conn.execute(
-                            f"SELECT * FROM market_prices WHERE ticker IN ({placeholders})",
+                            f"""
+                            SELECT mp.*, a.name
+                            FROM market_prices mp
+                            LEFT JOIN assets a ON mp.ticker = a.ticker
+                            WHERE mp.ticker IN ({placeholders})
+                            """,
                             [t.upper() for t in tickers],
                         )
                         rows = cursor.fetchall()
@@ -123,14 +133,18 @@ def save_live_prices(holdings: list[dict]):
             conn.execute(
                 """\
                 INSERT OR REPLACE INTO market_prices (
-                    ticker, last_price, day_chg, day_chg_pct, day_pnl, mkt_value, pnl, pnl_pct,
+                    ticker, last_price, prev_close, day_high, day_low,
+                    day_chg, day_chg_pct, day_pnl, mkt_value, pnl, pnl_pct,
                     annual_div, realized_div, div_yield, div_frequency,
                     last_div_amount, last_div_date, next_div_date, payout_date, fetched_at
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
                 (
                     h["ticker"].upper(),
                     h.get("last_price"),
+                    h.get("prev_close"),
+                    h.get("day_high"),
+                    h.get("day_low"),
                     h.get("day_chg"),
                     h.get("day_chg_pct"),
                     h.get("day_pnl"),
