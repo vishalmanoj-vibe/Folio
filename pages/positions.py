@@ -23,7 +23,7 @@ from components.ui_helpers import (
 dash.register_page(__name__, path="/positions", title="Positions")
 
 
-def layout() -> html.Div:
+def layout(**kwargs) -> html.Div:
     return html.Div(
         [
             # ── Page Header ──────────────────────────────────────────────────

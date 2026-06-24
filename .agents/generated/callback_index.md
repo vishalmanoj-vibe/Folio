@@ -1,6 +1,6 @@
 # Callback Output Index — Auto-Generated
 
-> **Generated**: 2026-06-24 18:48  
+> **Generated**: 2026-06-24 19:03  
 > **Do not edit** — run `python .agents/generated/sync_docs.py` to refresh.
 > For ownership intent and architecture notes, see `docs/callback_ownership.md`.
 
@@ -82,20 +82,20 @@
 |-----------|----------|------|-----------|---------|
 | `positions-card-grid` | `children` | 55 |  |  |
 | `positions-selected-ticker` | `data` | 182 |  |  |
-| `etf-detail-cards` | `children` | 213 |  |  |
-| `positions-tech-signals-container` | `children` | 214 |  |  |
-| `ai-insight-container` | `children` | 329 |  |  |
-| `positions-price-chart` | `figure` | 419 |  |  |
-| `positions-price-chart-header` | `style` | 420 |  |  |
-| `positions-txn-table-container` | `children` | 535 |  |  |
-| `positions-period-store` | `data` | 600 |  |  |
-| `positions-period-btns` | `children` | 620 |  |  |
-| `positions-detail-title` | `children` | 652 |  |  |
-| `positions-ticker-dividend-container` | `children` | 668 |  |  |
-| `positions-portfolio-dividend-chart-container` | `children` | 810 |  |  |
-| `positions-dividend-income-chart` | `children` | 811 |  |  |
-| `positions-dividend-yield-chart` | `children` | 812 |  |  |
-| `positions-dividend-table` | `children` | 813 |  |  |
+| `etf-detail-cards` | `children` | 233 |  |  |
+| `positions-tech-signals-container` | `children` | 234 |  |  |
+| `ai-insight-container` | `children` | 349 |  |  |
+| `positions-price-chart` | `figure` | 439 |  |  |
+| `positions-price-chart-header` | `style` | 440 |  |  |
+| `positions-txn-table-container` | `children` | 555 |  |  |
+| `positions-period-store` | `data` | 620 |  |  |
+| `positions-period-btns` | `children` | 640 |  |  |
+| `positions-detail-title` | `children` | 672 |  |  |
+| `positions-ticker-dividend-container` | `children` | 688 |  |  |
+| `positions-portfolio-dividend-chart-container` | `children` | 830 |  |  |
+| `positions-dividend-income-chart` | `children` | 831 |  |  |
+| `positions-dividend-yield-chart` | `children` | 832 |  |  |
+| `positions-dividend-table` | `children` | 833 |  |  |
 
 ## `research_callbacks.py`
 
