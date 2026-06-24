@@ -115,24 +115,42 @@ def test_portfolio_repository_transactions() -> None:
 
     repo = PortfolioRepository()
 
-    # Save transactions
+    # Save transactions with explicit IDs
     txns = [
-        {"type": "buy", "ticker": "VAS", "shares": 10.0, "price": 90.0, "date": "2026-01-01"},
-        {"type": "sell", "ticker": "VAS", "shares": 5.0, "price": 95.0, "date": "2026-01-02"},
+        {
+            "id": 42,
+            "type": "buy",
+            "ticker": "VAS",
+            "shares": 10.0,
+            "price": 90.0,
+            "date": "2026-01-01",
+        },
+        {
+            "id": 100,
+            "type": "sell",
+            "ticker": "VAS",
+            "shares": 5.0,
+            "price": 95.0,
+            "date": "2026-01-02",
+        },
     ]
     repo.save_transactions(txns)
 
     loaded = repo.load_transactions()
     assert len(loaded) == 2
+    assert loaded[0]["id"] == 42
     assert loaded[0]["ticker"] == "VAS"
     assert loaded[0]["type"] == "buy"
     assert loaded[0]["shares"] == 10.0
+    assert loaded[1]["id"] == 100
 
-    # Append transaction
+    # Append transaction (should auto-increment ID to 101 or higher)
     new_txn = {"type": "buy", "ticker": "VGS", "shares": 20.0, "price": 100.0, "date": "2026-01-03"}
     loaded_after = repo.append_transaction(new_txn)
     assert len(loaded_after) == 3
     assert loaded_after[2]["ticker"] == "VGS"
+    assert loaded_after[2]["id"] is not None
+    assert loaded_after[2]["id"] > 100
 
 
 def test_portfolio_repository_metadata() -> None:

@@ -342,6 +342,40 @@ def init_db():
         except Exception as e:
             logger.warning(f"Migration for watchlist order_index failed: {e}")
 
+        # 17. Migration — Ensure transactions table has id as PRIMARY KEY AUTOINCREMENT
+        try:
+            cursor = conn.execute("PRAGMA table_info(transactions)")
+            rows = cursor.fetchall()
+            id_col = next((r for r in rows if r["name"] == "id"), None)
+            if not id_col or id_col["pk"] != 1:
+                logger.info("Migrating transactions table: making 'id' primary key autoincrement")
+
+                # Rename and recreate
+                conn.execute("ALTER TABLE transactions RENAME TO transactions_old")
+                conn.execute("""
+                    CREATE TABLE transactions (
+                        id         INTEGER PRIMARY KEY AUTOINCREMENT,
+                        type       TEXT    NOT NULL,
+                        ticker     TEXT    NOT NULL,
+                        shares     REAL    NOT NULL,
+                        price      REAL    NOT NULL,
+                        date       TEXT    NOT NULL,
+                        created_at TEXT    DEFAULT CURRENT_TIMESTAMP
+                    )
+                """)
+                conn.execute("""
+                    INSERT INTO transactions (id, type, ticker, shares, price, date, created_at)
+                    SELECT id, type, ticker, shares, price, date, COALESCE(created_at, CURRENT_TIMESTAMP)
+                    FROM transactions_old
+                """)
+                conn.execute("DROP TABLE transactions_old")
+                conn.commit()
+                logger.info(
+                    "Successfully migrated transactions table to use PRIMARY KEY AUTOINCREMENT"
+                )
+        except Exception as e:
+            logger.warning(f"Migration for transactions primary key failed: {e}")
+
         # 13. Legacy JSON Migration
         migrate_json_to_sqlite()
 

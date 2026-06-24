@@ -334,7 +334,11 @@ def register_callbacks(app) -> None:
                 html.Tr(
                     [
                         html.Td(
-                            html.A(x["ticker"], href="/positions", className="ticker-link"),
+                            html.A(
+                                x["ticker"],
+                                href=f"/positions?ticker={x['ticker']}",
+                                className="ticker-link",
+                            ),
                             style=td_style,
                         ),
                         html.Td(

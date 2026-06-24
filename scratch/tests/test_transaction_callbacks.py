@@ -178,3 +178,75 @@ def test_add_transaction_normalization(mock_val: MagicMock, mock_app: MockDashAp
     mock_val.assert_called_with(
         {"type": "buy", "ticker": "VAS", "shares": 10.0, "price": 95.0, "date": "2026-01-01"}
     )
+
+
+def test_edit_transaction_trigger(mock_app: MockDashApp) -> None:
+    edit_func = mock_app.callbacks.get("edit_transaction_trigger")
+    assert edit_func is not None
+
+    # Test case 1: No trigger
+    with patch("callbacks.transaction_callbacks.ctx") as mock_ctx:
+        mock_ctx.triggered = []
+        assert edit_func([0], []) == dash.no_update
+
+    # Test case 2: Valid trigger but transaction not found
+    with patch("callbacks.transaction_callbacks.ctx") as mock_ctx:
+        mock_ctx.triggered = [{"value": 1}]
+        mock_ctx.triggered_id = {"type": "txn-edit-btn", "index": 42}
+        assert edit_func([1], [{"id": 1, "ticker": "VAS"}]) == dash.no_update
+
+    # Test case 3: Valid trigger and transaction found
+    with patch("callbacks.transaction_callbacks.ctx") as mock_ctx:
+        mock_ctx.triggered = [{"value": 1}]
+        mock_ctx.triggered_id = {"type": "txn-edit-btn", "index": 42}
+        history = [
+            {
+                "id": 42,
+                "type": "sell",
+                "ticker": "VAS",
+                "shares": 15.0,
+                "price": 98.50,
+                "date": "2026-05-20",
+            }
+        ]
+        res = edit_func([1], history)
+        assert res[0] == "sell"
+        assert res[1] == "VAS"
+        assert res[2] == 15.0
+        assert res[3] == 98.50
+        assert res[4] == "2026-05-20"
+        assert res[5] == 42
+        assert res[6] == "Update"
+        assert res[7]["display"] == "inline-block"
+        assert res[8] is True
+
+
+def test_reset_transaction_form(mock_app: MockDashApp) -> None:
+    reset_func = mock_app.callbacks.get("reset_transaction_form")
+    assert reset_func is not None
+
+    # Test case 1: No trigger / no-op
+    with patch("callbacks.transaction_callbacks.ctx") as mock_ctx:
+        mock_ctx.triggered_id = None
+        assert reset_func(0, [], None) == dash.no_update
+
+    # Test case 2: Cancel clicked
+    with patch("callbacks.transaction_callbacks.ctx") as mock_ctx:
+        mock_ctx.triggered_id = "txn-cancel"
+        res = reset_func(1, [], 42)
+        assert res[0] == "buy"
+        assert res[1] == ""
+        assert res[2] is None
+        assert res[3] is None
+        assert res[5] is None
+        assert res[6] == "Add"
+        assert res[7]["display"] == "none"
+
+    # Test case 3: Txn-store change while editing
+    with patch("callbacks.transaction_callbacks.ctx") as mock_ctx:
+        mock_ctx.triggered_id = "txn-store"
+        res = reset_func(0, [], 42)
+        assert res[0] == "buy"
+        assert res[5] is None
+        assert res[6] == "Add"
+        assert res[7]["display"] == "none"

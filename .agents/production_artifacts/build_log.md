@@ -1,13 +1,12 @@
-# Build Log: Correlation Matrix Reactivity & Color Scale Fix
+# Build Log: Holdings and Transaction Table Deep-linking to Positions
 
-This build fixes the period-picker reactivity bug for the Correlation Matrix and Volatility list on the Deep Dive page, and improves the heatmap colorscale to be more financially intuitive.
+This build implements Option A: query parameter-based deep-linking (`/positions?ticker=XYZ`) to navigate from the holdings table (Overview page) and the transaction history table directly to the Positions page with the corresponding ticker card selected.
 
 ## Changed Files
-- **[callbacks/chart_callbacks.py](file:///Users/vishal/Library/CloudStorage/OneDrive-Personal/Projects/portfolio_dashboard/callbacks/chart_callbacks.py)**: Changed `analytics-period-store` dependency from `State` to `Input` in both `update_corr_chart` and `update_analytics_volatility` callbacks to enable reactivity on period filter selection.
-- **[components/charts/correlation.py](file:///Users/vishal/Library/CloudStorage/OneDrive-Personal/Projects/portfolio_dashboard/components/charts/correlation.py)**: Updated the Plotly marker `colorscale` to color low-correlation pairs (`≤ 0.2`) green/teal for clear diversification visibility.
-- **[data/cache_manager.py](file:///Users/vishal/Library/CloudStorage/OneDrive-Personal/Projects/portfolio_dashboard/data/cache_manager.py)**: Fixed minor SQL syntax trailing whitespaces.
-- **[scratch/tests/test_chart_components.py](file:///Users/vishal/Library/CloudStorage/OneDrive-Personal/Projects/portfolio_dashboard/scratch/tests/test_chart_components.py)**: Appended `test_build_corr_figure` unit test to cover normal rendering, empty fallback states, and the custom colorscale.
+- **[callbacks/portfolio_callbacks.py](file:///Users/vishal/Library/CloudStorage/OneDrive-Personal/Projects/portfolio_dashboard/callbacks/portfolio_callbacks.py)** [MODIFY]: Updated the holdings table ticker link to point to `/positions?ticker={ticker}`.
+- **[components/ui_helpers.py](file:///Users/vishal/Library/CloudStorage/OneDrive-Personal/Projects/portfolio_dashboard/components/ui_helpers.py)** [MODIFY]: Updated the transaction history table ticker link to point to `/positions?ticker={ticker}`.
+- **[callbacks/positions_callbacks.py](file:///Users/vishal/Library/CloudStorage/OneDrive-Personal/Projects/portfolio_dashboard/callbacks/positions_callbacks.py)** [MODIFY]: Refactored `select_ticker` callback to listen to `url.search` and `url.pathname`. Enforced page pathname gating to `/positions` to prevent off-page background execution. Implemented query parameter extraction, validation against existing holdings, and state-synchronization guards to ensure background refreshes do not overwrite manual card selections.
+- **[scratch/tests/test_positions_callbacks.py](file:///Users/vishal/Library/CloudStorage/OneDrive-Personal/Projects/portfolio_dashboard/scratch/tests/test_positions_callbacks.py)** [NEW]: Created a comprehensive unit test suite covering off-page gating, card selection, ghost click filtering, URL deep-linking, invalid ticker fallback, and background refresh preservation.
 
 ## Verifications Passed
-- Python ruff check passed successfully.
-- Pytest suite executed via `scratch/run_tests.sh`: all **182 unit tests passed successfully**!
+- Automated test suite executed via `scratch/run_tests.sh`: all **191 unit tests passed successfully**!

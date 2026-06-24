@@ -47,6 +47,7 @@ def create_layout(initial_history: list[dict] | None = None) -> html.Div:
     """
     return html.Div(
         [
+            dcc.Store(id="txn-editing-id-store", data=None, storage_type="memory"),
             # ── Page Header Row ───────────────────────────────────────────────
             html.Div(
                 [
@@ -176,7 +177,7 @@ def create_layout(initial_history: list[dict] | None = None) -> html.Div:
                                         html.Span(
                                             "+", style={"fontSize": "16px", "fontWeight": "bold"}
                                         ),
-                                        "Add Transaction",
+                                        "Add/Modify Transaction",
                                     ],
                                     id="compact-toggle-btn",
                                     n_clicks=0,
@@ -273,15 +274,32 @@ def create_layout(initial_history: list[dict] | None = None) -> html.Div:
                                                 html.Div(
                                                     [
                                                         html.P("", className="txn-label"),
-                                                        html.Button(
-                                                            "Add",
-                                                            id="txn-submit",
-                                                            n_clicks=0,
-                                                            className="btn-primary",
-                                                            style={
-                                                                "width": "120px",
-                                                                "height": "34px",
-                                                            },
+                                                        html.Div(
+                                                            [
+                                                                html.Button(
+                                                                    "Add",
+                                                                    id="txn-submit",
+                                                                    n_clicks=0,
+                                                                    className="btn-primary",
+                                                                    style={
+                                                                        "width": "120px",
+                                                                        "height": "34px",
+                                                                    },
+                                                                ),
+                                                                html.Button(
+                                                                    "Cancel",
+                                                                    id="txn-cancel",
+                                                                    n_clicks=0,
+                                                                    className="btn-secondary",
+                                                                    style={
+                                                                        "width": "80px",
+                                                                        "height": "34px",
+                                                                        "marginLeft": "8px",
+                                                                        "display": "none",
+                                                                    },
+                                                                ),
+                                                            ],
+                                                            style={"display": "flex"},
                                                         ),
                                                         html.Div(className="txn-ticker-hint"),
                                                     ],

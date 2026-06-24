@@ -24,7 +24,7 @@ class PortfolioRepository:
         conn = get_connection()
         try:
             cursor = conn.execute(
-                "SELECT type, ticker, shares, price, date FROM transactions ORDER BY date ASC, id ASC"
+                "SELECT id, type, ticker, shares, price, date FROM transactions ORDER BY date ASC, id ASC"
             )
             rows = cursor.fetchall()
             return [dict(r) for r in rows]
@@ -43,19 +43,35 @@ class PortfolioRepository:
 
             # Re-insert all rows
             for txn in history:
-                conn.execute(
-                    """
-                    INSERT INTO transactions (type, ticker, shares, price, date)
-                    VALUES (?, ?, ?, ?, ?)
-                    """,
-                    (
-                        str(txn["type"]).lower(),
-                        str(txn["ticker"]).upper(),
-                        float(txn["shares"]),
-                        float(txn["price"]),
-                        str(txn["date"]),
-                    ),
-                )
+                if "id" in txn and txn["id"] is not None:
+                    conn.execute(
+                        """
+                        INSERT INTO transactions (id, type, ticker, shares, price, date)
+                        VALUES (?, ?, ?, ?, ?, ?)
+                        """,
+                        (
+                            int(txn["id"]),
+                            str(txn["type"]).lower(),
+                            str(txn["ticker"]).upper(),
+                            float(txn["shares"]),
+                            float(txn["price"]),
+                            str(txn["date"]),
+                        ),
+                    )
+                else:
+                    conn.execute(
+                        """
+                        INSERT INTO transactions (type, ticker, shares, price, date)
+                        VALUES (?, ?, ?, ?, ?)
+                        """,
+                        (
+                            str(txn["type"]).lower(),
+                            str(txn["ticker"]).upper(),
+                            float(txn["shares"]),
+                            float(txn["price"]),
+                            str(txn["date"]),
+                        ),
+                    )
             conn.commit()
             logger.info(f"Overwrote database with {len(history)} transactions")
         except Exception as e:
@@ -85,6 +101,48 @@ class PortfolioRepository:
             logger.info(f"Transaction saved to DB: {txn['type']} {txn['shares']} {txn['ticker']}")
         except Exception as e:
             logger.error(f"Failed to save transaction: {e}")
+            conn.rollback()
+        finally:
+            conn.close()
+        return self.load_transactions()
+
+    def delete_transaction(self, txn_id: int) -> list[dict]:
+        """Delete a transaction by ID and return updated history."""
+        conn = get_connection()
+        try:
+            conn.execute("DELETE FROM transactions WHERE id = ?", (txn_id,))
+            conn.commit()
+            logger.info(f"Transaction {txn_id} deleted from DB")
+        except Exception as e:
+            logger.error(f"Failed to delete transaction {txn_id}: {e}")
+            conn.rollback()
+        finally:
+            conn.close()
+        return self.load_transactions()
+
+    def update_transaction(self, txn_id: int, txn: dict) -> list[dict]:
+        """Update an existing transaction by ID and return updated history."""
+        conn = get_connection()
+        try:
+            conn.execute(
+                """
+                UPDATE transactions
+                SET type = ?, ticker = ?, shares = ?, price = ?, date = ?
+                WHERE id = ?
+                """,
+                (
+                    str(txn["type"]).lower(),
+                    str(txn["ticker"]).upper(),
+                    float(txn["shares"]),
+                    float(txn["price"]),
+                    str(txn["date"]),
+                    txn_id,
+                ),
+            )
+            conn.commit()
+            logger.info(f"Transaction {txn_id} updated in DB")
+        except Exception as e:
+            logger.error(f"Failed to update transaction {txn_id}: {e}")
             conn.rollback()
         finally:
             conn.close()

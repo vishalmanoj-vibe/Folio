@@ -164,10 +164,18 @@
 | Output ID | Property | Notes |
 |-----------|----------|-------|
 | `txn-ticker-hint` | `children` | Ticker name hint. |
-| `txn-price` | `value` | Price field auto-fill. |
+| `txn-price` | `value` | Price field auto-fill / edit populate. `allow_duplicate=True`. |
 | `txn-msg` | `children` | Status feedback (multiple callbacks). |
 | `compact-mode-store` | `data` | Compact store side-effect on submit. |
 | `txn-log` | `children` | Transaction log table. |
+| `txn-type` | `value` | Edit populate and reset form. `allow_duplicate=True`. |
+| `txn-ticker` | `value` | Edit populate and reset form. `allow_duplicate=True`. |
+| `txn-shares` | `value` | Edit populate and reset form. `allow_duplicate=True`. |
+| `txn-date` | `value` | Edit populate and reset form. `allow_duplicate=True`. |
+| `txn-editing-id-store` | `data` | Tracks transaction ID being edited. `allow_duplicate=True`. |
+| `txn-submit` | `children` | Toggle label Add/Update. `allow_duplicate=True`. |
+| `txn-cancel` | `style` | Toggle display visible/hidden. `allow_duplicate=True`. |
+| `txn-collapse` | `opened` | Expand form when editing. `allow_duplicate=True`. |
 
 ---
 

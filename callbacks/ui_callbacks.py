@@ -69,14 +69,14 @@ def register_callbacks(app) -> None:
                 False,
                 [
                     html.Span("+", style={"fontSize": "16px", "fontWeight": "bold"}),
-                    "Add Transaction",
+                    "Add/Modify Transaction",
                 ],
                 "btn-primary btn-sm",
             )
 
         new_state = not is_compact
         opened = not new_state
-        label = "Hide Form" if opened else "Add Transaction"
+        label = "Hide Form" if opened else "Add/Modify Transaction"
         icon = "−" if opened else "+"
 
         children = [html.Span(icon, style={"fontSize": "16px", "fontWeight": "bold"}), label]

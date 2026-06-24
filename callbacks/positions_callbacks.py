@@ -181,13 +181,21 @@ def register_callbacks(app) -> None:
     @app.callback(
         Output("positions-selected-ticker", "data"),
         Input({"type": "pos-card", "index": ALL}, "n_clicks"),
+        Input("url", "search"),
+        Input("url", "pathname"),
         Input("portfolio-store", "data"),
         State("positions-selected-ticker", "data"),
     )
-    def select_ticker(n_clicks_list, port_data, current):
+    def select_ticker(n_clicks_list, search, pathname, port_data, current):
         """
-        Handles ticker selection with auto-default to first holding.
+        Handles ticker selection with auto-default to URL parameter or first holding.
         """
+        import dash
+
+        # Enforce page-pathname gating
+        if pathname and pathname.rstrip("/") != "/positions":
+            return dash.no_update
+
         # If triggered by a card click
         if (
             ctx.triggered_id
@@ -196,10 +204,22 @@ def register_callbacks(app) -> None:
         ):
             # FIX: ignore ghost clicks on dynamically generated components
             if not ctx.triggered[0]["value"] or int(ctx.triggered[0]["value"]) < 1:
-                import dash
-
                 return dash.no_update
             return ctx.triggered_id["index"]
+
+        # If triggered by URL or on initial load, extract from query parameter
+        if ctx.triggered_id == "url" or current is None:
+            if search:
+                from urllib.parse import parse_qs
+
+                params = parse_qs(search.lstrip("?"))
+                ticker_param = params.get("ticker", [None])[0]
+                if ticker_param:
+                    # Validate that ticker_param actually exists in holdings
+                    if port_data and "holdings" in port_data:
+                        holding_tickers = [h["ticker"] for h in port_data["holdings"]]
+                        if ticker_param in holding_tickers:
+                            return ticker_param
 
         # Default selection logic (on load or when store updates)
         if current is None and port_data and "holdings" in port_data and port_data["holdings"]:

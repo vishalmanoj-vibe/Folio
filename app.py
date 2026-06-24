@@ -35,6 +35,7 @@ logger = logging.getLogger(__name__)
 
 import os
 import sys
+from typing import Any, cast
 
 from dotenv import load_dotenv
 
@@ -176,9 +177,12 @@ from components.header import create_header
 # ── Root Layout ───────────────────────────────────────────────────────────────
 app.layout = dmc.MantineProvider(
     forceColorScheme="dark",
-    theme={
-        "fontFamily": "Inter, sans-serif",
-    },
+    theme=cast(
+        Any,
+        {
+            "fontFamily": "Inter, sans-serif",
+        },
+    ),
     children=html.Div(
         [
             dcc.Location(id="url", refresh=False),
@@ -257,20 +261,67 @@ app.layout = dmc.MantineProvider(
     Output("txn-store", "data", allow_duplicate=True),
     Input("startup-interval", "n_intervals"),
     Input("txn-submit", "n_clicks"),
+    Input({"type": "txn-delete-btn", "index": ALL}, "n_clicks"),
     State("txn-type", "value"),
     State("txn-ticker", "value"),
     State("txn-shares", "value"),
     State("txn-price", "value"),
     State("txn-date", "value"),
+    State("txn-editing-id-store", "data"),
     State("txn-store", "data"),
     prevent_initial_call=True,
 )
-def update_txn_store(n_startup, n_submit, t_type, ticker, shares, price, date_str, history):
-    """Only place where txn-store is updated. Handles interval sync and new additions."""
-    if ctx.triggered_id == "txn-submit":
+def update_txn_store(
+    n_startup, n_submit, n_delete_list, t_type, ticker, shares, price, date_str, editing_id, history
+):
+    """Only place where txn-store is updated. Handles additions, updates, and deletions."""
+    triggered_id = ctx.triggered_id
+
+    # 1. Handle Delete
+    if isinstance(triggered_id, dict) and triggered_id.get("type") == "txn-delete-btn":
+        trigger_val = ctx.triggered[0]["value"]
+        if not trigger_val or int(trigger_val) < 1:
+            return dash.no_update
+        txn_id = triggered_id.get("index")
+        if txn_id is not None:
+            # Find the ticker to invalidate its cache
+            txn_ticker = None
+            if history:
+                txn_ticker = next((t["ticker"] for t in history if t.get("id") == txn_id), None)
+
+            updated = repo.delete_transaction(txn_id)
+
+            from core import _cache
+
+            # Clear all market data caches
+            keys_to_clear = [k for k in _cache.keys() if k.startswith("market_data_")]
+            for k in keys_to_clear:
+                _cache.pop(k, None)
+
+            if txn_ticker:
+                try:
+                    from data.database import get_connection
+
+                    _conn = get_connection()
+                    try:
+                        _conn.execute("DELETE FROM market_prices WHERE ticker = ?", (txn_ticker,))
+                        _conn.commit()
+                    finally:
+                        _conn.close()
+                except Exception as _e:
+                    logger.warning(f"Could not clear market_prices for {txn_ticker}: {_e}")
+
+            from data.database import enqueue_task
+
+            enqueue_task("refresh_portfolio", priority=1)
+            return updated
+        return dash.no_update
+
+    # 2. Handle Submit (Add or Edit)
+    if triggered_id == "txn-submit":
         if not all([t_type, ticker, shares is not None, price is not None, date_str]):
             return dash.no_update
-        # Format date for CSV
+
         d_val = (
             date_str.strftime("%Y-%m-%d")
             if hasattr(date_str, "strftime")
@@ -279,6 +330,7 @@ def update_txn_store(n_startup, n_submit, t_type, ticker, shares, price, date_st
         ticker_clean = str(ticker).strip().upper()
         if ticker_clean.endswith(".AX"):
             ticker_clean = ticker_clean[:-3]
+
         new_txn = {
             "type": str(t_type).lower(),
             "ticker": ticker_clean,
@@ -288,38 +340,47 @@ def update_txn_store(n_startup, n_submit, t_type, ticker, shares, price, date_st
         }
         valid, _ = validate_transaction(new_txn)
         if valid:
-            updated = repo.append_transaction(new_txn)
-
             from core import _cache
 
-            # Clear all market data caches to force fresh fetch across all periods
+            # Clear caches
             keys_to_clear = [k for k in _cache.keys() if k.startswith("market_data_")]
             for k in keys_to_clear:
                 _cache.pop(k, None)
 
-            # CRITICAL: Also clear market_prices SQLite entry for the affected ticker.
-            # get_live_prices() checks SQLite freshness, not just in-memory cache.
-            # Without this, it returns stale mkt_value/pnl calculated against the
-            # OLD share count, so portfolio-store gets wrong data and other pages don't update.
-            try:
-                from data.database import get_connection
+            tickers_to_clear = {new_txn["ticker"]}
 
-                _conn = get_connection()
-                try:
-                    _conn.execute(
-                        "DELETE FROM market_prices WHERE ticker = ?", (new_txn["ticker"],)
+            if editing_id is not None:
+                # Edit/Update mode
+                old_ticker = None
+                if history:
+                    old_ticker = next(
+                        (t["ticker"] for t in history if t.get("id") == editing_id), None
                     )
-                    _conn.commit()
-                finally:
-                    _conn.close()
-            except Exception as _e:
-                logger.warning(f"Could not clear market_prices for {new_txn['ticker']}: {_e}")
+                if old_ticker:
+                    tickers_to_clear.add(old_ticker)
 
-            # Enqueue a background task to refresh live prices immediately
+                updated = repo.update_transaction(editing_id, new_txn)
+            else:
+                # Add/Append mode
+                updated = repo.append_transaction(new_txn)
+
+            # Clear market_prices for the affected tickers
+            for tk in tickers_to_clear:
+                try:
+                    from data.database import get_connection
+
+                    _conn = get_connection()
+                    try:
+                        _conn.execute("DELETE FROM market_prices WHERE ticker = ?", (tk,))
+                        _conn.commit()
+                    finally:
+                        _conn.close()
+                except Exception as _e:
+                    logger.warning(f"Could not clear market_prices for {tk}: {_e}")
+
             from data.database import enqueue_task
 
             enqueue_task("refresh_portfolio", priority=1)
-
             return updated
         return dash.no_update
 

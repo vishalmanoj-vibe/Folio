@@ -10,7 +10,7 @@ import math
 from datetime import datetime
 
 import dash
-from dash import Input, Output, State, html
+from dash import ALL, Input, Output, State, ctx, html
 
 from components.ui_helpers import txn_table
 from core.validators import validate_transaction
@@ -125,15 +125,106 @@ def register_callbacks(app):
         # FIX: use CSS token instead of hardcoded hex
         return success_msg, {"color": "var(--green)"}, True
 
-    # Refresh transaction history table whenever txn-store changes
+    # Refresh transaction history table whenever txn-store or editing-id changes
     @app.callback(
         Output("txn-log", "children"),
         Input("txn-store", "data"),
+        Input("txn-editing-id-store", "data"),
         prevent_initial_call=True,  # runs on load
     )
-    def update_transaction_log(history):
+    def update_transaction_log(history, editing_id=None):
         """Always show latest transactions"""
-        return txn_table(history or [])
+        return txn_table(history or [], editing_id)
+
+    # ── Edit Transaction Trigger ──────────────────────────────────────────
+    @app.callback(
+        Output("txn-type", "value", allow_duplicate=True),
+        Output("txn-ticker", "value", allow_duplicate=True),
+        Output("txn-shares", "value", allow_duplicate=True),
+        Output("txn-price", "value", allow_duplicate=True),
+        Output("txn-date", "value", allow_duplicate=True),
+        Output("txn-editing-id-store", "data", allow_duplicate=True),
+        Output("txn-submit", "children", allow_duplicate=True),
+        Output("txn-cancel", "style", allow_duplicate=True),
+        Output("txn-collapse", "opened", allow_duplicate=True),
+        Input({"type": "txn-edit-btn", "index": ALL}, "n_clicks"),
+        State("txn-store", "data"),
+        prevent_initial_call=True,
+    )
+    def edit_transaction_trigger(n_clicks_list, history):
+        # BUG-002 Prevention Gate
+        if not ctx.triggered or not ctx.triggered[0]["value"] or ctx.triggered[0]["value"] <= 0:
+            return dash.no_update
+
+        triggered_id = ctx.triggered_id
+        if not isinstance(triggered_id, dict) or triggered_id.get("type") != "txn-edit-btn":
+            return dash.no_update
+
+        txn_id = triggered_id.get("index")
+        if txn_id is None or not history:
+            return dash.no_update
+
+        # Find transaction in history
+        txn = next((t for t in history if t.get("id") == txn_id), None)
+        if not txn:
+            return dash.no_update
+
+        # Format date if needed
+        d_val = txn.get("date", datetime.now().strftime("%Y-%m-%d"))
+
+        return (
+            txn.get("type", "buy"),
+            txn.get("ticker", ""),
+            txn.get("shares", 0),
+            txn.get("price", 0.0),
+            d_val,
+            txn_id,
+            "Update",
+            {"width": "80px", "height": "34px", "marginLeft": "8px", "display": "inline-block"},
+            True,
+        )
+
+    # ── Reset / Cancel Edit Transaction Form ──────────────────────────────
+    @app.callback(
+        Output("txn-type", "value", allow_duplicate=True),
+        Output("txn-ticker", "value", allow_duplicate=True),
+        Output("txn-shares", "value", allow_duplicate=True),
+        Output("txn-price", "value", allow_duplicate=True),
+        Output("txn-date", "value", allow_duplicate=True),
+        Output("txn-editing-id-store", "data", allow_duplicate=True),
+        Output("txn-submit", "children", allow_duplicate=True),
+        Output("txn-cancel", "style", allow_duplicate=True),
+        Input("txn-cancel", "n_clicks"),
+        Input("txn-store", "data"),
+        State("txn-editing-id-store", "data"),
+        prevent_initial_call=True,
+    )
+    def reset_transaction_form(n_cancel, txn_data, editing_id):
+        triggered_id = ctx.triggered_id
+
+        # We reset if cancel was clicked OR if txn-store updated while we had an active editing_id
+        should_reset = False
+        if triggered_id == "txn-cancel":
+            if n_cancel and n_cancel > 0:
+                should_reset = True
+        elif triggered_id == "txn-store":
+            if editing_id is not None:
+                should_reset = True
+
+        if should_reset:
+            today_str = datetime.now().strftime("%Y-%m-%d")
+            return (
+                "buy",
+                "",
+                None,
+                None,
+                today_str,
+                None,
+                "Add",
+                {"width": "80px", "height": "34px", "marginLeft": "8px", "display": "none"},
+            )
+
+        return dash.no_update
 
     # Auto-clear message after ~60 seconds
     @app.callback(

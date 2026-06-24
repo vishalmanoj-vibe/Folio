@@ -114,35 +114,84 @@ def alert_card(alert: dict) -> html.Div:
     )
 
 
-def txn_table(history: list[dict]) -> html.Div:
-    """Renders the transaction history table with deep-linking to positions."""
+def txn_table(history: list[dict], editing_id: int | None = None) -> html.Div:
+    """Renders the transaction history table with deep-linking to positions and action buttons."""
     if not history:
         return html.P("No transactions yet.", className="txn-empty")
 
-    rows = [
-        html.Tr(
-            [
-                html.Td(t["date"], className="table-td"),
-                html.Td(
-                    html.A(t["ticker"], href="/positions", className="ticker-link"),
-                    className="table-td",
-                    style={"fontWeight": "500"},
-                ),
-                html.Td(
-                    t["type"].upper(),
-                    className="table-td",
-                    style={
-                        "color": "var(--green)" if t["type"] == "buy" else "var(--red)",
-                        "fontWeight": "600",
-                    },
-                ),
-                html.Td(f"{float(t['shares']):g}", className="table-td"),
-                html.Td(f"${float(t['price']):,.3f}", className="table-td"),
-                html.Td(f"${float(t['shares']) * float(t['price']):,.2f}", className="table-td"),
-            ]
+    rows = []
+    for t in reversed(history):
+        t_id = t.get("id")
+
+        # Build action buttons
+        if t_id is not None:
+            is_editing = editing_id == t_id
+            edit_btn = html.Button(
+                "✏️",
+                id={"type": "txn-edit-btn", "index": t_id},
+                className="btn-sm",
+                style={
+                    "marginRight": "6px",
+                    "padding": "2px 6px",
+                    "color": "var(--cyan)",
+                    "border": "1px solid var(--cyan)" if is_editing else "none",
+                    "backgroundColor": "rgba(0, 201, 167, 0.1)" if is_editing else "transparent",
+                    "borderRadius": "4px",
+                    "cursor": "pointer",
+                },
+                disabled=is_editing,
+            )
+            delete_btn = html.Button(
+                "🗑️",
+                id={"type": "txn-delete-btn", "index": t_id},
+                className="btn-sm",
+                style={
+                    "padding": "2px 6px",
+                    "color": "var(--red)",
+                    "backgroundColor": "transparent",
+                    "border": "none",
+                    "borderRadius": "4px",
+                    "cursor": "pointer",
+                },
+            )
+            actions_cell = html.Td(
+                [edit_btn, delete_btn],
+                className="table-td",
+                style={"textAlign": "right", "whiteSpace": "nowrap"},
+            )
+        else:
+            actions_cell = html.Td("", className="table-td")
+
+        rows.append(
+            html.Tr(
+                [
+                    html.Td(t["date"], className="table-td"),
+                    html.Td(
+                        html.A(
+                            t["ticker"],
+                            href=f"/positions?ticker={t['ticker']}",
+                            className="ticker-link",
+                        ),
+                        className="table-td",
+                        style={"fontWeight": "500"},
+                    ),
+                    html.Td(
+                        t["type"].upper(),
+                        className="table-td",
+                        style={
+                            "color": "var(--green)" if t["type"] == "buy" else "var(--red)",
+                            "fontWeight": "600",
+                        },
+                    ),
+                    html.Td(f"{float(t['shares']):g}", className="table-td"),
+                    html.Td(f"${float(t['price']):,.3f}", className="table-td"),
+                    html.Td(
+                        f"${float(t['shares']) * float(t['price']):,.2f}", className="table-td"
+                    ),
+                    actions_cell,
+                ]
+            )
         )
-        for t in reversed(history)
-    ]
 
     return html.Table(
         [
@@ -152,6 +201,7 @@ def txn_table(history: list[dict]) -> html.Div:
                         html.Th(c, className="table-th")
                         for c in ["Date", "Ticker", "Type", "Shares", "Price", "Total"]
                     ]
+                    + [html.Th("Actions", className="table-th", style={"textAlign": "right"})]
                 )
             ),
             html.Tbody(rows),

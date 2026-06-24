@@ -73,6 +73,8 @@ Prevent "Duplicate ID" errors and callback collisions by maintaining a central m
 - `txn-log`: Rendered transaction history table.
 - `txn-collapse`: Collapse toggle for transaction form.
 - `txn-history-details`: Expandable transaction detail block.
+- `txn-cancel`: Button to cancel Edit Mode.
+- `txn-editing-id-store`: Store to track transaction being edited (memory storage).
 
 ### Analytics Page (`/analytics`)
 - `price-chart`: Normalised price history chart.
@@ -173,6 +175,8 @@ Prevent "Duplicate ID" errors and callback collisions by maintaining a central m
 - `{"type": "watchlist-row", "index": <ticker>}`: Draggable table rows representing watched tickers.
 - `{"type": "watchlist-remove-btn", "index": <ticker>}`: Watchlist row deletion buttons.
 - `{"type": "watchlist-select-ticker", "index": <ticker>}`: Ticker links to activate the watchlist detail card.
+- `{"type": "txn-edit-btn", "index": <txn_id>}`: Edit transaction buttons in transaction history table.
+- `{"type": "txn-delete-btn", "index": <txn_id>}`: Delete transaction buttons in transaction history table.
 
 ## Rules for New IDs
 - **Namespace Pattern**: Always prefix new IDs with the page name (e.g., `tax-report-table`).

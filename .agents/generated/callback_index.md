@@ -1,31 +1,31 @@
 # Callback Output Index — Auto-Generated
 
-> **Generated**: 2026-06-12 13:59  
+> **Generated**: 2026-06-24 18:48  
 > **Do not edit** — run `python .agents/generated/sync_docs.py` to refresh.
 > For ownership intent and architecture notes, see `docs/callback_ownership.md`.
 
 ---
 
-**Total outputs indexed**: 141 across 13 files
+**Total outputs indexed**: 158 across 13 files
 
 ## `app.py`
 
 | Output ID | Property | Line | Duplicate? | Pattern? |
 |-----------|----------|------|-----------|---------|
-| `txn-store` | `data` | 257 | ✓ |  |
-| `portfolio-store` | `data` | 332 | ✓ |  |
-| `period-store` | `data` | 405 |  |  |
-| `pnl-mode-store` | `data` | 415 |  |  |
-| `ticker-store` | `data` | 425 |  |  |
-| `treemap-mode-store` | `data` | 435 |  |  |
-| `analytics-period-store` | `data` | 445 |  |  |
-| `intel-period-store` | `data` | 455 |  |  |
-| `intel-pred-store` | `data` | 484 |  |  |
-| `intel-forecast-label` | `children` | 485 |  |  |
-| `url` | `search` | 510 |  |  |
-| `pending-tasks-store` | `data` | 528 | ✓ |  |
-| `nav-link-store` | `data` | 562 | ✓ |  |
-| `task-poll-interval` | `disabled` | 612 |  |  |
+| `txn-store` | `data` | 261 | ✓ |  |
+| `portfolio-store` | `data` | 393 | ✓ |  |
+| `period-store` | `data` | 466 |  |  |
+| `pnl-mode-store` | `data` | 476 |  |  |
+| `ticker-store` | `data` | 486 |  |  |
+| `treemap-mode-store` | `data` | 496 |  |  |
+| `analytics-period-store` | `data` | 506 |  |  |
+| `intel-period-store` | `data` | 516 |  |  |
+| `intel-pred-store` | `data` | 545 |  |  |
+| `intel-forecast-label` | `children` | 546 |  |  |
+| `url` | `search` | 571 |  |  |
+| `pending-tasks-store` | `data` | 589 | ✓ |  |
+| `nav-link-store` | `data` | 623 | ✓ |  |
+| `task-poll-interval` | `disabled` | 673 |  |  |
 
 ## `alert_callbacks.py`
 
@@ -175,7 +175,24 @@
 | `txn-msg` | `style` | 82 |  |  |
 | `compact-mode-store` | `data` | 83 | ✓ |  |
 | `txn-log` | `children` | 130 |  |  |
-| `txn-msg` | `children` | 140 | ✓ |  |
+| `txn-type` | `value` | 141 | ✓ |  |
+| `txn-ticker` | `value` | 142 | ✓ |  |
+| `txn-shares` | `value` | 143 | ✓ |  |
+| `txn-price` | `value` | 144 | ✓ |  |
+| `txn-date` | `value` | 145 | ✓ |  |
+| `txn-editing-id-store` | `data` | 146 | ✓ |  |
+| `txn-submit` | `children` | 147 | ✓ |  |
+| `txn-cancel` | `style` | 148 | ✓ |  |
+| `txn-collapse` | `opened` | 149 | ✓ |  |
+| `txn-type` | `value` | 189 | ✓ |  |
+| `txn-ticker` | `value` | 190 | ✓ |  |
+| `txn-shares` | `value` | 191 | ✓ |  |
+| `txn-price` | `value` | 192 | ✓ |  |
+| `txn-date` | `value` | 193 | ✓ |  |
+| `txn-editing-id-store` | `data` | 194 | ✓ |  |
+| `txn-submit` | `children` | 195 | ✓ |  |
+| `txn-cancel` | `style` | 196 | ✓ |  |
+| `txn-msg` | `children` | 231 | ✓ |  |
 
 ## `ui_callbacks.py`
 
