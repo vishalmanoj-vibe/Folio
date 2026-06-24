@@ -206,7 +206,8 @@ folio/
 │   │   ├── price_history.py        # Candlestick/Line charts
 │   │   └── ...
 │   ├── header.py                   # Shared navigation header
-│   └── ui_helpers.py               # Stat cards & section wrappers
+│   ├── ui_helpers.py               # Stat cards & section wrappers
+│   └── chatbot.py                  # Floating AI Assistant widget layout
 │
 ├── callbacks/                      # Dash interactivity
 │   ├── portfolio_callbacks.py      # Table/Metric updates
@@ -221,8 +222,7 @@ folio/
 │   ├── positions.py                # Positions (/positions)
 │   ├── watchlist.py                # Watchlist (/watchlist)
 │   ├── intelligence.py             # Insights (/intelligence)
-│   ├── analytics.py                # Deep Dive (/analytics)
-│   └── ai_analyst.py               # Assistant (/ai-analyst)
+│   └── analytics.py                # Deep Dive (/analytics)
 │
 └── assets/                         # Static assets (Modular CSS)
     ├── base-tokens.css             # Design Tokens (CSS Variables)

@@ -172,6 +172,7 @@ app.index_string = INDEX_STRING
 
 import dash_mantine_components as dmc
 
+from components.chatbot import create_chatbot_widget
 from components.header import create_header
 
 # ── Root Layout ───────────────────────────────────────────────────────────────
@@ -245,6 +246,8 @@ app.layout = dmc.MantineProvider(
             create_header(),
             # Page Content with Loading Indicator
             dash.page_container,
+            # Floating Chatbot Widget
+            create_chatbot_widget(),
             # Dummy target for clientside redirect guards
             html.Div(id="dummy-redirect-output", style={"display": "none"}),
         ],
@@ -691,8 +694,7 @@ if __name__ == "__main__":
     print("  Positions:       http://127.0.0.1:8050/positions")
     print("  Watchlist:       http://127.0.0.1:8050/watchlist")
     print("  Insights:        http://127.0.0.1:8050/intelligence")
-    print("  Deep Dive:       http://127.0.0.1:8050/analytics")
-    print("  Assistant:       http://127.0.0.1:8050/ai-analyst\n")
+    print("  Deep Dive:       http://127.0.0.1:8050/analytics\n")
 
     # Register signals
     signal.signal(signal.SIGINT, handle_exit)

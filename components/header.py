@@ -37,7 +37,6 @@ def create_header(
                     style={"display": "flex", "alignItems": "center", "position": "relative"},
                 ),
                 html.A("Deep Dive", href="/analytics", className="nav-link"),
-                html.A("Assistant", href="/ai-analyst", className="nav-link"),
             ],
             className="nav-links-container",
         ),

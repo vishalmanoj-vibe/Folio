@@ -140,14 +140,18 @@ Prevent "Duplicate ID" errors and callback collisions by maintaining a central m
 - `watchlist-tech-signals-container`: Container for watchlist technical indicator badges.
 - `watchlist-chart-container`: Wrapping container for the watchlist chart.
 
-### AI Analyst Page (`/ai-analyst`)
-- `research-portfolio-summary`: Left panel live holdings display.
+### Floating AI Chatbot Widget (Global)
+- `chatbot-widget-root`: Container for the entire widget.
+- `chatbot-trigger`: Floating button to expand/collapse the chatbot.
+- `chatbot-window`: Floating chat card container.
+- `chatbot-close`: Minimize/close button.
+- `chatbot-context-bar`: HTML Div displaying active page/ticker context.
+- `chatbot-quick-prompts`: Quick prompts container.
 - `research-chat-display`: Scrollable chat message area.
 - `research-ticker-input`: Free-text ticker to research.
 - `research-input`: Chat message text input.
 - `research-send-btn`: Message send button.
 - `research-send-btn-wrapper`: Wrapper div for send button (loading state).
-- `research-disclaimer`: Static disclaimer text element.
 - `research-typing-indicator`: Animated typing indicator strip.
 - `research-usage-display`: AI request usage counter display.
 - `qp-1`: Quick prompt chip — "Does this fit my portfolio?"

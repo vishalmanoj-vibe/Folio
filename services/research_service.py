@@ -33,7 +33,17 @@ def build_portfolio_context(portfolio_data: dict, ticker: str = "") -> str:
 
     total_val = sum(float(h.get("mkt_value", 0)) for h in holdings)
 
-    lines = [f"=== PORTFOLIO SNAPSHOT (Live as at {fetched_at}) ==="]
+    lines = []
+    active_page = portfolio_data.get("active_page")
+    active_ticker = portfolio_data.get("active_ticker")
+    if active_page:
+        lines.append("=== USER CURRENT VIEWPORT CONTEXT ===")
+        lines.append(f"Current Dashboard Page: {active_page}")
+        if active_ticker:
+            lines.append(f"Currently Selected/Researched Ticker: {active_ticker}")
+        lines.append("")
+
+    lines.append(f"=== PORTFOLIO SNAPSHOT (Live as at {fetched_at}) ===")
     lines.append(f"Total value: ${total_val:,.0f}")
 
     # FIX: limit context to top 20 holdings by weight to prevent context window overflow
@@ -148,7 +158,7 @@ def build_portfolio_context(portfolio_data: dict, ticker: str = "") -> str:
     except Exception:
         pass  # Sentiment is best-effort — never block the context builder
 
-    if ticker:
+    if ticker and ticker.upper() != "GENERAL":
         lines.append(f"=== TICKER USER IS CONSIDERING BUYING: {ticker.upper()} ===")
         lines.append("This ticker is NOT currently in the user's portfolio.")
         lines.append(
@@ -186,7 +196,7 @@ def get_ai_response(history: list[dict], portfolio_data: dict, ticker: str = "")
         if should_search_web(current_message_search):
             # Build smart query from message + ticker
             search_query = current_message_search[:100]
-            if ticker:
+            if ticker and ticker.upper() != "GENERAL":
                 search_query = f"{ticker} ASX {search_query}"
 
             results = search_financial_news(search_query, max_results=3)

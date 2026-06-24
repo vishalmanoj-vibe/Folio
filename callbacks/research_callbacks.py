@@ -18,11 +18,59 @@ from services.research_service import build_portfolio_context, get_ai_response
 
 logger = logging.getLogger(__name__)
 
-AI_ANALYST_PATH = "/ai-analyst"
+
+def get_quick_prompt_questions(page_name, active_ticker):
+    # Default fallback questions
+    qp1 = "Does this fit my portfolio?"
+    qp2 = "What are the main risks?"
+    qp3 = "Compare to what I own"
+    qp4 = "What sectors or regions am I missing in my portfolio?"
+
+    if page_name == "Positions" and active_ticker:
+        t = active_ticker.upper()
+        qp1 = f"Does {t} fit my portfolio?"
+        qp2 = f"What are the main risks of {t}?"
+        qp3 = f"Compare {t} to what I own"
+        qp4 = "What am I missing in my portfolio?"
+    elif page_name == "Watchlist" and active_ticker:
+        t = active_ticker.upper()
+        qp1 = f"Does {t} fit my portfolio?"
+        qp2 = f"What are the main risks of {t}?"
+        qp3 = f"Compare {t} to my holdings"
+        qp4 = "What am I missing in my portfolio?"
+    elif page_name == "Deep Dive":
+        qp1 = "Which of my holdings is the most volatile?"
+        qp2 = "Which of my tickers have the highest correlation?"
+        qp3 = "How can I improve my asset allocation?"
+        qp4 = "Is my portfolio diversified enough?"
+    elif page_name == "Insights":
+        qp1 = "What alerts are active right now?"
+        qp2 = "Are any of my holdings overbought?"
+        qp3 = "Explain the current technical signals"
+        qp4 = "Show me the highest technical signal score"
+    elif page_name == "Settings":
+        qp1 = "How does my investor profile affect signals?"
+        qp2 = "Explain my custom strategy weights"
+        qp3 = "How can I optimize my tax settings?"
+        qp4 = "What am I missing in my portfolio?"
+    elif page_name == "Overview":
+        if active_ticker:
+            t = active_ticker.upper()
+            qp1 = f"Does {t} fit my portfolio?"
+            qp2 = f"What are the risks of {t}?"
+            qp3 = f"Compare {t} to what I own"
+            qp4 = "What am I missing in my portfolio?"
+        else:
+            qp1 = "What is my total portfolio value and P&L?"
+            qp2 = "Compare my top holdings by market value"
+            qp3 = "Suggest rebalancing actions for my holdings"
+            qp4 = "What am I missing in my portfolio?"
+
+    return qp1, qp2, qp3, qp4
 
 
 def register_callbacks(app):
-    # --- CALLBACK 1: Welcome message on first navigation to /ai-analyst ---
+    # --- CALLBACK 1: Welcome message on chatbot mount/load ---
     @app.callback(
         Output("research-chat-store", "data"),
         Input("url", "pathname"),
@@ -31,9 +79,6 @@ def register_callbacks(app):
         prevent_initial_call=True,
     )
     def init_research_chat(pathname, portfolio_data, current_history):
-        if pathname != AI_ANALYST_PATH:
-            return no_update
-
         # Conversation already exists — do not overwrite it
         if current_history is not None and len(current_history) > 0:
             return no_update
@@ -61,7 +106,7 @@ def register_callbacks(app):
         welcome_msg = (
             f"Hi! I've loaded your portfolio — {n} holdings worth "
             f"${total_val:,.0f}. Ask me about your positions, or type "
-            f"a ticker on the left to research it. You can also click "
+            f"a ticker in the input box above to research it. You can also click "
             f"**Generate Weekly Report** below to create a PDF summary." + memory_note
         )
 
@@ -89,6 +134,10 @@ def register_callbacks(app):
         State("research-ticker-store", "data"),
         State("research-usage-store", "data"),
         State("ai-pending-tasks-store", "data"),
+        State("url", "pathname"),
+        State("positions-selected-ticker", "data"),
+        State("watchlist-selected-ticker", "data"),
+        State("ticker-store", "data"),
         prevent_initial_call=True,
     )
     def send_research_message(
@@ -105,6 +154,10 @@ def register_callbacks(app):
         ticker,
         usage_data,
         ai_pending,
+        pathname,
+        pos_ticker,
+        wl_ticker,
+        overview_ticker,
     ):
         from datetime import date
 
@@ -192,17 +245,60 @@ def register_callbacks(app):
             history.append({"role": "assistant", "content": limit_msg})
             return (history, "", no_update, {"display": "none"}, False, no_update, no_update)
 
+        # Resolve active viewport context
+        page_name = "Overview"
+        active_ticker = None
+
+        if pathname == "/positions":
+            page_name = "Positions"
+            active_ticker = pos_ticker
+        elif pathname == "/watchlist":
+            page_name = "Watchlist"
+            active_ticker = wl_ticker
+        elif pathname == "/analytics":
+            page_name = "Deep Dive"
+        elif pathname == "/intelligence":
+            page_name = "Insights"
+        elif pathname == "/settings":
+            page_name = "Settings"
+        elif pathname == "/":
+            page_name = "Overview"
+            if overview_ticker and overview_ticker != "Portfolio":
+                active_ticker = overview_ticker
+
+        # Fallback to research search bar ticker if no page-specific ticker is active
+        if not active_ticker and ticker:
+            active_ticker = ticker
+
+        # Resolve quick prompt texts for the active context
+        qp1, qp2, qp3, qp4 = get_quick_prompt_questions(page_name, active_ticker)
+
         message = None
+        target_ticker = None
+
         if ctx.triggered_id == "qp-1":
-            message = "Does this ticker fit my portfolio?"
+            message = qp1
+            if active_ticker and page_name in ("Positions", "Watchlist", "Overview"):
+                target_ticker = active_ticker
         elif ctx.triggered_id == "qp-2":
-            message = "What are the main risks of this ticker?"
+            message = qp2
+            if active_ticker and page_name in ("Positions", "Watchlist", "Overview"):
+                target_ticker = active_ticker
         elif ctx.triggered_id == "qp-3":
-            message = "Compare this ticker to what I already own"
+            message = qp3
+            if active_ticker and page_name in ("Positions", "Watchlist", "Overview"):
+                target_ticker = active_ticker
         elif ctx.triggered_id == "qp-4":
-            message = "What sectors or regions am I missing in my portfolio?"
+            message = qp4
         elif ctx.triggered_id in ("research-send-btn", "research-input"):
             message = input_val
+            # For typed/free-text questions, only target the active ticker if it is explicitly mentioned
+            if active_ticker and message:
+                import re
+
+                pattern = r"\b" + re.escape(active_ticker.upper()) + r"\b"
+                if re.search(pattern, message.upper()):
+                    target_ticker = active_ticker
 
         if not message or not str(message).strip():
             return (
@@ -222,9 +318,13 @@ def register_callbacks(app):
         append_turn("user", message)
 
         # ── Build Compact Context ──
-        holdings = portfolio_data.get("holdings", [])
+        holdings = portfolio_data.get("holdings", []) if portfolio_data else []
         top_holdings = sorted(holdings, key=lambda x: x.get("mkt_value", 0), reverse=True)[:20]
-        context = {"holdings": top_holdings}
+        context = {
+            "holdings": top_holdings,
+            "active_page": page_name,
+            "active_ticker": active_ticker,
+        }
 
         # Enqueue AI task
         task_id = enqueue_task(
@@ -232,7 +332,7 @@ def register_callbacks(app):
             {
                 "messages": history[:-1],  # History excluding placeholder
                 "context": context,
-                "ticker": ticker or "General",
+                "ticker": target_ticker or "General",
             },
             priority=1,
         )  # Highest priority
@@ -395,70 +495,12 @@ def register_callbacks(app):
             return ""
         return str(value).strip().upper()
 
-    # --- CALLBACK 5: Render portfolio summary in left panel ---
-    @app.callback(
-        Output("research-portfolio-summary", "children"),
-        Input("portfolio-store", "data"),
-        Input("url", "pathname"),
-        prevent_initial_call=True,
-    )
-    def render_portfolio_summary(portfolio_data, pathname):
-        if pathname != AI_ANALYST_PATH:
-            return dash.no_update
-
-        if not portfolio_data or not portfolio_data.get("holdings"):
-            return html.P("Loading...", style={"color": "var(--t-sec)", "fontSize": "12px"})
-
-        holdings = portfolio_data["holdings"]
-        total_val = sum(h.get("mkt_value", 0) for h in holdings)
-        sorted_holdings = sorted(holdings, key=lambda x: x.get("mkt_value", 0), reverse=True)
-
-        children: list = [
-            html.P(
-                f"${total_val:,.0f}",
-                style={
-                    "fontSize": "18px",
-                    "fontWeight": "500",
-                    "color": "var(--t-pri)",
-                    "margin": "0 0 12px",
-                },
-            )
-        ]
-
-        for h in sorted_holdings:
-            mkt_value = h.get("mkt_value", 0)
-            weight = (mkt_value / total_val * 100) if total_val > 0 else 0
-            pnl_pct = h.get("pnl_pct", 0)
-            pnl_color = "var(--green)" if pnl_pct >= 0 else "var(--red)"
-            pnl_sign = "+" if pnl_pct >= 0 else ""
-
-            row = html.Div(
-                [
-                    html.Span(h.get("ticker", ""), className="research-portfolio-ticker"),
-                    html.Span(f"{weight:.1f}%", className="research-portfolio-weight"),
-                    html.Span(
-                        f"{pnl_sign}{pnl_pct:.1f}%",
-                        className="research-portfolio-pnl",
-                        style={"color": pnl_color},
-                    ),
-                ],
-                className="research-portfolio-row",
-            )
-
-            children.append(row)
-
-        return children
-
-    # --- CALLBACK 6: Render usage counter display ---
+    # --- CALLBACK 5: Render usage counter display ---
     @app.callback(
         Output("research-usage-display", "children"),
         Input("research-usage-store", "data"),
-        Input("url", "pathname"),
     )
-    def render_usage_display(usage_data, pathname):
-        if pathname != AI_ANALYST_PATH:
-            return dash.no_update
-
+    def render_usage_display(usage_data):
         memory = check_memory_size()
 
         from datetime import date
@@ -551,3 +593,100 @@ def register_callbacks(app):
         Input("research-chat-display", "children"),
         prevent_initial_call=True,
     )
+
+    # --- CLIENTSIDE CALLBACK: Toggle Chatbot Window ---
+    app.clientside_callback(
+        """
+        function(trigger_clicks, close_clicks) {
+            const triggered = window.dash_clientside.callback_context.triggered;
+            if (!triggered || triggered.length === 0) {
+                return [{"display": "none"}, {"display": "flex"}];
+            }
+            const trigId = triggered[0].prop_id.split('.')[0];
+            if (trigId === 'chatbot-trigger') {
+                return [{"display": "flex"}, {"display": "none"}];
+            }
+            if (trigId === 'chatbot-close') {
+                return [{"display": "none"}, {"display": "flex"}];
+            }
+            return [{"display": "none"}, {"display": "flex"}];
+        }
+        """,
+        Output("chatbot-window", "style"),
+        Output("chatbot-trigger", "style"),
+        Input("chatbot-trigger", "n_clicks"),
+        Input("chatbot-close", "n_clicks"),
+        prevent_initial_call=True,
+    )
+
+    # --- CALLBACK: Update Chatbot Context & Quick Prompts ---
+    @app.callback(
+        Output("chatbot-context-bar", "children"),
+        Output("qp-1", "children"),
+        Output("qp-1", "style"),
+        Output("qp-2", "children"),
+        Output("qp-2", "style"),
+        Output("qp-3", "children"),
+        Output("qp-3", "style"),
+        Output("qp-4", "children"),
+        Output("qp-4", "style"),
+        Input("url", "pathname"),
+        Input("positions-selected-ticker", "data"),
+        Input("watchlist-selected-ticker", "data"),
+        Input("ticker-store", "data"),
+        Input("research-ticker-store", "data"),
+    )
+    def update_chatbot_context(pathname, pos_ticker, wl_ticker, overview_ticker, chatbot_ticker):
+        page_name = "Overview"
+        active_ticker = None
+
+        if pathname == "/positions":
+            page_name = "Positions"
+            active_ticker = pos_ticker
+        elif pathname == "/watchlist":
+            page_name = "Watchlist"
+            active_ticker = wl_ticker
+        elif pathname == "/analytics":
+            page_name = "Deep Dive"
+        elif pathname == "/intelligence":
+            page_name = "Insights"
+        elif pathname == "/settings":
+            page_name = "Settings"
+        elif pathname == "/":
+            page_name = "Overview"
+            if overview_ticker and overview_ticker != "Portfolio":
+                active_ticker = overview_ticker
+
+        # Fallback to research search bar ticker if no page-specific ticker is active
+        if not active_ticker and chatbot_ticker:
+            active_ticker = chatbot_ticker
+
+        # 1. Context display
+        context_children = [
+            html.Span("Context:", style={"fontWeight": "600"}),
+            html.Span(page_name, className="chatbot-context-badge"),
+        ]
+        if active_ticker:
+            context_children.append(
+                html.Span(
+                    active_ticker.upper(),
+                    className="chatbot-context-badge",
+                    style={"borderColor": "var(--cyan)", "color": "var(--cyan)"},
+                )
+            )
+
+        # 2. Quick Prompts visibility and labeling
+        qp1, qp2, qp3, qp4 = get_quick_prompt_questions(page_name, active_ticker)
+        show_style = {"display": "inline-flex"}
+
+        return (
+            context_children,
+            qp1,
+            show_style,
+            qp2,
+            show_style,
+            qp3,
+            show_style,
+            qp4,
+            show_style,
+        )

@@ -1,31 +1,31 @@
 # Callback Output Index — Auto-Generated
 
-> **Generated**: 2026-06-24 19:03  
+> **Generated**: 2026-06-24 19:22  
 > **Do not edit** — run `python .agents/generated/sync_docs.py` to refresh.
 > For ownership intent and architecture notes, see `docs/callback_ownership.md`.
 
 ---
 
-**Total outputs indexed**: 158 across 13 files
+**Total outputs indexed**: 168 across 13 files
 
 ## `app.py`
 
 | Output ID | Property | Line | Duplicate? | Pattern? |
 |-----------|----------|------|-----------|---------|
-| `txn-store` | `data` | 261 | ✓ |  |
-| `portfolio-store` | `data` | 393 | ✓ |  |
-| `period-store` | `data` | 466 |  |  |
-| `pnl-mode-store` | `data` | 476 |  |  |
-| `ticker-store` | `data` | 486 |  |  |
-| `treemap-mode-store` | `data` | 496 |  |  |
-| `analytics-period-store` | `data` | 506 |  |  |
-| `intel-period-store` | `data` | 516 |  |  |
-| `intel-pred-store` | `data` | 545 |  |  |
-| `intel-forecast-label` | `children` | 546 |  |  |
-| `url` | `search` | 571 |  |  |
-| `pending-tasks-store` | `data` | 589 | ✓ |  |
-| `nav-link-store` | `data` | 623 | ✓ |  |
-| `task-poll-interval` | `disabled` | 673 |  |  |
+| `txn-store` | `data` | 264 | ✓ |  |
+| `portfolio-store` | `data` | 396 | ✓ |  |
+| `period-store` | `data` | 469 |  |  |
+| `pnl-mode-store` | `data` | 479 |  |  |
+| `ticker-store` | `data` | 489 |  |  |
+| `treemap-mode-store` | `data` | 499 |  |  |
+| `analytics-period-store` | `data` | 509 |  |  |
+| `intel-period-store` | `data` | 519 |  |  |
+| `intel-pred-store` | `data` | 548 |  |  |
+| `intel-forecast-label` | `children` | 549 |  |  |
+| `url` | `search` | 574 |  |  |
+| `pending-tasks-store` | `data` | 592 | ✓ |  |
+| `nav-link-store` | `data` | 626 | ✓ |  |
+| `task-poll-interval` | `disabled` | 676 |  |  |
 
 ## `alert_callbacks.py`
 
@@ -101,25 +101,35 @@
 
 | Output ID | Property | Line | Duplicate? | Pattern? |
 |-----------|----------|------|-----------|---------|
-| `research-chat-store` | `data` | 27 |  |  |
-| `research-chat-store` | `data` | 72 | ✓ |  |
-| `research-input` | `value` | 73 |  |  |
-| `research-usage-store` | `data` | 74 | ✓ |  |
-| `research-typing-indicator` | `style` | 75 |  |  |
-| `research-send-btn` | `disabled` | 76 |  |  |
-| `report-cache-store` | `data` | 77 | ✓ |  |
-| `ai-pending-tasks-store` | `data` | 78 | ✓ |  |
-| `research-typing-indicator` | `style` | 257 | ✓ |  |
-| `research-send-btn` | `disabled` | 258 | ✓ |  |
-| `research-chat-store` | `data` | 271 | ✓ |  |
-| `ai-pending-tasks-store` | `data` | 272 | ✓ |  |
-| `report-cache-store` | `data` | 273 | ✓ |  |
-| `research-chat-display` | `children` | 338 |  |  |
-| `research-ticker-store` | `data` | 389 |  |  |
-| `research-portfolio-summary` | `children` | 400 |  |  |
-| `research-usage-display` | `children` | 454 |  |  |
-| `report-download` | `data` | 524 |  |  |
-| `research-chat-display` | `id` | 550 |  |  |
+| `research-chat-store` | `data` | 74 |  |  |
+| `research-chat-store` | `data` | 116 | ✓ |  |
+| `research-input` | `value` | 117 |  |  |
+| `research-usage-store` | `data` | 118 | ✓ |  |
+| `research-typing-indicator` | `style` | 119 |  |  |
+| `research-send-btn` | `disabled` | 120 |  |  |
+| `report-cache-store` | `data` | 121 | ✓ |  |
+| `ai-pending-tasks-store` | `data` | 122 | ✓ |  |
+| `research-typing-indicator` | `style` | 355 | ✓ |  |
+| `research-send-btn` | `disabled` | 356 | ✓ |  |
+| `research-chat-store` | `data` | 369 | ✓ |  |
+| `ai-pending-tasks-store` | `data` | 370 | ✓ |  |
+| `report-cache-store` | `data` | 371 | ✓ |  |
+| `research-chat-display` | `children` | 436 |  |  |
+| `research-ticker-store` | `data` | 487 |  |  |
+| `research-usage-display` | `children` | 498 |  |  |
+| `report-download` | `data` | 564 |  |  |
+| `research-chat-display` | `id` | 590 |  |  |
+| `chatbot-window` | `style` | 613 |  |  |
+| `chatbot-trigger` | `style` | 614 |  |  |
+| `chatbot-context-bar` | `children` | 622 |  |  |
+| `qp-1` | `children` | 623 |  |  |
+| `qp-1` | `style` | 624 |  |  |
+| `qp-2` | `children` | 625 |  |  |
+| `qp-2` | `style` | 626 |  |  |
+| `qp-3` | `children` | 627 |  |  |
+| `qp-3` | `style` | 628 |  |  |
+| `qp-4` | `children` | 629 |  |  |
+| `qp-4` | `style` | 630 |  |  |
 
 ## `settings_callbacks.py`
 

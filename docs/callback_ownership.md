@@ -210,9 +210,15 @@
 | `ai-pending-tasks-store` | `data` | AI task tracking. |
 | `research-chat-display` | `children` | Chat display (2 callbacks). |
 | `research-ticker-store` | `data` | Active research ticker. |
-| `research-portfolio-summary` | `children` | Portfolio left panel. |
 | `research-usage-display` | `children` | Usage counter display. |
 | `report-download` | `data` | File download trigger. |
+| `chatbot-window` | `style` | Chatbot open/closed visibility state. |
+| `chatbot-trigger` | `style` | Floating trigger button visibility state. |
+| `chatbot-context-bar` | `children` | Active page & ticker context display. |
+| `qp-1` | `children`, `style` | Custom dynamic quick prompt 1. |
+| `qp-2` | `children`, `style` | Custom dynamic quick prompt 2. |
+| `qp-3` | `children`, `style` | Custom dynamic quick prompt 3. |
+| `qp-4` | `children`, `style` | Custom dynamic quick prompt 4. |
 
 ---
 

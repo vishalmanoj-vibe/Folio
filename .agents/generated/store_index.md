@@ -1,6 +1,6 @@
 # Store Index — Auto-Generated
 
-> **Generated**: 2026-06-24 19:03  
+> **Generated**: 2026-06-24 19:22  
 > **Do not edit** — run `python .agents/generated/sync_docs.py` to refresh.
 > For exact JSON shapes and safe access patterns, see `docs/store_contracts.md`.
 
@@ -10,36 +10,36 @@
 
 | Store ID | Storage Type | Seeded at Line |
 |----------|-------------|----------------|
-| `signals-store` | `local` | 198 |
-| `theme-store` | `local` | 200 |
-| `watchlist-signals-store` | `local` | 199 |
-| `ai-pending-tasks-store` | `session` | 215 |
-| `analytics-period-store` | `session` | 224 |
-| `benchmark-pending-store` | `session` | 218 |
-| `intel-period-store` | `session` | 225 |
-| `intel-pred-store` | `session` | 226 |
-| `pending-tasks-store` | `session` | 214 |
-| `period-store` | `session` | 220 |
-| `pnl-mode-store` | `session` | 221 |
-| `positions-period-store` | `session` | 228 |
-| `positions-selected-ticker` | `session` | 227 |
-| `ticker-store` | `session` | 222 |
-| `treemap-mode-store` | `session` | 223 |
-| `watchlist-period-store` | `session` | 230 |
-| `watchlist-selected-ticker` | `session` | 229 |
-| `alerts-store` | `memory` | 197 |
-| `compact-mode-store` | `memory` | 201 |
-| `folio-table-state-v3` | `memory` | 202 |
-| `nav-link-store` | `memory` | 212 |
-| `palette-ticker-store` | `memory` | 239 |
-| `portfolio-store` | `memory` | 195 |
-| `refresh-trigger-store` | `memory` | 213 |
-| `research-chat-store` | `memory` | 231 |
-| `research-ticker-store` | `memory` | 232 |
-| `research-usage-store` | `memory` | 233 |
-| `setup-is-first-run-store` | `memory` | 189 |
-| `txn-store` | `memory` | 194 |
-| `watchlist-store` | `memory` | 196 |
+| `signals-store` | `local` | 199 |
+| `theme-store` | `local` | 201 |
+| `watchlist-signals-store` | `local` | 200 |
+| `ai-pending-tasks-store` | `session` | 216 |
+| `analytics-period-store` | `session` | 225 |
+| `benchmark-pending-store` | `session` | 219 |
+| `intel-period-store` | `session` | 226 |
+| `intel-pred-store` | `session` | 227 |
+| `pending-tasks-store` | `session` | 215 |
+| `period-store` | `session` | 221 |
+| `pnl-mode-store` | `session` | 222 |
+| `positions-period-store` | `session` | 229 |
+| `positions-selected-ticker` | `session` | 228 |
+| `ticker-store` | `session` | 223 |
+| `treemap-mode-store` | `session` | 224 |
+| `watchlist-period-store` | `session` | 231 |
+| `watchlist-selected-ticker` | `session` | 230 |
+| `alerts-store` | `memory` | 198 |
+| `compact-mode-store` | `memory` | 202 |
+| `folio-table-state-v3` | `memory` | 203 |
+| `nav-link-store` | `memory` | 213 |
+| `palette-ticker-store` | `memory` | 240 |
+| `portfolio-store` | `memory` | 196 |
+| `refresh-trigger-store` | `memory` | 214 |
+| `research-chat-store` | `memory` | 232 |
+| `research-ticker-store` | `memory` | 233 |
+| `research-usage-store` | `memory` | 234 |
+| `setup-is-first-run-store` | `memory` | 190 |
+| `txn-store` | `memory` | 195 |
+| `watchlist-store` | `memory` | 197 |
 
 ---
 
