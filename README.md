@@ -21,33 +21,153 @@ Built with Dash, Plotly, yfinance, and Gemini.
 - **Premium Aesthetics** — High-fidelity UI with glassmorphism navigation, smooth 200ms theme transitions, Inter typography (tabular numerals), and interactive hover depth.
 - **Data Freshness Heartbeat** — Real-time animated status indicator in the header synchronized with ASX trading sessions.
 
-## Setup
+## Installation
 
-**Requirements:** Python 3.11+
+### macOS / Linux
+
+**Requirements:** macOS 12+ or Linux, Git, internet connection (all dependencies and Python version managed automatically).
 
 ```bash
 # 1. Clone the repo
 git clone https://github.com/vishalmanoj-vibe/folio.git
 cd folio
 
-# 2. Create and activate a virtual environment
-python -m venv folio-env
-source folio-env/bin/activate      # Mac/Linux
-folio-env\Scripts\activate         # Windows
-
-# 3. Install dependencies
-pip install -r requirements.txt
-
-# 4. Add a .env file for AI features (optional)
-echo "GEMINI_API_KEY=your_key_here" > .env
-
-# 5. Run
-python launcher.py
-# This starts both the Dash UI and the background worker.
-# Open manually at http://127.0.0.1:8050
+# 2. Run the installer (or double-click scripts/install.command in Finder)
+./scripts/install.command
 ```
 
-The database is created automatically on first run. Add your transactions directly from the UI — no CSV or manual setup required.
+The installer will:
+- Install [uv](https://docs.astral.sh/uv/) (extremely fast Python package manager) if missing
+- Download and configure Python 3.12 in a sandboxed, isolated environment
+- Install all dependencies from `requirements.txt`
+- Install Playwright WebKit (used for ETF holdings data scraping)
+- Prompt for your **Gemini API key** and write it to `.env`
+- Automatically copy a **`Folio.command`** shortcut to your **Desktop** for one-click launch
+- Create **`Folio.app`** in the project folder (macOS native app bundle)
+
+**After install, to launch:**
+- **Option 1 (Recommended):** Double-click the **`Folio.command`** file on your Desktop. It will launch the backend processes and automatically open the dashboard in Safari.
+- **Option 2:** Open Terminal in the project root and run `uv run python launcher.py`.
+- **Option 3 (macOS App):** Open `Folio.app` (drag it to `/Applications` or pin to Dock). Note: this runs the server but doesn't auto-open a browser window.
+
+---
+
+### Windows
+
+**Requirements:** Windows 10/11, Git, internet connection.
+
+```cmd
+1. Clone the repo:
+   git clone https://github.com/vishalmanoj-vibe/folio.git
+   cd folio
+
+2. Double-click scripts\install.bat (or run scripts\install.bat from Command Prompt)
+```
+
+The installer will:
+- Install [uv](https://docs.astral.sh/uv/) via PowerShell if not present
+- Download and configure Python 3.12 in an isolated environment
+- Install all dependencies from `requirements.txt`
+- Install Playwright WebKit
+- Prompt for your **Gemini API key** and write it to `.env`
+- Automatically create a **`Folio`** shortcut on your **Desktop** (`Folio.lnk`)
+
+**After install, to launch:**
+- **Option 1 (Recommended):** Double-click the **`Folio`** shortcut on your Desktop. It will start the server and automatically open the dashboard in your default browser.
+- **Option 2:** Double-click `scripts\folio_launch.bat` in the `scripts/` root folder.
+- **Option 3:** Open Command Prompt in the project root and run `uv run python launcher.py`.
+
+---
+
+### Troubleshooting & Common Setup Issues
+
+#### ⚠️ macOS: "install.command could not be executed because you do not have appropriate access privileges"
+This happens if file permissions are lost (e.g. when downloading the repository as a ZIP file instead of using `git clone`).
+- **Fix:** Open Terminal, navigate to the folder, and run:
+  ```bash
+  chmod +x scripts/install.command
+  ```
+  Then double-click or run the script again.
+
+#### ⚠️ macOS Gatekeeper: "unidentified developer" or "downloaded from the internet"
+macOS security might block running the script or `Folio.app` on first launch.
+- **Fix:** Right-click (`Ctrl + Click`) the file, select **Open**, and click **Open** in the warning dialog. Alternatively, go to **System Settings** → **Privacy & Security**, scroll down to the Security section, and click **Open Anyway**.
+
+#### ⚠️ Windows: PowerShell script execution is disabled / blocked
+Windows may block downloading `uv` during installation due to PowerShell execution restrictions.
+- **Fix:** Open PowerShell as Administrator and run:
+  ```powershell
+  Set-ExecutionPolicy RemoteSigned -Scope CurrentUser
+  ```
+  Then run `scripts\install.bat` again. The installer also runs with `-ExecutionPolicy Bypass` to mitigate this.
+
+#### ⚠️ Paths containing spaces
+If the folder containing Folio resides in a path with spaces (e.g., `C:\Users\John Doe\OneDrive - Personal\folio`), it can occasionally cause path resolution bugs on Windows.
+- **Fix:** Move the `folio` project folder to a path without spaces, such as `C:\Projects\folio` or `C:\folio`.
+
+#### ⚠️ OneDrive / Cloud Sync locks
+If OneDrive, Dropbox, or iCloud is actively syncing the directory, the SQLite database (`portfolio.db`) or virtual environment files might get locked, causing installation or database errors.
+- **Fix:** Pause synchronization during setup, or move the folder outside your sync directory (e.g., to your home directory `/Users/username/folio` or `C:\folio`).
+
+#### ⚠️ ETF Holdings scraping fails (Playwright issues)
+If the holdings table for ETFs shows empty data and logs indicate Playwright is missing or failing:
+- **Fix:** Manually trigger the Playwright installer inside the environment:
+  - **macOS/Linux:** `uv run playwright install webkit`
+  - **Windows:** `.venv\Scripts\playwright install webkit`
+
+#### ⚠️ Port 8050 is already in use
+If you launch the app and get a port conflict or cannot connect:
+- **Fix:** The launcher automatically tries to close processes occupying port 8050. If this fails:
+  - **macOS/Linux:** Run `lsof -ti:8050 | xargs kill -9` in Terminal.
+  - **Windows:** Open Command Prompt and run:
+    ```cmd
+    for /f "tokens=5" %a in ('netstat -ano ^| findstr :8050') do taskkill /PID %a /F
+    ```
+
+---
+
+### Gemini API Key (AI Features)
+
+AI features (trading signals overlay, chatbot, weekly PDF reports) require a free Gemini API key.
+
+1. Get your key at [aistudio.google.com](https://aistudio.google.com) — it's free.
+2. The installer will prompt you for it automatically.
+3. To add/change it later, edit the `.env` file in the project root:
+   ```
+   GEMINI_API_KEY=your_key_here
+   ```
+
+All other features (live prices, P&L tracking, dividends, technical signals, forecasting) work without an API key.
+---
+
+### Developer Setup (Manual)
+
+If you want full control over the environment (for contributing or debugging):
+
+```bash
+git clone https://github.com/vishalmanoj-vibe/folio.git
+cd folio
+
+# Create and activate a virtual environment (Python 3.12 recommended)
+python -m venv .venv
+source .venv/bin/activate      # macOS/Linux
+.venv\Scripts\activate         # Windows
+
+# Install dependencies
+pip install -r requirements.txt
+
+# Install Playwright WebKit
+playwright install webkit
+
+# Configure environment
+cp .env.example .env
+# Edit .env and set GEMINI_API_KEY
+
+# Run
+python launcher.py
+```
+
+The database (`data/portfolio.db`) is created automatically on first run. Add your transactions directly from the UI — no CSV or manual setup required.
 
 ## Testing
 
@@ -61,11 +181,7 @@ Folio features a comprehensive, high-performance unit testing suite built on `py
 open htmlcov/index.html
 ```
 
-## AI Features
 
-The AI Assistant and Trading Signal AI overlay both require a Gemini API key. Get one free at [aistudio.google.com](https://aistudio.google.com).
-
-All other features (live prices, P&L tracking, dividends, signals engine, forecasting) work without an API key.
 
 ## Pages
 

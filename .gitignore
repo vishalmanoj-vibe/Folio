@@ -52,7 +52,6 @@ data/*.db*
 scratch/*
 !scratch/tests/
 !scratch/run_tests.sh
-/scripts
 archive/
 test codes/
 test_gemini.py
@@ -67,5 +66,12 @@ build/
 dist/
 *.spec
 !folio.spec
+*.app/
 *.app
 .webview/
+
+# ── Installer-generated launchers ─────────────────────────────────────────────
+# These are created by scripts/install.command and scripts/install.bat.
+# They contain hardcoded absolute paths specific to each machine.
+Folio.command
+folio_launch.bat

@@ -1,6 +1,6 @@
 # Callback Output Index — Auto-Generated
 
-> **Generated**: 2026-06-24 19:22  
+> **Generated**: 2026-06-24 21:29  
 > **Do not edit** — run `python .agents/generated/sync_docs.py` to refresh.
 > For ownership intent and architecture notes, see `docs/callback_ownership.md`.
 
@@ -101,35 +101,35 @@
 
 | Output ID | Property | Line | Duplicate? | Pattern? |
 |-----------|----------|------|-----------|---------|
-| `research-chat-store` | `data` | 74 |  |  |
-| `research-chat-store` | `data` | 116 | ✓ |  |
-| `research-input` | `value` | 117 |  |  |
-| `research-usage-store` | `data` | 118 | ✓ |  |
-| `research-typing-indicator` | `style` | 119 |  |  |
-| `research-send-btn` | `disabled` | 120 |  |  |
-| `report-cache-store` | `data` | 121 | ✓ |  |
-| `ai-pending-tasks-store` | `data` | 122 | ✓ |  |
-| `research-typing-indicator` | `style` | 355 | ✓ |  |
-| `research-send-btn` | `disabled` | 356 | ✓ |  |
-| `research-chat-store` | `data` | 369 | ✓ |  |
-| `ai-pending-tasks-store` | `data` | 370 | ✓ |  |
-| `report-cache-store` | `data` | 371 | ✓ |  |
-| `research-chat-display` | `children` | 436 |  |  |
-| `research-ticker-store` | `data` | 487 |  |  |
-| `research-usage-display` | `children` | 498 |  |  |
-| `report-download` | `data` | 564 |  |  |
-| `research-chat-display` | `id` | 590 |  |  |
-| `chatbot-window` | `style` | 613 |  |  |
-| `chatbot-trigger` | `style` | 614 |  |  |
-| `chatbot-context-bar` | `children` | 622 |  |  |
-| `qp-1` | `children` | 623 |  |  |
-| `qp-1` | `style` | 624 |  |  |
-| `qp-2` | `children` | 625 |  |  |
-| `qp-2` | `style` | 626 |  |  |
-| `qp-3` | `children` | 627 |  |  |
-| `qp-3` | `style` | 628 |  |  |
-| `qp-4` | `children` | 629 |  |  |
-| `qp-4` | `style` | 630 |  |  |
+| `research-chat-store` | `data` | 75 |  |  |
+| `research-chat-store` | `data` | 117 | ✓ |  |
+| `research-input` | `value` | 118 |  |  |
+| `research-usage-store` | `data` | 119 | ✓ |  |
+| `research-typing-indicator` | `style` | 120 |  |  |
+| `research-send-btn` | `disabled` | 121 |  |  |
+| `report-cache-store` | `data` | 122 | ✓ |  |
+| `ai-pending-tasks-store` | `data` | 123 | ✓ |  |
+| `research-typing-indicator` | `style` | 357 | ✓ |  |
+| `research-send-btn` | `disabled` | 358 | ✓ |  |
+| `research-chat-store` | `data` | 371 | ✓ |  |
+| `ai-pending-tasks-store` | `data` | 372 | ✓ |  |
+| `report-cache-store` | `data` | 373 | ✓ |  |
+| `research-chat-display` | `children` | 438 |  |  |
+| `research-ticker-store` | `data` | 489 |  |  |
+| `research-usage-display` | `children` | 500 |  |  |
+| `report-download` | `data` | 566 |  |  |
+| `research-chat-display` | `id` | 592 |  |  |
+| `chatbot-window` | `style` | 615 |  |  |
+| `chatbot-trigger` | `style` | 616 |  |  |
+| `chatbot-context-bar` | `children` | 624 |  |  |
+| `qp-1` | `children` | 625 |  |  |
+| `qp-1` | `style` | 626 |  |  |
+| `qp-2` | `children` | 627 |  |  |
+| `qp-2` | `style` | 628 |  |  |
+| `qp-3` | `children` | 629 |  |  |
+| `qp-3` | `style` | 630 |  |  |
+| `qp-4` | `children` | 631 |  |  |
+| `qp-4` | `style` | 632 |  |  |
 
 ## `settings_callbacks.py`
 

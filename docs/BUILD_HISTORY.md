@@ -128,4 +128,20 @@ This document chronicles the technical evolution of Folio, transitioning from a 
 
 
 
+---
 
+## Phase 7: Distribution, Packaging & Setup UX (v2.4.0)
+**Theme**: Making Folio installable by anyone directly from GitHub — no Python expertise required.
+
+*   **uv-Based Installer**: Replaced the manual `pip install` setup process with a two-script installer (`install.sh` for macOS/Linux, `install.bat` for Windows). The installers use [uv](https://docs.astral.sh/uv/) to automatically download and configure Python 3.12, create an isolated `.venv`, install all dependencies, and install the Playwright WebKit browser — all in a single command.
+*   **macOS App Bundle**: `install.sh` generates a native `Folio.app` bundle in the project root. The bundle contains an `Info.plist` and a shell launcher that resolves paths relative to its location, allowing it to be moved to `/Applications` or pinned to the Dock.
+*   **Windows Launcher**: `install.bat` generates a `folio_launch.bat` shortcut in the `scripts/` folder after install, which can be pinned to the Start menu or Taskbar.
+*   **Interactive API Key Setup**: The installer interactively prompts for a Gemini API key during setup and writes it to `.env` automatically, eliminating the manual copy-and-edit step for new users.
+*   **Zero Source Code Changes**: No Python source files were modified. The app continues to use the project directory for all data (`data/portfolio.db`, `data/cache/`) and the existing `.env` for secrets, exactly as in development mode.
+*   **README Overhaul**: Replaced the single "Setup" section with a comprehensive "Installation" section covering macOS (with `.app` instructions), Windows (with `.bat` instructions), Linux, API key configuration, and a separate Developer Setup path for contributors.
+*   **scripts/ Subdirectory Installers**: Organized installers (`scripts/install.command` for macOS/Linux, `scripts/install.bat` for Windows) inside the `scripts/` folder, keeping the project root clean and clutter-free, while remaining fully double-clickable directly from Finder/Explorer.
+*   **Automated Desktop Shortcuts**: Implemented automated desktop shortcut generation (`Folio.command` on macOS Desktop; `Folio.lnk` on Windows Desktop via PowerShell) so the user has immediate access to run the app with one click from their desktop.
+*   **Resilient Virtual Environment Reuse**: Refactored the environment setup process to check for and reuse existing `.venv/` folders, preventing installation crashes on subsequent runs or app updates.
+*   **Safe Permission Fallbacks**: Implemented graceful error catching during file copy operations (such as macOS `Desktop/` write permissions), warning the user to copy shortcuts manually rather than failing the installer.
+*   **Browser Auto-Launch with Port Polling**: Configured the Windows launcher to check port 8050, wait for the Dash server to initialize, and automatically open the application in the user's default browser (matching the macOS experience).
+*   **Detailed Setup Troubleshooting Guide**: Appended a comprehensive "Troubleshooting & Common Setup Issues" section to the README, detailing workarounds for macOS Gatekeeper blocks, Windows execution policy limits, directory path spacing, and Cloud sync locks.
