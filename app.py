@@ -11,7 +11,7 @@ Pages
   /positions      → pages/positions.py
   /analytics      → pages/analytics.py
   /intelligence   → pages/intelligence.py
-  /ai-analyst     → pages/ai_analyst.py
+  /settings       → pages/settings.py
 
 Responsiveness fix (Instant Load + Background Refresh)
 --------------------------------------------------

@@ -222,7 +222,8 @@ folio/
 │   ├── positions.py                # Positions (/positions)
 │   ├── watchlist.py                # Watchlist (/watchlist)
 │   ├── intelligence.py             # Insights (/intelligence)
-│   └── analytics.py                # Deep Dive (/analytics)
+│   ├── analytics.py                # Deep Dive (/analytics)
+│   └── settings.py                 # Settings & Investor Profile (/settings)
 │
 └── assets/                         # Static assets (Modular CSS)
     ├── base-tokens.css             # Design Tokens (CSS Variables)
@@ -392,9 +393,9 @@ To ensure consistent data views across the dashboard, the application implements
 - **The Problem**: Different pages (e.g., Positions vs. Watchlist) may request different time periods, but they share the global `portfolio-store`.
 - **The Fix**: The refresh callback in `app.py` evaluates all active page-specific period stores and instructs the market service to fetch the **maximum** duration requested. This ensures that when a user switches pages, the required historical data is already present in the global cache.
 
-### 8. AI Assistant & Persistent Memory
-The **Assistant Page** leverages Google Gemini 2.5 Flash Lite for contextual portfolio reasoning.
-- **Contextual Awareness**: On every query, the assistant is injected with a live snapshot of the portfolio (Holdings, P&L, Weights) and the ticker currently being researched.
+### 8. Floating AI Assistant Widget & Persistent Memory
+The **Floating AI Chatbot Widget** (defined in [chatbot.py](file:///Users/vishal/Library/CloudStorage/OneDrive-Personal/Projects/portfolio_dashboard/components/chatbot.py)) leverages Google Gemini 2.5 Flash Lite (guided by your Investor Profile settings) for contextual portfolio reasoning.
+- **Contextual Awareness**: The chatbot runs in the global layout and automatically resolves viewport context (active path and active selected ticker). On every query, the assistant is injected with this context, including a live snapshot of the portfolio (Holdings, P&L, Weights) and the active ticker.
 - **Technical Integration**: Live technical signals (RSI/MACD/BB) are automatically computed and injected into the prompt context, allowing the AI to reason about technical entry points.
 - **Cost & Performance Optimization**:
     - **Deterministic Caching**: To minimize Gemini API costs, the `ai_engine.py` generates a cache key based on a stable subset of signals (Signal + Rounded Score). Highly volatile live price ticks are ignored for cache key generation, preventing redundant paid API calls.

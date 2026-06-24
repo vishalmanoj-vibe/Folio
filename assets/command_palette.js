@@ -17,7 +17,7 @@
         { id: 'nav_watchlist', label: 'Go to Watchlist Manager', icon: '⭐', type: 'nav', target: '/watchlist', group: 'Navigation' },
         { id: 'nav_insights', label: 'Go to Smart Insights & Signals', icon: '🧠', type: 'nav', target: '/intelligence', group: 'Navigation' },
         { id: 'nav_deepdive', label: 'Go to Deep Dive (Analytics)', icon: '📉', type: 'nav', target: '/analytics', group: 'Navigation' },
-        { id: 'nav_assistant', label: 'Go to AI Chat Assistant', icon: '💬', type: 'nav', target: '/ai-analyst', group: 'Navigation' },
+        { id: 'action_chatbot', label: 'Open Folio AI Chatbot', icon: '💬', type: 'action', target: 'chatbot-trigger', group: 'Actions' },
         { id: 'nav_settings', label: 'Go to Settings & Profile', icon: '⚙', type: 'nav', target: '/settings', group: 'Navigation' },
         { id: 'action_theme', label: 'Toggle Dark / Light Theme', icon: '🌓', type: 'action', target: 'theme-toggle-hidden', shortcut: '⌘T', group: 'Actions' },
         { id: 'action_refresh', label: 'Refresh Live Portfolio Data', icon: '🔄', type: 'action', target: 'refresh-btn-hidden', shortcut: '⌘R', group: 'Actions' },

@@ -169,6 +169,45 @@
 
 ---
 
+## `research-chat-store`
+
+**Storage type**: `memory` (clears on refresh)  
+**Single owner (writer)**: `research_callbacks.py` (welcome message, send prompt, and task listener callbacks)  
+
+```json
+[
+  {
+    "role": "assistant",
+    "content": "Hi! I've loaded your portfolio..."
+  },
+  {
+    "role": "user",
+    "content": "Does VAS fit my portfolio?"
+  },
+  {
+    "role": "assistant",
+    "content": "VAS represents ASX 300, which aligns with...",
+    "type": "web-search-used"
+  }
+]
+```
+
+### Rules
+- `role` is either `"user"` or `"assistant"`.
+- `content` holds the text content.
+- Optional `"type"` key specifies special rendering variants: `"thinking"`, `"web-search-used"`, or `"report-ready"`.
+
+---
+
+## `research-ticker-store`
+
+**Storage type**: `memory` (clears on refresh)  
+**Single owner (writer)**: `update_chatbot_context()` in `research_callbacks.py`  
+
+Stores the ticker string currently typed into the chatbot research input box (e.g. `"VAS"`), or `""` if no explicit ticker research override is set.
+
+---
+
 ## `folio-table-state-v3`
 
 **Storage type**: `session`
