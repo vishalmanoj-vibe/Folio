@@ -191,9 +191,20 @@
 | `setup-portfolio-feedback` | `children` | Setup feedback text. |
 | `txn-store` | `data` | Setup commits transactions (allow_duplicate). |
 | `setup-ai-feedback` | `children` | AI key feedback. |
-| `setup-ready-summary` | `children` | Ready page summary. |
 | `setup-is-first-run-store` | `data` | First-run flag. |
 | `setup-ready-feedback` | `children` | Final ready feedback. |
+| `setup-init-tasks-store` | `data` | Session store for task IDs + phase. Primary: `auto_start_fetch`. Secondary: `poll_init_progress` (allow_duplicate). |
+| `setup-poll-interval` | `disabled` | Poll interval on/off. Primary: `auto_start_fetch`. Secondary: `poll_init_progress` (allow_duplicate). |
+| `setup-init-step-list` | `children` | Per-task step rows (poll_init_progress). |
+| `setup-init-progress-label` | `children` | "X of Y tasks" label (poll_init_progress). |
+| `setup-init-progress-bar` | `style` | Progress bar fill width (poll_init_progress). |
+| `setup-init-status-msg` | `children` | Timeout warning message (poll_init_progress). |
+| `setup-ready-launch-btn` | `disabled` | Gated by critical task completion (poll_init_progress). |
+| `setup-ready-summary` | `children` | Phase B summary content (poll_init_progress). |
+| `setup-ready-summary` | `style` | Show/hide summary box (poll_init_progress). |
+| `setup-init-progress-container` | `style` | Show/hide progress tracker (poll_init_progress). |
+| `setup-init-title` | `children` | Dynamic title text (poll_init_progress). |
+| `setup-init-subtitle` | `children` | Dynamic subtitle text (poll_init_progress). |
 
 ---
 

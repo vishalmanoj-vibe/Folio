@@ -21,6 +21,74 @@ logger = logging.getLogger(__name__)
 repo = PortfolioRepository()
 
 
+# ── Private Helpers ──────────────────────────────────────────────────────────
+
+
+def _get_task_statuses(task_ids: list) -> dict:
+    """Query worker_tasks for a list of task IDs.
+    Returns {task_id: {status, type, result}}.
+    """
+    if not task_ids:
+        return {}
+    from data.database import get_connection
+
+    conn = get_connection()
+    try:
+        placeholders = ",".join("?" * len(task_ids))
+        rows = conn.execute(
+            f"SELECT task_id, task_type, status, result FROM worker_tasks"
+            f" WHERE task_id IN ({placeholders})",
+            task_ids,
+        ).fetchall()
+        return {
+            r["task_id"]: {
+                "status": r["status"],
+                "type": r["task_type"],
+                "result": r["result"],
+            }
+            for r in rows
+        }
+    except Exception as e:
+        logger.error(f"Failed to query task statuses: {e}")
+        return {}
+    finally:
+        conn.close()
+
+
+def _render_step_row(label: str, status: str) -> html.Div:
+    """Render a single task step row with icon, label, and coloured status badge."""
+    ICONS = {
+        "pending": "○",
+        "running": "◐",
+        "complete": "✓",
+        "failed": "!",
+    }
+    BADGE_CLASSES = {
+        "pending": "badge-pending",
+        "running": "badge-running",
+        "complete": "badge-done",
+        "failed": "badge-failed",
+    }
+    STATUS_LABELS = {
+        "pending": "Queued",
+        "running": "Running…",
+        "complete": "Done",
+        "failed": "Error",
+    }
+    icon = ICONS.get(status, "○")
+    badge_cls = BADGE_CLASSES.get(status, "badge-pending")
+    status_text = STATUS_LABELS.get(status, "Queued")
+
+    return html.Div(
+        [
+            html.Span(icon, className=f"setup-step-icon step-icon-{status}"),
+            html.Span(label, className="setup-step-label"),
+            html.Span(status_text, className=f"setup-step-badge {badge_cls}"),
+        ],
+        className="setup-step-row",
+    )
+
+
 def make_setup_row(i):
     return html.Tr(
         [
@@ -299,48 +367,97 @@ def register_setup_callbacks(app):
 
         return dash.no_update, dash.no_update
 
-    # ── Page 3: Ready Summary and Launch ──
+    # ── Page 3: Auto Data Fetch (fires once on page load via startup interval) ──
     @app.callback(
-        Output("setup-ready-summary", "children"),
-        Input("url", "pathname"),
-        State("txn-store", "data"),
+        Output("setup-init-tasks-store", "data"),
+        Output("setup-poll-interval", "disabled"),
+        Input("setup-startup-interval", "n_intervals"),
+        State("url", "pathname"),
+        State("setup-init-tasks-store", "data"),
+        prevent_initial_call=True,
     )
-    def render_ready_summary(pathname, txn_data):
+    def auto_start_fetch(n_intervals, pathname, store_data):
+        """Enqueue all data-fetch tasks and start the progress poll interval."""
         if pathname != "/setup/ready":
-            return no_update
+            return no_update, no_update
 
-        # Read tickers count
-        num_txns = len(txn_data) if txn_data else 0
+        # If store already has tasks (page refresh), just re-enable polling
+        if store_data and store_data.get("tasks"):
+            logger.info("Onboarding: store already has tasks, re-enabling poll on refresh.")
+            return no_update, False
 
-        # Read AI key status
-        ai_status = "Skipped (Not configured)"
-        if os.environ.get("GEMINI_API_KEY"):
-            ai_status = "Enabled (Database Storage)"
+        # Fresh start: enqueue all required tasks
+        try:
+            from data.database import enqueue_task
 
-        return [
-            html.Div("Onboarding Summary", className="setup-summary-title"),
-            html.Div(
-                [
-                    html.Span("Transactions Imported:"),
-                    html.Span(f"{num_txns}", className="setup-summary-value"),
-                ],
-                className="setup-summary-row",
-            ),
-            html.Div(
-                [
-                    html.Span("AI Analyst Engine:"),
-                    html.Span(ai_status, className="setup-summary-value highlight"),
-                ],
-                className="setup-summary-row",
-            ),
-            html.Div(
-                [
-                    html.Span("Database Directory:"),
-                    html.Span("Local Workspace", className="setup-summary-value"),
-                ],
-                className="setup-summary-row",
-            ),
-        ]
+            tasks = []
+
+            # 1. Critical — live prices (gates the Launch button)
+            task_id = enqueue_task("refresh_portfolio", priority=1)
+            critical_id = task_id
+            tasks.append(
+                {
+                    "id": task_id,
+                    "type": "refresh_portfolio",
+                    "label": "Fetching live prices",
+                    "is_critical": True,
+                }
+            )
+
+            # 2. Per-ticker price history (needed for charts, signals, intelligence)
+            txns = repo.load_transactions()
+            tickers = list({t["ticker"] for t in txns})
+            for ticker in sorted(tickers):
+                task_id = enqueue_task(
+                    "fetch_history", {"ticker": ticker, "period": "max"}, priority=2
+                )
+                tasks.append(
+                    {
+                        "id": task_id,
+                        "type": "fetch_history",
+                        "label": f"Fetching history: {ticker}",
+                        "is_critical": False,
+                    }
+                )
+
+            # 3. Benchmark data (Intelligence page)
+            task_id = enqueue_task("fetch_benchmarks", {"period": "max"}, priority=2)
+            tasks.append(
+                {
+                    "id": task_id,
+                    "type": "fetch_benchmarks",
+                    "label": "Fetching benchmark data",
+                    "is_critical": False,
+                }
+            )
+
+            # 4. Maintenance (AI memory, watchlist histories)
+            task_id = enqueue_task(
+                "maintenance",
+                {"gemini_api_key": os.environ.get("GEMINI_API_KEY")},
+                priority=3,
+            )
+            tasks.append(
+                {
+                    "id": task_id,
+                    "type": "maintenance",
+                    "label": "Running maintenance tasks",
+                    "is_critical": False,
+                }
+            )
+
+            store = {
+                "tasks": tasks,
+                "phase": "fetching",
+                "started_at": datetime.now().isoformat(),
+                "critical_task_id": critical_id,
+            }
+            logger.info(f"Onboarding: enqueued {len(tasks)} data fetch tasks.")
+            return store, False  # Enable poll interval
+
+        except Exception as e:
+            logger.error(f"Onboarding: failed to enqueue data fetch tasks: {e}")
+            return no_update, True  # Keep interval disabled
 
     @app.callback(
         Output("url", "pathname", allow_duplicate=True),
@@ -376,29 +493,8 @@ def register_setup_callbacks(app):
             except Exception as e:
                 logger.error(f"Failed to save persistent onboarding state: {e}")
 
-            # ── Trigger immediate data backfill ──────────────────────────────
-            # The worker's startup fetch ran before any transactions existed.
-            # Enqueue a high-priority portfolio refresh + per-ticker history fetch
-            # so data populates immediately without waiting for the 5-min cooldown.
-            try:
-                from data.database import enqueue_task
-
-                # Priority 1: Fetch live prices right away
-                enqueue_task("refresh_portfolio", priority=1)
-                # Priority 2: Backfill max history for each ticker (for charts/signals)
-                txns = repo.load_transactions()
-                tickers = {t["ticker"] for t in txns}
-                for ticker in tickers:
-                    enqueue_task("fetch_history", {"ticker": ticker, "period": "max"}, priority=2)
-                # Priority 3: Maintenance (AI memory, watchlist histories)
-                enqueue_task(
-                    "maintenance", {"gemini_api_key": os.environ.get("GEMINI_API_KEY")}, priority=3
-                )
-                logger.info(f"Onboarding: Enqueued data backfill for {len(tickers)} ticker(s).")
-            except Exception as e:
-                logger.error(f"Failed to enqueue post-onboarding data backfill: {e}")
-
-            # Turn off first run store to unlock main UI pages
+            # Data fetch tasks were already enqueued by auto_start_fetch on page load.
+            # Turn off first-run flag and redirect to the main dashboard.
             return (
                 dash.no_update,
                 False,
@@ -406,3 +502,165 @@ def register_setup_callbacks(app):
             )
 
         return dash.no_update, dash.no_update, dash.no_update
+
+    # ── Page 3: Progress Tracker Poll (fires every 2s via setup-poll-interval) ──
+    @app.callback(
+        Output("setup-init-step-list", "children"),
+        Output("setup-init-progress-label", "children"),
+        Output("setup-init-progress-bar", "style"),
+        Output("setup-init-status-msg", "children"),
+        Output("setup-ready-launch-btn", "disabled"),
+        Output("setup-poll-interval", "disabled", allow_duplicate=True),
+        Output("setup-init-tasks-store", "data", allow_duplicate=True),
+        Output("setup-ready-summary", "children"),
+        Output("setup-ready-summary", "style"),
+        Output("setup-init-progress-container", "style"),
+        Output("setup-init-title", "children"),
+        Output("setup-init-subtitle", "children"),
+        Input("setup-poll-interval", "n_intervals"),
+        State("setup-init-tasks-store", "data"),
+        State("url", "pathname"),
+        prevent_initial_call=True,
+    )
+    def poll_init_progress(n_intervals, store_data, pathname):
+        """Poll worker_tasks every 2s and update the progress tracker UI."""
+        _NOOP = tuple([no_update] * 12)
+
+        if pathname != "/setup/ready":
+            return _NOOP
+        if not store_data or not store_data.get("tasks"):
+            return _NOOP
+
+        tasks = store_data.get("tasks", [])
+        critical_task_id = store_data.get("critical_task_id", "")
+        started_at_str = store_data.get("started_at", "")
+        phase = store_data.get("phase", "fetching")
+
+        # Already in ready phase — stop further processing
+        if phase == "ready":
+            return _NOOP
+
+        # ── Timeout check ────────────────────────────────────────────────────
+        timed_out = False
+        if started_at_str:
+            try:
+                elapsed = (datetime.now() - datetime.fromisoformat(started_at_str)).total_seconds()
+                timed_out = elapsed > 240
+            except Exception:
+                pass
+
+        # ── Query task statuses from SQLite ──────────────────────────────────
+        task_ids = [t["id"] for t in tasks]
+        statuses = _get_task_statuses(task_ids)
+
+        total = len(tasks)
+        completed = sum(
+            1 for t in tasks if statuses.get(t["id"], {}).get("status") in ("complete", "failed")
+        )
+        critical_status = statuses.get(critical_task_id, {}).get("status", "pending")
+        critical_done = critical_status in ("complete", "failed")
+        all_done = total > 0 and completed >= total
+
+        pct = int(completed / total * 100) if total > 0 else 0
+
+        # ── Render per-task step rows ────────────────────────────────────────
+        step_rows = []
+        for task in tasks:
+            tid = task["id"]
+            status = statuses.get(tid, {}).get("status", "pending")
+            step_rows.append(_render_step_row(task["label"], status))
+
+        bar_style = {"width": f"{pct}%", "transition": "width 0.6s ease"}
+        progress_label = f"{completed} of {total} tasks complete"
+        launch_disabled = not (critical_done or timed_out)
+
+        # ── Status warning message ───────────────────────────────────────────
+        status_msg: Any = ""
+        if timed_out and not all_done:
+            status_msg = html.Div(
+                "⚠ Some tasks are taking longer than expected. "
+                "You can launch now — data will continue loading in the background.",
+                className="setup-init-status-warning",
+            )
+
+        # ── Phase B transition: all done or timeout ──────────────────────────
+        if all_done or timed_out:
+            new_store = {**store_data, "phase": "ready"}
+
+            # Build ready summary
+            try:
+                num_txns = len(repo.load_transactions())
+            except Exception:
+                num_txns = 0
+            ai_status = "Enabled ✓" if os.environ.get("GEMINI_API_KEY") else "Not configured"
+
+            summary_children = [
+                html.Div("Setup Complete", className="setup-summary-title"),
+                html.Div(
+                    [
+                        html.Span("Transactions loaded:"),
+                        html.Span(str(num_txns), className="setup-summary-value"),
+                    ],
+                    className="setup-summary-row",
+                ),
+                html.Div(
+                    [
+                        html.Span("Market data:"),
+                        html.Span("Fetched ✓", className="setup-summary-value"),
+                    ],
+                    className="setup-summary-row",
+                ),
+                html.Div(
+                    [
+                        html.Span("AI Analyst:"),
+                        html.Span(ai_status, className="setup-summary-value highlight"),
+                    ],
+                    className="setup-summary-row",
+                ),
+            ]
+
+            if all_done:
+                new_title = "Dashboard Ready!"
+                new_subtitle = (
+                    "All market data has been loaded. "
+                    "Click 'Launch Dashboard' to open your portfolio."
+                )
+                bar_style = {"width": "100%", "transition": "width 0.6s ease"}
+                progress_label = f"{total} of {total} tasks complete"
+            else:
+                new_title = "Dashboard Ready"
+                new_subtitle = (
+                    "Live prices are loaded. Some background tasks are still running "
+                    "and will complete automatically."
+                )
+
+            return (
+                step_rows,  # 1. step-list children
+                progress_label,  # 2. progress-label children
+                bar_style,  # 3. progress-bar style
+                status_msg,  # 4. status-msg children
+                False,  # 5. launch-btn disabled → ENABLED
+                True,  # 6. poll-interval disabled → STOP
+                new_store,  # 7. tasks-store data
+                summary_children,  # 8. ready-summary children
+                {},  # 9. ready-summary style → SHOW
+                {"display": "none"},  # 10. progress-container → HIDE
+                new_title,  # 11. title children
+                new_subtitle,  # 12. subtitle children
+            )
+
+        # ── Phase A: still fetching — update progress indicators only ─────────
+        return (
+            step_rows,
+            progress_label,
+            bar_style,
+            status_msg,
+            launch_disabled,
+            no_update,  # keep interval running
+            no_update,  # keep store as-is
+            no_update,  # summary still hidden
+            no_update,  # summary style unchanged
+            no_update,  # progress container still visible
+            no_update,  # title unchanged
+            no_update,  # subtitle unchanged
+        )

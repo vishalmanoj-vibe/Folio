@@ -172,6 +172,18 @@ Prevent "Duplicate ID" errors and callback collisions by maintaining a central m
 - `settings-save-status`: Save confirmation feedback text.
 - `settings-weights-preview-container`: Strategy weights bar charts container.
 
+### Setup / Ready Page (`/setup/ready`) — Data Pre-fetch Tracker
+- `setup-init-tasks-store`: `dcc.Store` (session) — holds enqueued task IDs, phase, started_at, critical_task_id.
+- `setup-startup-interval`: `dcc.Interval` — fires once after 1.5s to trigger `auto_start_fetch`.
+- `setup-poll-interval`: `dcc.Interval` — fires every 2s to drive `poll_init_progress`.
+- `setup-init-title`: `html.H1` — dynamic page title (updates in phase B).
+- `setup-init-subtitle`: `html.P` — dynamic subtitle (updates in phase B).
+- `setup-init-progress-container`: Outer wrapper for the progress tracker (hidden in phase B).
+- `setup-init-progress-bar`: `html.Div` — animated cyan fill; `style.width` driven by callback.
+- `setup-init-progress-label`: `html.Span` — "X of Y tasks complete" counter.
+- `setup-init-step-list`: `html.Div` — rendered step rows (one per enqueued task).
+- `setup-init-status-msg`: `html.Div` — timeout warning message area.
+
 ## Pattern-Matched IDs (Dynamic — do not hardcode)
 - `{"type": "pos-card", "index": <ticker>}`: Holding selection cards on Positions page.
 - `{"type": "pos-period-btn", "index": <period>}`: Period buttons on Positions page.

@@ -266,3 +266,138 @@
 .setup-summary-value.highlight {
   color: var(--cyan);
 }
+
+/* ── Setup Page 3: Data Pre-fetch Progress Tracker ── */
+
+.setup-progress-container {
+  background: var(--surface-2);
+  border: 0.5px solid var(--border);
+  border-radius: 12px;
+  padding: 20px;
+  margin-bottom: 24px;
+}
+
+/* Progress bar track */
+.setup-progress-bar-track {
+  background: var(--surface-3);
+  border-radius: 100px;
+  height: 6px;
+  overflow: hidden;
+  margin-bottom: 8px;
+}
+
+/* Cyan animated fill — width driven by Dash callback */
+.setup-progress-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--cyan), var(--cyan-border, var(--cyan)));
+  border-radius: 100px;
+  transition: width 0.6s ease;
+  width: 0%;
+}
+
+/* "X of Y tasks complete" right-aligned label */
+.setup-progress-label-row {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 16px;
+}
+
+.setup-progress-label {
+  font-size: 11px;
+  color: var(--t-sec);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Container for the per-task step rows */
+.setup-step-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+/* Individual step row */
+.setup-step-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: var(--surface);
+  border: 0.5px solid var(--border);
+  transition: border-color 0.2s;
+}
+
+/* Status icon column */
+.setup-step-icon {
+  font-size: 13px;
+  width: 18px;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+.step-icon-complete { color: var(--green); }
+.step-icon-running  { color: var(--cyan); animation: setup-pulse 1.4s ease-in-out infinite; }
+.step-icon-failed   { color: var(--red); }
+.step-icon-pending  { color: var(--t-sec); }
+
+/* Label (flex-grow fills remaining space) */
+.setup-step-label {
+  font-size: 12px;
+  color: var(--t-pri);
+  flex: 1;
+}
+
+/* Coloured status badge pill */
+.setup-step-badge {
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 9px;
+  border-radius: 100px;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  flex-shrink: 0;
+}
+
+.badge-pending {
+  background: var(--surface-3);
+  color: var(--t-sec);
+}
+
+.badge-running {
+  background: var(--cyan-bg);
+  color: var(--cyan);
+  animation: setup-pulse 1.4s ease-in-out infinite;
+}
+
+.badge-done {
+  background: var(--green-bg);
+  color: var(--green);
+}
+
+.badge-failed {
+  background: var(--red-bg);
+  color: var(--red);
+}
+
+/* Pulsing animation shared by running icon and badge */
+@keyframes setup-pulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.45; }
+}
+
+/* Timeout / warning message box */
+.setup-init-status-area {
+  margin-top: 4px;
+}
+
+.setup-init-status-warning {
+  font-size: 12px;
+  color: var(--t-sec);
+  background: var(--surface-3);
+  border: 0.5px solid var(--border);
+  border-left: 3px solid var(--red);
+  border-radius: 8px;
+  padding: 10px 14px;
+  margin-top: 12px;
+  line-height: 1.6;
+}
