@@ -94,7 +94,7 @@ def register_callbacks(app) -> None:
         Input(
             "benchmark-pending-store", "data"
         ),  # Changed from State to Input to trigger redraw when ready
-        prevent_initial_call=True,
+        prevent_initial_call=False,
     )
     def pnl_history_chart(data, theme, period, mode, selected, pathname, bench_pending):
         import dash
@@ -238,7 +238,7 @@ def register_callbacks(app) -> None:
         Input("url", "pathname"),
         Input("holdings-url-save-status", "children"),  # re-trigger after URL save
         State("holdings-url-collapse", "opened"),
-        prevent_initial_call=True,
+        prevent_initial_call=False,
     )
     def portfolio_treemap(data, theme, mode, pathname, _save_status, collapse_open):
         import dash
@@ -436,7 +436,7 @@ def register_callbacks(app) -> None:
         Input("holdings-url-save-btn", "n_clicks"),
         Input("url", "pathname"),
         State("portfolio-store", "data"),
-        prevent_initial_call=True,
+        prevent_initial_call=False,
     )
     def load_url_table(is_open, _save, pathname, portfolio_data):
         import dash

@@ -1,12 +1,12 @@
 # Callback Output Index — Auto-Generated
 
-> **Generated**: 2026-06-27 14:57  
+> **Generated**: 2026-06-27 15:34  
 > **Do not edit** — run `python .agents/generated/sync_docs.py` to refresh.
 > For ownership intent and architecture notes, see `docs/callback_ownership.md`.
 
 ---
 
-**Total outputs indexed**: 168 across 13 files
+**Total outputs indexed**: 181 across 13 files
 
 ## `app.py`
 
@@ -147,20 +147,33 @@
 
 | Output ID | Property | Line | Duplicate? | Pattern? |
 |-----------|----------|------|-----------|---------|
-| `dummy-redirect-output` | `children` | 116 |  |  |
-| `setup-portfolio-table-body` | `children` | 123 |  |  |
-| `setup-portfolio-rows-store` | `data` | 132 |  |  |
-| `setup-portfolio-rows-store` | `data` | 146 | ✓ |  |
-| `setup-portfolio-continue-btn` | `disabled` | 174 |  |  |
-| `url` | `pathname` | 195 | ✓ |  |
-| `setup-portfolio-feedback` | `children` | 196 |  |  |
-| `txn-store` | `data` | 197 | ✓ |  |
-| `url` | `pathname` | 252 | ✓ |  |
-| `setup-ai-feedback` | `children` | 253 |  |  |
-| `setup-ready-summary` | `children` | 304 |  |  |
-| `url` | `pathname` | 346 | ✓ |  |
-| `setup-is-first-run-store` | `data` | 347 | ✓ |  |
-| `setup-ready-feedback` | `children` | 348 |  |  |
+| `dummy-redirect-output` | `children` | 184 |  |  |
+| `setup-portfolio-table-body` | `children` | 191 |  |  |
+| `setup-portfolio-rows-store` | `data` | 200 |  |  |
+| `setup-portfolio-rows-store` | `data` | 214 | ✓ |  |
+| `setup-portfolio-continue-btn` | `disabled` | 242 |  |  |
+| `url` | `pathname` | 263 | ✓ |  |
+| `setup-portfolio-feedback` | `children` | 264 |  |  |
+| `txn-store` | `data` | 265 | ✓ |  |
+| `url` | `pathname` | 320 | ✓ |  |
+| `setup-ai-feedback` | `children` | 321 |  |  |
+| `setup-init-tasks-store` | `data` | 372 |  |  |
+| `setup-poll-interval` | `disabled` | 373 |  |  |
+| `url` | `pathname` | 463 | ✓ |  |
+| `setup-is-first-run-store` | `data` | 464 | ✓ |  |
+| `setup-ready-feedback` | `children` | 465 |  |  |
+| `setup-init-step-list` | `children` | 508 |  |  |
+| `setup-init-progress-label` | `children` | 509 |  |  |
+| `setup-init-progress-bar` | `style` | 510 |  |  |
+| `setup-init-status-msg` | `children` | 511 |  |  |
+| `setup-ready-launch-btn` | `disabled` | 512 |  |  |
+| `setup-poll-interval` | `disabled` | 513 | ✓ |  |
+| `setup-init-tasks-store` | `data` | 514 | ✓ |  |
+| `setup-ready-summary` | `children` | 515 |  |  |
+| `setup-ready-summary` | `style` | 516 |  |  |
+| `setup-init-progress-container` | `style` | 517 |  |  |
+| `setup-init-title` | `children` | 518 |  |  |
+| `setup-init-subtitle` | `children` | 519 |  |  |
 
 ## `signals_callbacks.py`
 

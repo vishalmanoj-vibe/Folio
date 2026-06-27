@@ -50,7 +50,7 @@ def register_callbacks(app) -> None:
         ),  # Changed from State to Input to redraw when benchmarks complete
         State("intel-pred-toggle", "checked"),
         State("intel-period-picker", "value"),
-        prevent_initial_call=True,
+        prevent_initial_call=False,
     )
     def update_intelligence(
         port_data,

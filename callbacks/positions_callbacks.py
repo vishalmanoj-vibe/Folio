@@ -836,7 +836,7 @@ def register_callbacks(app) -> None:
         Input("portfolio-store", "data"),
         Input("theme-store", "data"),
         Input("url", "pathname"),
-        prevent_initial_call=True,
+        prevent_initial_call=False,
     )
     def render_portfolio_dividend_insights(port_data, theme, url_pathname):
         import dash
