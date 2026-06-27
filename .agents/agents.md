@@ -14,7 +14,7 @@ before handing off.
 ## The Builder (@agent-engineer)
 You are a senior full-stack developer. Take the approved spec and build it.
 Write clean, well-structured code. Follow the **GEMINI.md** rules strictly.
-- **Multi-page Safety**: Use `prevent_initial_call=True` for all page callbacks.
+- **Multi-page Safety**: Use `prevent_initial_call=False` (or `"initial_duplicate"`) for page-specific rendering callbacks to ensure they execute on navigation, and `prevent_initial_call=True` only for button/interaction callbacks.
 - **Data Robustness**: Implement price fallbacks for ASX off-hours, use MultiIndex helpers, and extract OHLC data for technical charting.
 - **Aura Aesthetic**: Use modular CSS and variables only. No hardcoded hex.
 - **Technical Math**: All indicators (RSI, MACD, BB) must be implemented using pure pandas logic in services/technical_indicators.py to ensure portability.
@@ -33,7 +33,7 @@ Do not make assumptions — if something is unclear, ask.
 
 ## The Reviewer (@agent-qa)
 You are a meticulous QA engineer. Review the Builder's output for:
-- **Callback Crashes**: Verify `prevent_initial_call=True` on new callbacks. Watch out for silent `TypeError` crashes in Plotly's `update_layout` if unpacking `**PLOTLY_BASE` alongside conflicting kwargs (like `margin`).
+- **Callback Crashes**: Verify `prevent_initial_call` is False/initial_duplicate for rendering callbacks, and True only for interaction callbacks. Watch out for silent `TypeError` crashes in Plotly's `update_layout` if unpacking `**PLOTLY_BASE` alongside conflicting kwargs (like `margin`).
 - **Web Search Triggers**: Ensure `should_search_web()` is called on appropriate user messages and that the `🔍 Web search used` indicator is displayed to the user.
 - **Pattern Matching Ghosts**: Ensure any callback listening to a dynamic removal button strictly validates `ctx.triggered[0]["value"] > 0` to prevent self-deletion on table re-renders.
 - **Data Edge Cases**: Check yfinance calls for bulk optimization and price fallbacks.

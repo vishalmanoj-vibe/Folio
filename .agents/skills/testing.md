@@ -8,7 +8,7 @@ Before submitting a change:
 - Open the dashboard in a browser.
 - Open **Chrome DevTools (F12) → Console**.
 - **Check for Red Errors**: Look for `ID not found` or `Callback error`.
-- **Navigation Test**: Click through every page in the sidebar. If an error appears during navigation, you missed a `prevent_initial_call=True`.
+- **Navigation Test**: Click through every page in the sidebar. If an error appears during navigation or if a page gets stuck in a loading state, check for incorrect `prevent_initial_call` settings.
 
 ## 2. Visual Quality Check
 - **Theme Toggle**: Switch between Light and Dark mode. 

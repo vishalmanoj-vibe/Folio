@@ -13,7 +13,7 @@ Identify which layer the error is in:
 - **Market data**: `yfinance` fetch in `services/market/data_fetcher.py`
 
 ### 2. Common root causes
-- **Multi-page ID Errors**: Dash fires callbacks for IDs not in the current layout. Fix: Add `prevent_initial_call=True`.
+- **Multi-page ID Errors / Page Hangs**: Dash fires callbacks for IDs not in the current layout. Also, `prevent_initial_call=True` on dynamic page layouts blocks page-load rendering. Fix: Use `prevent_initial_call=False` (or `"initial_duplicate"`) for rendering callbacks gated by page pathname checks, and `prevent_initial_call=True` only for interaction handlers (like clicks).
 - **yfinance 0.0 Price**: ASX off-hours return 0.0. Fix: Fallback to historical close.
 - **MultiIndex Extraction Failure**: `yf.download` returns (Ticker, Metric) columns. Fix: Use `_extract_col` helper.
 - **Timezone Gaps**: Ensure all processing uses `Australia/Sydney`.

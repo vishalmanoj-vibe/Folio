@@ -44,7 +44,7 @@ When the user runs `/startcycle [idea]`, the team will follow this high-density 
 ### Stage 3 — @agent-qa: Verify & Stabilize
 1. **Audit**: Review the build against `GEMINI.md` and `.agents/skills/testing.md`.
 2. **Visual Check**: Use `.agents/skills/aura_design_system.md` to verify the "Aura Ledger" look.
-3. **Stability**: Ensure `prevent_initial_call=True` is on all new callbacks.
+3. **Stability**: Ensure correct `prevent_initial_call` usage (False/initial_duplicate for rendering callbacks, True for interactions) is on all new callbacks.
 4. **Store Contract Check**: Verify all `dcc.Store` accesses in changed files use `.get()` with defaults, per `docs/store_contracts.md`. A bare `data["key"]` access is a bug.
 5. **Known Issues Cross-Reference**: Compare all touched files against `docs/known_issues.md`. If a touched file matches a known bug's "Files affected" list, confirm the fix pattern is still present in the code.
 6. **Diff Review**: Review the full diff for unintended deletions, renamed imports, changed callback wiring, and modified store keys — not just the added lines.

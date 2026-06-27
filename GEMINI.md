@@ -34,7 +34,7 @@ Then read these documents **in order**:
 - Do NOT modify app.py layout or the two dcc.Store seeds (txn-store, portfolio-store)
 - All new chart callbacks go in callbacks/chart_callbacks.py
 - New pages must register_callbacks(app) and be imported in app.py after app creation
-- **Multi-page Safety**: ALL callbacks targeting page-specific elements MUST use `prevent_initial_call=True`.
+- **Multi-page Safety**: Rendering callbacks targeting page-specific elements MUST use `prevent_initial_call=False` (or `"initial_duplicate"` if duplicate outputs are present) to ensure they fire on initial page navigation/load. Button/interaction callbacks (like click/submit handlers) should use `prevent_initial_call=True` to prevent premature execution.
 - **Prioritized Rendering**: Every rendering callback MUST include `Input("url", "pathname")` and return `dash.no_update` if the pathname does not match the callback's target page. This prevents background re-render flicker.
 - **Dynamic Layouts**: All pages MUST define layout as a callable function (`def layout():`) rather than a static variable to ensure proper component ID registration on every page load.
 - **Period Sync**: The `portfolio-store` refresh callback in `app.py` must sync with page-specific period stores (`positions-period-store`, `watchlist-period-store`, etc.) to ensure the global data fetch covers the maximum requested period.
@@ -203,7 +203,7 @@ After completing any task that adds, removes, or renames a component:
 - `components/charts/pnl_history.py` — Implemented 5-minute resampling and Plotly `rangebreaks` to hide overnight sessions. Updated hover labels to include full date context.
 - `services/market/data_fetcher.py` — Updated `fetch_live` to request 2-day windows and ensure snapshots/backfills occur even on internal cache hits.
 
-- **Project-wide Audit**: Standardized all services to use `logger.debug()` and verified `prevent_initial_call=True` for multi-page safety.
+- **Project-wide Audit**: Standardized all services to use `logger.debug()` and verified correct `prevent_initial_call` usage (False/initial_duplicate for rendering, True for interactions) for multi-page safety.
 ### Rendering Prioritization & Fast Startup (Complete)
 - **Callback Prioritization**: Implemented `pathname` awareness across all rendering callbacks in `chart_callbacks.py`, `positions_callbacks.py`, and `watchlist_callbacks.py` to prevent off-page DOM thrashing.
 - **Fast Startup**: Refactored `app.py` to seed `portfolio-store` and `watchlist-store` with disk cached data, removing blocking `fetch_live` calls from the startup sequence.
