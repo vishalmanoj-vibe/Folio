@@ -346,5 +346,20 @@ if not history_s.empty:
     tech_signals = tech_signal_badges(ticker, history_s)
 ```
 
+---
+
+## BUG-019 · Page Load Deadlock / Freeze on Refresh & Direct Load
+
+**Status**: Fixed  
+**Files affected**: `callbacks/positions_callbacks.py`, `callbacks/watchlist_callbacks.py`  
+**Symptom**: Navigating directly to `/positions` or `/watchlist` (or reloading the page on those routes) causes the UI to freeze indefinitely on loading spinners/skeletons. The python logs show HTTP 200 without any exception stack traces.
+
+**Root Cause**:
+To prevent background rendering when on other pages, page-specific callbacks used `prevent_initial_call=True`. However, when refreshing the page, the selected ticker value is loaded from browser session storage. Because this value is already set, the selection callback doesn't detect a value change, preventing downstream callbacks from firing. Combined with `prevent_initial_call=True`, the rendering callbacks never execute during initial layout paint, leaving the page frozen in loading states.
+
+**Fix**:
+Change `prevent_initial_call=False` on the page-specific rendering callbacks, and ensure they are all protected by a page pathname guard (e.g. `if url_pathname.rstrip('/') != '/positions': return dash.no_update`) to prevent background off-page rendering.
+
+
 
 

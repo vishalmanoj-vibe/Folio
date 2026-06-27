@@ -201,8 +201,13 @@ def test_render_watchlist_stat_cards(mock_repo_cls: MagicMock, mock_app: MockDas
     func = mock_app.callbacks.get("render_watchlist_stat_cards")
     assert func is not None
 
+    # Off-page pathname guard
+    import dash
+
+    assert func("VAS", None, None, "/positions") == (dash.no_update, dash.no_update, dash.no_update)
+
     # Empty data
-    assert func("VAS", None, None) == ([], None, None)
+    assert func("VAS", None, None, "/watchlist") == ([], None, None)
 
     # Valid data, no AI signals
     mock_data = {
@@ -224,7 +229,7 @@ def test_render_watchlist_stat_cards(mock_repo_cls: MagicMock, mock_app: MockDas
     mock_repo.load_close_series.return_value = pd.Series([90, 95])
     mock_repo_cls.return_value = mock_repo
 
-    cards, tech, ai = func("VAS", mock_data, None)
+    cards, tech, ai = func("VAS", mock_data, None, "/watchlist")
     assert len(cards) == 4
     assert tech is not None
     assert ai is None
@@ -236,7 +241,7 @@ def test_render_watchlist_stat_cards(mock_repo_cls: MagicMock, mock_app: MockDas
         },
         "raw": {"VAS": {"score": 0.8, "reasons": ["Bullish trend"]}},
     }
-    cards, tech, ai = func("VAS", mock_data, mock_signals)
+    cards, tech, ai = func("VAS", mock_data, mock_signals, "/watchlist")
     assert ai is not None
     # Verify risk text is present
     assert "Confident" in str(ai.children)
@@ -268,7 +273,7 @@ def test_render_watchlist_stat_cards_empty_history(
     mock_repo.load_close_series.return_value = pd.Series(dtype=float)
     mock_repo_cls.return_value = mock_repo
 
-    cards, tech, ai = func("VAS", mock_data, None)
+    cards, tech, ai = func("VAS", mock_data, None, "/watchlist")
     assert len(cards) == 4
     assert tech is None
     assert ai is None

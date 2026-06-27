@@ -113,7 +113,7 @@ def register_callbacks(app) -> None:
         Input("url", "pathname"),
         Input("watchlist-selected-ticker", "data"),
         Input("watchlist-signals-store", "data"),
-        prevent_initial_call=True,
+        prevent_initial_call=False,
     )
     def render_watchlist_table(data, pathname, selected_ticker, signals_store):
         # Multi-page safety: only render if on the watchlist page
@@ -371,7 +371,7 @@ def register_callbacks(app) -> None:
         Input("url", "pathname"),
         Input("theme-store", "data"),
         Input("watchlist-period-store", "data"),
-        prevent_initial_call=True,
+        prevent_initial_call=False,
     )
     def update_watchlist_chart(selected_ticker, data, pathname, theme, period):
         # Resolve theme tokens
@@ -486,9 +486,15 @@ def register_callbacks(app) -> None:
         Input("watchlist-selected-ticker", "data"),
         Input("watchlist-store", "data"),
         Input("watchlist-signals-store", "data"),
-        prevent_initial_call=True,
+        Input("url", "pathname"),
+        prevent_initial_call=False,
     )
-    def render_watchlist_stat_cards(selected_ticker, data, signals_store):
+    def render_watchlist_stat_cards(selected_ticker, data, signals_store, url_pathname):
+        import dash
+
+        if url_pathname.rstrip("/") != "/watchlist":
+            return dash.no_update, dash.no_update, dash.no_update
+
         from components.ui_helpers import stat_card
 
         if not selected_ticker or not data or "holdings" not in data:

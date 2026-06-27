@@ -1,6 +1,6 @@
 # Callback Output Index — Auto-Generated
 
-> **Generated**: 2026-06-27 14:18  
+> **Generated**: 2026-06-27 14:48  
 > **Do not edit** — run `python .agents/generated/sync_docs.py` to refresh.
 > For ownership intent and architecture notes, see `docs/callback_ownership.md`.
 
@@ -84,18 +84,18 @@
 | `positions-selected-ticker` | `data` | 182 |  |  |
 | `etf-detail-cards` | `children` | 233 |  |  |
 | `positions-tech-signals-container` | `children` | 234 |  |  |
-| `ai-insight-container` | `children` | 349 |  |  |
-| `positions-price-chart` | `figure` | 439 |  |  |
-| `positions-price-chart-header` | `style` | 440 |  |  |
-| `positions-txn-table-container` | `children` | 555 |  |  |
-| `positions-period-store` | `data` | 620 |  |  |
-| `positions-period-btns` | `children` | 640 |  |  |
-| `positions-detail-title` | `children` | 672 |  |  |
-| `positions-ticker-dividend-container` | `children` | 688 |  |  |
-| `positions-portfolio-dividend-chart-container` | `children` | 830 |  |  |
-| `positions-dividend-income-chart` | `children` | 831 |  |  |
-| `positions-dividend-yield-chart` | `children` | 832 |  |  |
-| `positions-dividend-table` | `children` | 833 |  |  |
+| `ai-insight-container` | `children` | 350 |  |  |
+| `positions-price-chart` | `figure` | 440 |  |  |
+| `positions-price-chart-header` | `style` | 441 |  |  |
+| `positions-txn-table-container` | `children` | 556 |  |  |
+| `positions-period-store` | `data` | 621 |  |  |
+| `positions-period-btns` | `children` | 641 |  |  |
+| `positions-detail-title` | `children` | 673 |  |  |
+| `positions-ticker-dividend-container` | `children` | 689 |  |  |
+| `positions-portfolio-dividend-chart-container` | `children` | 831 |  |  |
+| `positions-dividend-income-chart` | `children` | 832 |  |  |
+| `positions-dividend-yield-chart` | `children` | 833 |  |  |
+| `positions-dividend-table` | `children` | 834 |  |  |
 
 ## `research_callbacks.py`
 
@@ -237,6 +237,6 @@
 | `watchlist-stat-cards` | `children` | 482 |  |  |
 | `watchlist-tech-signals-container` | `children` | 483 |  |  |
 | `watchlist-ai-insight-container` | `children` | 484 |  |  |
-| `watchlist-notes-input` | `value` | 639 |  |  |
-| `watchlist-notes-msg` | `children` | 649 |  |  |
-| `watchlist-ticker-hint` | `children` | 663 |  |  |
+| `watchlist-notes-input` | `value` | 646 |  |  |
+| `watchlist-notes-msg` | `children` | 656 |  |  |
+| `watchlist-ticker-hint` | `children` | 670 |  |  |
