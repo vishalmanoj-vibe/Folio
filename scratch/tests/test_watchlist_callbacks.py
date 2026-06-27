@@ -242,6 +242,38 @@ def test_render_watchlist_stat_cards(mock_repo_cls: MagicMock, mock_app: MockDas
     assert "Confident" in str(ai.children)
 
 
+@patch("data.repository.HistoryRepository")
+def test_render_watchlist_stat_cards_empty_history(
+    mock_repo_cls: MagicMock, mock_app: MockDashApp
+) -> None:
+    func = mock_app.callbacks.get("render_watchlist_stat_cards")
+    assert func is not None
+
+    mock_data = {
+        "holdings": [
+            {
+                "ticker": "VAS",
+                "last_price": 95.0,
+                "day_chg": 0.5,
+                "day_chg_pct": 0.53,
+                "day_high": 96.0,
+                "day_low": 94.0,
+                "div_yield": 4.2,
+                "annual_div": 4.0,
+                "div_frequency": "Quarterly",
+            }
+        ]
+    }
+    mock_repo = MagicMock()
+    mock_repo.load_close_series.return_value = pd.Series(dtype=float)
+    mock_repo_cls.return_value = mock_repo
+
+    cards, tech, ai = func("VAS", mock_data, None)
+    assert len(cards) == 4
+    assert tech is None
+    assert ai is None
+
+
 # ── 7. Notes ──
 def test_load_note_for_ticker(mock_app: MockDashApp) -> None:
     func = mock_app.callbacks.get("load_note_for_ticker")

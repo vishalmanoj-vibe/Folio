@@ -151,3 +151,66 @@ def test_select_ticker_default_fallback(
         # No url search, current is None
         res = func([0, 0, 0], "", "/positions", mock_portfolio_data, None)
         assert res == "AINF"
+
+
+@patch("data.repository.PortfolioRepository")
+@patch("data.repository.HistoryRepository")
+@patch("callbacks.positions_callbacks.calculate_portfolio_dividend_stats")
+def test_render_detail_metrics_empty_history(
+    mock_calc_divs: MagicMock,
+    mock_hist_repo_cls: MagicMock,
+    mock_port_repo_cls: MagicMock,
+    mock_app: MockDashApp,
+) -> None:
+    """Verify that render_detail_metrics handles empty history safely without crashing."""
+    import pandas as pd
+
+    func = mock_app.callbacks.get("render_detail_metrics")
+    assert func is not None
+
+    # Mock repositories
+    mock_port_repo = MagicMock()
+    mock_port_repo.load_transactions.return_value = [
+        {
+            "id": 1,
+            "ticker": "VAS",
+            "type": "buy",
+            "shares": 10.0,
+            "price": 95.0,
+            "date": "2024-01-01",
+        }
+    ]
+    mock_port_repo_cls.return_value = mock_port_repo
+
+    mock_hist_repo = MagicMock()
+    # Empty history
+    mock_hist_repo.load_close_series.return_value = pd.Series(dtype=float)
+    mock_hist_repo_cls.return_value = mock_hist_repo
+
+    mock_calc_divs.return_value = (None, None, [])
+
+    # Mock portfolio-store data
+    port_data = {
+        "holdings": [
+            {
+                "ticker": "VAS",
+                "ticker_yf": "VAS.AX",
+                "total_shares": 10.0,
+                "avg_cost": 95.0,
+                "total_cost": 950.0,
+                "mkt_value": 960.0,
+                "last_price": 96.0,
+                "pnl": 10.0,
+                "pnl_pct": 1.05,
+                "day_pnl": 5.0,
+                "day_chg_pct": 0.52,
+                "div_yield": 4.2,
+                "annual_div": 40.0,
+            }
+        ]
+    }
+
+    # Should not raise UnboundLocalError and should return tech_signals=None
+    cards, tech_signals = func("VAS", port_data, "/positions")
+    assert len(cards) == 7
+    assert tech_signals is None

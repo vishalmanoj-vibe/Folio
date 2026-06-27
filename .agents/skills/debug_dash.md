@@ -133,3 +133,15 @@ dmc.Button("Label", leftIcon=html.I(className="fas fa-robot"))
 dmc.Button("Label", leftSection=html.I(className="fas fa-robot"))
 ```
 **Affected props**: `leftIcon` → `leftSection`, `rightIcon` → `rightSection`.
+
+### 9. Callback `UnboundLocalError` on Empty Cache / Missing Data
+**Symptom**: Page components or detail panels fail to load, showing a continuous spinner or blank sections. Python console shows `UnboundLocalError: local variable 'X' referenced before assignment`.
+**Cause**: Assigning output variables inside a conditional block (e.g. `if not data.empty:`) but referencing them in the `return` statement. When data is empty, the variable is unbound.
+**Fix**: Always initialize variables to `None` or a safe default before any conditional logic or database fetches:
+```python
+# ✅ Correct
+tech_signals = None
+if not history.empty:
+    tech_signals = tech_signal_badges(ticker, history)
+return info, tech_signals
+```

@@ -325,4 +325,26 @@ When using `branchvalues="total"`, Plotly strictly validates that the value of e
 1. Ensure the mock weights in unit tests always sum to exactly 100%.
 2. In the chart builder code, calculate the value of the last child node dynamically as the residual of the parent's value minus the sum of the previous children's values (`val = parent_val - sum(previous_child_vals)`). This guarantees that the sum matches the parent's value exactly, even in the presence of floating-point inaccuracies.
 
+---
+
+## BUG-018 · `UnboundLocalError` on Positions & Watchlist Pages for New Tickers
+
+**Status**: Fixed  
+**Files affected**: `callbacks/positions_callbacks.py`, `callbacks/watchlist_callbacks.py`  
+**Symptom**: Navigating to `/positions` or `/watchlist` fails to load metrics and detail elements, showing an infinite loading spinner. Python logs show `UnboundLocalError: local variable 'tech_signals' referenced before assignment`.
+
+**Root Cause**:
+When a new ticker is added to the portfolio or watchlist, it has no cached historical price data in the database, resulting in an empty history series. The callback checks `if not history_s.empty:` to build the technical signal badges, but if it is empty, the `tech_signals` variable is never assigned, leading to an `UnboundLocalError` during the return statement.
+
+**Fix**:
+Initialize `tech_signals = None` before fetching and checking the close series:
+```python
+# ✅ FIXED — always define tech_signals to avoid UnboundLocalError
+tech_signals = None
+history_s = HistoryRepository().load_close_series(ticker, ...)
+if not history_s.empty:
+    tech_signals = tech_signal_badges(ticker, history_s)
+```
+
+
 

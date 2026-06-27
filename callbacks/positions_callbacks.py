@@ -332,6 +332,7 @@ def register_callbacks(app) -> None:
         # Generate Tech Signals (Memory Optimized)
         from data.repository import HistoryRepository
 
+        tech_signals = None
         history_s = HistoryRepository().load_close_series(
             ticker, from_date=(pd.Timestamp.now() - pd.DateOffset(years=1)).strftime("%Y-%m-%d")
         )
