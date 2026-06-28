@@ -420,6 +420,18 @@ def register_setup_callbacks(app):
                     }
                 )
 
+            # 2.5 ETF constituent holdings (needed for Analytics page treemap / allocation charts)
+            for ticker in sorted(tickers):
+                task_id = enqueue_task("scrape_holdings", {"ticker": ticker}, priority=3)
+                tasks.append(
+                    {
+                        "id": task_id,
+                        "type": "scrape_holdings",
+                        "label": f"Scraping holdings: {ticker}",
+                        "is_critical": False,
+                    }
+                )
+
             # 3. Benchmark data (Intelligence page)
             task_id = enqueue_task("fetch_benchmarks", {"period": "max"}, priority=2)
             tasks.append(
@@ -532,7 +544,6 @@ def register_setup_callbacks(app):
             return _NOOP
 
         tasks = store_data.get("tasks", [])
-        critical_task_id = store_data.get("critical_task_id", "")
         started_at_str = store_data.get("started_at", "")
         phase = store_data.get("phase", "fetching")
 
@@ -557,8 +568,6 @@ def register_setup_callbacks(app):
         completed = sum(
             1 for t in tasks if statuses.get(t["id"], {}).get("status") in ("complete", "failed")
         )
-        critical_status = statuses.get(critical_task_id, {}).get("status", "pending")
-        critical_done = critical_status in ("complete", "failed")
         all_done = total > 0 and completed >= total
 
         pct = int(completed / total * 100) if total > 0 else 0
@@ -572,7 +581,7 @@ def register_setup_callbacks(app):
 
         bar_style = {"width": f"{pct}%", "transition": "width 0.6s ease"}
         progress_label = f"{completed} of {total} tasks complete"
-        launch_disabled = not (critical_done or timed_out)
+        launch_disabled = not (all_done or timed_out)
 
         # ── Status warning message ───────────────────────────────────────────
         status_msg: Any = ""
