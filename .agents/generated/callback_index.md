@@ -1,8 +1,8 @@
 # Callback Output Index — Auto-Generated
 
-> **Generated**: 2026-06-27 15:51  
+> **Generated**: 2026-06-30 21:42  
 > **Do not edit** — run `python .agents/generated/sync_docs.py` to refresh.
-> For ownership intent and architecture notes, see `docs/callback_ownership.md`.
+> For ownership intent and architecture notes, see `docs/reference/callback_ownership.md`.
 
 ---
 
@@ -12,20 +12,20 @@
 
 | Output ID | Property | Line | Duplicate? | Pattern? |
 |-----------|----------|------|-----------|---------|
-| `txn-store` | `data` | 264 | ✓ |  |
-| `portfolio-store` | `data` | 396 | ✓ |  |
-| `period-store` | `data` | 469 |  |  |
-| `pnl-mode-store` | `data` | 479 |  |  |
-| `ticker-store` | `data` | 489 |  |  |
-| `treemap-mode-store` | `data` | 499 |  |  |
-| `analytics-period-store` | `data` | 509 |  |  |
-| `intel-period-store` | `data` | 519 |  |  |
-| `intel-pred-store` | `data` | 548 |  |  |
-| `intel-forecast-label` | `children` | 549 |  |  |
-| `url` | `search` | 574 |  |  |
-| `pending-tasks-store` | `data` | 592 | ✓ |  |
-| `nav-link-store` | `data` | 626 | ✓ |  |
-| `task-poll-interval` | `disabled` | 676 |  |  |
+| `txn-store` | `data` | 271 | ✓ |  |
+| `portfolio-store` | `data` | 403 | ✓ |  |
+| `period-store` | `data` | 476 |  |  |
+| `pnl-mode-store` | `data` | 486 |  |  |
+| `ticker-store` | `data` | 496 |  |  |
+| `treemap-mode-store` | `data` | 506 |  |  |
+| `analytics-period-store` | `data` | 516 |  |  |
+| `intel-period-store` | `data` | 526 |  |  |
+| `intel-pred-store` | `data` | 555 |  |  |
+| `intel-forecast-label` | `children` | 556 |  |  |
+| `url` | `search` | 581 |  |  |
+| `pending-tasks-store` | `data` | 599 | ✓ |  |
+| `nav-link-store` | `data` | 633 | ✓ |  |
+| `task-poll-interval` | `disabled` | 743 |  |  |
 
 ## `alert_callbacks.py`
 
@@ -159,21 +159,21 @@
 | `setup-ai-feedback` | `children` | 321 |  |  |
 | `setup-init-tasks-store` | `data` | 372 |  |  |
 | `setup-poll-interval` | `disabled` | 373 |  |  |
-| `url` | `pathname` | 463 | ✓ |  |
-| `setup-is-first-run-store` | `data` | 464 | ✓ |  |
-| `setup-ready-feedback` | `children` | 465 |  |  |
-| `setup-init-step-list` | `children` | 508 |  |  |
-| `setup-init-progress-label` | `children` | 509 |  |  |
-| `setup-init-progress-bar` | `style` | 510 |  |  |
-| `setup-init-status-msg` | `children` | 511 |  |  |
-| `setup-ready-launch-btn` | `disabled` | 512 |  |  |
-| `setup-poll-interval` | `disabled` | 513 | ✓ |  |
-| `setup-init-tasks-store` | `data` | 514 | ✓ |  |
-| `setup-ready-summary` | `children` | 515 |  |  |
-| `setup-ready-summary` | `style` | 516 |  |  |
-| `setup-init-progress-container` | `style` | 517 |  |  |
-| `setup-init-title` | `children` | 518 |  |  |
-| `setup-init-subtitle` | `children` | 519 |  |  |
+| `url` | `pathname` | 475 | ✓ |  |
+| `setup-is-first-run-store` | `data` | 476 | ✓ |  |
+| `setup-ready-feedback` | `children` | 477 |  |  |
+| `setup-init-step-list` | `children` | 520 |  |  |
+| `setup-init-progress-label` | `children` | 521 |  |  |
+| `setup-init-progress-bar` | `style` | 522 |  |  |
+| `setup-init-status-msg` | `children` | 523 |  |  |
+| `setup-ready-launch-btn` | `disabled` | 524 |  |  |
+| `setup-poll-interval` | `disabled` | 525 | ✓ |  |
+| `setup-init-tasks-store` | `data` | 526 | ✓ |  |
+| `setup-ready-summary` | `children` | 527 |  |  |
+| `setup-ready-summary` | `style` | 528 |  |  |
+| `setup-init-progress-container` | `style` | 529 |  |  |
+| `setup-init-title` | `children` | 530 |  |  |
+| `setup-init-subtitle` | `children` | 531 |  |  |
 
 ## `signals_callbacks.py`
 

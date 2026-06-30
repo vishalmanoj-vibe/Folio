@@ -14,9 +14,9 @@ Then read these documents **in order**:
 
 0. **`.agents/project_map.md`** — Navigation index. Find which doc and which file to look at for any task.
 1. **`.agents/skills/registry.md`** — Component ID registry. Check for ID collisions before writing any layout.
-2. **`docs/callback_ownership.md`** — Output ownership map. Verify the Output ID is not already owned before adding a callback. For exact line numbers, also check `.agents/generated/callback_index.md`.
-3. **`docs/store_contracts.md`** — Exact JSON shapes for `portfolio-store`, `signals-store`, `watchlist-store`. Never guess the shape.
-4. **`docs/known_issues.md`** — Bug registry. If you're touching a chart, callback, or store, confirm you're not re-introducing a known bug.
+2. **`docs/reference/callback_ownership.md`** — Output ownership map. Verify the Output ID is not already owned before adding a callback. For exact line numbers, also check `.agents/generated/callback_index.md`.
+3. **`docs/reference/store_contracts.md`** — Exact JSON shapes for `portfolio-store`, `signals-store`, `watchlist-store`. Never guess the shape.
+4. **`docs/reference/known_issues.md`** — Bug registry. If you're touching a chart, callback, or store, confirm you're not re-introducing a known bug.
 5. **This file (GEMINI.md)** — Architecture rules. Read the relevant section for what you're changing.
 6. **The specific file you're editing** — Read the full function/callback before changing any line.
 
@@ -99,7 +99,7 @@ Then read these documents **in order**:
 - Read the relevant callback file before touching it — don't guess at existing IDs
 - **Path Finding**: Use `grep -r` to locate the exact file and function before editing. Never guess a path. See `.agents/skills/surgical_edit.md` for grep patterns.
 - **Skills First**: When a task matches a skill in `.agents/skills/`, read that skill file before writing code. Skills contain tested patterns — use them instead of reinventing.
-- **Known Issues Gate**: Before touching a chart builder, pattern-matched callback, or store callback, read `docs/known_issues.md` to confirm you are not re-introducing a known bug.
+- **Known Issues Gate**: Before touching a chart builder, pattern-matched callback, or store callback, read `docs/reference/known_issues.md` to confirm you are not re-introducing a known bug.
 - Preserve all existing Dash component IDs exactly
 - If adding a new chart: add figure builder in components/charts/, wire in chart_callbacks.py
 - If adding a store: seed it at startup in app.py alongside txn-store
@@ -126,14 +126,14 @@ Then read these documents **in order**:
 After completing any task that adds, removes, or renames a component:
 
 **Always update (no approval needed — factual changes only):**
-- `docs/callback_ownership.md` — add any new Output IDs with their owning callback file. Remove entries for deleted outputs.
+- `docs/reference/callback_ownership.md` — add any new Output IDs with their owning callback file. Remove entries for deleted outputs.
 - `.agents/skills/registry.md` — add any new component IDs introduced.
 
 **Append only if a new bug pattern was discovered and fixed:**
-- `docs/known_issues.md` — one entry per bug: root cause, affected file, fix pattern. Never edit existing entries.
+- `docs/reference/known_issues.md` — one entry per bug: root cause, affected file, fix pattern. Never edit existing entries.
 
 **Never auto-update (require explicit instruction):**
-- `docs/store_contracts.md` — store shapes only change intentionally. A wrong auto-update here breaks all consumers silently.
+- `docs/reference/store_contracts.md` — store shapes only change intentionally. A wrong auto-update here breaks all consumers silently.
 - `GEMINI.md` itself — architectural rules require human judgment.
 
 > **The update is part of the task. A build is not complete until the relevant context documents reflect the current state of the code.**

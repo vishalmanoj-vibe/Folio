@@ -15,8 +15,8 @@ These files are AUTO-GENERATED. Do NOT hand-edit them.
 They are overwritten on every run.
 
 For intent, architecture notes, and access patterns, see the human docs:
-  - docs/callback_ownership.md   (authoritative ownership notes)
-  - docs/store_contracts.md      (exact JSON shapes + safe .get() patterns)
+  - docs/reference/callback_ownership.md   (authoritative ownership notes)
+  - docs/reference/store_contracts.md      (exact JSON shapes + safe .get() patterns)
 """
 
 import re
@@ -110,7 +110,7 @@ def build_callback_index() -> str:
         "",
         f"> **Generated**: {timestamp}  ",
         "> **Do not edit** — run `python .agents/generated/sync_docs.py` to refresh.",
-        "> For ownership intent and architecture notes, see `docs/callback_ownership.md`.",
+        "> For ownership intent and architecture notes, see `docs/reference/callback_ownership.md`.",
         "",
         "---",
         "",
@@ -220,7 +220,7 @@ def build_store_index() -> str:
         "",
         f"> **Generated**: {timestamp}  ",
         "> **Do not edit** — run `python .agents/generated/sync_docs.py` to refresh.",
-        "> For exact JSON shapes and safe access patterns, see `docs/store_contracts.md`.",
+        "> For exact JSON shapes and safe access patterns, see `docs/reference/store_contracts.md`.",
         "",
         "---",
         "",

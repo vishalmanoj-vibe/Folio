@@ -149,8 +149,8 @@ The application utilizes a sophisticated `dcc.Store` ecosystem to manage state a
 ## Related Documentation
 
 For non-architectural details, please refer to:
-- **[CONTRIBUTING.md](../CONTRIBUTING.md)**: Setup instructions, environment configuration, and how to add new features.
-- **[TESTING.md](../improvements/TESTING.md)**: Manual verification steps and automated test suite status.
+- **[CONTRIBUTING.md](CONTRIBUTING.md)**: Setup instructions, environment configuration, and how to add new features.
+- **[TESTING.md](../testing/TESTING.md)**: Manual verification steps and automated test suite status.
 - **[GEMINI.md](../../GEMINI.md)**: Coding rules, architecture constraints, and AI agent boundaries.
 
 ---

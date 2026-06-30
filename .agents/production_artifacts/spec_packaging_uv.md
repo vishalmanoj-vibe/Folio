@@ -17,7 +17,7 @@ PyInstaller and PyWebView were explicitly ruled out due to past reliability issu
 | File | Change |
 |------|--------|
 | `README.md` | Full Installation section rewrite: macOS, Windows, Linux, API key setup, Developer Setup |
-| `docs/BUILD_HISTORY.md` | Phase 7 entry appended |
+| `docs/history/BUILD_HISTORY.md` | Phase 7 entry appended |
 
 ## Python Source Changes
 **None.** Zero changes to app.py, launcher.py, settings.py, or any service file.

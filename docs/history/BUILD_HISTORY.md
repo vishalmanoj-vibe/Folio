@@ -145,3 +145,15 @@ This document chronicles the technical evolution of Folio, transitioning from a 
 *   **Safe Permission Fallbacks**: Implemented graceful error catching during file copy operations (such as macOS `Desktop/` write permissions), warning the user to copy shortcuts manually rather than failing the installer.
 *   **Browser Auto-Launch with Port Polling**: Configured the Windows launcher to check port 8050, wait for the Dash server to initialize, and automatically open the application in the user's default browser (matching the macOS experience).
 *   **Detailed Setup Troubleshooting Guide**: Appended a comprehensive "Troubleshooting & Common Setup Issues" section to the README, detailing workarounds for macOS Gatekeeper blocks, Windows execution policy limits, directory path spacing, and Cloud sync locks.
+
+---
+
+## Phase 8: Browser-Close Graceful Shutdown (v2.5.0)
+**Theme**: Lifecycle integration — the app process mirrors the browser window's lifetime.
+
+*   **`beforeunload` Beacon**: Added `assets/browser_shutdown.js`, which registers a `window.beforeunload` listener and fires `navigator.sendBeacon('/shutdown?token=<TOKEN>')` when the user closes the tab or window. `sendBeacon` is used (not `fetch`) because it is guaranteed to dispatch even as the page tears down.
+*   **3-Second Server Debounce**: A new Flask route `/shutdown` (registered on `app.server`) validates a shared one-time secret token and starts a `threading.Timer(3.0)` before sending `SIGTERM` to its own process. The delay prevents false positives on hard refreshes.
+*   **SPA Navigation Cancel**: `browser_shutdown.js` intercepts `history.pushState`, `history.replaceState`, and `popstate` to fire `navigator.sendBeacon('/shutdown/cancel')` immediately on any Dash internal navigation. The Flask `/shutdown/cancel` route aborts the countdown if still running, so navigating between pages or refreshing the app **never** triggers a shutdown.
+*   **Per-Run Secret Token**: `secrets.token_urlsafe(16)` generates a unique token at each app startup. It is embedded into the rendered HTML via a `<meta name="shutdown-token">` tag (injected through a new `get_index_string(token)` helper in `components/portfolio_layout.py`), so the JS can read it without any network round-trip.
+*   **Launcher Compatibility**: When running via `launcher.py`, the SIGTERM from the Dash process causes the launcher's heartbeat loop to detect a non-zero exit code and call its existing `handle_exit()`, which gracefully terminates the background worker and exits the terminal. No changes to `launcher.py` were required.
+*   **Files Changed**: `assets/browser_shutdown.js` (new), `app.py` (token generation + Flask routes), `components/portfolio_layout.py` (template function).

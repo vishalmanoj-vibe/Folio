@@ -54,6 +54,7 @@ if not os.environ.get("GEMINI_API_KEY"):
         logger.debug(f"Could not load GEMINI_API_KEY from database: {e}")
 
 import os
+import secrets
 import signal
 import threading
 import time
@@ -77,7 +78,7 @@ import callbacks.signals_callbacks as signals_cb
 import callbacks.transaction_callbacks as txn
 import callbacks.ui_callbacks as ui
 import callbacks.watchlist_callbacks as watchlist_cb
-from components.portfolio_layout import INDEX_STRING
+from components.portfolio_layout import INDEX_STRING, get_index_string
 from config.settings import REFRESH_INTERVAL
 from core.validators import validate_transaction
 from data.repository import PortfolioRepository
@@ -166,7 +167,13 @@ app = dash.Dash(
 setup_cb.register_setup_callbacks(app)
 
 app.title = "Folio — Live"
-app.index_string = INDEX_STRING
+
+# ── Browser-close shutdown token ─────────────────────────────────────────────
+# A per-run secret that authenticates /shutdown beacons from the browser.
+# Regenerated on every app start so stale browser tabs cannot kill a new session.
+SHUTDOWN_TOKEN = secrets.token_urlsafe(16)
+app.index_string = get_index_string(SHUTDOWN_TOKEN)
+logger.info(f"Shutdown token generated (first 8 chars): {SHUTDOWN_TOKEN[:8]}...")
 
 # Pages are loaded automatically via use_pages=True
 
@@ -662,7 +669,67 @@ def close_browser():
         os.system(cmd_safari)
 
 
+# ── Browser-Close Shutdown Flask Routes ──────────────────────────────────────
+# These endpoints are called by assets/browser_shutdown.js via sendBeacon.
+# /shutdown starts a 3-second debounce timer before SIGTERM.
+# /shutdown/cancel aborts the timer (fired on SPA navigation / page refresh).
+_shutdown_timer: threading.Timer | None = None
+
+
+@app.server.route("/shutdown")
+def shutdown_endpoint():
+    """
+    Receives a beacon from the browser when the user closes the tab/window.
+    Validates the shared token and starts a 3-second countdown to SIGTERM.
+    If /shutdown/cancel fires first, the shutdown is aborted.
+    """
+    from flask import request as flask_request
+
+    token = flask_request.args.get("token", "")
+    if not token or token != SHUTDOWN_TOKEN:
+        logger.warning("Received /shutdown with invalid token — ignoring.")
+        return ("", 204)
+
+    global _shutdown_timer
+
+    # Cancel any already-running timer (e.g. duplicate beacons)
+    if _shutdown_timer and _shutdown_timer.is_alive():
+        _shutdown_timer.cancel()
+
+    def _do_shutdown():
+        logger.info("Browser window closed — shutting down Folio server.")
+        close_browser()
+        os.kill(os.getpid(), signal.SIGTERM)
+
+    _shutdown_timer = threading.Timer(3.0, _do_shutdown)
+    _shutdown_timer.daemon = True
+    _shutdown_timer.start()
+    logger.debug("Shutdown countdown started (3s).")
+    return ("", 204)
+
+
+@app.server.route("/shutdown/cancel")
+def shutdown_cancel_endpoint():
+    """
+    Cancels a pending shutdown countdown.
+    Called by browser_shutdown.js on SPA navigation (pushState / replaceState / popstate).
+    """
+    from flask import request as flask_request
+
+    token = flask_request.args.get("token", "")
+    if not token or token != SHUTDOWN_TOKEN:
+        return ("", 204)
+
+    global _shutdown_timer
+    if _shutdown_timer and _shutdown_timer.is_alive():
+        _shutdown_timer.cancel()
+        logger.debug("Shutdown cancelled (page navigation detected).")
+
+    return ("", 204)
+
+
 # ── Task Poll Interval Manager (Clientside) ───────────────────────────────────
+
 app.clientside_callback(
     """
     function(p1, p2, p3) {

@@ -15,14 +15,17 @@ from components.ui_helpers import chart_title, section
 from config.settings import DB_PATH
 
 # ── CSS injected into <head> ───────────────────────────────────────────────────
-INDEX_STRING = """
-<!DOCTYPE html>
+# Uses sentinel-style placeholders (not str.format) so JS curly braces in the
+# inline <script> block require NO escaping at all. get_index_string() is the
+# single place that fills in the Dash template variables and the shutdown token.
+_INDEX_STRING_TEMPLATE = """<!DOCTYPE html>
 <html>
-<head>{%metas%}<title>{%title%}</title>{%favicon%}
+<head>DASH_METAS<title>DASH_TITLE</title>DASH_FAVICON
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    {%css%}
+    SHUTDOWN_TOKEN_META
+    DASH_CSS
     <script>
         (function() {
             try {
@@ -36,9 +39,33 @@ INDEX_STRING = """
         })();
     </script>
 </head>
-<body data-theme="dark">{%app_entry%}{%config%}{%scripts%}{%renderer%}</body>
+<body data-theme="dark">DASH_APP_ENTRYDASH_CONFIGDASH_SCRIPTSDASH_RENDERER</body>
 </html>
 """
+
+
+def get_index_string(shutdown_token: str) -> str:
+    """
+    Return the Dash-compatible index_string with the shutdown token injected.
+    Replaces sentinel placeholders with Dash's own {%...%} template variables
+    and embeds the per-run secret meta tag for browser_shutdown.js.
+    """
+    meta_tag = f'<meta name="shutdown-token" content="{shutdown_token}">'
+    return (
+        _INDEX_STRING_TEMPLATE.replace("DASH_METAS", "{%metas%}")
+        .replace("DASH_TITLE", "{%title%}")
+        .replace("DASH_FAVICON", "{%favicon%}")
+        .replace("DASH_CSS", "{%css%}")
+        .replace("DASH_APP_ENTRY", "{%app_entry%}")
+        .replace("DASH_CONFIG", "{%config%}")
+        .replace("DASH_SCRIPTS", "{%scripts%}")
+        .replace("DASH_RENDERER", "{%renderer%}")
+        .replace("SHUTDOWN_TOKEN_META", meta_tag)
+    )
+
+
+# Backward-compatible alias — replaced at runtime in app.py after token generation.
+INDEX_STRING = get_index_string("__placeholder__")
 
 
 def create_layout(initial_history: list[dict] | None = None) -> html.Div:

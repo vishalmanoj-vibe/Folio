@@ -43,9 +43,9 @@ You are a meticulous QA engineer. Review the Builder's output for:
 - **AI Guardrails**: Verify that `analyze_signals` never returns `None` for a ticker — it must always return the safe default dict. Verify `_normalize_ai_response` maps unknown verdicts to `"Mixed"` explicitly.
 - **Signal Store Contract**: Confirm `signals-store` data always has `"raw"` and `"ai"` keys before any UI callback accesses them, using `.get()` with a default.
 - **No print() in production services**: `print()` statements are not acceptable in `services/`. Use `logger.debug()`.
-- **Output ID Registration**: Verify all new `Output` IDs added in this build are registered in `docs/callback_ownership.md`. If any are missing, add them before approving.
-- **Store Contract Compliance**: Verify all `dcc.Store` accesses in changed files use `.get()` with defaults, per `docs/store_contracts.md`. A bare `data["key"]` access without a default is a latent crash.
-- **Known Issues Cross-Reference**: Compare all touched files against `docs/known_issues.md`. If a touched file appears in a known bug's "Files affected" list, confirm the fix pattern is still present in the code — do not just review the new lines.
+- **Output ID Registration**: Verify all new `Output` IDs added in this build are registered in `docs/reference/callback_ownership.md`. If any are missing, add them before approving.
+- **Store Contract Compliance**: Verify all `dcc.Store` accesses in changed files use `.get()` with defaults, per `docs/reference/store_contracts.md`. A bare `data["key"]` access without a default is a latent crash.
+- **Known Issues Cross-Reference**: Compare all touched files against `docs/reference/known_issues.md`. If a touched file appears in a known bug's "Files affected" list, confirm the fix pattern is still present in the code — do not just review the new lines.
 - **Diff Review**: Review the full diff for unintended deletions, renamed imports, changed callback wiring, and modified store keys — not just the added lines. A renamed import or deleted guard clause can be invisible in a code review focused only on additions.
 - **Knowledge Capture**: After fixing a non-trivial bug, update `skills/debug_dash.md`, `requirements.txt` or `GEMINI.md` with the fix to prevent it from recurring.
 Fix what you find and document what you changed.

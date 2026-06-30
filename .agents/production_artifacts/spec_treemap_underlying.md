@@ -45,7 +45,7 @@ Replace the separate ETF Holdings bubble chart tab on the Analytics page (`/anal
 * **[scratch/tests/test_chart_components.py](file:///Users/vishal/Library/CloudStorage/OneDrive-Personal/Projects/portfolio_dashboard/scratch/tests/test_chart_components.py)**
   - Remove `test_build_holdings_bubble_chart`.
   - Add `test_build_portfolio_treemap_holdings` testing the output elements, parents, and values of the underlying holdings treemap.
-* **[docs/callback_ownership.md](file:///Users/vishal/Library/CloudStorage/OneDrive-Personal/Projects/portfolio_dashboard/docs/callback_ownership.md)**
+* **[docs/reference/callback_ownership.md](file:///Users/vishal/Library/CloudStorage/OneDrive-Personal/Projects/portfolio_dashboard/docs/reference/callback_ownership.md)**
   - Remove `holdings-bubble-chart` ownership.
   - Update `portfolio-treemap` outputs to list the multi-output signature.
 

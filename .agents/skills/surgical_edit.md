@@ -37,8 +37,8 @@ Open the target file. Before changing a single character:
 1. Read the **entire function or callback** — not just the broken line.
 2. Identify all `Input`, `State`, and `Output` declarations.
 3. Identify all guard clauses (`if pathname !=`, `if not data`, `prevent_initial_call`).
-4. Check `docs/known_issues.md` — does this file appear in a known bug's "Files affected" list?
-5. Check `docs/callback_ownership.md` — is the Output ID already owned?
+4. Check `docs/reference/known_issues.md` — does this file appear in a known bug's "Files affected" list?
+5. Check `docs/reference/callback_ownership.md` — is the Output ID already owned?
 
 ---
 
@@ -113,8 +113,8 @@ Confirm:
 Before editing:
 [ ] Located the file with grep — did not guess
 [ ] Read the entire function, not just the broken line
-[ ] Checked docs/known_issues.md for this file
-[ ] Checked docs/callback_ownership.md for Output ID conflicts
+[ ] Checked docs/reference/known_issues.md for this file
+[ ] Checked docs/reference/callback_ownership.md for Output ID conflicts
 [ ] Declared what I will NOT change
 [ ] Edit touches ≤ 2 files and ≤ 150 lines (or got explicit approval)
 

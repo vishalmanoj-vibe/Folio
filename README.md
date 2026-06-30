@@ -81,7 +81,7 @@ The installer will:
 
 ### Troubleshooting & Common Setup Issues
 
-If you run into issues during installation or launch (such as permissions errors, PowerShell execution blocks, path spaces, OneDrive locks, or Playwright setup failures), please refer to our [Troubleshooting & Common Setup Issues](docs/TROUBLESHOOTING.md) guide.
+If you run into issues during installation or launch (such as permissions errors, PowerShell execution blocks, path spaces, OneDrive locks, or Playwright setup failures), please refer to our [Troubleshooting & Common Setup Issues](docs/guides/TROUBLESHOOTING.md) guide.
 
 ---
 
