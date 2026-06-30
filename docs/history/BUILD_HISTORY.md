@@ -157,3 +157,14 @@ This document chronicles the technical evolution of Folio, transitioning from a 
 *   **Per-Run Secret Token**: `secrets.token_urlsafe(16)` generates a unique token at each app startup. It is embedded into the rendered HTML via a `<meta name="shutdown-token">` tag (injected through a new `get_index_string(token)` helper in `components/portfolio_layout.py`), so the JS can read it without any network round-trip.
 *   **Launcher Compatibility**: When running via `launcher.py`, the SIGTERM from the Dash process causes the launcher's heartbeat loop to detect a non-zero exit code and call its existing `handle_exit()`, which gracefully terminates the background worker and exits the terminal. No changes to `launcher.py` were required.
 *   **Files Changed**: `assets/browser_shutdown.js` (new), `app.py` (token generation + Flask routes), `components/portfolio_layout.py` (template function).
+
+---
+
+## Phase 11: Layman-Friendly Documentation & Onboarding Guidance (v2.6.0)
+**Theme**: Standardizing documentation for ultimate clarity, lay-man accessibility, and detailed local developer/user guide mapping.
+
+*   **Lay-Man Friendly Explanations**: Overhauled the root `README.md` to introduce the core concept of Folio using real-world analogies, making it clear for beginners.
+*   **Finance-to-English Dictionary**: Added simple definitions of tickers, ETFs, P&L (intraday and total), transactions, ex-dividend dates, Sharpe Ratio, volatility, correlation, and forecasting.
+*   **Local Double-Process Flowchart**: Built a clear ASCII mapping demonstrating the interactive relationship between the Browser UI, Dash Web App, Background Worker, and local relational SQLite database (`portfolio.db`).
+*   **Bulletproof Setup & OS Troubleshooting**: Documented the installation process step-by-step for macOS and Windows, explaining what the installer scripts configure (uv, Python 3.12, WebKit Playwright, .env Gemini keys). Added direct solutions for permission privileges, macOS Gatekeeper blocks, Windows PowerShell policies, and cloud syncing database locks.
+*   **Complete Workspace Reference**: Included a comprehensive folder map outlining the exact responsibility and location of all pages, callbacks, components, services, database queries, and testing suites.
