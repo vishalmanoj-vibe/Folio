@@ -31,7 +31,7 @@ Backend services represent the business logic and core mathematical engines. The
 ### Core Services (`services/`)
 
 *   **`ai_engine.py`**
-    *   *Data Fetched/Computed:* Passes technical score signals to the Gemini API (`gemini-3.1-flash-lite`) to construct qualitative investment critiques, list structural asset risks, and normalize confidence verdicts.
+    *   *Data Fetched/Computed:* Passes technical score signals to the Gemini API (`gemini-2.5-flash`) to construct qualitative investment critiques, list structural asset risks, and normalize confidence verdicts.
     *   *Rules:* Low-conviction signals (score `< 0.4`) are ignored to limit API costs. Leverages 24-hour deterministic caching based on rounded signal inputs.
 *   **`alert_service.py`**
     *   *Data Fetched/Computed:* Scans enriched holdings cost bases to calculate drawdown percentages. Triggers individual alerts below `-20%` and total portfolio alerts below `-15%` relative to initial costs.

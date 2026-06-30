@@ -1,6 +1,6 @@
 # Folio
 
-A premium local investment dashboard for tracking ASX ETFs (and stocks) with live prices, profit & loss (P&L) history, ex-dividend tracking, advanced risk analytics, and AI-powered insights.
+A premium, privacy-first local investment dashboard for tracking ASX ETFs and stocks. Folio features live prices, transactional profit & loss (P&L) history, ex-dividend tracking, advanced risk analytics, and Google Gemini-powered insights.
 
 Built with **Python**, **Dash**, **Plotly**, **yfinance**, and **Google Gemini**.
 
@@ -8,41 +8,19 @@ Built with **Python**, **Dash**, **Plotly**, **yfinance**, and **Google Gemini**
 
 ---
 
-## 🧭 For Beginners: What is Folio?
+## 🧭 Core Philosophy & Architecture
 
-**Folio is a private, local control center for your investments.** 
+Folio is a **private, local control center for your investments** designed for both investors who want to understand their performance and developers who want a robust, clean architecture.
 
-Unlike online tracking websites that store your private financial data on their servers, Folio runs entirely on your own computer. It is a tool designed to show you exactly how your investments are performing, how your funds are allocated, and what the numbers mean—without compromising your privacy.
+### For Beginners: Why Folio?
+Unlike online tracking platforms that store your private financial data on their servers, Folio runs entirely on your own computer.
+*   **Privacy-First:** All transactions are stored locally. No cloud sync, no tracking, and no third-party data collection.
+*   **ETF Allocation Transparency:** ETFs are like boxes of mixed chocolates holding tiny slices of hundreds of companies. Folio looks *inside* those boxes to calculate exactly how much of your total money is in technology, banking, or specific companies (e.g., Apple or BHP).
+*   **Accurate Realized Dividends:** Tracks the exact date you bought your shares to calculate the dividends you actually earned (or are about to earn) based on ex-dividend rules.
+*   **Built-in Research Assistant:** Powered by Google Gemini, a friendly chatbot sits on your screen to analyze holdings, explain technical charts, and fetch the latest market news.
 
-### How does it help you?
-1. **Tracks Your Money Locally:** All your transactions (buys and sells) are saved in a local database file on your computer.
-2. **Sees Inside Your ETFs:** ETFs are like boxes of mixed chocolates—they hold tiny slices of hundreds of different companies. Folio looks *inside* those boxes to tell you exactly how much of your total money is in technology, banking, or specific companies like Apple or BHP.
-3. **Calculates Real Dividends:** It tracks exactly when you bought your shares and matches them against ex-dividend dates to show you how much cash you actually made (or are about to make).
-4. **Has a Built-In Financial Assistant:** Powered by Google Gemini, a friendly AI Chatbot sits on the side of your screen to answer questions about your holdings, explain technical charts, and search the web for the latest financial news.
-
----
-
-## 📖 Finance-to-English: Terminology Guide
-
-If you are new to investing, some terms in this dashboard might sound like jargon. Here is a simple guide to what they mean:
-
-| Term | What it means in plain English |
-| :--- | :--- |
-| **Ticker Symbol** | A 3-to-4 letter code representing a stock or fund on the market. E.g., `VAS` is Vanguard's Australian Shares Index ETF, and `CBA` is Commonwealth Bank of Australia. |
-| **ETF (Exchange Traded Fund)** | A basket of many different company shares bundled into a single package. Buying one unit of an ETF spreads your money across hundreds of companies instantly. |
-| **P&L (Profit & Loss)** | How much money you have gained or lost on paper compared to what you paid. **Intraday P&L** is how much your value changed *today*, while **Total P&L** is your gain/loss since the day you bought it. |
-| **Tranche** | A specific batch of shares bought at one time. If you buy 10 units of `VAS` in January and another 10 in June, you have two separate tranches. Folio tracks them individually to calculate correct taxes and dividends. |
-| **Ex-Dividend Date** | The cutoff date for a dividend payout. To receive the upcoming dividend, you must buy and own the shares *before* this date. If you buy on or after this date, the previous owner gets the cash. |
-| **Sharpe Ratio** | A score that measures if your portfolio's gains are worth the price swings (volatility) you are experiencing. A higher Sharpe Ratio (above 1.0) means you are getting good returns for the level of risk you are taking. |
-| **Volatility** | A measure of how wildly a stock's price bounces up and down. High volatility means the price swings rapidly; low volatility means the price is relatively stable. |
-| **Correlation Matrix** | A grid showing if your investments move together. If two stocks have a high correlation, they rise and fall at the same time. Spreading your money across assets with low correlation protects you if one sector crashes. |
-| **Forecasting (Prophet)** | An AI model that looks at your historical portfolio performance and calculates a mathematical guess of where your portfolio value might head in the next few months. |
-
----
-
-## ⚙️ How Folio Works Under the Hood
-
-Folio uses a **Double-Process Architecture** to ensure the user interface remains fast, responsive, and completely lag-free. 
+### For Developers: High-Performance Local Design
+To maintain a responsive UI (~300MB baseline memory footprint) and bypass Flask/Dash single-threaded blocking issues during heavy tasks, Folio implements a **Double-Process Architecture** orchestrated by a master launcher.
 
 ```text
 ┌────────────────────────────────────────────────────────┐
@@ -67,173 +45,219 @@ Folio uses a **Double-Process Architecture** to ensure the user interface remain
                └────────────────┬─────────────────┘
                                 │ (Saves & Reads Data)
                                 ▼
-                   ┌──────────────────────────┐
-                   │    LOCAL DATABASE FILE   │
-                   │    (data/portfolio.db)   │
-                   │   *Stays on your computer*│
-                   └──────────────────────────┘
+                    ┌──────────────────────────┐
+                    │    LOCAL DATABASE FILE   │
+                    │    (data/portfolio.db)   │
+                    │   *Stays on your computer*│
+                    └──────────────────────────┘
 ```
 
-1. **The Launcher (`launcher.py`):** When you open Folio, it starts two separate programs in the background. It monitors their health and restarts them if they run out of memory or crash.
-2. **The Dash Web App (`app.py`):** This runs the visual dashboard you see in your web browser. It is optimized to load instantly, showing you cached snapshots of your portfolio while the background worker fetches fresh details.
-3. **The Background Worker (`worker.py`):** This operates silently in the background, performing the heavy lifting: downloading live prices, running complex math, parsing ETF web data, and managing AI signals.
-4. **The Local Database (`data/portfolio.db`):** A lightweight relational database file. It stores your transaction records, your watchlist, and cached stock data so that everything remains accessible offline.
+1.  **The Launcher ([launcher.py](launcher.py)):** Launches the Dash web app and the background worker as concurrent subprocesses, monitors their health, and intercepts OS signals to prevent orphan processes on exit.
+2.  **The Dash Web App ([app.py](app.py)):** Runs the interactive UI server. Uses cached database snapshots to render pages instantly (<1s) and defers heavy network fetches to a startup interval.
+3.  **The Background Worker ([worker.py](worker.py)):** A dedicated task loop running I/O-bound and CPU-heavy operations: downloading market tickers, scraping ETF metadata, calculating technical indicators, and querying the Gemini API.
+4.  **The Persistence Layer ([data/portfolio.db](data/portfolio.db)):** A SQLite database configured with **Write-Ahead Logging (WAL)** mode, a `5000ms` busy timeout, and synchronous `NORMAL` writes to enable safe concurrent read/write operations between the UI and the worker.
 
 ---
 
-## 🚀 Installation & First-Time Setup
+## 📖 Terminology & Mathematical Specifications
 
-Folio manages its own environment automatically. You do not need to install complex software libraries manually.
+Below is a combined guide explaining the financial terms used in the dashboard alongside their exact programmatic and mathematical implementations in the code.
 
-### 🍏 macOS / Linux
-
-**Prerequisites:** macOS 12+ or Linux, Git, and an internet connection.
-
-1. **Open Terminal** (press `Cmd + Space`, type "Terminal", and press Enter).
-2. **Clone this repository** to your computer and navigate into it:
-   ```bash
-   git clone https://github.com/vishalmanoj-vibe/folio.git
-   cd folio
-   ```
-3. **Run the Installer:**
-   ```bash
-   ./scripts/install.command
-   ```
-   *(Alternatively, double-click `scripts/install.command` inside Finder).*
-
----
-
-###  Windows
-
-**Prerequisites:** Windows 10 or 11, Git, and an internet connection.
-
-1. **Open Command Prompt** or **PowerShell** as an Administrator.
-2. **Clone the repository** and navigate into it:
-   ```cmd
-   git clone https://github.com/vishalmanoj-vibe/folio.git
-   cd folio
-   ```
-3. **Run the Installer:**
-   ```cmd
-   scripts\install.bat
-   ```
-   *(Alternatively, double-click the `install.bat` file in the `scripts/` folder inside File Explorer).*
+| Financial Term | Layman Meaning (Plain English) | Technical & Mathematical Implementation |
+| :--- | :--- | :--- |
+| **Ticker Symbol** | A 3-to-4 letter code representing a stock or fund. E.g., `VAS` is Vanguard's Australian shares ETF. | SQLite stores tickers without suffixes (e.g. `VAS`). The market data layer maps them to `VAS.AX` dynamically when requesting data from `yfinance`. |
+| **ETF (Exchange Traded Fund)** | A basket of many different company shares bundled into a single package. | Scraped via a **3-Tier Scraper Architecture** in [holdings_fetcher.py](services/market/holdings_fetcher.py): Tier 1 (Direct API), Tier 1.5 (DuckDuckGo discovery), Tier 2 (Headless WebKit via Playwright). Sector/geographic percentages are saved in `etf_metadata` with a 7-day stale check. |
+| **P&L (Profit & Loss)** | The money you gained or lost on paper compared to your original purchase cost. | **Total P&L** is computed by aggregating purchase tranches. **Intraday P&L** is generated from 5-minute resampled price snapshots (`resample('5min').last().ffill()`) restricted to Sydney market hours (10:00 AM – 4:15 PM) to hide overnight trading gaps. |
+| **Tranche** | A specific batch of shares bought at one time. | Stored in the `transactions` table with attributes: `price`, `units`, and `date`. If any tranche has been held for less than 365 days, the strategy engine automatically appends a short-term Capital Gains Tax (CGT) penalty warning to a `SELL` recommendation. |
+| **Ex-Dividend Date** | The cutoff date for a dividend. You must own shares *before* this date to receive the payout. | The dividend engine in [dividend_service.py](services/market/dividend_service.py) performs a chronological comparison (`purchase_date < ex_dividend_date`) against individual tranches to compute exact realized cash flows. |
+| **Sharpe Ratio** | A score measuring if your returns are worth the risk (price volatility) you are taking. | Calculated in [intelligence_service.py](services/intelligence_service.py) as:<br>$$\text{Sharpe} = \frac{\overline{R_p} - R_f}{\sigma_p} \times \sqrt{252}$$<br>where $\overline{R_p}$ is the mean daily log return, $\sigma_p$ is the standard deviation of daily log returns, and $R_f$ is a 4.35% annualized risk-free rate proxy. |
+| **Volatility** | A measure of how wildly a stock's price bounces up and down. | Represented as the annualized standard deviation of daily log returns over a rolling historical period: $$\sigma_{\text{ann}} = \sigma_{\text{daily}} \times \sqrt{252}$$. |
+| **Correlation Matrix** | A grid showing if your investments rise and fall together (helping you diversify). | Computed via pandas `.corr()` using the Pearson correlation coefficient on daily log returns over a rolling 1-year historical window. |
+| **Forecasting (Prophet)** | An AI-based mathematical guess of where your portfolio's value is heading. | Uses Facebook's Prophet additive regression model ($y(t) = g(t) + s(t) + h(t) + \epsilon_t$) in [prediction_service.py](services/prediction_service.py) with custom continuity drift correction: $$\text{forecast}_{\text{corrected}} = \text{forecast} + (y_{\text{actual}} - y_{\text{fitted}})$$ at the historical boundary. |
+| **RSI (Relative Strength Index)** | Momentum score (0 to 100) indicating if a stock is overbought (>70) or oversold (<30). | Vectorized pandas implementation matching Wilder's smoothing technique: Exponential Weighted Moving Average (EWMA) with a span of $2N-1$ ($com=N-1$ where $N=14$) on price gains and losses. |
+| **MACD** | A trend-following momentum indicator showing the relationship between two moving averages. | Moving Average Convergence Divergence. Calculated in [technical_indicators.py](services/technical_indicators.py) returning a tuple of the MACD line ($EMA_{12} - EMA_{26}$) and the Signal line ($EMA_9(MACD)$). |
+| **Bollinger Bands** | Volatility bands placed above and below a moving average. | Calculated as the 20-day Simple Moving Average (SMA) of close prices plus and minus two rolling standard deviations ($SMA_{20} \pm 2\sigma_{20}$). |
 
 ---
 
-### What the Installer Does Behind the Scenes
-- Downloads **`uv`** (a super-fast Python tool manager) to isolate the application's environment.
-- Configures **Python 3.12** inside a private folder (`.venv/`) so it doesn't affect your computer's global files.
-- Installs all dependencies (libraries for plotting, math, and web scraping) listed in [requirements.txt](file:///Users/vishal/Library/CloudStorage/OneDrive-Personal/Projects/portfolio_dashboard/requirements.txt).
-- Installs **Playwright WebKit** (a clean, headless browser engine used to scrape underlying ETF company allocations).
-- Prompts you for a **Gemini API Key** (optional, used for AI summaries/chat) and writes it securely to a local `.env` configuration file.
-- Automatically places a **Folio shortcut on your Desktop** for easy one-click launching in the future.
+## ⚡ Quantitative Strategy Engine & Hysteresis
 
----
+Folio features a **Deterministic Strategy Engine** ([strategy_engine.py](services/strategy_engine.py)) that scores assets on a scale of `-1.0` (Strong Sell) to `+1.0` (Strong Buy) based on five weighted dimensions:
 
-## ⚙️ Launching the Application
+1.  **Trend (35%):** Alignment of 20-day and 50-day Simple Moving Averages.
+2.  **Momentum (20%):** Standardized RSI and MACD signal crossovers.
+3.  **Value (15%):** Percentage distance of current price from the 200-day SMA.
+4.  **Cost Basis (15%):** Average purchase cost relative to the current live price.
+5.  **Risk/Volatility (15%):** Annualized asset volatility relative to market benchmarks.
 
-After installation, you can run the app in three ways:
+```
+       SELL               HOLD               BUY
+[ -1.0 ◄─────► -0.5 ] [ -0.5 ◄─────► +0.5 ] [ +0.5 ◄─────► 1.0 ]
+         │                                      │
+         └───────────── Hysteresis ─────────────┘
+          (Requires absolute score of >=0.7
+           to flip an existing trend signal)
+```
 
-*   **Option 1: The Desktop Shortcut (Recommended)**
-    Double-click the **`Folio`** shortcut created on your Desktop. It will start the background processes and automatically open the dashboard in your default web browser (Safari, Chrome, Edge, etc.) at `http://127.0.0.1:8050`.
-*   **Option 2: The Command Line**
-    Navigate to the project directory in Terminal/Command Prompt and run:
-    ```bash
-    uv run python launcher.py
-    ```
-*   **Option 3: Native macOS App**
-    If on macOS, double-click **`Folio.app`** created in the project folder. You can drag this to your `/Applications` folder or pin it to your Dock. (Note: This starts the server silently. You will need to open your browser manually and visit `http://127.0.0.1:8050`).
-
----
-
-## 🛠 Troubleshooting Common Issues
-
-*   **macOS Permission Error:** If you get a warning saying *"install.command could not be executed because you do not have appropriate privileges"*, run this command in Terminal to fix it:
-    ```bash
-    chmod +x scripts/install.command
-    ```
-*   **macOS Gatekeeper Block:** If macOS blocks the installer or the app as being from an *"unidentified developer"*, right-click (`Ctrl + Click`) the file, select **Open**, and click **Open Anyway** in the prompt.
-*   **Windows PowerShell Block:** If Windows blocks the installer from downloading files, open PowerShell as an Administrator and run:
-    ```powershell
-    Set-ExecutionPolicy RemoteSigned -Scope CurrentUser
-    ```
-    Then run the installer again.
-*   **Database Lock Issues:** If you store the Folio directory inside a cloud sync folder (like **OneDrive**, **iCloud**, or **Dropbox**), the active syncing can lock the database file (`portfolio.db`) and cause errors. Move the `folio/` folder to your home directory (e.g., `/Users/yourusername/folio` or `C:\folio`) to avoid this.
-*   **Port 8050 Conflict:** If the app fails to open because port 8050 is in use:
-    - *macOS:* Run `lsof -ti:8050 | xargs kill -9` in Terminal.
-    - *Windows:* Run `for /f "tokens=5" %a in ('netstat -ano ^| findstr :8050') do taskkill /PID %a /F` in Command Prompt.
-
-*(For detailed solutions, see the [Troubleshooting Guide](docs/guides/TROUBLESHOOTING.md)).*
+*   **Signal Boundaries:** Scores mapping to $\ge 0.5$ issue a `BUY` suggestion, while scores $\le -0.5$ issue a `SELL` suggestion. Everything else remains a `HOLD`.
+*   **Hysteresis (Flip Prevention):** To prevent signal flickering on high-volatility days, an existing signal cannot flip (e.g. from `HOLD` to `BUY`) unless the new score exceeds an absolute threshold of `0.7`. When triggered, `hysteresis_forced: True` is flagged in the database.
+*   **Tax Alerts:** If the user triggers a `SELL` signal on an asset, the engine checks tranche records in [portfolio.db](data/portfolio.db). If any tranche has been owned for $<365$ days, it appends a capital gains tax discount warning to the signal reasons.
 
 ---
 
 ## 🗺 Dashboard Feature Tour (Page-by-Page)
 
-Folio features a glassmorphic sidebar navigation menu linking to six specialized dashboard views:
+Folio features a responsive, glassmorphic sidebar menu directing users to six core layout areas:
 
-### 1. Portfolio Holdings (Home)
-Your primary dashboard screen.
-*   **Quick Stats:** View Net Worth, Total Cost, Total P&L ($ and %), and Today's change.
-*   **Holdings Table:** A clean list of your active investments. Shows tickers, names, current prices, total cost, current value, total profit/loss, news sentiment, and technical suggestions (BUY/SELL/HOLD).
-*   **Today's P&L Chart:** A real-time timeline showing how your portfolio's value has fluctuated today during trading hours, resampled to clean 5-minute ticks with weekends hidden.
+### 1. Portfolio Holdings (Home Page)
+The primary cockpit summarizing the portfolio's active metrics.
+*   **Layman View:** Shows cards for Net Worth, Total Cost, Total P&L ($/%), and Today's change. Features an interactive Holdings Table listing ticker names, news sentiments, and suggestions, alongside a real-time today's P&L chart.
+*   **Technical Implementation:** Hydrates from `portfolio-store` (cached Holdings JSON kept under 20KB). The Today's P&L chart fetches a 2-day history at 5-minute intervals to stitch the final hour of the previous trading day, applying Plotly `rangebreaks` to hide weekends/nights and utilizing `uirevision` to lock zoom positions on updates. The header heartbeat status dot pulses green during trading hours using `is_market_open(include_auction=False)`.
 
 ### 2. Positions Deep-Dive (`/positions`)
-Select any ticker from the sidebar to inspect it individually.
-*   **Candlestick Chart:** View historical price bars (Open, High, Low, Close) over 1 Month, 6 Months, 1 Year, or Max timeframes.
-*   **Transaction Batches (Tranches):** See exactly when you bought each batch of shares, how many units, at what price, and the individual profit or loss.
-*   **Dividend History:** Lists your received dividends for this stock, ex-dividend dates, and annual projected cash flow.
+Detailed historical and transactional inspection of a selected asset.
+*   **Layman View:** Select any ticker to view a candlestick price chart (Open, High, Low, Close) over multiple intervals, purchase transaction tranches (buying batches with date, cost, and P&L), historical/projected dividend payouts, and an AI analysis card.
+*   **Technical Implementation:** Implements a dynamic layout function (`def layout():`) to prevent duplicate component ID registration. Uses the `positions-price-chart-container` to toggle visibility and hide empty states with `create_empty_fig()`. Integrates [dividend_service.py](services/market/dividend_service.py) to map historical payouts to individual tranches.
 
 ### 3. Watchlist (`/watchlist`)
-Track tickers you do not own yet.
-*   **Interactive List:** Shows the ticker, current price, today's price change, news sentiment, and buying signal recommendation.
-*   **Premium Drag-and-Drop:** Hover over any row, grab the handle (`☰`), and drag to reorder. The custom order is instantly saved to the database and persists across page reloads.
-*   **Quick Charting:** Click any watchlist item to view its historical chart and write custom research notes.
+Track potential investments before purchasing.
+*   **Layman View:** Shows monitored assets, current prices, news sentiment, and buying recommendations. Click any item to view its historical chart, write research notes, and drag-and-drop rows using grab handles (`☰`) to reorder.
+*   **Technical Implementation:** Drag-and-drop reordering uses a custom vanilla JavaScript handler ([drag_drop.js](assets/drag_drop.js)) which registers event listeners on the document body (ensuring persistence across Dash updates). The script intercepts drags starting on `.drag-handle` elements (ignoring text selections) and sends the new array to a hidden `#watchlist-order-input` component, triggering a python database update on the `order_index` SQLite table column.
 
 ### 4. Intelligence & Risk (`/intelligence`)
-Advanced mathematical metrics to evaluate your portfolio's risk-reward profile.
-*   **Risk Ratios:** Calculates **Annualized Volatility** (how volatile your portfolio is), **Sharpe Ratio** (are your gains worth the price swings?), and **Max Drawdown** (the largest peak-to-trough fall in your portfolio's history).
-*   **Equity Curve:** Plots your historical portfolio value over time.
-*   **ML Forecasting:** Toggle the Prophet forecasting model to display a shaded boundary predicting future portfolio values based on historical trends.
+Mathematical inspection of portfolio risk.
+*   **Layman View:** Computes volatility, Sharpe ratios, and peak-to-trough drawdowns. Includes a historical performance equity curve and an ML-powered price forecast.
+*   **Technical Implementation:** Evaluates risk metrics in [intelligence_service.py](services/intelligence_service.py). Forecasts are computed via Facebook Prophet in the background, writing to `data/cache/predictions.json` to prevent main thread blocking, and rendering with an 80% confidence interval.
 
 ### 5. Deep Dive Allocation (`/analytics`)
-Inspect where your money is actually distributed.
-*   **Sector Allocations:** A colorful treemap showing the industries you are exposed to (e.g., Technology, Financials, Healthcare).
-*   **Geographic Allocations:** Visual map of your country exposure (e.g., Australia, United States, Japan).
-*   **Correlation Matrix:** A heatmap showing if your stocks move in tandem. If two stocks have a correlation of `1.0`, they move exactly together. A lower or negative correlation means they move independently, helping reduce portfolio risk.
+Inspects exposure distribution across underlying fund assets.
+*   **Layman View:** Displays sector treemaps, geographic maps, and a correlation matrix showing if your holdings rise and fall together.
+*   **Technical Implementation:** Combines ETF holdings scraped using the 3-Tier scraper into weighted profiles. The correlation heatmap calculates returns covariance via pandas. Charts are styled using `apply_standard_layout()` to enforce consistent typography (Inter 10px), grid lines, and transparent backgrounds.
 
 ### 6. Settings Page (`/settings`)
-Tailor the dashboard's math and AI responses to your personal investment profile.
-*   **Investment Goal:** Choose between Passive Income, High Growth, Balanced, Capital Preservation, or Tactical Trading.
-*   **Risk Tolerance:** Set to Conservative, Moderate, or Aggressive.
-*   **Tax Bracket:** Input your marginal tax rate to calculate accurate post-tax dividend projections and capital gains warnings.
-*   **Dynamic Weight Previews:** View how your Goal and Risk selections adjust the mathematical weights used to score buying signals (Trend, Momentum, Value, Cost, Risk).
+Allows configuring settings that dynamically adjust calculation models and AI responses.
+*   **Layman View:** Choose your Investment Goal (e.g. Passive Income, High Growth), Risk Profile (Conservative, Moderate, Aggressive), and Marginal Tax Bracket. Shows a preview of how weights adapt.
+*   **Technical Implementation:** Saves settings in the `user_settings` table. These parameters are dynamically read by the strategy engine to adjust signal weights and by the LLM research assistant to tailor prompt suggestions.
 
 ---
 
 ## 🤖 AI Assistant & Gemini Integration
 
-Folio features a floating chatbot widget in the bottom-right corner of the screen, acting as your personal AI Research Assistant.
+The chatbot widget in the bottom-right corner acts as a portfolio-aware assistant.
 
-### AI Features:
-*   **Portfolio-Aware Chat:** The chatbot knows what assets you own, your average cost basis, and your active strategy settings. You can ask: *"Are my tech stocks too risky for my Conservative profile?"* or *"Analyze my overall asset allocation."*
-*   **Live Web Search Supplement:** If you ask about current market events (e.g. *"Why is BHP dropping today?"*), the assistant automatically enqueues a real-time DuckDuckGo News Search, reads the top results, and cites its sources.
-*   **Weekly PDF Report:** Generate a professional multi-page report containing a holdings summary, upcoming ex-dividend calendars, technical indicators, news sentiment summaries, and AI-written market commentary.
+```
+┌────────────────────────┐      ┌────────────────────────┐
+│      USER MESSAGE      ├─────►│  RESEARCH COORDINATOR  │
+│  (e.g., "Why is VAS    │      │ (research_service.py)  │
+│    dropping today?")   │      └───────────┬────────────┘
+└────────────────────────┘                  │ (Check keywords & trigger search)
+                                            ▼
+┌────────────────────────┐      ┌────────────────────────┐
+│   GEMINI AI CRITIQUE   │◄─────┤   DUCKDUCKGO SEARCH    │
+│    (ai_engine.py)      │      │  (ddgs financial news) │
+└───────────┬────────────┘      └────────────────────────┘
+            │ (Normalise verdict & apply cache)
+            ▼
+┌────────────────────────┐
+│  PORTFOLIO-AWARE CHAT  │
+│ (cites news / sources) │
+└────────────────────────┘
+```
 
-### Gemini API Key Configuration
-AI features require a Google Gemini API Key. 
-1. Get a free key at [aistudio.google.com](https://aistudio.google.com).
-2. Open the `.env` file in your root folder and add your key:
-   ```env
-   GEMINI_API_KEY=AIzaSy...
-   ```
-*Note: All core features—including price updates, charts, P&L history, analytics, dividends, and technical indicator scoring—work 100% offline without an API key.*
+1.  **AI Assistant Guardrail:** The strategy engine is the absolute source of truth for BUY/SELL/HOLD signals. The AI overlay ([ai_engine.py](services/ai_engine.py)) is limited to explaining and critiquing the engine's findings. It cannot generate signals itself.
+2.  **API Cost Optimization (Cache Key Hashing):** The assistant caches AI analyses with a 24-hour TTL. To prevent price ticks from constantly busting the cache and charging API costs, the cache key is constructed using a MD5 hash of stable signals (verdict + rounded score), ignoring volatile live price fluctuations:
+    ```python
+    cache_key = "ai_signal_" + md5(json.dumps(stable_signals, sort_keys=True)).hexdigest()
+    ```
+3.  **Verdict Normalization:** The assistant normalizes all verdicts via `VERDICT_MAP` to three values: `Confident`, `Mixed`, or `Risk flagged`. Tone sanitization (`_sanitize_tone()`) strips LLM fluff before writing to the database.
+4.  **Live Web Search:** When financial news keywords are matched, the research coordinator searches for recent (last month) Australian business news using the `duckduckgo-search` library with a `5s` timeout, feeding the articles into the prompt context and citing sources in the chat log.
+5.  **Memory Management:** Exact chat history is logged for 7 days in `conversation_log.json`. During startup, old logs are distilled into a bulleted memory summary in `memory_summary.json` to keep contexts small. A daily message limit (20) and a storage ceiling (50MB) are enforced.
+
+---
+
+## 🚀 Installation & First-Time Setup
+
+Folio manages its own environment automatically. You do not need to install complex system-wide dependencies.
+
+### 🍏 macOS / Linux Setup
+*   **Prerequisites:** macOS 12+ or Linux, Git, and an internet connection.
+1.  **Open Terminal** (`Cmd + Space`, search "Terminal").
+2.  **Clone this repository** and enter it:
+    ```bash
+    git clone https://github.com/vishalmanoj-vibe/folio.git
+    cd folio
+    ```
+3.  **Run the Installer:**
+    ```bash
+    ./scripts/install.command
+    ```
+    *(Or double-click `scripts/install.command` in Finder).*
+
+### 🔌 Windows Setup
+*   **Prerequisites:** Windows 10/11, Git, and an internet connection.
+1.  **Open PowerShell** as an Administrator.
+2.  **Clone this repository** and enter it:
+    ```powershell
+    git clone https://github.com/vishalmanoj-vibe/folio.git
+    cd folio
+    ```
+3.  **Run the Installer:**
+    ```powershell
+    scripts\install.bat
+    ```
+    *(Or double-click `install.bat` in the `scripts/` folder).*
+
+### What the Installer Does Behind the Scenes:
+-   Downloads **`uv`** (a high-speed Python package installer) to create an isolated environment.
+-   Configures **Python 3.12** inside a local virtual environment (`.venv/`) to avoid polluting global files.
+-   Installs required Python packages listed in [requirements.txt](requirements.txt).
+-   Installs **Playwright WebKit** (a headless browser engine used to scrape underlying ETF holdings).
+-   Prompts for a **Gemini API Key** (optional, get a free key at [aistudio.google.com](https://aistudio.google.com)) and writes it to a local `.env` configuration file.
+-   Places a launch shortcut on your **Desktop**.
+
+---
+
+## ⚙️ Launching the Application
+
+After installation, run the dashboard in one of three ways:
+
+*   **Option 1: Desktop Shortcut (Recommended)**
+    Double-click the **`Folio`** shortcut on your Desktop. It starts background tasks and launches `http://127.0.0.1:8050` in your browser.
+*   **Option 2: Command Line**
+    Navigate to the project folder and run:
+    ```bash
+    uv run python launcher.py
+    ```
+*   **Option 3: Native macOS App**
+    Double-click **`Folio.app`** in the project folder (starts server processes silently; you must visit `http://127.0.0.1:8050` manually in your browser).
+
+---
+
+## 🛠 Troubleshooting Common Issues
+
+*   **macOS Privilege Error:** If the installer fails to run, execute the following command in Terminal:
+    ```bash
+    chmod +x scripts/install.command
+    ```
+*   **macOS Gatekeeper Block:** If Gatekeeper warns about an *"unidentified developer"*, right-click (`Ctrl + Click`) the script, select **Open**, and click **Open Anyway**.
+*   **Windows Execution Policy Block:** If PowerShell blocks downloads, open PowerShell as an Administrator and run:
+    ```powershell
+    Set-ExecutionPolicy RemoteSigned -Scope CurrentUser
+    ```
+*   **Database Locking Issues:** Sync clients (like OneDrive, iCloud, or Dropbox) can lock the database file `portfolio.db` during updates, triggering SQLite write errors. Move the project folder outside of your cloud sync directory to resolve this.
+*   **Port 8050 Conflicts:** If port 8050 is in use, terminate the running process:
+    -   *macOS:* `lsof -ti:8050 | xargs kill -9`
+    -   *Windows (Cmd):* `for /f "tokens=5" %a in ('netstat -ano ^| findstr :8050') do taskkill /PID %a /F`
+*   **Process Issues:** If you suspect background tasks are hanging, check for orphaned processes:
+    ```bash
+    ps aux | grep -E "app.py|worker.py"
+    ```
+
+*(For detailed solutions, see the [Troubleshooting Guide](docs/guides/TROUBLESHOOTING.md)).*
 
 ---
 
 ## 💻 Developer Reference & Directory Structure
-
-If you wish to contribute to the code or understand the architecture, here is a guide to the codebase layout:
 
 ```
 folio/
@@ -242,98 +266,127 @@ folio/
 ├── worker.py                       # Background Task Worker (prices, scraping, AI execution)
 ├── app.py                          # Dash App entry point (scaffolds stores & routing)
 │
-├── pages/                          # Page templates (HTML structure layouts)
-│   ├── portfolio.py                # Dashboard Home
-│   ├── positions.py                # Positions & Dividends deep-dive
-│   ├── intelligence.py             # Risk ratios & forecasting UI
-│   ├── etf_detail.py               # Detailed ETF underlying stock maps
-│   └── settings.py                 # User profile settings
+├── config/                         # Configuration layer (Settings, Constants)
+│   ├── settings.py                 # Settings + env vars (Refresh rates, cache TTLs, DB path)
+│   ├── constants.py                # Colors, static names, themes
+│   └── logging.py                  # Logging configuration
 │
-├── callbacks/                      # Presentation Layer (wires actions to UI)
-│   ├── portfolio_callbacks.py      # Holdings table sorting, filtering, and render
-│   ├── positions_callbacks.py      # Positions details & Candlestick triggers
-│   ├── watchlist_callbacks.py      # Watchlist editing, notes, & drag-and-drop
-│   ├── research_callbacks.py       # Chatbot context, limits, & PDF generation
-│   ├── chart_callbacks.py          # Allocation treemaps & correlation heatmaps
-│   └── ui_callbacks.py             # Theme switching, print, & refreshing
+├── core/                           # Foundation layer
+│   ├── engine/                     # Pure logic (Math, Aggregation)
+│   │   ├── portfolio_engine.py     # Aggregation & Tranche history
+│   │   ├── stats_engine.py         # Summary metrics & UI formatting
+│   │   └── utils.py                # Math helpers
+│   ├── cache.py                    # TTL cache for API responses
+│   └── validators.py               # Transaction schema validation
 │
-├── components/                     # Reusable UI Blocks & Charts
-│   ├── header.py                   # Market status heartbeat & global nav
-│   ├── watchlist_layout.py         # Watchlist structural widgets
-│   ├── ui_helpers.py               # Theme containers & CSS grid wrappers
-│   └── charts/                     # Plotly chart generators (pnl_history, candlesticks)
+├── models/                         # Domain layer
+│   └── transaction.py              # Holding & Transaction schemas
 │
-├── services/                       # Service Layer (Business logic & calculations)
-│   ├── strategy_engine.py          # Quantitative BUY/SELL/HOLD scoring engine
-│   ├── ai_engine.py                # Gemini critique overlays & verdict mapper
-│   ├── research_service.py         # LLM chat coordination & DDG search integration
-│   ├── intelligence_service.py     # Allocation compiling & risk mathematics
-│   ├── prediction_service.py       # Facebook Prophet forecasting calculations
-│   ├── report_service.py           # Matplotlib reports & ReportLab PDF compilation
-│   └── market/                     # Market Service Layer
-│       ├── data_fetcher.py         # Bulk Yahoo Finance downloads & calculations
-│       ├── dividend_service.py     # Dividend schedules & ex-date mapping
-│       ├── session_cache.py        # Intraday 5-min snapshot SQLite caches
-│       └── market_status.py        # ASX session calendars & Sydney time checks
+├── services/                       # Orchestration layer
+│   ├── market/                     # Network calls (yfinance)
+│   │   ├── data_fetcher.py         # Enrichment logic (Bulk Fetch)
+│   │   ├── dividend_service.py     # Realized Dividends & Trend logic
+│   │   ├── session_cache.py        # Intraday snapshot management
+│   │   └── market_status.py        # ASX timezone/status logic
+│   ├── ai_engine.py                # LLM orchestration & signal critique
+│   ├── strategy_engine.py          # Deterministic rule-based scoring
+│   ├── alert_service.py            # Price/Target monitoring
+│   ├── intelligence_service.py     # Hierarchical risk/allocation logic
+│   ├── prediction_service.py       # Prophet-based forecasting
+│   ├── report_service.py           # Weekly PDF generation
+│   ├── research_service.py           # AI Assistant (chat & web search)
+│   └── research_memory.py          # Persistent AI memory summaries
 │
-├── data/                           # Persistence Layer (SQLite Database access)
-│   ├── database.py                 # SQLite WAL connection & schema initialization
-│   ├── repository.py               # SQL transaction & holding queries
-│   └── watchlist_repository.py     # SQL watchlist membership & notes queries
+├── data/                           # Persistence layer
+│   ├── database.py                 # SQLite connection & schema (WAL enabled)
+│   ├── repository.py               # Transaction & Asset Repository
+│   ├── watchlist_repository.py     # Watchlist & History Repository
+│   ├── portfolio.db                # Main relational store
+│   └── cache/                      # Persistent disk cache (intraday snapshots)
 │
-├── core/                           # Foundation Layer (Math helpers & Cache locks)
-│   ├── engine/                     # Pure mathematical algorithms
-│   │   ├── portfolio_engine.py     # Cost-basis tranches and P&L aggregations
-│   │   └── stats_engine.py         # Formatter for UI values ($ and %)
-│   ├── cache.py                    # Bounded memory cache with automatic eviction
-│   └── validators.py               # Transaction inputs validation
+├── components/                     # UI components
+│   ├── charts/                     # go.Figure factories
+│   │   ├── helpers.py              # Centralized layout & empty state builders
+│   │   ├── pnl_history.py          # Today view (resampled)
+│   │   ├── price_history.py        # Candlestick/Line charts
+│   │   └── ...
+│   ├── header.py                   # Shared navigation header
+│   ├── ui_helpers.py               # Stat cards & section wrappers
+│   └── chatbot.py                  # Floating AI Assistant widget layout
 │
-├── assets/                         # CSS Overrides & Clientside Javascript
-│   ├── base.css                    # Color theme variables & global resets
-│   ├── layout.css                  # CSS Grid systems & responsive paddings
-│   ├── drag_drop.js                # HTML5 event listeners for Watchlist drag-and-drop
-│   ├── command_palette.js          # Search index & keyboard shortcut (Cmd+K)
-│   └── browser_shutdown.js         # Graceful shutdown handler for page exits
+├── callbacks/                      # Dash interactivity
+│   ├── portfolio_callbacks.py      # Table/Metric updates
+│   ├── positions_callbacks.py      # Ticker deep-dive logic
+│   ├── watchlist_callbacks.py      # Watchlist logic
+│   ├── signals_callbacks.py        # Manual signal generation
+│   ├── intelligence_callbacks.py   # Modal & Drill-down logic
+│   └── research_callbacks.py       # AI chat interaction
 │
-└── scratch/                        # Diagnostic/Isolated Testing Suite
-    ├── run_tests.sh                # Main automated test runner script
-    └── tests/                      # 9 mock-isolated unit testing suites
+├── pages/                          # Multi-page routing
+│   ├── portfolio.py                # Holdings (/)
+│   ├── positions.py                # Positions (/positions)
+│   ├── watchlist.py                # Watchlist (/watchlist)
+│   ├── intelligence.py             # Insights (/intelligence)
+│   ├── analytics.py                # Deep Dive (/analytics)
+│   └── settings.py                 # Settings & Investor Profile (/settings)
+│
+└── assets/                         # Static assets (Modular CSS)
+    ├── base-tokens.css             # Design Tokens (CSS Variables)
+    ├── base-reset.css              # Global resets
+    ├── ui-components.css           # Modular UI blocks (Stat cards, etc.)
+    ├── view-pages.css              # Page-specific layout overrides
+    └── vendor.css                  # High-specificity Radix/Dash overrides
 ```
 
-### Decoupling Rules
-- **Services Purity:** Files inside `services/` represent pure business logic and computations. They must never import from Dash libraries, layouts, or pages.
-- **Engine Isolation:** Files inside `core/engine/` contain pure mathematical algorithms (zero network calls, zero file I/O, zero database queries). This makes testing robust and predictable.
-- **Minimal Edits:** If editing code, focus edits on the specific function. Never modify protected scaffolding files (like `app.py` store seeds or `data/database.py` WAL config) without explicit design documentation.
+### Import Paths Reference
+Developers adding pages or integrating services should use standardized imports:
+```python
+# Importing core mathematical operations (Engine - no I/O dependencies)
+from core.engine.portfolio_engine import build_holdings, compute_holding_pnl
+
+# Importing enrichment services (Service - network and database bindings)
+from services.market.data_fetcher import fetch_live, get_etf_name
+
+# Data repository access (Data Access - database wrappers)
+from data.repository import PortfolioRepository
+from data.watchlist_repository import WatchlistRepository
+```
+
+### Decoupling Rules (Strict Constraints)
+-   **Service Layer Purity:** Files in `services/` represent pure business logic. They must never import from Dash libraries, callbacks, layouts, or pages.
+-   **Engine Layer Purity:** Files in `core/engine/` contain pure mathematical algorithms (zero network calls, zero file/database I/O, zero library bindings).
+-   **CSS Variables Only:** Styling modifications must utilize the design token variables from `base-tokens.css` (e.g. `var(--bg)`, `var(--t-pri)`) rather than hardcoding hex colors, ensuring correct output in both light and dark modes.
 
 ---
 
-## 🧪 Testing
+## 🧪 Testing Framework
 
-Folio maintains a high-coverage unit testing suite built on `pytest`. All tests are fully mock-isolated, meaning they run without making network requests to Yahoo Finance or writing to your production database file.
+Folio maintains a mock-isolated unit testing suite built on `pytest`. All tests execute locally without making external network requests to Yahoo Finance or writing to your production database file, protecting database integrity.
 
-To run the automated tests:
 ```bash
-# Run all unit tests and generate coverage metrics
+# Run the complete test suite and generate HTML coverage reports
 ./scratch/run_tests.sh
 
-# Open the visual coverage dashboard in your browser
+# Open the code coverage dashboard in your browser
 open htmlcov/index.html
 ```
+
+The test runner handles virtual environment paths, executes lints (using `ruff` and type-checking with `mypy`), and verifies 28 mock-isolated unit testing suites (covering 197 assertions across repositories, calculation models, and Dash callbacks).
 
 ---
 
 ## 📊 Technical Stack Reference
 
-| Component | Library / Engine |
+| Layer / Component | Technology / Library |
 | :--- | :--- |
-| **User Interface** | Dash, Dash Mantine Components, Dash Bootstrap Components, Plotly |
+| **User Interface** | Dash 2.16+, Dash Mantine Components, Dash Bootstrap Components, Plotly |
 | **Database** | SQLite (WAL mode enabled, thread-safe concurrent writes) |
-| **Market Data** | yfinance (bulk-optimized downloads with intraday session cache) |
+| **Market Data** | yfinance (bulk-optimized downloads with 290s intraday snapshot cache) |
 | **Technical Indicators** | Pure Pandas calculations (Wilder's RSI, MACD, Bollinger Bands) |
-| **Forecasting** | Facebook Prophet (incorporates Sydney trading holidays) |
-| **AI Models** | Google Gemini 2.5 Flash Lite (`google-genai` SDK) |
+| **Forecasting** | Facebook Prophet (incorporating ASX trading calendars) |
+| **AI Processing** | Google Gemini 2.5 Flash / 3.1 Flash Lite (`google-genai` SDK) |
 | **PDF Compilation** | ReportLab & Matplotlib |
-| **Search Discovery** | DuckDuckGo Search (`ddgs` indexer API) |
+| **Search Indexing** | DuckDuckGo Search API (`ddgs` news integration) |
 
 ---
 

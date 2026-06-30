@@ -4,7 +4,7 @@
 > Before adding any callback, check this map. Duplicate Outputs cause silent
 > Dash crashes. If using `allow_duplicate=True`, document the reason inline.
 >
-> **Last synced**: 2026-06-09
+> **Last synced**: 2026-06-30
 
 ---
 
@@ -51,7 +51,7 @@
 | `benchmark-pending-store` | `data` | Benchmark task ID (shared write, see also `intelligence_callbacks`). |
 | `price-chart` | `figure` | Analytics normalised price chart. |
 | `portfolio-treemap` | `figure` | Allocation treemap. Also outputs to `holdings-freshness-note` (`children`) and `holdings-url-collapse` (`opened`). |
-| `analytics-vol-chart` | `figure` | Volatility bar chart. |
+| `analytics-vol-chart` | `children` | Volatility bar chart. |
 | `corr-chart` | `figure` | Correlation heatmap. |
 | `holdings-freshness-note` | `children` | ETF data freshness note (owned by `portfolio_treemap`). |
 | `holdings-url-collapse` | `opened` | ETF URL form toggle (2 callbacks: `toggle_url_collapse` and `portfolio_treemap` with `allow_duplicate=True`). |
@@ -71,16 +71,16 @@
 | `etf-detail-cards` | `children` | Metrics card grid. |
 | `positions-tech-signals-container` | `children` | Technical signal badges. |
 | `ai-insight-container` | `children` | AI explanation block. |
-| `positions-price-chart-container` | `children` | Price chart wrapper. |
-| `positions-price-chart-header` | `children` | Chart section header. |
+| `positions-price-chart` | `figure` | Historical candlestick chart. |
+| `positions-price-chart-header` | `style` | Show/hide chart header. |
 | `positions-txn-table-container` | `children` | Transaction table wrapper. |
 | `positions-period-store` | `data` | Period selection store. |
 | `positions-period-btns` | `children` | Period button row. |
 | `positions-detail-title` | `children` | Detail panel heading. |
 | `positions-ticker-dividend-container` | `children` | Per-ticker dividend block. |
 | `positions-portfolio-dividend-chart-container` | `children` | Portfolio dividend chart container. |
-| `positions-dividend-income-chart` | `figure` | Dividend income chart. |
-| `positions-dividend-yield-chart` | `figure` | Dividend yield chart. |
+| `positions-dividend-income-chart` | `children` | Dividend income chart. |
+| `positions-dividend-yield-chart` | `children` | Dividend yield chart. |
 | `positions-dividend-table` | `children` | Dividend table. |
 
 ---

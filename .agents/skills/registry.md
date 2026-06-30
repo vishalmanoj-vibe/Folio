@@ -3,7 +3,7 @@
 ## Objective
 Prevent "Duplicate ID" errors and callback collisions by maintaining a central map of all critical Dash component IDs.
 
-<!-- FIX: Added missing dividend, AI, and signal component IDs. Last synced: 2026-05-25. -->
+<!-- FIX: Added missing dividend, AI, and signal component IDs. Last synced: 2026-06-30. -->
 
 ## Global Stores & Singletons (Always Present — Seeded in app.py)
 - `url`: Location tracking for multi-page routing.
@@ -17,7 +17,7 @@ Prevent "Duplicate ID" errors and callback collisions by maintaining a central m
 - `palette-ticker-store`: Sync tickers for command palette (holdings, watchlist, signals).
 - `theme-store`: Light/Dark mode state (local storage).
 - `compact-mode-store`: Compact UI toggle state (local storage).
-- `table-state-store`: Holdings table sort column + direction (local storage).
+- `folio-table-state-v3`: Holdings table sort column + direction (session storage).
 - `nav-link-store`: Active nav link tracking.
 
 ## Session Picker Stores (Persist across pages in same session)

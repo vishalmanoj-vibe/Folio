@@ -11,7 +11,7 @@ This guide covers local setup, development conventions, and how to extend the ap
    ```
 
 2. **Environment Setup**:
-   - Python 3.11+ is recommended.
+   - Python 3.12.13 is recommended.
    - Create a virtual environment:
      ```bash
      python -m venv venv
@@ -52,7 +52,7 @@ To add a new feature (e.g., a new chart or a new data service), follow these ste
 
 - **Aesthetics**: Use the CSS Token System (`assets/base-tokens.css`). Never hardcode hex values in Python.
 - **Performance**: Use bulk `yf.download()` instead of per-ticker loops.
-- **Safety**: Always use `prevent_initial_call=True` for page-specific callbacks.
+- **Safety**: Page-specific rendering callbacks must use `prevent_initial_call=False` (or `"initial_duplicate"`) to execute on navigation, while button/interaction callbacks must use `prevent_initial_call=True` to prevent premature execution.
 
 ## Related Documentation
 

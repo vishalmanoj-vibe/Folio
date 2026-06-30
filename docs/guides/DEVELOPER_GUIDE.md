@@ -33,7 +33,7 @@ The application follows a strictly decoupled layered architecture to ensure sepa
 2.  **Service (Orchestration & Intelligence)**: Coordinates complex workflows and AI-driven insights. This layer handles external API calls (yfinance, Gemini), tiered caching, and logic-heavy services:
     - **Market Service**: Real-time pricing and metadata enrichment.
     - **Dividend Service**: Centralized logic for realized income, trend analysis, and projected distributions.
-    - **Research Service (AI)**: Contextual portfolio reasoning via Gemini 2.5 Flash Lite.
+    - **Research Service (AI)**: Contextual portfolio reasoning via Gemini 2.5 Flash.
     - **Web Search Service**: Live financial news integration via DuckDuckGo.
     - **Memory Service**: Persistent state management with rolling 7-day logs and long-term summaries.
     - **Intelligence Service**: Risk analysis (Sharpe, Volatility) and rule-based allocation alerts.
@@ -394,7 +394,7 @@ To ensure consistent data views across the dashboard, the application implements
 - **The Fix**: The refresh callback in `app.py` evaluates all active page-specific period stores and instructs the market service to fetch the **maximum** duration requested. This ensures that when a user switches pages, the required historical data is already present in the global cache.
 
 ### 8. Floating AI Assistant Widget & Persistent Memory
-The **Floating AI Chatbot Widget** (defined in [chatbot.py](file:///Users/vishal/Library/CloudStorage/OneDrive-Personal/Projects/portfolio_dashboard/components/chatbot.py)) leverages Google Gemini 2.5 Flash Lite (guided by your Investor Profile settings) for contextual portfolio reasoning.
+The **Floating AI Chatbot Widget** (defined in [chatbot.py](file:///Users/vishal/Library/CloudStorage/OneDrive-Personal/Projects/portfolio_dashboard/components/chatbot.py)) leverages Google Gemini 2.5 Flash (guided by your Investor Profile settings) for contextual portfolio reasoning.
 - **Contextual Awareness**: The chatbot runs in the global layout and automatically resolves viewport context (active path and active selected ticker). On every query, the assistant is injected with this context, including a live snapshot of the portfolio (Holdings, P&L, Weights) and the active ticker.
 - **Technical Integration**: Live technical signals (RSI/MACD/BB) are automatically computed and injected into the prompt context, allowing the AI to reason about technical entry points.
 - **Cost & Performance Optimization**:
@@ -447,7 +447,7 @@ To provide a seamless visual experience, the Allocation and Performance charts i
 ### 15. Standardized Architecture Compliance
 Following a project-wide audit, the application adheres to strict operational standards:
 - **Logging Purity**: All `print()` statements in the service and data layers have been replaced with `logger.debug()` or `logger.info()` to ensure a clean production console and detailed file-based troubleshooting.
-- **Callback Safety**: The `prevent_initial_call=True` flag is mandatory for all page-specific callbacks to prevent race conditions and "empty data" rendering glitches during multi-page navigation.
+- **Callback Safety**: Multi-page safety requires that page-specific rendering callbacks use `prevent_initial_call=False` (or `"initial_duplicate"`) to ensure they fire on initial navigation, while interaction callbacks (e.g. form submission, clicks) use `prevent_initial_call=True` to prevent premature execution.
 
 
 ### 16. Callback Prioritization & Rendering Efficiency

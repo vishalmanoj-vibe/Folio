@@ -8,43 +8,59 @@ Folio includes a world-class, automated test and code quality framework. All uni
 
 1. **Zero-Network Isolation**: No test is allowed to trigger real Yahoo Finance downloads, DuckDuckGo searches, or Google Gemini API requests. Everything is strictly mocked.
 2. **Database Cleanliness**: Tests interact with isolated, fresh in-memory or temporary SQLite databases. The main `portfolio.db` is never read or written to during testing.
-3. **Modern Type Safety**: All files are strictly typed. We use modern, non-deprecated Python 3.9+ type declarations (e.g. standard `list` and `dict` rather than `typing.List` and `typing.Dict`).
+3. **Modern Type Safety**: All files are strictly typed. We use modern, non-deprecated Python 3.12+ type hints (e.g. standard `list` and `dict` rather than `typing.List` and `typing.Dict`).
 4. **Strict Style Compliance**: Every test suite and application file must pass `ruff` format and lint checks, as well as strict `mypy` static analysis.
 
 ---
 
 ## 📁 Test Architecture & Layout
 
-All unit tests are organized inside the `scratch/tests/` directory to prevent codebase clutter:
+All unit tests are organized inside the `scratch/tests/` directory to prevent codebase clutter. There are **28 test suites** in total, evaluating **197 mock-isolated test cases**:
 
 ```text
 scratch/
 ├── run_tests.sh              # Unified Test Runner
 └── tests/
     ├── test_ai_engine.py             # Analyst overlay, verdict mapping, client mocks
+    ├── test_alert_callbacks.py      # Alert notifications, thresholds, UI banners
     ├── test_chart_components.py     # go.Figure builders (PnL history, allocations, etc.)
+    ├── test_data_fetcher.py         # Bulk Yahoo Finance downloads and caching logic
     ├── test_dividend_service.py     # Tranche matching, ex-date eligibility, yield calculations
+    ├── test_intelligence_service.py # Portfolio risk math (Sharpe, Volatility, Drawdowns)
+    ├── test_layouts.py              # Header and dynamic page structure sanity checks
+    ├── test_market_status.py        # ASX session calendars and Sydney timezone checks
+    ├── test_portfolio_callbacks.py  # Holdings table rendering, sorting, and stats
+    ├── test_portfolio_engine.py     # Cost-basis tranches and P&L aggregations
+    ├── test_positions_callbacks.py  # Card selections, detail metrics, chart container states
+    ├── test_prediction_service.py   # FB Prophet caching and forecasting validation
+    ├── test_report_service.py       # Matplotlib report generation and PDF compilation
     ├── test_repository.py           # SQLite WAL connections, transactions CRUD
     ├── test_research.py             # Gemini context builder, log pruning, smart searches
-    ├── test_strategy_engine.py       # Deterministic signal scores, flip prevention
-    ├── test_technical_indicators.py  # Pure pandas RSI, MACD, and Bollinger Bands
-    └── test_ui_callbacks.py         # Dash state updates, URL-prioritized page routing
+    ├── test_session_cache.py        # Intraday 5-min snapshot SQLite cache operations
+    ├── test_settings_callbacks.py   # Settings page, profile selection, weight previews
+    ├── test_setup_callbacks.py      # Onboarding steps, task polling, redirect guards
+    ├── test_signals_callbacks.py    # Manual signal triggers and task status polling
+    ├── test_strategy_engine.py      # Weighted BUY/SELL/HOLD scores, hysteresis
+    ├── test_technical_indicators.py # Pure pandas RSI, MACD, and Bollinger Bands
+    ├── test_transaction_callbacks.py# Add, edit, validation of ledger transactions
+    ├── test_ui_callbacks.py         # Theme toggles, compact mode, sorting states
+    ├── test_ui_helpers.py           # Color interpolations, stat card, section wrappers
+    ├── test_watchlist_callbacks.py  # Watchlist table, notes save, drag-and-drop ordering
+    └── test_worker_tasks.py         # Background worker queue and task polling
 ```
 
 ### Coverage Overview & Deep-Dives
 
-Our 9 primary test suites cover the core business math, data layers, and visual rendering paths:
+Our 28 primary test suites cover the core business math, data layers, and visual rendering paths:
 
-| Test Suite | File Path | Focus Area |
+| Test Group | Test Suites | Focus Area |
 | :--- | :--- | :--- |
-| **Dividend Engine** | `scratch/tests/test_dividend_service.py` | Validates transaction tranche ex-date calculations to prevent "phantom income". |
-| **AI Analyst Engine** | `scratch/tests/test_ai_engine.py` | Tests Gemini response parsing, confidence thresholds, and `VERDICT_MAP` normalization. |
-| **Persistence Repos** | `scratch/tests/test_repository.py` | Tests SQLite setup, WAL concurrent pragmas, transactional rollbacks, and watchlist notes. |
-| **Visual Charts** | `scratch/tests/test_chart_components.py` | Verifies Plotly `go.Figure` structures, theme token variables, and `create_empty_fig` fallback states. |
-| **Research Assistant** | `scratch/tests/test_research.py` | Mocks Gemini context generation, smart web search token triggers, and rolling log summaries. |
-| **Strategy Engine** | `scratch/tests/test_strategy_engine.py` | Checks weighted BUY/SELL/HOLD scores, hysteresis flip preventions, and CGT tranche warnings. |
-| **Technicals Math** | `scratch/tests/test_technical_indicators.py` | Validates custom pandas formulas for RSI (Wilder's), MACD, and Bollinger Bands. |
-| **UI & Callbacks** | `scratch/tests/test_ui_callbacks.py` | Checks metric aggregation cards and prioritized background URL routing protection. |
+| **Market Data** | `test_data_fetcher.py`, `test_market_status.py`, `test_session_cache.py` | Validates trading calendars, Sydney timezone logic, yfinance downloads, and intraday cooldown caches. |
+| **Core Calculations** | `test_portfolio_engine.py`, `test_dividend_service.py` | Verifies P&L math, cost basis, transaction tranches, and ex-date dividend eligibility. |
+| **Technical & Strategy** | `test_technical_indicators.py`, `test_strategy_engine.py` | Validates RSI, MACD, Bollinger Bands formulas (pure pandas) and rule-based BUY/SELL scoring. |
+| **AI Analyst & Assistant** | `test_ai_engine.py`, `test_research.py`, `test_report_service.py` | Mocks Gemini completions, context generation, smart news searches, conversation memory, and Matplotlib PDF reports. |
+| **Database & Repos** | `test_repository.py` | Evaluates WAL mode SQLite transactions, CRUD operations, and watchlist persistence. |
+| **UI Rendering & Callbacks** | `test_ui_callbacks.py`, `test_portfolio_callbacks.py`, `test_positions_callbacks.py`, `test_watchlist_callbacks.py` | Tests Dash state reactivity, page-aware callback gating (prioritized rendering), and drag-and-drop order updates. |
 
 ---
 

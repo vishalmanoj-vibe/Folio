@@ -168,29 +168,15 @@ def extract_stores(filepath: Path) -> list[dict]:
     results = []
     text = filepath.read_text(encoding="utf-8")
 
-    # First pass: inline stores on one line
-    matched_positions = set()
-    for m in RE_STORE_INLINE.finditer(text):
-        line_no = text[: m.start()].count("\n") + 1
-        store_id = m.group(1)
-        storage_type = m.group(2) or "memory"
-        results.append(
-            {
-                "id": store_id,
-                "storage_type": storage_type,
-                "line": line_no,
-            }
-        )
-        matched_positions.add(m.start())
-
-    # Second pass: multi-line stores (dcc.Store( on one line, id= on next)
+    # Single pass: find all dcc.Store( calls and scan up to 300 characters for ID and storage type
     for m in RE_STORE_OPEN.finditer(text):
-        if m.start() in matched_positions:
-            continue
-        # Look ahead up to 5 lines for id= and storage_type=
         snippet_start = m.start()
-        # Find closing paren region (up to 300 chars)
         snippet = text[snippet_start : snippet_start + 300]
+        # Truncate to the next dcc.Store( call to prevent attributes leaking from downstream stores
+        next_store_idx = snippet.find("dcc.Store(", 10)
+        if next_store_idx != -1:
+            snippet = snippet[:next_store_idx]
+
         id_m = RE_STORE_ID.search(snippet)
         if not id_m:
             continue
@@ -198,7 +184,8 @@ def extract_stores(filepath: Path) -> list[dict]:
         store_id = id_m.group(1)
         type_m = RE_STORE_TYPE.search(snippet)
         storage_type = type_m.group(1) if type_m else "memory"
-        # Avoid duplicates from first pass
+
+        # Avoid duplicates
         if any(r["id"] == store_id for r in results):
             continue
         results.append(

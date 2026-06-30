@@ -26,7 +26,7 @@ Then read these documents **in order**:
 
 ## Stack
 - Python 3.12.13, Dash (multi-page), Plotly, yfinance, pandas
-- Entry: app.py → pages/ (portfolio.py, etf_detail.py, intelligence.py)
+- Entry: app.py → pages/ (portfolio.py, positions.py, watchlist.py, intelligence.py, analytics.py, settings.py)
 - Data: SQLite (`portfolio.db`) → `database.py` → `repository.py` → `fetch_live()`
 - All chart figures live in components/charts/ and return go.Figure
 - Callbacks are modular: core, chart, transaction, alert, ui, positions, dividend, insights, watchlist, research, report, signals
