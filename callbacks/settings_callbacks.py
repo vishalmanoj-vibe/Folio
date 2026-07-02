@@ -199,9 +199,21 @@ def register_callbacks(app):
     )
     def update_persona_description(persona_val):
         descriptions = {
-            "Conservative": "Conservative Wealth Manager: Focuses on capital preservation, emphasizing downside risks, drawdowns, and holding period costs.",
-            "Skeptical": "Skeptical Short-Seller: Plays devil's advocate, questioning bullish signals and highlighting over-valuation or mean-reversion risks.",
-            "Growth": "Growth Optimist: Focuses on momentum tailwinds, sector strength, and compound growth potential.",
-            "Concise": "Concise Executive: Delivers brief, bulleted summaries emphasizing key metrics and numbers.",
+            "Conservative": (
+                "Conservative Wealth Manager: Prioritizes capital preservation, historic drawdowns, and structural "
+                "200-day moving average metrics. Appends CGT tax evaluations (favoring >12 months holding period) on sales."
+            ),
+            "Skeptical": (
+                "Skeptical Short-Seller / Devil's Advocate: Critically evaluates all technical signals. "
+                "Highlights divergences (e.g. price vs. RSI), volume decay, and potential bull traps."
+            ),
+            "Growth": (
+                "Growth Optimist: Momentum & trend-following focus. Emphasizes strong tailwinds, moving average "
+                "crossovers (50MA/200MA), sector leadership, and new 52-week highs."
+            ),
+            "Concise": (
+                "Concise Executive: Short, bulleted, data-dense briefs. Grounded purely in hard metrics "
+                "(RSI values, moving average percentages, support/resistance levels) with zero filler."
+            ),
         }
         return descriptions.get(persona_val, "")
