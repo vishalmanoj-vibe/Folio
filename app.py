@@ -676,7 +676,7 @@ def close_browser():
 _shutdown_timer: threading.Timer | None = None
 
 
-@app.server.route("/shutdown")
+@app.server.route("/shutdown", methods=["GET", "POST"])
 def shutdown_endpoint():
     """
     Receives a beacon from the browser when the user closes the tab/window.
@@ -708,7 +708,7 @@ def shutdown_endpoint():
     return ("", 204)
 
 
-@app.server.route("/shutdown/cancel")
+@app.server.route("/shutdown/cancel", methods=["GET", "POST"])
 def shutdown_cancel_endpoint():
     """
     Cancels a pending shutdown countdown.

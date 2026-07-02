@@ -90,10 +90,24 @@ class FolioLauncher:
         logger.info("Launching Folio — Process Manager active.")
 
         while self.running:
-            # 1. Start Dash if not running
+            # 0. Check if Dash exited intentionally BEFORE deciding to restart.
+            #    Exit code  0   = app.run() returned normally (rare).
+            #    Exit code -15  = SIGTERM — browser-close shutdown beacon fired this.
+            #    Any other code = genuine crash → fall through to restart logic below.
+            if self.dash_process and not self.dash_process.is_alive():
+                exit_code = self.dash_process.exitcode
+                if exit_code in (0, -signal.SIGTERM):
+                    logger.info(
+                        f"Dash process exited cleanly (code {exit_code}) — "
+                        "browser window was closed. Shutting down Folio."
+                    )
+                    self.handle_exit(None, None)
+                    return  # handle_exit calls sys.exit(0); this is a safety guard
+
+            # 1. Start Dash if not running (only reached on genuine crash)
             if not self.dash_process or not self.dash_process.is_alive():
                 if self.dash_process:
-                    logger.warning("Dash process died. Restarting...")
+                    logger.warning("Dash process crashed. Restarting...")
                 self.dash_process = Process(target=run_dash, name="DashUI")
                 self.dash_process.start()
                 logger.info(f"Dash process started (PID: {self.dash_process.pid})")
@@ -110,7 +124,7 @@ class FolioLauncher:
             # 3. Heartbeat
             time.sleep(5)
 
-            # 5. Monitor Worker Memory (Every 60s)
+            # 4. Monitor Worker Memory (Every 60s)
             if self.worker_process and self.worker_process.is_alive():
                 current_time = time.time()
                 if current_time - self.last_mem_check > 60:
@@ -122,15 +136,6 @@ class FolioLauncher:
                         )
                         self.worker_process.terminate()
                         # The loop will restart it automatically next iteration
-
-            # 4. Check if Dash was closed normally (e.g., app.run returned)
-            if self.dash_process and not self.dash_process.is_alive():
-                # If Dash exits with code 0, we assume intentional shutdown
-                if self.dash_process.exitcode == 0:
-                    logger.info("Dash process exited normally.")
-                    self.handle_exit(None, None)
-                else:
-                    logger.error(f"Dash process exited with code {self.dash_process.exitcode}")
 
 
 if __name__ == "__main__":
