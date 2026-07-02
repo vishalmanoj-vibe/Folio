@@ -373,7 +373,7 @@ def test_build_corr_figure(mock_theme_tokens: dict[str, Any]) -> None:
     assert "Need at least 2 holdings" in fig_empty.layout.annotations[0].text
 
     # 2. Valid histories data
-    dates = pd.date_range(end="2026-06-12", periods=30, freq="D")
+    dates = pd.date_range(end=pd.Timestamp.now(), periods=30, freq="D")
     histories = {
         "VAS": pd.DataFrame({"Close": [100.0 + i * 0.5 for i in range(30)], "Date": dates}),
         "VGS": pd.DataFrame({"Close": [200.0 - i * 0.3 for i in range(30)], "Date": dates}),

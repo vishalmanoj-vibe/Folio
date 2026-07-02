@@ -17,18 +17,23 @@ Resolve the memory leak and performance thrashing that causes the landing page R
 
 ## Proposed Changes
 
-### [MODIFY] [chart_callbacks.py](file:///Users/vishal/Library/CloudStorage/OneDrive-Personal/Projects/portfolio_dashboard/callbacks/chart_callbacks.py)
+### [MODIFY] [chart_callbacks.py](../../callbacks/chart_callbacks.py)
 - **Remove** `Input("task-poll-interval", "n_intervals")` from `pnl_history_chart`.
 - **Add** a lightweight status polling callback `poll_benchmark_status` that runs only when `benchmark-pending-store` is active, checks SQLite benchmarks database, and sets the store to `None` when completed.
 - **Add** `Input("benchmark-pending-store", "data")` (as an Input or State) to `pnl_history_chart` to trigger a final redraw when benchmarks complete.
 
-### [MODIFY] [sync_hover.js](file:///Users/vishal/Library/CloudStorage/OneDrive-Personal/Projects/portfolio_dashboard/assets/sync_hover.js)
+### [MODIFY] [sync_hover.js](../../assets/sync_hover.js)
 - Filter nodes added during mutations to ensure they contain `.js-plotly-plot` before triggering hover synchronisation.
 - Add a 100ms debounce timer to prevent setupSync from running repeatedly during rendering updates.
 
-### [MODIFY] [countup.js](file:///Users/vishal/Library/CloudStorage/OneDrive-Personal/Projects/portfolio_dashboard/assets/countup.js)
+### [MODIFY] [countup.js](../../assets/countup.js)
 - Observe `childList` additions only and disable `characterData` tracking to avoid intercepting intermediate animation frames.
 
 ## Fallback States
 - If the lightweight status checker fails, the benchmark task will time out and task-poll-interval will disable automatically.
 - If MutationObservers fail, hover syncing and countup animations fallback gracefully without affecting dashboard functionality.
+
+## Related Files
+- **Skills:** [Performance & Profiling](../skills/performance.md), [Component ID Registry](../skills/registry.md), [Add Chart](../skills/add_chart.md)
+- **Reference:** [Known Issues](../../docs/reference/known_issues.md)
+- **Code:** [chart_callbacks.py](../../callbacks/chart_callbacks.py), [assets/sync_hover.js](../../assets/sync_hover.js)

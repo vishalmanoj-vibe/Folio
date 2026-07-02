@@ -9,24 +9,24 @@ This plan details the addition of root-level installation wrappers, automated de
 ### Root-Level Entry Points
 We will add root-level entry scripts so users can just double-click them inside the project folder rather than running terminal commands.
 
-#### [NEW] [setup.command](file:///Users/vishal/Library/CloudStorage/OneDrive-Personal/Projects/portfolio_dashboard/setup.command)
+#### [NEW] [install.command](../../scripts/install.command)
 - A shell script checked in with executable permissions (`+x`).
-- Automatically resolves its location, changes directory to the repository root, and runs `bash scripts/install.sh`.
+- Automatically resolves its location, changes directory to the repository root, and runs the install process.
 
-#### [NEW] [setup.bat](file:///Users/vishal/Library/CloudStorage/OneDrive-Personal/Projects/portfolio_dashboard/setup.bat)
+#### [NEW] [install.bat](../../scripts/install.bat)
 - A Windows batch file.
-- Automatically resolves its location, changes directory to the repository root, and runs `scripts\install.bat`.
+- Automatically resolves its location, changes directory to the repository root, and runs the install process.
 
 ---
 
 ### Scripts Component
 
-#### [MODIFY] [scripts/install.sh](file:///Users/vishal/Library/CloudStorage/OneDrive-Personal/Projects/portfolio_dashboard/scripts/install.sh)
+#### [MODIFY] [scripts/install.command](../../scripts/install.command)
 - **Desktop Shortcut Automation:** Automatically copy the generated `Folio.command` to `$HOME/Desktop/Folio.command` and ensure it has executable permissions (`chmod +x`).
 - **Post-Install Launch Prompt:** At the end of the installation, prompt the user: *"Would you like to start Folio right now? (y/n)"*. If yes, run the launcher inline.
 - **Improved Output styling:** Enhance logging readability with clean separation and emojis.
 
-#### [MODIFY] [scripts/install.bat](file:///Users/vishal/Library/CloudStorage/OneDrive-Personal/Projects/portfolio_dashboard/scripts/install.bat)
+#### [MODIFY] [scripts/install.bat](../../scripts/install.bat)
 - **Desktop Shortcut Automation:** Run a PowerShell inline script (via `-ExecutionPolicy Bypass`) to resolve the user's Desktop folder and create a standard Windows shortcut (`Folio.lnk`) pointing to the generated `folio_launch.bat`.
 - **Browser Auto-Launch:** Update the generated `folio_launch.bat` template to include:
   1. A loop checking if port 8050 is active (up to 30 attempts).
@@ -38,7 +38,7 @@ We will add root-level entry scripts so users can just double-click them inside 
 
 ### Documentation
 
-#### [MODIFY] [README.md](file:///Users/vishal/Library/CloudStorage/OneDrive-Personal/Projects/portfolio_dashboard/README.md)
+#### [MODIFY] [README.md](../../README.md)
 - Update macOS installation instructions:
   - Just clone the repo and double-click `setup.command` in Finder (or run `bash setup.command` in terminal).
   - Clarify that a double-clickable launcher `Folio.command` is automatically placed on the Desktop.
@@ -58,3 +58,8 @@ We will add root-level entry scripts so users can just double-click them inside 
    - Run the Desktop `Folio.command` and verify it clears ports and launches normally.
 2. **Windows Script Dry-Run / Code Review:**
    - Carefully review the generated batch script and PowerShell lines for path quoting and variable resolution to ensure bug-free execution on Windows.
+
+## Related Files
+- **Skills:** [Performance & Setup UX](../skills/performance.md), [Data Fetching & Scrapers](../skills/data_fetching.md)
+- **Reference:** [Troubleshooting Guide](../../docs/guides/TROUBLESHOOTING.md)
+- **Code:** [install.command](../../scripts/install.command), [install.bat](../../scripts/install.bat)

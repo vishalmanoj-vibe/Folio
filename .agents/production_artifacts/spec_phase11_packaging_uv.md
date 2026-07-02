@@ -28,3 +28,8 @@ None.
 
 ## External Dependencies Added
 None — uv is downloaded by the installer script itself; it is not a Python package.
+
+## Related Files
+- **Skills:** [Performance & Setup UX](../skills/performance.md), [Data Fetching & Scrapers](../skills/data_fetching.md)
+- **Reference:** [Known Issues](../../docs/reference/known_issues.md)
+- **Code:** [README.md](../../README.md), [launcher.py](../../launcher.py)

@@ -16,16 +16,16 @@ This enhancement does not add any new Dash Component IDs. It automatically style
 
 ## Proposed Changes
 
-### [MODIFY] [helpers.py](file:///Users/vishal/Library/CloudStorage/OneDrive-Personal/Projects/portfolio_dashboard/components/charts/helpers.py)
+### [MODIFY] [helpers.py](../../components/charts/helpers.py)
 - Inject a transition configuration and set `uirevision = True` in `apply_standard_layout()` to enable built-in Plotly morphing and interpolation.
 
-### [NEW] [spotlight.js](file:///Users/vishal/Library/CloudStorage/OneDrive-Personal/Projects/portfolio_dashboard/assets/spotlight.js)
+### [NEW] [spotlight.js](../../assets/spotlight.js)
 - Implement cursor coordinate tracking over elements with `.stat-card-container` or `.card`, binding computed values to CSS variables `--mouse-x` and `--mouse-y`.
 
-### [MODIFY] [ui-components.css](file:///Users/vishal/Library/CloudStorage/OneDrive-Personal/Projects/portfolio_dashboard/assets/ui-components.css)
+### [MODIFY] [ui-components.css](../../assets/ui-components.css)
 - Implement standard CSS tokens for card hovering utilizing a radial glow styled in `var(--cyan)` opacity mapping.
 
-### [NEW] [countup.js](file:///Users/vishal/Library/CloudStorage/OneDrive-Personal/Projects/portfolio_dashboard/assets/countup.js)
+### [NEW] [countup.js](../../assets/countup.js)
 - Implement a generic `MutationObserver`-driven animator that monitors text-changes inside any element containing the `.stat-card-value` class, interpolating values client-side in the browser.
 
 ## Fallback States
@@ -37,3 +37,8 @@ This enhancement does not add any new Dash Component IDs. It automatically style
 - Period/ticker changes on all charts are beautifully interpolated instead of snapping.
 - Cards react in real-time to cursor hover with a soft glassmorphic glow.
 - Summary value changes visually tick up/down smoothly when loaded.
+
+## Related Files
+- **Skills:** [Aura Design System](../skills/aura_design_system.md), [Add Chart](../skills/add_chart.md)
+- **Reference:** [Known Issues](../../docs/reference/known_issues.md)
+- **Code:** [helpers.py](../../components/charts/helpers.py), [ui-components.css](../../assets/ui-components.css)

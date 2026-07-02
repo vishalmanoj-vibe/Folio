@@ -23,3 +23,8 @@ No new Dash Component IDs are introduced.
 - **Missing Tickers in URL Config**: Syncs all portfolio tickers so newly added assets like URNM automatically appear in the URL table for user visibility and custom updates.
 - **Broken URL Links**: Displays `"—"` as unclickable text instead of generating a broken hyperlink if no seed/user URL is configured.
 - **Auto-Discovery URL Cache**: Saves DDGS-discovered URLs directly to SQLite, avoiding repetitive 5-second search lookups during subsequent refreshes.
+
+## Related Files
+- **Skills:** [Add Chart](../skills/add_chart.md), [Data Fetching & Scrapers](../skills/data_fetching.md), [Component ID Registry](../skills/registry.md)
+- **Reference:** [Known Issues](../../docs/reference/known_issues.md)
+- **Code:** [treemap.py](../../components/charts/treemap.py), [holdings_fetcher.py](../../services/market/holdings_fetcher.py)

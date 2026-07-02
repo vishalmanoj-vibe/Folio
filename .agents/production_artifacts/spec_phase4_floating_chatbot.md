@@ -44,3 +44,8 @@ None.
 
 ## External URLs
 None.
+
+## Related Files
+- **Skills:** [Component ID Registry](../skills/registry.md), [AI Memory & Caching](../skills/ai_memory.md)
+- **Reference:** [Store Contracts](../../docs/reference/store_contracts.md), [Callback Ownership](../../docs/reference/callback_ownership.md)
+- **Code:** [chatbot.py](../../components/chatbot.py), [research_callbacks.py](../../callbacks/research_callbacks.py), [research_service.py](../../services/research_service.py)

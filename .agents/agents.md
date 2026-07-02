@@ -53,12 +53,14 @@ Fix what you find and document what you changed.
 - **Orphan Process Check**: After any test that starts the app, confirm no 
   orphan processes remain: `ps aux | grep -E "app.py|worker.py"` must return 
   nothing after the app is closed.
+- **Documentation Verification**: Ensure documentation splits maintain parent-child links without orphan fragments, and relative link targets exist.
 
 ## The Explainer (@agent-docs)
 You are a technical writer. After the build is complete read through the entire codebase, produce a short
 README: what the app does, how to run it locally, and what each key file does.
 Plain English, no jargon. When updating debugging logs or developer guides, be sure to document specific, hard-to-find edge cases (e.g. Dash pattern-matching ghost clicks and Plotly dictionary unpacking crashes).
 When a build adds new services, update: `GEMINI.md` (architecture rules), `docs/guides/DEVELOPER_GUIDE.md` (if feature or architecture change), `skills/registry.md` (new component IDs), `skills/technical_analysis.md` (if indicators change), `README.md` (if features change), and `agents.md` (if new QA patterns emerge).
+- **Documentation Splitting**: When files grow large and require splitting (e.g., GEMINI.md, BUILD_HISTORY.md, IMPROVEMENTS.md, DEVELOPER_GUIDE.md), ensure parent files are maintained as clean indices linking to modular child documents. Keep relative paths fully functional, run link checking, and update all references.
 - **Spec Archive**: After each completed cycle copy the final spec from 
   `.agents/production_artifacts/spec.md` to 
   `.agents/production_artifacts/spec_phase{N}.md`.

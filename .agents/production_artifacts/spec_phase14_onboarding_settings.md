@@ -9,10 +9,10 @@ Add Investor Profile settings (Investment Goal, Risk Tolerance, and Tax Bracket)
 
 ### 1. Page Updates
 
-#### [MODIFY] [setup_portfolio.py](file:///Users/vishal/Library/CloudStorage/OneDrive-Personal/Projects/portfolio_dashboard/pages/setup_portfolio.py)
+#### [MODIFY] [setup_portfolio.py](../../pages/setup_portfolio.py)
 - Rename Step 2 indicator from "AI Analyst" to "Strategy & AI" for terminology consistency.
 
-#### [MODIFY] [setup_ai.py](file:///Users/vishal/Library/CloudStorage/OneDrive-Personal/Projects/portfolio_dashboard/pages/setup_ai.py)
+#### [MODIFY] [setup_ai.py](../../pages/setup_ai.py)
 - Rename Step 2 indicator from "AI Analyst" to "Strategy & AI".
 - Change page header title to "Configure Strategy & AI" and subtitle to "Customize your investment strategy preferences and optionally enable Gemini AI."
 - Add a new section "Strategy Settings" above the Gemini key field with three styled dropdowns:
@@ -21,14 +21,14 @@ Add Investor Profile settings (Investment Goal, Risk Tolerance, and Tax Bracket)
   - **Tax Bracket**: 0%, 15%, 19%, 30%, 32.5%, 37% (default), 45%.
 - Apply the `.settings-dropdown` and `.settings-form-row` classes to the dropdown inputs for dark mode compatibility and premium UX.
 
-#### [MODIFY] [setup_ready.py](file:///Users/vishal/Library/CloudStorage/OneDrive-Personal/Projects/portfolio_dashboard/pages/setup_ready.py)
+#### [MODIFY] [setup_ready.py](../../pages/setup_ready.py)
 - Rename Step 2 indicator from "AI Analyst" to "Strategy & AI" for consistency.
 
 ---
 
 ### 2. Callback & Logic Updates
 
-#### [MODIFY] [setup_callbacks.py](file:///Users/vishal/Library/CloudStorage/OneDrive-Personal/Projects/portfolio_dashboard/callbacks/setup_callbacks.py)
+#### [MODIFY] [setup_callbacks.py](../../callbacks/setup_callbacks.py)
 - Add a load callback to retrieve existing settings from SQLite via `get_all_settings()` when navigating to `/setup/ai`, and populate the dropdowns.
 - Update `handle_ai_setup` to accept the three strategy settings dropdown values as `State` inputs.
 - When saving (`setup-ai-save-btn` click) or skipping (`setup-ai-skip-btn` click), save the selected dropdown values to the SQLite database via `save_setting()`.
@@ -36,7 +36,7 @@ Add Investor Profile settings (Investment Goal, Risk Tolerance, and Tax Bracket)
 ---
 
 ## Component IDs
-We will register the following new IDs in [registry.md](file:///Users/vishal/Library/CloudStorage/OneDrive-Personal/Projects/portfolio_dashboard/.agents/skills/registry.md):
+We will register the following new IDs in [registry.md](../../.agents/skills/registry.md):
 - `setup-investment-goal`: Dropdown selector for goal in wizard.
 - `setup-risk-tolerance`: Dropdown selector for risk in wizard.
 - `setup-tax-bracket`: Dropdown selector for tax in wizard.
@@ -51,3 +51,8 @@ We will register the following new IDs in [registry.md](file:///Users/vishal/Lib
 
 ## External Dependencies / URLs
 None. No new pip packages or external HTTP URLs are introduced in this phase.
+
+## Related Files
+- **Skills:** [Component ID Registry](../skills/registry.md), [UI/UX Design & CSS](../skills/ui_ux.md), [Aura Design System](../skills/aura_design_system.md)
+- **Reference:** [Callback Ownership](../../docs/reference/callback_ownership.md), [Store Contracts](../../docs/reference/store_contracts.md)
+- **Code:** [setup_ai.py](../../pages/setup_ai.py), [setup_callbacks.py](../../callbacks/setup_callbacks.py)

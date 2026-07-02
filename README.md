@@ -335,8 +335,14 @@ folio/
     ├── base-reset.css              # Global resets
     ├── ui-components.css           # Modular UI blocks (Stat cards, etc.)
     ├── view-pages.css              # Page-specific layout overrides
-    └── vendor.css                  # High-specificity Radix/Dash overrides
 ```
+
+### Developer Guides & Rules
+For detailed architecture, coding standards, and testing policies, refer to:
+*   **[Developer Guide & Architecture Overview](docs/guides/DEVELOPER_GUIDE.md)** — Architectural layout, data flow, and layers.
+*   **[Architectural Constraints & Rules (GEMINI.md)](GEMINI.md)** — Do Not Touch zones, code standards, and styling guidelines.
+*   **[Contributing Guide](docs/guides/CONTRIBUTING.md)** — Developer setup, environment preparation, and pull request checklist.
+*   **[Testing Guide](docs/testing/TESTING.md)** — Automated test execution, mock isolation, and test runner options.
 
 ### Import Paths Reference
 Developers adding pages or integrating services should use standardized imports:

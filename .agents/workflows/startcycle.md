@@ -64,12 +64,16 @@ When the user runs `/startcycle [idea]`, the team will follow this high-density 
 > ✅ **Stage 3 complete → immediately begin Stage 4 (no pause)**
 
 ### Stage 4 — @agent-docs: Finalize
-1. **ReadMe**: Update the project README or create a feature-specific doc in `.agents/production_artifacts/`.
-2. **Report**: Summarize the build, files changed, and instructions on how to test it.
-3. **Context Docs**: Update `docs/reference/callback_ownership.md` with any new Output IDs added during the build. Remove entries for deleted outputs.
-4. Update the user documentations — `docs/guides/DEVELOPER_GUIDE.md`, `requirements.txt`, and `docs/history/BUILD_HISTORY.md`.
-5. **Spec Archive**: After each completed cycle, copy the final approved spec from `.agents/production_artifacts/spec.md` to `.agents/production_artifacts/spec_phase{N}.md` so specs are never overwritten by the next cycle.
-6. **Auto-Sync Indexes** *(mandatory final step)*: Run the following command to regenerate the callback and store index files from the live codebase. This MUST be executed before reporting completion to the user:
+1: **ReadMe**: Update the project README or create a feature-specific doc in `.agents/production_artifacts/`.
+2: **Report**: Summarize the build, files changed, and instructions on how to test it.
+3: **Context Docs**: Update `docs/reference/callback_ownership.md` with any new Output IDs added during the build. Remove entries for deleted outputs.
+4: Update the user documentations — `docs/guides/DEVELOPER_GUIDE.md`, `docs/guides/ALGORITHMS_AND_FEATURES.md` (if mathematical/special features added), `requirements.txt`, and `docs/history/BUILD_HISTORY.md`.
+5: **Link Verification**: Run the link checking script to ensure no broken relative targets exist:
+   ```bash
+   python3 scratch/check_links.py
+   ```
+6: **Spec Archive**: After each completed cycle, copy the final approved spec from `.agents/production_artifacts/spec.md` to `.agents/production_artifacts/spec_phase{N}.md` so specs are never overwritten by the next cycle.
+7: **Auto-Sync Indexes** *(mandatory final step)*: Run the following command to regenerate the callback and store index files from the live codebase. This MUST be executed before reporting completion to the user:
    ```bash
    python3 .agents/generated/sync_docs.py
    ```

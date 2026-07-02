@@ -7,7 +7,7 @@ This change fixes the correlation matrix and volatility list on the Deep Dive (`
 
 ### Component Callbacks
 
-#### [MODIFY] [chart_callbacks.py](file:///Users/vishal/Library/CloudStorage/OneDrive-Personal/Projects/portfolio_dashboard/callbacks/chart_callbacks.py)
+#### [MODIFY] [chart_callbacks.py](../../callbacks/chart_callbacks.py)
 Change `State("analytics-period-store", "data")` to `Input("analytics-period-store", "data")` in both:
 - `update_corr_chart` (line 394)
 - `update_analytics_volatility` (line 324)
@@ -16,7 +16,7 @@ This will trigger updates for the correlation matrix and volatility progress bar
 
 ### Chart Components
 
-#### [MODIFY] [correlation.py](file:///Users/vishal/Library/CloudStorage/OneDrive-Personal/Projects/portfolio_dashboard/components/charts/correlation.py)
+#### [MODIFY] [correlation.py](../../components/charts/correlation.py)
 Update the `colorscale` definition in `build_corr_figure`:
 - Correlation values map to `[-1, 1]`.
 - Map colors dynamically so that `≤ 0.2` is colored green, `0.5` is yellow/orange, and `1.0` is red.
@@ -41,3 +41,8 @@ None.
 
 ## External URLs
 None.
+
+## Related Files
+- **Skills:** [Add Chart](../skills/add_chart.md), [Component ID Registry](../skills/registry.md)
+- **Reference:** [Known Issues](../../docs/reference/known_issues.md)
+- **Code:** [chart_callbacks.py](../../callbacks/chart_callbacks.py), [correlation.py](../../components/charts/correlation.py)

@@ -16,14 +16,14 @@ Replace the separate ETF Holdings bubble chart tab on the Analytics page (`/anal
 ## Proposed Changes
 
 ### 1. Layout & Styling
-* **[pages/analytics.py](file:///Users/vishal/Library/CloudStorage/OneDrive-Personal/Projects/portfolio_dashboard/pages/analytics.py)**
+* **[pages/analytics.py](../../pages/analytics.py)**
   - Remove `dmc.TabsTab("ETF Holdings", value="holdings")` from `dmc.TabsList`.
   - Remove the `dmc.TabsPanel` corresponding to `"holdings"`.
   - Add option `{"label": "Underlying Holdings", "value": "holdings"}` to the SegmentedControl `treemap-mode`.
   - Relocate the `holdings-freshness-note` component directly below the `portfolio-treemap` component or adjacent to its description.
 
 ### 2. Treemap Component
-* **[components/charts/treemap.py](file:///Users/vishal/Library/CloudStorage/OneDrive-Personal/Projects/portfolio_dashboard/components/charts/treemap.py)**
+* **[components/charts/treemap.py](../../components/charts/treemap.py)**
   - Add `holdings_data: dict[str, dict] | None = None` parameter to `build_portfolio_treemap()`.
   - Handle `mode == "holdings"`:
     - Compute underlying company absolute dollar value based on total portfolio value: `total_val * (weight / 100)`.
@@ -33,7 +33,7 @@ Replace the separate ETF Holdings bubble chart tab on the Analytics page (`/anal
     - Show detailed tooltip descriptions on hover, listing the company name, absolute dollar value, total blended weight, and source ETF tickers.
 
 ### 3. Callbacks
-* **[callbacks/chart_callbacks.py](file:///Users/vishal/Library/CloudStorage/OneDrive-Personal/Projects/portfolio_dashboard/callbacks/chart_callbacks.py)**
+* **[callbacks/chart_callbacks.py](../../callbacks/chart_callbacks.py)**
   - Remove `update_holdings_bubble_chart` callback.
   - Modify `portfolio_treemap` callback to output to `portfolio-treemap` (figure), `holdings-freshness-note` (children), and `holdings-url-collapse` (opened, with `allow_duplicate=True`).
   - Inside the callback, check if `mode == "holdings"`:
@@ -42,10 +42,10 @@ Replace the separate ETF Holdings bubble chart tab on the Analytics page (`/anal
     - Otherwise, build the treemap and set the freshness note to `"Holdings data loaded successfully."`.
 
 ### 4. Tests & Documentation
-* **[scratch/tests/test_chart_components.py](file:///Users/vishal/Library/CloudStorage/OneDrive-Personal/Projects/portfolio_dashboard/scratch/tests/test_chart_components.py)**
+* **[scratch/tests/test_chart_components.py](../../scratch/tests/test_chart_components.py)**
   - Remove `test_build_holdings_bubble_chart`.
   - Add `test_build_portfolio_treemap_holdings` testing the output elements, parents, and values of the underlying holdings treemap.
-* **[docs/reference/callback_ownership.md](file:///Users/vishal/Library/CloudStorage/OneDrive-Personal/Projects/portfolio_dashboard/docs/reference/callback_ownership.md)**
+* **[docs/reference/callback_ownership.md](../../docs/reference/callback_ownership.md)**
   - Remove `holdings-bubble-chart` ownership.
   - Update `portfolio-treemap` outputs to list the multi-output signature.
 
@@ -63,3 +63,8 @@ Replace the separate ETF Holdings bubble chart tab on the Analytics page (`/anal
 
 ## External URLs
 - None.
+
+## Related Files
+- **Skills:** [Add Chart](../skills/add_chart.md), [Data Fetching & Scrapers](../skills/data_fetching.md), [Component ID Registry](../skills/registry.md)
+- **Reference:** [Known Issues](../../docs/reference/known_issues.md)
+- **Code:** [treemap.py](../../components/charts/treemap.py), [chart_callbacks.py](../../callbacks/chart_callbacks.py)

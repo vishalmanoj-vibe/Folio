@@ -22,31 +22,36 @@ Implement a suite of new dashboard enhancements, adapting them to our Dash/Pytho
 
 ## Proposed Changes
 
-### [Database] [database.py](file:///Users/vishal/Library/CloudStorage/OneDrive-Personal/Projects/portfolio_dashboard/data/database.py)
+### [Database] [database.py](../../data/database.py)
 - Create `user_settings` and `sentiment_cache` tables during database initialization.
 
-### [Repository] [settings_repository.py](file:///Users/vishal/Library/CloudStorage/OneDrive-Personal/Projects/portfolio_dashboard/data/settings_repository.py) [NEW]
+### [Repository] [settings_repository.py](../../data/settings_repository.py) [NEW]
 - Define `get_all_settings()`, `get_setting()`, `save_setting()`, `save_all_settings()`.
 
-### [Services] [sentiment_service.py](file:///Users/vishal/Library/CloudStorage/OneDrive-Personal/Projects/portfolio_dashboard/services/sentiment_service.py) [NEW]
+### [Services] [sentiment_service.py](../../services/sentiment_service.py) [NEW]
 - DDGS news fetcher + Gemini analyzer + SQLite caching.
 
-### [Strategy Engine] [strategy_engine.py](file:///Users/vishal/Library/CloudStorage/OneDrive-Personal/Projects/portfolio_dashboard/services/strategy_engine.py)
+### [Strategy Engine] [strategy_engine.py](../../services/strategy_engine.py)
 - Read profile goal/risk settings from database and adjust technical indicator strategy weights.
 
-### [Settings Page] [settings.py](file:///Users/vishal/Library/CloudStorage/OneDrive-Personal/Projects/portfolio_dashboard/pages/settings.py) [NEW]
+### [Settings Page] [settings.py](../../pages/settings.py) [NEW]
 - Setup UI layout under `/settings` with profile selection dropdowns and strategy weight previews.
 
-### [Settings Callbacks] [settings_callbacks.py](file:///Users/vishal/Library/CloudStorage/OneDrive-Personal/Projects/portfolio_dashboard/callbacks/settings_callbacks.py) [NEW]
+### [Settings Callbacks] [settings_callbacks.py](../../callbacks/settings_callbacks.py) [NEW]
 - Handle settings loading, dynamic weights preview bar rendering, and settings saving.
 
-### [UI Callbacks] [ui_callbacks.py](file:///Users/vishal/Library/CloudStorage/OneDrive-Personal/Projects/portfolio_dashboard/callbacks/ui_callbacks.py)
+### [UI Callbacks] [ui_callbacks.py](../../callbacks/ui_callbacks.py)
 - Add clientside callback to populate `palette-ticker-store`.
 
-### [Grids] [portfolio_callbacks.py](file:///Users/vishal/Library/CloudStorage/OneDrive-Personal/Projects/portfolio_dashboard/callbacks/portfolio_callbacks.py) & [watchlist_callbacks.py](file:///Users/vishal/Library/CloudStorage/OneDrive-Personal/Projects/portfolio_dashboard/callbacks/watchlist_callbacks.py)
+### [Grids] [portfolio_callbacks.py](../../callbacks/portfolio_callbacks.py) & [watchlist_callbacks.py](../../callbacks/watchlist_callbacks.py)
 - Add "Sentiment" column to both tables, displaying colored Positive/Neutral/Negative ratings and scores.
 
 ## Acceptance Criteria
 - Run `ruff check` and `ruff format` on all updated/new files successfully.
 - Pytest suite executes successfully with 61/61 passing tests.
 - App starts up without errors and handles navigation, settings updates, and search seamlessly.
+
+## Related Files
+- **Skills:** [Component ID Registry](../skills/registry.md), [Aura Design System](../skills/aura_design_system.md), [Web Search](../skills/web_search.md)
+- **Reference:** [Store Contracts](../../docs/reference/store_contracts.md), [Known Issues](../../docs/reference/known_issues.md)
+- **Code:** [strategy_engine.py](../../services/strategy_engine.py), [settings.py](../../pages/settings.py), [settings_callbacks.py](../../callbacks/settings_callbacks.py)

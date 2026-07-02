@@ -58,5 +58,5 @@ To add a new feature (e.g., a new chart or a new data service), follow these ste
 
 - **[DEVELOPER_GUIDE.md](DEVELOPER_GUIDE.md)**: Deep dive into architecture, algorithms, and data flow.
 - **[TESTING.md](../testing/TESTING.md)**: Testing procedures and manual verification.
-- **[GEMINI.md](../GEMINI.md)**: Coding rules, architecture constraints, and AI agent boundaries.
+- **[GEMINI.md](../../GEMINI.md)**: Coding rules, architecture constraints, and AI agent boundaries.
 - **[IMPROVEMENTS.md](../history/IMPROVEMENTS.md)**: Historical log of project milestones and architectural changes.

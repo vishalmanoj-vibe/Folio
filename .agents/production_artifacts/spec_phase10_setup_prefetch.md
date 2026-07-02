@@ -27,7 +27,7 @@ Stabilize the Positions and Watchlist pages by preventing `UnboundLocalError` cr
 ## Proposed Changes
 
 ### Positions Page Callback
-In [positions_callbacks.py](file:///Users/vishal/Library/CloudStorage/OneDrive-Personal/Projects/portfolio_dashboard/callbacks/positions_callbacks.py):
+In [positions_callbacks.py](../../callbacks/positions_callbacks.py):
 Initialize `tech_signals = None` before fetching and checking the close series:
 ```python
         # Generate Tech Signals (Memory Optimized)
@@ -44,7 +44,7 @@ Initialize `tech_signals = None` before fetching and checking the close series:
 ---
 
 ### Watchlist Page Callback
-In [watchlist_callbacks.py](file:///Users/vishal/Library/CloudStorage/OneDrive-Personal/Projects/portfolio_dashboard/callbacks/watchlist_callbacks.py):
+In [watchlist_callbacks.py](../../callbacks/watchlist_callbacks.py):
 Initialize `tech_signals = None` before fetching and checking the close series:
 ```python
         # Generate Tech Signals (Memory Optimized)
@@ -69,3 +69,8 @@ Initialize `tech_signals = None` before fetching and checking the close series:
 ### Manual Verification
 - Start the app and worker processes using the launcher: `python launcher.py`.
 - Navigate to the Positions and Watchlist pages and verify that they load successfully.
+
+## Related Files
+- **Skills:** [Component ID Registry](../skills/registry.md), [Data Fetching & Scrapers](../skills/data_fetching.md)
+- **Reference:** [Known Issues](../../docs/reference/known_issues.md)
+- **Code:** [positions_callbacks.py](../../callbacks/positions_callbacks.py), [watchlist_callbacks.py](../../callbacks/watchlist_callbacks.py)

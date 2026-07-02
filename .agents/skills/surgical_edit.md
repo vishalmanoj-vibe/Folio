@@ -72,7 +72,7 @@ Change only the specific lines identified in Step 2. Do not:
 - Rename variables "while you're in there"
 - Reformat surrounding code
 - Add logging outside the changed block
-- Touch any [Do Not Touch Zone](../GEMINI.md#do-not-touch-zones)
+- Touch any [Do Not Touch Zone](../../GEMINI.md#do-not-touch-zones)
 
 ---
 

@@ -29,3 +29,8 @@ None.
 
 ## External URLs
 None.
+
+## Related Files
+- **Skills:** [Component ID Registry](../skills/registry.md), [UI/UX Design & CSS](../skills/ui_ux.md)
+- **Reference:** [Callback Ownership](../../docs/reference/callback_ownership.md)
+- **Code:** [portfolio_callbacks.py](../../callbacks/portfolio_callbacks.py), [positions_callbacks.py](../../callbacks/positions_callbacks.py)

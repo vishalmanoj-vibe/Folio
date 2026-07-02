@@ -16,3 +16,7 @@ This spec covers a complete documentation overhaul of the project's root `README
 - **Pain Point 1: Jargon Barriers.** Laymen often struggle with terms like "RSI", "Sharpe Ratio", "ex-dividend", or "Prophet". We translate each term to plain English.
 - **Pain Point 2: Running Environment Mystery.** Users don't know why a launcher process restarts the worker. We explain the double-process design (Dash UI + background worker) and local SQLite database with WAL concurrency using a simple text diagram.
 - **Pain Point 3: Installation Friction.** Onboarding issues (such as macOS Gatekeeper and Windows PowerShell execution policies) are addressed with clear, copy-pasteable commands and solutions.
+
+## Related Files
+- **Reference:** [Troubleshooting Guide](../../docs/guides/TROUBLESHOOTING.md), [Developer Guide & Architecture Overview](../../docs/guides/DEVELOPER_GUIDE.md)
+- **Code:** [README.md](../../README.md)
