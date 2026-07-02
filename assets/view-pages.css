@@ -520,6 +520,17 @@
   padding-bottom: 8px;
 }
 
+.settings-label {
+  font-size: 11px;
+  color: var(--cyan);
+  font-weight: 600;
+  margin: 0 0 2px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  min-height: 14px;
+  line-height: 14px;
+}
+
 .settings-form-container {
   display: flex;
   flex-direction: column;

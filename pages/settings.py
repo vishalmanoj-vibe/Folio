@@ -47,7 +47,12 @@ def layout() -> html.Div:
                                         html.Div(
                                             [
                                                 html.Label(
-                                                    "Investment Goal", className="txn-label"
+                                                    "Investment Goal", className="settings-label"
+                                                ),
+                                                html.P(
+                                                    "Configures the technical engine weights (e.g. Growth prioritizes trend/momentum; Income focuses on cost basis & yield).",
+                                                    className="settings-preview-description",
+                                                    style={"marginBottom": "6px"},
                                                 ),
                                                 dcc.Dropdown(
                                                     id="settings-investment-goal",
@@ -79,7 +84,14 @@ def layout() -> html.Div:
                                         # Risk Tolerance
                                         html.Div(
                                             [
-                                                html.Label("Risk Tolerance", className="txn-label"),
+                                                html.Label(
+                                                    "Risk Tolerance", className="settings-label"
+                                                ),
+                                                html.P(
+                                                    "Adjusts strategy score penalties; Low risk tolerance applies strict penalties to assets with large drawdowns.",
+                                                    className="settings-preview-description",
+                                                    style={"marginBottom": "6px"},
+                                                ),
                                                 dcc.Dropdown(
                                                     id="settings-risk-tolerance",
                                                     options=[
@@ -108,7 +120,12 @@ def layout() -> html.Div:
                                             [
                                                 html.Label(
                                                     "Tax Bracket (For CGT Warnings)",
-                                                    className="txn-label",
+                                                    className="settings-label",
+                                                ),
+                                                html.P(
+                                                    "Determines your marginal tax rate to calculate tax implications and display Capital Gains Tax (CGT) alerts.",
+                                                    className="settings-preview-description",
+                                                    style={"marginBottom": "6px"},
                                                 ),
                                                 dcc.Dropdown(
                                                     id="settings-tax-bracket",
@@ -136,7 +153,7 @@ def layout() -> html.Div:
                                             [
                                                 html.Label(
                                                     "AI Chat Model",
-                                                    className="txn-label",
+                                                    className="settings-label",
                                                 ),
                                                 html.P(
                                                     "Used by the AI Research Assistant chatbot.",
@@ -167,7 +184,7 @@ def layout() -> html.Div:
                                             [
                                                 html.Label(
                                                     "AI Report Model",
-                                                    className="txn-label",
+                                                    className="settings-label",
                                                 ),
                                                 html.P(
                                                     "Used when generating the weekly PDF commentary.",
@@ -198,7 +215,7 @@ def layout() -> html.Div:
                                             [
                                                 html.Label(
                                                     "Portfolio Benchmark",
-                                                    className="txn-label",
+                                                    className="settings-label",
                                                 ),
                                                 html.P(
                                                     "Index to compare your portfolio returns against on charts.",
@@ -253,7 +270,7 @@ def layout() -> html.Div:
                                             [
                                                 html.Label(
                                                     "AI Analysis Persona",
-                                                    className="txn-label",
+                                                    className="settings-label",
                                                 ),
                                                 html.P(
                                                     "Sets the tone and style of AI signal explanations and the Research Assistant.",
@@ -302,7 +319,7 @@ def layout() -> html.Div:
                                             [
                                                 html.Label(
                                                     "Data Refresh Frequency",
-                                                    className="txn-label",
+                                                    className="settings-label",
                                                 ),
                                                 html.P(
                                                     "How often the app polls for live price updates during market hours.",
