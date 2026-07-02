@@ -240,6 +240,12 @@ def get_ai_response(history: list[dict], portfolio_data: dict, ticker: str = "")
         goal = settings.get("investment_goal", "Balanced")
         risk = settings.get("risk_tolerance", "Moderate")
         tax = settings.get("tax_bracket", "37%")
+        persona = settings.get("ai_persona", "Conservative")
+
+        # Build persona tone instruction
+        from services.ai_engine import PERSONA_PROMPTS
+
+        persona_instruction = PERSONA_PROMPTS.get(persona, PERSONA_PROMPTS["Conservative"])
 
         profile_instruction = (
             f"\n\nUSER'S INVESTOR PROFILE:\n"
@@ -248,7 +254,7 @@ def get_ai_response(history: list[dict], portfolio_data: dict, ticker: str = "")
             f"- Tax Bracket: {tax}\n"
             f"Please customize your advice, risk evaluation, and portfolio suggestions to align with this investor profile."
         )
-        system_prompt_dynamic = SYSTEM_PROMPT + profile_instruction
+        system_prompt_dynamic = persona_instruction + "\n\n" + SYSTEM_PROMPT + profile_instruction
 
         # Resolve chat model from user settings (fallback to Flash).
         # The `or` guard narrows the type from `str | None` → `str` to satisfy the SDK.

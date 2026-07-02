@@ -84,8 +84,9 @@ def build_benchmark_traces(
     benchmarks: dict | None = None,
 ) -> list:
     """
-    Return Plotly Scatter traces for S&P 500 and ASX 200 normalised to
+    Return Plotly Scatter traces for benchmark indices normalised to
     % return from the start of the selected period window or portfolio start.
+    The user-configured preferred benchmark is highlighted with a primary line style.
     """
     if benchmarks is None:
         try:
@@ -111,7 +112,27 @@ def build_benchmark_traces(
     b2_color = theme_tokens.get("BENCH_2")
     t_sec = theme_tokens.get("T_SEC")
 
-    styles = {
+    # Load user's preferred benchmark to highlight it
+    try:
+        from data.settings_repository import get_setting
+
+        preferred_benchmark = get_setting("portfolio_benchmark", "^AXJO") or "^AXJO"
+        custom_benchmark = get_setting("custom_benchmark", "") or ""
+        # Determine the label to highlight
+        preset_labels = {
+            "^AXJO": "ASX 200",
+            "^GSPC": "S&P 500",
+            "^NDX": "Nasdaq 100",
+            "URTH": "MSCI World",
+        }
+        if preferred_benchmark == "__custom__" and custom_benchmark:
+            preferred_label = custom_benchmark
+        else:
+            preferred_label = preset_labels.get(preferred_benchmark, preferred_benchmark)
+    except Exception:
+        preferred_label = "ASX 200"
+
+    default_styles = {
         "S&P 500": {"color": b1_color, "dash": "dash"},
         "ASX 200": {"color": b2_color, "dash": "dot"},
     }
@@ -135,16 +156,27 @@ def build_benchmark_traces(
             pct_s = ((df["Close"] - base) / base * 100).round(2)
             latest = float(pct_s.iloc[-1])
             sign = "+" if latest >= 0 else ""
-            style = styles.get(label, {"color": t_sec, "dash": "dash"})
+
+            is_preferred = label == preferred_label
+
+            if is_preferred:
+                # Highlighted style for user's chosen benchmark
+                style = default_styles.get(label, {"color": b1_color, "dash": "solid"})
+                line_style = dict(color=style["color"], width=2.2, dash="solid")
+                opacity = 1.0
+            else:
+                style = default_styles.get(label, {"color": t_sec, "dash": "dash"})
+                line_style = dict(color=style["color"], width=1.2, dash=style["dash"])
+                opacity = 0.55
 
             traces.append(
                 go.Scatter(
                     x=pct_s.index.strftime("%Y-%m-%d").tolist(),
                     y=pct_s.tolist(),
-                    name=f"{label} ({sign}{latest:.1f}%)",
+                    name=f"{label} ({sign}{latest:.1f}%)" + (" ★" if is_preferred else ""),
                     mode="lines",
-                    line=dict(color=style["color"], width=1.4, dash=style["dash"]),
-                    opacity=0.75,
+                    line=line_style,
+                    opacity=opacity,
                     hovertemplate=f"%{{y:.2f}}%<extra>{label}</extra>",
                 )
             )

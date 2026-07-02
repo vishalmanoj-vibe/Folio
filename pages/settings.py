@@ -193,6 +193,153 @@ def layout() -> html.Div:
                                             ],
                                             className="settings-form-row",
                                         ),
+                                        # ── Portfolio Benchmark ─────────────
+                                        html.Div(
+                                            [
+                                                html.Label(
+                                                    "Portfolio Benchmark",
+                                                    className="txn-label",
+                                                ),
+                                                html.P(
+                                                    "Index to compare your portfolio returns against on charts.",
+                                                    className="settings-preview-description",
+                                                    style={"marginBottom": "6px"},
+                                                ),
+                                                dcc.Dropdown(
+                                                    id="settings-portfolio-benchmark",
+                                                    options=[
+                                                        {
+                                                            "label": "ASX 200 (Default)",
+                                                            "value": "^AXJO",
+                                                        },
+                                                        {"label": "S&P 500", "value": "^GSPC"},
+                                                        {"label": "Nasdaq 100", "value": "^NDX"},
+                                                        {
+                                                            "label": "MSCI World (URTH ETF)",
+                                                            "value": "URTH",
+                                                        },
+                                                        {
+                                                            "label": "Custom Ticker...",
+                                                            "value": "__custom__",
+                                                        },
+                                                    ],
+                                                    value="^AXJO",
+                                                    clearable=False,
+                                                    className="settings-dropdown",
+                                                ),
+                                                # Hidden row shown dynamically when custom is selected
+                                                html.Div(
+                                                    [
+                                                        dcc.Input(
+                                                            id="settings-custom-benchmark",
+                                                            type="text",
+                                                            placeholder="e.g. SPY, ACWI, VGS.AX",
+                                                            className="txn-input",
+                                                            debounce=True,
+                                                            style={
+                                                                "marginTop": "8px",
+                                                                "width": "100%",
+                                                            },
+                                                        ),
+                                                    ],
+                                                    id="settings-custom-benchmark-row",
+                                                    style={"display": "none"},
+                                                ),
+                                            ],
+                                            className="settings-form-row",
+                                        ),
+                                        # ── AI Persona ──────────────────────
+                                        html.Div(
+                                            [
+                                                html.Label(
+                                                    "AI Analysis Persona",
+                                                    className="txn-label",
+                                                ),
+                                                html.P(
+                                                    "Sets the tone and style of AI signal explanations and the Research Assistant.",
+                                                    className="settings-preview-description",
+                                                    style={"marginBottom": "6px"},
+                                                ),
+                                                dcc.Dropdown(
+                                                    id="settings-ai-persona",
+                                                    options=[
+                                                        {
+                                                            "label": "Conservative Wealth Manager (Default)",
+                                                            "value": "Conservative",
+                                                        },
+                                                        {
+                                                            "label": "Skeptical Short-Seller — Devil's Advocate",
+                                                            "value": "Skeptical",
+                                                        },
+                                                        {
+                                                            "label": "Growth Optimist — Momentum & Tailwinds",
+                                                            "value": "Growth",
+                                                        },
+                                                        {
+                                                            "label": "Concise Executive — Bullets & Key Figures Only",
+                                                            "value": "Concise",
+                                                        },
+                                                    ],
+                                                    value="Conservative",
+                                                    clearable=False,
+                                                    className="settings-dropdown",
+                                                ),
+                                                # Dynamic description displayed below the selected persona
+                                                html.P(
+                                                    id="settings-ai-persona-description",
+                                                    className="settings-preview-description",
+                                                    style={
+                                                        "marginTop": "8px",
+                                                        "color": "var(--t-sec)",
+                                                        "fontStyle": "italic",
+                                                    },
+                                                ),
+                                            ],
+                                            className="settings-form-row",
+                                        ),
+                                        # ── Data Refresh Policy ─────────────
+                                        html.Div(
+                                            [
+                                                html.Label(
+                                                    "Data Refresh Frequency",
+                                                    className="txn-label",
+                                                ),
+                                                html.P(
+                                                    "How often the app polls for live price updates during market hours.",
+                                                    className="settings-preview-description",
+                                                    style={"marginBottom": "6px"},
+                                                ),
+                                                dcc.Dropdown(
+                                                    id="settings-refresh-policy",
+                                                    options=[
+                                                        {
+                                                            "label": "1 Minute — High frequency",
+                                                            "value": "1m",
+                                                        },
+                                                        {
+                                                            "label": "5 Minutes (Default)",
+                                                            "value": "5m",
+                                                        },
+                                                        {
+                                                            "label": "15 Minutes — Standard",
+                                                            "value": "15m",
+                                                        },
+                                                        {
+                                                            "label": "30 Minutes — Low frequency",
+                                                            "value": "30m",
+                                                        },
+                                                        {
+                                                            "label": "End of Day — Data saver mode",
+                                                            "value": "EOD",
+                                                        },
+                                                    ],
+                                                    value="5m",
+                                                    clearable=False,
+                                                    className="settings-dropdown",
+                                                ),
+                                            ],
+                                            className="settings-form-row",
+                                        ),
                                         # Save Button & Success notification
                                         html.Div(
                                             [

@@ -512,9 +512,9 @@
 
 /* ── Settings Page ── */
 .settings-section-title {
-  font-size: 14px;
+  font-size: 18px;
   font-weight: 600;
-  color: var(--t-pri);
+  color: var(--cyan);
   margin: 0 0 16px;
   border-bottom: 0.5px solid var(--border);
   padding-bottom: 8px;

@@ -36,8 +36,19 @@ def test_load_user_settings_not_settings(mock_app: MockDashApp) -> None:
     load_func = mock_app.callbacks.get("load_user_settings")
     assert load_func is not None
 
+    # When not on /settings, all 9 outputs should be no_update
     res = load_func("/portfolio")
-    assert res == (dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update)
+    assert res == (
+        dash.no_update,
+        dash.no_update,
+        dash.no_update,
+        dash.no_update,
+        dash.no_update,
+        dash.no_update,
+        dash.no_update,
+        dash.no_update,
+        dash.no_update,
+    )
 
 
 def test_load_user_settings_success(mock_app: MockDashApp) -> None:
@@ -50,27 +61,46 @@ def test_load_user_settings_success(mock_app: MockDashApp) -> None:
         "tax_bracket": "45%",
         "ai_chat_model": "gemini-2.5-pro",
         "ai_report_model": "gemini-2.5-pro",
+        "portfolio_benchmark": "^GSPC",
+        "custom_benchmark": "SPY",
+        "ai_persona": "Skeptical",
+        "data_refresh_policy": "15m",
     }
 
     with patch(
         "callbacks.settings_callbacks.get_all_settings", return_value=mock_settings
     ) as mock_get:
         res = load_func("/settings")
-        assert res == ("Growth", "High", "45%", "gemini-2.5-pro", "gemini-2.5-pro")
+        assert res == (
+            "Growth",
+            "High",
+            "45%",
+            "gemini-2.5-pro",
+            "gemini-2.5-pro",
+            "^GSPC",
+            "SPY",
+            "Skeptical",
+            "15m",
+        )
         mock_get.assert_called_once()
+
+
+def test_toggle_custom_benchmark(mock_app: MockDashApp) -> None:
+    toggle_func = mock_app.callbacks.get("toggle_custom_benchmark")
+    assert toggle_func is not None
+
+    assert toggle_func("__custom__") == {"display": "block"}
+    assert toggle_func("^AXJO") == {"display": "none"}
+    assert toggle_func("^GSPC") == {"display": "none"}
 
 
 def test_update_weight_preview(mock_app: MockDashApp) -> None:
     update_func = mock_app.callbacks.get("update_weight_preview")
     assert update_func is not None
 
-    # Off page
     assert update_func("/portfolio", "Balanced", "Moderate") == dash.no_update
-
-    # Missing goal or risk
     assert update_func("/settings", None, "Moderate") == dash.no_update
 
-    # Success
     mock_weights = {"trend": 0.30, "momentum": 0.20, "value": 0.15, "cost": 0.15, "risk": 0.20}
     with patch(
         "callbacks.settings_callbacks.get_profile_weights", return_value=mock_weights
@@ -86,15 +116,39 @@ def test_save_user_settings(mock_app: MockDashApp) -> None:
 
     # Off page or no clicks
     assert (
-        save_func(0, "/settings", "Balanced", "Moderate", "37%", "model1", "model2")
+        save_func(
+            0,
+            "/settings",
+            "Balanced",
+            "Moderate",
+            "37%",
+            "m1",
+            "m2",
+            "^AXJO",
+            "",
+            "Conservative",
+            "5m",
+        )
         == dash.no_update
     )
     assert (
-        save_func(1, "/portfolio", "Balanced", "Moderate", "37%", "model1", "model2")
+        save_func(
+            1,
+            "/portfolio",
+            "Balanced",
+            "Moderate",
+            "37%",
+            "m1",
+            "m2",
+            "^AXJO",
+            "",
+            "Conservative",
+            "5m",
+        )
         == dash.no_update
     )
 
-    # Success
+    # Success — 9 settings should be saved
     with patch("callbacks.settings_callbacks.save_setting") as mock_save:
         res = save_func(
             1,
@@ -104,7 +158,26 @@ def test_save_user_settings(mock_app: MockDashApp) -> None:
             "37%",
             "gemini-2.5-flash",
             "gemini-3.1-flash-lite",
+            "^GSPC",
+            "SPY",
+            "Skeptical",
+            "15m",
         )
         assert "✓ Profile settings saved successfully" in res
-        assert mock_save.call_count == 5
+        assert mock_save.call_count == 9
         mock_save.assert_any_call("investment_goal", "Balanced")
+        mock_save.assert_any_call("portfolio_benchmark", "^GSPC")
+        mock_save.assert_any_call("ai_persona", "Skeptical")
+        mock_save.assert_any_call("data_refresh_policy", "15m")
+        mock_save.assert_any_call("custom_benchmark", "SPY")
+
+
+def test_update_persona_description(mock_app: MockDashApp) -> None:
+    update_desc = mock_app.callbacks.get("update_persona_description")
+    assert update_desc is not None
+
+    assert "Conservative Wealth Manager" in update_desc("Conservative")
+    assert "Skeptical Short-Seller" in update_desc("Skeptical")
+    assert "Growth Optimist" in update_desc("Growth")
+    assert "Concise Executive" in update_desc("Concise")
+    assert update_desc("Unknown") == ""

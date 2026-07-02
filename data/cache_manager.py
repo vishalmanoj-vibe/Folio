@@ -263,14 +263,35 @@ def invalidate_holding(ticker: str):
 
 
 def get_benchmarks_db() -> dict | None:
-    """Read benchmark history from SQLite. Returns None if stale (> 1h) or empty."""
+    """Read benchmark history from SQLite. Returns None if stale (> 1h), empty, or missing preferred benchmark."""
     import pandas as pd
 
     from data.database import get_connection
 
+    # Resolve what benchmark symbol is expected
+    try:
+        from data.settings_repository import get_setting
+
+        preferred = get_setting("portfolio_benchmark", "^AXJO") or "^AXJO"
+        custom = get_setting("custom_benchmark", "") or ""
+        required_symbol = custom if preferred == "__custom__" else preferred
+    except Exception:
+        required_symbol = "^AXJO"
+
     conn = get_connection()
     try:
-        # Check staleness of any entry (they are fetched together)
+        # 1. Check if the preferred benchmark exists in the database
+        if required_symbol:
+            row_pref = conn.execute(
+                "SELECT 1 FROM benchmark_data WHERE symbol = ?", (required_symbol,)
+            ).fetchone()
+            if not row_pref:
+                logger.info(
+                    f"Preferred benchmark {required_symbol} is missing from cache; returning None to trigger fetch."
+                )
+                return None
+
+        # 2. Check staleness of any entry (they are fetched together)
         row = conn.execute("SELECT history, fetched_at FROM benchmark_data LIMIT 1").fetchone()
         if not row:
             return None
@@ -280,7 +301,7 @@ def get_benchmarks_db() -> dict | None:
         if (pd.Timestamp.now() - fetched_at).total_seconds() > 86400:
             return None  # Stale
 
-        # If not stale, fetch all
+        # If not stale and contains our preferred index, fetch all
         rows = conn.execute("SELECT label, history FROM benchmark_data").fetchall()
         return {r["label"]: json.loads(r["history"]) for r in rows}
     finally:

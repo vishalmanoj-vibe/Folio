@@ -1,12 +1,12 @@
 # Callback Output Index — Auto-Generated
 
-> **Generated**: 2026-06-30 22:15  
+> **Generated**: 2026-07-02 15:10  
 > **Do not edit** — run `python .agents/generated/sync_docs.py` to refresh.
 > For ownership intent and architecture notes, see `docs/reference/callback_ownership.md`.
 
 ---
 
-**Total outputs indexed**: 181 across 13 files
+**Total outputs indexed**: 191 across 13 files
 
 ## `app.py`
 
@@ -135,13 +135,20 @@
 
 | Output ID | Property | Line | Duplicate? | Pattern? |
 |-----------|----------|------|-----------|---------|
-| `settings-investment-goal` | `value` | 43 |  |  |
-| `settings-risk-tolerance` | `value` | 44 |  |  |
-| `settings-tax-bracket` | `value` | 45 |  |  |
-| `settings-chat-model` | `value` | 46 |  |  |
-| `settings-report-model` | `value` | 47 |  |  |
-| `settings-weights-preview-container` | `children` | 67 |  |  |
-| `settings-save-status` | `children` | 93 |  |  |
+| `settings-investment-goal` | `value` | 52 |  |  |
+| `settings-risk-tolerance` | `value` | 53 |  |  |
+| `settings-tax-bracket` | `value` | 54 |  |  |
+| `settings-chat-model` | `value` | 55 |  |  |
+| `settings-report-model` | `value` | 56 |  |  |
+| `settings-portfolio-benchmark` | `value` | 57 |  |  |
+| `settings-custom-benchmark` | `value` | 58 |  |  |
+| `settings-ai-persona` | `value` | 59 |  |  |
+| `settings-refresh-policy` | `value` | 60 |  |  |
+| `settings-weights-preview-container` | `children` | 88 |  |  |
+| `settings-custom-benchmark-row` | `style` | 114 |  |  |
+| `settings-save-status` | `children` | 126 |  |  |
+| `price-interval` | `interval` | 167 |  |  |
+| `settings-ai-persona-description` | `children` | 182 |  |  |
 
 ## `setup_callbacks.py`
 
@@ -155,25 +162,28 @@
 | `url` | `pathname` | 263 | ✓ |  |
 | `setup-portfolio-feedback` | `children` | 264 |  |  |
 | `txn-store` | `data` | 265 | ✓ |  |
-| `url` | `pathname` | 320 | ✓ |  |
-| `setup-ai-feedback` | `children` | 321 |  |  |
-| `setup-init-tasks-store` | `data` | 372 |  |  |
-| `setup-poll-interval` | `disabled` | 373 |  |  |
-| `url` | `pathname` | 475 | ✓ |  |
-| `setup-is-first-run-store` | `data` | 476 | ✓ |  |
-| `setup-ready-feedback` | `children` | 477 |  |  |
-| `setup-init-step-list` | `children` | 520 |  |  |
-| `setup-init-progress-label` | `children` | 521 |  |  |
-| `setup-init-progress-bar` | `style` | 522 |  |  |
-| `setup-init-status-msg` | `children` | 523 |  |  |
-| `setup-ready-launch-btn` | `disabled` | 524 |  |  |
-| `setup-poll-interval` | `disabled` | 525 | ✓ |  |
-| `setup-init-tasks-store` | `data` | 526 | ✓ |  |
-| `setup-ready-summary` | `children` | 527 |  |  |
-| `setup-ready-summary` | `style` | 528 |  |  |
-| `setup-init-progress-container` | `style` | 529 |  |  |
-| `setup-init-title` | `children` | 530 |  |  |
-| `setup-init-subtitle` | `children` | 531 |  |  |
+| `setup-investment-goal` | `value` | 320 |  |  |
+| `setup-risk-tolerance` | `value` | 321 |  |  |
+| `setup-tax-bracket` | `value` | 322 |  |  |
+| `url` | `pathname` | 341 | ✓ |  |
+| `setup-ai-feedback` | `children` | 342 |  |  |
+| `setup-init-tasks-store` | `data` | 421 |  |  |
+| `setup-poll-interval` | `disabled` | 422 |  |  |
+| `url` | `pathname` | 524 | ✓ |  |
+| `setup-is-first-run-store` | `data` | 525 | ✓ |  |
+| `setup-ready-feedback` | `children` | 526 |  |  |
+| `setup-init-step-list` | `children` | 569 |  |  |
+| `setup-init-progress-label` | `children` | 570 |  |  |
+| `setup-init-progress-bar` | `style` | 571 |  |  |
+| `setup-init-status-msg` | `children` | 572 |  |  |
+| `setup-ready-launch-btn` | `disabled` | 573 |  |  |
+| `setup-poll-interval` | `disabled` | 574 | ✓ |  |
+| `setup-init-tasks-store` | `data` | 575 | ✓ |  |
+| `setup-ready-summary` | `children` | 576 |  |  |
+| `setup-ready-summary` | `style` | 577 |  |  |
+| `setup-init-progress-container` | `style` | 578 |  |  |
+| `setup-init-title` | `children` | 579 |  |  |
+| `setup-init-subtitle` | `children` | 580 |  |  |
 
 ## `signals_callbacks.py`
 

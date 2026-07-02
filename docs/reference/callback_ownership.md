@@ -191,6 +191,9 @@
 | `setup-portfolio-feedback` | `children` | Setup feedback text. |
 | `txn-store` | `data` | Setup commits transactions (allow_duplicate). |
 | `setup-ai-feedback` | `children` | AI key feedback. |
+| `setup-investment-goal` | `value` | Onboarding settings load. |
+| `setup-risk-tolerance` | `value` | Onboarding settings load. |
+| `setup-tax-bracket` | `value` | Onboarding settings load. |
 | `setup-is-first-run-store` | `data` | First-run flag. |
 | `setup-ready-feedback` | `children` | Final ready feedback. |
 | `setup-init-tasks-store` | `data` | Session store for task IDs + phase. Primary: `auto_start_fetch`. Secondary: `poll_init_progress` (allow_duplicate). |
@@ -242,8 +245,16 @@
 | `settings-tax-bracket` | `value` | Initial settings load. |
 | `settings-chat-model` | `value` | AI chat model selection (Standard/Enhanced). |
 | `settings-report-model` | `value` | AI report model selection (Standard/Enhanced). |
+| `settings-portfolio-benchmark` | `value` | Benchmark index selection. |
+| `settings-custom-benchmark` | `value` | Free-form custom benchmark ticker input. |
+| `settings-ai-persona` | `value` | AI analyst tone/persona selection. |
+| `settings-refresh-policy` | `value` | Data refresh frequency selection (1m–EOD). |
 | `settings-weights-preview-container` | `children` | Dynamic strategy weights preview. |
 | `settings-save-status` | `children` | Settings save confirmation message. |
+| `settings-custom-benchmark-row` | `style` | Toggles visibility of custom ticker input. |
+| `settings-ai-persona-description` | `children` | Dynamic description text for the selected AI Persona. |
+| `price-interval` | `interval` | Dynamic interval update from refresh policy (fired by `update_price_interval`). |
+
 
 ---
 

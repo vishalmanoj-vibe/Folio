@@ -315,7 +315,29 @@ def register_setup_callbacks(app):
             logger.error(f"Onboarding failed to save transactions: {e}")
             return dash.no_update, f"Database error: {e}", dash.no_update
 
-    # ── Page 2: AI Key Setup ──
+    # ── Page 2: Strategy Settings Loader ──
+    @app.callback(
+        Output("setup-investment-goal", "value"),
+        Output("setup-risk-tolerance", "value"),
+        Output("setup-tax-bracket", "value"),
+        Input("url", "pathname"),
+        prevent_initial_call=False,
+    )
+    def load_setup_settings(pathname):
+        if pathname != "/setup/ai":
+            return dash.no_update, dash.no_update, dash.no_update
+
+        logger.debug("Onboarding: Loading existing strategy settings.")
+        from data.settings_repository import get_all_settings
+
+        settings = get_all_settings()
+        return (
+            settings.get("investment_goal", "Balanced"),
+            settings.get("risk_tolerance", "Moderate"),
+            settings.get("tax_bracket", "37%"),
+        )
+
+    # ── Page 2: AI Key & Strategy Setup ──
     @app.callback(
         Output("url", "pathname", allow_duplicate=True),
         Output("setup-ai-feedback", "children"),
@@ -323,9 +345,12 @@ def register_setup_callbacks(app):
         Input("setup-ai-skip-btn", "n_clicks"),
         Input("setup-ai-back-btn", "n_clicks"),
         State("setup-gemini-key", "value"),
+        State("setup-investment-goal", "value"),
+        State("setup-risk-tolerance", "value"),
+        State("setup-tax-bracket", "value"),
         prevent_initial_call=True,
     )
-    def handle_ai_setup(save_clicks, skip_clicks, back_clicks, api_key):
+    def handle_ai_setup(save_clicks, skip_clicks, back_clicks, api_key, goal, risk, tax):
         ctx_triggered = dash.callback_context.triggered
         if not ctx_triggered:
             return dash.no_update, dash.no_update
@@ -342,24 +367,49 @@ def register_setup_callbacks(app):
                 pathname="/setup/portfolio", id="setup-redir-back", refresh=True
             )
 
+        from data.settings_repository import save_setting
+
         if trigger_id == "setup-ai-skip-btn":
-            logger.info("AI Onboarding: skipped by user.")
+            logger.info("AI Onboarding: skipped by user. Resetting to default strategy settings.")
+            # Default all to normal/balanced if skipped
+            save_setting("investment_goal", "Balanced")
+            save_setting("risk_tolerance", "Moderate")
+            save_setting("tax_bracket", "37%")
+
+            # Clear Gemini API key from database/env if skipped
+            try:
+                repo.set_gemini_api_key("")
+            except Exception:
+                pass
+            if "GEMINI_API_KEY" in os.environ:
+                del os.environ["GEMINI_API_KEY"]
+
             return dash.no_update, dcc.Location(
                 pathname="/setup/ready", id="setup-redir-skip", refresh=True
             )
 
         if trigger_id == "setup-ai-save-btn":
-            if not api_key or not str(api_key).strip():
-                return dash.no_update, "Please enter a valid Gemini API key or click Skip."
+            # Save selected strategy settings
+            save_setting("investment_goal", goal or "Balanced")
+            save_setting("risk_tolerance", risk or "Moderate")
+            save_setting("tax_bracket", tax or "37%")
 
-            api_key = str(api_key).strip()
-            # Save to Database metadata as the primary persistent storage
-            try:
-                repo.set_gemini_api_key(api_key)
-            except Exception as e:
-                logger.error(f"AI Onboarding: Failed to save to database metadata: {e}")
-
-            os.environ["GEMINI_API_KEY"] = api_key
+            # Optionally save AI API Key if entered
+            api_key_str = str(api_key).strip() if api_key else ""
+            if api_key_str:
+                try:
+                    repo.set_gemini_api_key(api_key_str)
+                except Exception as e:
+                    logger.error(f"AI Onboarding: Failed to save to database metadata: {e}")
+                os.environ["GEMINI_API_KEY"] = api_key_str
+            else:
+                # If they saved with an empty key, make sure it is cleared
+                try:
+                    repo.set_gemini_api_key("")
+                except Exception:
+                    pass
+                if "GEMINI_API_KEY" in os.environ:
+                    del os.environ["GEMINI_API_KEY"]
 
             return dash.no_update, dcc.Location(
                 pathname="/setup/ready", id="setup-redir-ready", refresh=True

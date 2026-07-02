@@ -34,7 +34,7 @@ def layout() -> html.Div:
                                 className="setup-step completed",
                             ),
                             html.Div(
-                                [html.Span("✓", className="setup-step-num"), "AI Analyst"],
+                                [html.Span("✓", className="setup-step-num"), "Strategy & AI"],
                                 className="setup-step completed",
                             ),
                             html.Div(

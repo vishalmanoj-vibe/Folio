@@ -252,10 +252,14 @@ def handle_fetch_benchmarks(payload: dict):
     try:
         now = datetime.now().isoformat()
         for label, history in results.items():
-            # Map label back to symbol
-            from services.market.data_fetcher import BENCHMARK_TICKERS
-
-            symbol = next((k for k, v in BENCHMARK_TICKERS.items() if v == label), label)
+            # Map label back to symbol (supporting defaults and preset benchmark options)
+            preset_labels = {
+                "^GSPC": "S&P 500",
+                "^AXJO": "ASX 200",
+                "^NDX": "Nasdaq 100",
+                "URTH": "MSCI World",
+            }
+            symbol = next((k for k, v in preset_labels.items() if v == label), label)
 
             conn.execute(
                 """
@@ -546,7 +550,16 @@ def run_worker():
     prune_tasks()
 
     last_refresh = 0
-    REFRESH_COOLDOWN = 300  # 5 minutes
+    REFRESH_COOLDOWN = 300  # initial default — overridden by user settings each cycle
+
+    # Map from policy string to seconds
+    _POLICY_SECONDS = {
+        "1m": 60,
+        "5m": 300,
+        "15m": 900,
+        "30m": 1800,
+        "EOD": 86400,
+    }
 
     while True:
         # ── Part A: Demand-driven Task Queue ───────────────────
@@ -573,7 +586,16 @@ def run_worker():
                         logger.info(f"Refreshed {len(holdings)} holdings")
 
                     last_refresh = now
-                    REFRESH_COOLDOWN = 300  # Back to 5m
+
+                    # Read user-configured refresh policy on each cycle
+                    try:
+                        from data.settings_repository import get_setting
+
+                        policy = get_setting("data_refresh_policy", "5m") or "5m"
+                        REFRESH_COOLDOWN = _POLICY_SECONDS.get(policy, 300)
+                    except Exception:
+                        REFRESH_COOLDOWN = 300  # fallback to 5m
+
                 else:
                     wait_sec = time_until_market_open()
                     logger.debug(

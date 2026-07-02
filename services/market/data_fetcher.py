@@ -474,28 +474,56 @@ def get_earliest_purchase_date() -> str:
 
 def fetch_benchmarks(period: str = "max") -> dict[str, list[dict]]:
     """
-    Fetch S&P 500 (^GSPC) and ASX 200 (^AXJO) close series using bulk download.
+    Fetch S&P 500 (^GSPC) and ASX 200 (^AXJO) close series plus any user-configured
+    custom benchmark ticker using bulk download.
     Optimized: If 'max' is requested, it truncates to the earliest purchase date.
     """
+    # Load user-configured benchmark preference
+    try:
+        from data.settings_repository import get_setting
+
+        preferred_benchmark = get_setting("portfolio_benchmark", "^AXJO") or "^AXJO"
+        custom_benchmark = get_setting("custom_benchmark", "") or ""
+    except Exception:
+        preferred_benchmark = "^AXJO"
+        custom_benchmark = ""
+
     # Normalize 'max' to the actual start of this portfolio's history
     effective_period = period
     if period == "max":
         effective_period = get_earliest_purchase_date()
 
-    cache_key = f"benchmarks_{effective_period}"
+    # Build the full set of symbols to fetch
+    tickers_to_fetch = dict(BENCHMARK_TICKERS)  # Always fetch defaults
+
+    # Add custom ticker if specified and not already in defaults
+    if custom_benchmark and custom_benchmark not in tickers_to_fetch:
+        tickers_to_fetch[custom_benchmark] = custom_benchmark  # Use symbol as label
+
+    # Add preferred benchmark if it's not already tracked (e.g. ^NDX, URTH)
+    if preferred_benchmark not in tickers_to_fetch and preferred_benchmark != "__custom__":
+        preset_labels = {
+            "^NDX": "Nasdaq 100",
+            "URTH": "MSCI World",
+        }
+        tickers_to_fetch[preferred_benchmark] = preset_labels.get(
+            preferred_benchmark, preferred_benchmark
+        )
+
+    cache_key = f"benchmarks_{effective_period}_{preferred_benchmark}_{custom_benchmark}"
     cached = get_cache(cache_key)
     if cached:
         return cached
 
     result: dict[str, list[dict]] = {}
-    symbols = list(BENCHMARK_TICKERS.keys())
+    symbols = list(tickers_to_fetch.keys())
 
     try:
         bulk_df = _download_with_retry(symbols, period=effective_period)
         if bulk_df.empty:
             return {}
 
-        for symbol, label in BENCHMARK_TICKERS.items():
+        for symbol, label in tickers_to_fetch.items():
             close = _extract_col(bulk_df, symbol, "Close")
             if close.empty:
                 continue

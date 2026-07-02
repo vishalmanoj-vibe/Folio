@@ -77,4 +77,14 @@
         sendCancelBeacon();
     });
 
+    // ── Page load cancel trigger ──────────────────────────────────────────────
+    // When a page is fully loaded or refreshed, we must abort any pending
+    // shutdown that was triggered by the previous page's beforeunload.
+    if (document.readyState === "loading") {
+        document.addEventListener("DOMContentLoaded", sendCancelBeacon);
+    } else {
+        sendCancelBeacon();
+    }
+
 })();
+

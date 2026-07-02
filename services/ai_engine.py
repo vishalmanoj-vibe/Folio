@@ -11,7 +11,8 @@ from core.cache import get_cache, set_cache
 
 logger = logging.getLogger(__name__)
 
-SYSTEM_PROMPT = """You are a conservative long-term investment analyst.
+# Base rules appended to every persona — never mutate these
+_BASE_RULES = """
 STRICT RULES:
 - Do NOT suggest buying or selling.
 - Do NOT override the signal.
@@ -26,6 +27,21 @@ Return ONLY valid JSON in this exact format:
   }
 }
 """
+
+# Persona-specific tone injections
+PERSONA_PROMPTS: dict[str, str] = {
+    "Conservative": "You are a conservative long-term wealth manager. Prioritise capital preservation. Emphasise downside risks, drawdown scenarios, and holding period costs.",
+    "Skeptical": "You are a skeptical short-seller and devil's advocate. Question all bullish signals with equal weight to bearish counterpoints. Highlight over-valuation and mean-reversion risks aggressively.",
+    "Growth": "You are a growth-optimist analyst. Emphasise momentum tailwinds, sector strength, and compound growth potential. Acknowledge but minimise short-term noise.",
+    "Concise": "You are an executive-level briefer. Respond in tightly written bullets only — max 2 sentences per field. Key figures and percentages only. No narrative prose.",
+}
+
+
+def get_ai_system_prompt(persona: str = "Conservative") -> str:
+    """Build the system instruction string for the given AI persona."""
+    tone = PERSONA_PROMPTS.get(persona, PERSONA_PROMPTS["Conservative"])
+    return tone + _BASE_RULES
+
 
 VERDICT_MAP = {
     "Reasonable": "Confident",
@@ -125,14 +141,24 @@ def analyze_signals(signals_dict: dict) -> dict:
     if not filtered_signals:
         return ai_insights
 
-    # Build a stable cache key using only the signal and a rounded score to prevent
+    # Load user persona to inject into system prompt
+    try:
+        from data.settings_repository import get_setting
+
+        persona = get_setting("ai_persona", "Conservative") or "Conservative"
+    except Exception:
+        persona = "Conservative"
+
+    dynamic_system_prompt = get_ai_system_prompt(persona)
+
+    # Build a stable cache key using only the signal, rounded score, and persona to prevent
     # minor live price fluctuations from busting the cache and causing redundant API calls.
     stable_signals = {
         ticker: {"signal": data["signal"], "score": round(data["score"], 1)}
         for ticker, data in filtered_signals.items()
     }
     normalized_json = json.dumps(stable_signals, sort_keys=True)
-    cache_key = "ai_signal_" + hashlib.md5(normalized_json.encode()).hexdigest()
+    cache_key = "ai_signal_" + persona + "_" + hashlib.md5(normalized_json.encode()).hexdigest()
 
     cached = get_cache(cache_key)
     if cached:
@@ -172,7 +198,7 @@ Return ONLY valid JSON in this format:
             model=GEMINI_FLASH_MODEL,
             contents=prompt,
             config=genai.types.GenerateContentConfig(
-                system_instruction=SYSTEM_PROMPT,
+                system_instruction=dynamic_system_prompt,
                 temperature=0.2,
             ),
         )

@@ -158,3 +158,90 @@ def test_handle_ready_launch(mock_repo, mock_app):
         assert is_first_run is False
         assert feedback.pathname == "/"
         mock_repo.set_onboarding_completed.assert_called_once_with(True)
+
+
+# ── Test Strategy & AI settings ─────────────────────────────────────────────
+
+
+@patch("data.settings_repository.get_all_settings")
+def test_load_setup_settings(mock_get_all, mock_app):
+    load_settings_func = mock_app.callbacks.get("load_setup_settings")
+    assert load_settings_func is not None
+
+    # Case 1: Wrong pathname
+    res = load_settings_func("/portfolio")
+    assert res == (dash.no_update, dash.no_update, dash.no_update)
+
+    # Case 2: Empty settings (falls back to defaults)
+    mock_get_all.return_value = {}
+    res = load_settings_func("/setup/ai")
+    assert res == ("Balanced", "Moderate", "37%")
+
+    # Case 3: Load existing settings
+    mock_get_all.return_value = {
+        "investment_goal": "Growth",
+        "risk_tolerance": "High",
+        "tax_bracket": "45%",
+    }
+    res = load_settings_func("/setup/ai")
+    assert res == ("Growth", "High", "45%")
+
+
+@patch("data.settings_repository.save_setting")
+@patch("callbacks.setup_callbacks.repo")
+def test_handle_ai_setup(mock_repo, mock_save, mock_app):
+    handle_setup_func = mock_app.callbacks.get("handle_ai_setup")
+    assert handle_setup_func is not None
+
+    # Case 1: Back button
+    with patch("dash.callback_context") as mock_ctx:
+        mock_ctx.triggered = [{"prop_id": "setup-ai-back-btn.n_clicks", "value": 1}]
+        pathname, feedback = handle_setup_func(None, None, 1, "", "Balanced", "Moderate", "37%")
+        assert pathname == dash.no_update
+        assert feedback.pathname == "/setup/portfolio"
+
+    # Case 2: Skip button (clears API Key, defaults strategy settings to Balanced)
+    with patch("dash.callback_context") as mock_ctx:
+        mock_ctx.triggered = [{"prop_id": "setup-ai-skip-btn.n_clicks", "value": 1}]
+        pathname, feedback = handle_setup_func(None, 1, None, "", "Growth", "High", "45%")
+
+        # Verify defaults are saved
+        mock_save.assert_any_call("investment_goal", "Balanced")
+        mock_save.assert_any_call("risk_tolerance", "Moderate")
+        mock_save.assert_any_call("tax_bracket", "37%")
+        mock_repo.set_gemini_api_key.assert_called_with("")
+
+        assert pathname == dash.no_update
+        assert feedback.pathname == "/setup/ready"
+
+    # Case 3: Save button with selected strategy and empty API Key
+    mock_save.reset_mock()
+    mock_repo.reset_mock()
+    with patch("dash.callback_context") as mock_ctx:
+        mock_ctx.triggered = [{"prop_id": "setup-ai-save-btn.n_clicks", "value": 1}]
+        pathname, feedback = handle_setup_func(1, None, None, "", "Growth", "High", "45%")
+
+        mock_save.assert_any_call("investment_goal", "Growth")
+        mock_save.assert_any_call("risk_tolerance", "High")
+        mock_save.assert_any_call("tax_bracket", "45%")
+        mock_repo.set_gemini_api_key.assert_called_with("")
+
+        assert pathname == dash.no_update
+        assert feedback.pathname == "/setup/ready"
+
+    # Case 4: Save button with selected strategy and API Key
+    mock_save.reset_mock()
+    mock_repo.reset_mock()
+    with patch("dash.callback_context") as mock_ctx:
+        mock_ctx.triggered = [{"prop_id": "setup-ai-save-btn.n_clicks", "value": 1}]
+        pathname, feedback = handle_setup_func(
+            1, None, None, "MY-GEMINI-KEY", "Income", "Low", "15%"
+        )
+
+        mock_save.assert_any_call("investment_goal", "Income")
+        mock_save.assert_any_call("risk_tolerance", "Low")
+        mock_save.assert_any_call("tax_bracket", "15%")
+        mock_repo.set_gemini_api_key.assert_called_with("MY-GEMINI-KEY")
+
+        assert pathname == dash.no_update
+        assert feedback.pathname == "/setup/ready"

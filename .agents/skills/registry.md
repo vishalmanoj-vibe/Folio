@@ -168,11 +168,22 @@ Prevent "Duplicate ID" errors and callback collisions by maintaining a central m
 - `settings-tax-bracket`: Dropdown selector for tax bracket.
 - `settings-chat-model`: Dropdown selector for AI chat model (Standard/Enhanced).
 - `settings-report-model`: Dropdown selector for AI report model (Standard/Enhanced).
+- `settings-portfolio-benchmark`: Dropdown selector for portfolio benchmark index (ASX 200, S&P 500, Nasdaq 100, MSCI World, or Custom).
+- `settings-custom-benchmark`: Text input for free-form custom benchmark ticker (shown only when `__custom__` is selected).
+- `settings-custom-benchmark-row`: Container div that is toggled visible/hidden based on benchmark dropdown.
+- `settings-ai-persona`: Dropdown selector for AI analysis tone (Conservative, Skeptical, Growth, Concise).
+- `settings-ai-persona-description`: Text paragraph showing description of the currently selected AI persona.
+- `settings-refresh-policy`: Dropdown selector for data refresh frequency (1m, 5m, 15m, 30m, EOD).
 - `settings-save-btn`: Save button for profile settings.
 - `settings-save-status`: Save confirmation feedback text.
 - `settings-weights-preview-container`: Strategy weights bar charts container.
 
-### Setup / Ready Page (`/setup/ready`) — Data Pre-fetch Tracker
+
+### Setup Pages (`/setup/*`)
+- `setup-gemini-key`: Text input for Gemini API Key in setup wizard.
+- `setup-investment-goal`: Dropdown selector for Investment Goal in setup wizard.
+- `setup-risk-tolerance`: Dropdown selector for Risk Tolerance in setup wizard.
+- `setup-tax-bracket`: Dropdown selector for Tax Bracket in setup wizard.
 - `setup-init-tasks-store`: `dcc.Store` (session) — holds enqueued task IDs, phase, started_at, critical_task_id.
 - `setup-startup-interval`: `dcc.Interval` — fires once after 1.5s to trigger `auto_start_fetch`.
 - `setup-poll-interval`: `dcc.Interval` — fires every 2s to drive `poll_init_progress`.

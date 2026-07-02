@@ -360,6 +360,53 @@ To prevent background rendering when on other pages, page-specific callbacks use
 **Fix**:
 Change `prevent_initial_call=False` on the page-specific rendering callbacks, and ensure they are all protected by a page pathname guard (e.g. `if url_pathname.rstrip('/') != '/positions': return dash.no_update`) to prevent background off-page rendering.
 
+---
 
+## BUG-020 · Server Shutdown on Full Page Reload or Standard Link Navigation
 
+**Status**: Fixed  
+**Files affected**: `assets/browser_shutdown.js`  
+**Symptom**: Navigating to page routes using standard `html.A` links (such as clicking "Investor Profile") or performing a full page refresh causes the Dash app server process to crash and close after 3 seconds.
+
+**Root Cause**:
+The window-close detection script (`browser_shutdown.js`) sends a `/shutdown` beacon on `beforeunload` events to initiate a 3-second server termination countdown. While it intercepted internal Dash SPA navigations (such as `pushState` / `replaceState` / `popstate`) and sent a `/shutdown/cancel` beacon, it failed to send a cancel beacon on script load/initialization. Consequently, any full page reload or standard `html.A` link navigation triggered the shutdown beacon, but since no SPA navigation event fired during page load, the server countdown was never aborted, causing the server process to terminate.
+
+**Fix**:
+Add an automatic cancel beacon trigger upon script execution / DOM load to cancel any pending shutdown timers:
+```javascript
+// Cancel any pending shutdown on script load (handles full page refresh / page GET)
+if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", sendCancelBeacon);
+} else {
+    sendCancelBeacon();
+}
+```
+
+---
+
+## BUG-021 · Settings Revert to Defaults on Page Load
+
+**Status**: Fixed  
+**Files affected**: `callbacks/settings_callbacks.py`  
+**Symptom**: Opening the Settings page displays default values (e.g. 37% tax bracket, Balanced goal, moderate risk) instead of the user's previously saved options. If the user clicks Save, these defaults overwrite their actual preferences in the database.
+
+**Root Cause**:
+The settings loading callback `load_user_settings` was configured with `prevent_initial_call=True`. Because navigating to Settings (via standard `html.A` links) acts as an initial layout paint, Dash suppressed the callback from running on startup. As a result, the form fell back to the hardcoded default values defined in the page layout.
+
+**Fix**:
+Change `prevent_initial_call=False` on the settings rendering/hydration callbacks to ensure they execute on initial page paint, while retaining pathname guards (e.g. `if pathname != "/settings": return dash.no_update`) to prevent background off-page rendering.
+
+---
+
+## BUG-022 · Benchmark Chart Fails to Load Custom/Preferred Benchmark Indices
+
+**Status**: Fixed  
+**Files affected**: `data/cache_manager.py` (`get_benchmarks_db`), `callbacks/chart_callbacks.py`  
+**Symptom**: Selecting a non-default benchmark index (like Nasdaq 100 or a custom ticker) fails to display its line trace on the holdings chart. The chart remains loaded with only S&P 500 and ASX 200.
+
+**Root Cause**:
+`get_benchmarks_db()` checked only if the database table `benchmark_data` was empty or if the timestamp was stale (> 24h). If the database already had the default S&P 500 and ASX 200 records cached from startup, it returned that dictionary. Because the return value was not `None`, the chart rendering callback bypassed enqueuing a background fetch task (`fetch_benchmarks`), leaving the new index completely missing from the cache.
+
+**Fix**:
+Modify `get_benchmarks_db()` to read the user's current benchmark preferences from settings. If the user's preferred index symbol is missing from the cached database records, return `None` immediately. This triggers the Dash UI callback to enqueue a background fetch task to pull the missing index via yfinance.
 

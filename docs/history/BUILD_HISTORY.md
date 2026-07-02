@@ -168,3 +168,15 @@ This document chronicles the technical evolution of Folio, transitioning from a 
 *   **Local Double-Process Flowchart**: Built a clear ASCII mapping demonstrating the interactive relationship between the Browser UI, Dash Web App, Background Worker, and local relational SQLite database (`portfolio.db`).
 *   **Bulletproof Setup & OS Troubleshooting**: Documented the installation process step-by-step for macOS and Windows, explaining what the installer scripts configure (uv, Python 3.12, WebKit Playwright, .env Gemini keys). Added direct solutions for permission privileges, macOS Gatekeeper blocks, Windows PowerShell policies, and cloud syncing database locks.
 *   **Complete Workspace Reference**: Included a comprehensive folder map outlining the exact responsibility and location of all pages, callbacks, components, services, database queries, and testing suites.
+
+---
+
+## Phase 12: Investor Profile Settings in Onboarding Wizard (v2.7.0)
+**Theme**: Improving onboarding setup flow to configure investor preferences directly during setup.
+
+*   **Expanded Step 2 to Strategy & AI**: Renamed the wizard Step 2 from "AI Analyst" to "Strategy & AI" across `setup_portfolio.py`, `setup_ai.py`, and `setup_ready.py` to better reflect the new options.
+*   **Strategy Settings Panel**: Added Investment Goal, Risk Tolerance, and Tax Bracket dropdowns to `setup_ai.py` (pre-populated with system defaults: Balanced, Moderate, 37%).
+*   **Settings Persistence and Defaults**: Updated `handle_ai_setup` callback in `setup_callbacks.py` to save chosen strategy parameters to the SQLite database. If a user clicks "Skip for now", all parameters default gracefully to "Balanced", "Moderate", and "37%".
+*   **Settings Loader**: Implemented a callback in `setup_callbacks.py` to load existing settings from SQLite when navigating to the page, ensuring proper state persistence.
+*   **Footnote Instructions**: Added explanatory copy letting the user know they can update these settings anytime via the gear icon once the app is loaded.
+*   **Files Changed**: `pages/setup_portfolio.py`, `pages/setup_ai.py`, `pages/setup_ready.py`, `callbacks/setup_callbacks.py`, `docs/reference/callback_ownership.md`, `.agents/skills/registry.md`.
