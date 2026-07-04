@@ -621,7 +621,6 @@ def hydrate_pending_tasks(n, pending):
         return dash.no_update
     finally:
         conn.close()
-    return dash.no_update
 
 
 # ── Render Performance Optimizations ──────────────────────────────────────────
