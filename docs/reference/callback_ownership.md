@@ -194,6 +194,11 @@
 | `setup-investment-goal` | `value` | Onboarding settings load. |
 | `setup-risk-tolerance` | `value` | Onboarding settings load. |
 | `setup-tax-bracket` | `value` | Onboarding settings load. |
+| `setup-ai-provider` | `value` | Onboarding settings load. |
+| `setup-chat-model` | `options`, `value` | Dynamically updates chat models on provider selection. |
+| `setup-report-model` | `options`, `value` | Dynamically updates report models on provider selection. |
+| `setup-ai-api-key` | `placeholder`, `value` | Updates placeholder/prefilled value on provider selection. |
+| `setup-ai-test-status` | `children`, `style` | Connection test result feedback. |
 | `setup-is-first-run-store` | `data` | First-run flag. |
 | `setup-ready-feedback` | `children` | Final ready feedback. |
 | `setup-init-tasks-store` | `data` | Session store for task IDs + phase. Primary: `auto_start_fetch`. Secondary: `poll_init_progress` (allow_duplicate). |

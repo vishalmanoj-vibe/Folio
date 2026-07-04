@@ -203,16 +203,119 @@ def layout() -> html.Div:
                                 ],
                                 className="setup-ai-features-list",
                             ),
-                            # Gemini Key Input field
+                            # AI Provider
                             html.Div(
                                 [
-                                    html.Label("Gemini API Key", className="txn-label"),
+                                    html.Label("AI Provider", className="txn-label"),
+                                    dcc.Dropdown(
+                                        id="setup-ai-provider",
+                                        options=[
+                                            {
+                                                "label": "Google Gemini (Default)",
+                                                "value": "gemini",
+                                            },
+                                            {
+                                                "label": "OpenAI (ChatGPT)",
+                                                "value": "openai",
+                                            },
+                                            {
+                                                "label": "Anthropic (Claude)",
+                                                "value": "anthropic",
+                                            },
+                                        ],
+                                        value="gemini",
+                                        clearable=False,
+                                        className="settings-dropdown",
+                                    ),
+                                ],
+                                style={"marginBottom": "16px"},
+                            ),
+                            # AI Provider API Key
+                            html.Div(
+                                [
+                                    html.Label("AI Provider API Key", className="txn-label"),
                                     dcc.Input(
-                                        id="setup-gemini-key",
+                                        id="setup-ai-api-key",
                                         type="password",
-                                        placeholder="Enter your Gemini API Key (AI_...) or Google AI Studio key",
+                                        placeholder="Enter API key",
                                         className="setup-row-input",
                                         style={"width": "100%"},
+                                    ),
+                                    html.Div(
+                                        [
+                                            html.Button(
+                                                "Test Connection",
+                                                id="setup-ai-test-btn",
+                                                className="setup-btn-primary",
+                                                type="button",
+                                                style={
+                                                    "marginTop": "8px",
+                                                    "marginRight": "12px",
+                                                    "padding": "6px 12px",
+                                                    "fontSize": "12px",
+                                                },
+                                            ),
+                                            html.Span(
+                                                id="setup-ai-test-status",
+                                                className="settings-status-message",
+                                                style={
+                                                    "display": "inline-block",
+                                                    "verticalAlign": "middle",
+                                                    "marginTop": "8px",
+                                                },
+                                            ),
+                                        ],
+                                        style={"marginTop": "8px"},
+                                    ),
+                                ],
+                                style={"marginBottom": "16px"},
+                            ),
+                            # AI Chat Model
+                            html.Div(
+                                [
+                                    html.Label("AI Chat Model", className="txn-label"),
+                                    dcc.Dropdown(
+                                        id="setup-chat-model",
+                                        options=[
+                                            {
+                                                "label": "Standard (2.5 Flash)",
+                                                "value": "gemini-2.5-flash",
+                                            },
+                                            {
+                                                "label": "Enhanced (3.1 Flash)",
+                                                "value": "gemini-3.1-flash-lite",
+                                            },
+                                            {
+                                                "label": "Gemini 2.5 Pro (Advanced)",
+                                                "value": "gemini-2.5-pro",
+                                            },
+                                        ],
+                                        value="gemini-2.5-flash",
+                                        clearable=False,
+                                        className="settings-dropdown",
+                                    ),
+                                ],
+                                style={"marginBottom": "16px"},
+                            ),
+                            # AI Report Model
+                            html.Div(
+                                [
+                                    html.Label("AI Report Model", className="txn-label"),
+                                    dcc.Dropdown(
+                                        id="setup-report-model",
+                                        options=[
+                                            {
+                                                "label": "Standard (2.5 Flash)",
+                                                "value": "gemini-2.5-flash",
+                                            },
+                                            {
+                                                "label": "Enhanced (3.1 Flash)",
+                                                "value": "gemini-3.1-flash-lite",
+                                            },
+                                        ],
+                                        value="gemini-3.1-flash-lite",
+                                        clearable=False,
+                                        className="settings-dropdown",
                                     ),
                                 ],
                                 style={"marginBottom": "24px"},

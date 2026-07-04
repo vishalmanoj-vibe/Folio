@@ -21,6 +21,41 @@ logger = logging.getLogger(__name__)
 repo = PortfolioRepository()
 
 
+PROVIDER_MODELS = {
+    "gemini": {
+        "chat": [
+            {"label": "Standard (2.5 Flash)", "value": "gemini-2.5-flash"},
+            {"label": "Enhanced (3.1 Flash)", "value": "gemini-3.1-flash-lite"},
+            {"label": "Gemini 2.5 Pro (Advanced)", "value": "gemini-2.5-pro"},
+        ],
+        "report": [
+            {"label": "Standard (2.5 Flash)", "value": "gemini-2.5-flash"},
+            {"label": "Enhanced (3.1 Flash)", "value": "gemini-3.1-flash-lite"},
+        ],
+    },
+    "openai": {
+        "chat": [
+            {"label": "GPT-4o Mini (Default)", "value": "gpt-4o-mini"},
+            {"label": "GPT-4o (High quality)", "value": "gpt-4o"},
+        ],
+        "report": [
+            {"label": "GPT-4o Mini (Default)", "value": "gpt-4o-mini"},
+            {"label": "GPT-4o (High quality)", "value": "gpt-4o"},
+        ],
+    },
+    "anthropic": {
+        "chat": [
+            {"label": "Claude 3.5 Haiku (Default)", "value": "claude-3-5-haiku-latest"},
+            {"label": "Claude 3.5 Sonnet (High quality)", "value": "claude-3-5-sonnet-latest"},
+        ],
+        "report": [
+            {"label": "Claude 3.5 Haiku (Default)", "value": "claude-3-5-haiku-latest"},
+            {"label": "Claude 3.5 Sonnet (High quality)", "value": "claude-3-5-sonnet-latest"},
+        ],
+    },
+}
+
+
 # ── Private Helpers ──────────────────────────────────────────────────────────
 
 
@@ -320,12 +355,13 @@ def register_setup_callbacks(app):
         Output("setup-investment-goal", "value"),
         Output("setup-risk-tolerance", "value"),
         Output("setup-tax-bracket", "value"),
+        Output("setup-ai-provider", "value"),
         Input("url", "pathname"),
         prevent_initial_call=False,
     )
     def load_setup_settings(pathname):
         if pathname != "/setup/ai":
-            return dash.no_update, dash.no_update, dash.no_update
+            return dash.no_update, dash.no_update, dash.no_update, dash.no_update
 
         logger.debug("Onboarding: Loading existing strategy settings.")
         from data.settings_repository import get_all_settings
@@ -335,7 +371,133 @@ def register_setup_callbacks(app):
             settings.get("investment_goal", "Balanced"),
             settings.get("risk_tolerance", "Moderate"),
             settings.get("tax_bracket", "37%"),
+            settings.get("ai_provider", "gemini"),
         )
+
+    # ── Onboarding AI Provider dynamic models options and API key masking ──
+    @app.callback(
+        Output("setup-chat-model", "options"),
+        Output("setup-chat-model", "value"),
+        Output("setup-report-model", "options"),
+        Output("setup-report-model", "value"),
+        Output("setup-ai-api-key", "placeholder"),
+        Output("setup-ai-api-key", "value"),
+        Input("setup-ai-provider", "value"),
+        State("url", "pathname"),
+        prevent_initial_call=False,
+    )
+    def update_setup_provider_models_and_key(provider, pathname):
+        if pathname != "/setup/ai" or not provider:
+            return (
+                dash.no_update,
+                dash.no_update,
+                dash.no_update,
+                dash.no_update,
+                dash.no_update,
+                dash.no_update,
+            )
+
+        models = PROVIDER_MODELS.get(provider, PROVIDER_MODELS["gemini"])
+        chat_options = models["chat"]
+        report_options = models["report"]
+
+        default_chat = chat_options[0]["value"]
+        default_report = report_options[0]["value"]
+
+        placeholders = {
+            "gemini": "Enter Gemini API Key (e.g. AIzaSy...)",
+            "openai": "Enter OpenAI API Key (e.g. sk-proj-...)",
+            "anthropic": "Enter Anthropic API Key (e.g. sk-ant-...)",
+        }
+        placeholder = placeholders.get(provider, "Enter API key")
+
+        env_key_name = f"{provider.upper()}_API_KEY"
+        api_key_val = os.getenv(env_key_name)
+        if not api_key_val:
+            try:
+                api_key_val = repo.get_api_key(provider)
+            except Exception:
+                pass
+
+        key_value = "••••••••••••••••" if api_key_val else ""
+
+        from data.settings_repository import get_all_settings
+
+        settings = get_all_settings()
+        stored_provider = settings.get("ai_provider", "gemini")
+
+        if provider == stored_provider:
+            chat_val = settings.get("ai_chat_model", default_chat)
+            report_val = settings.get("ai_report_model", default_report)
+            if not any(opt["value"] == chat_val for opt in chat_options):
+                chat_val = default_chat
+            if not any(opt["value"] == report_val for opt in report_options):
+                report_val = default_report
+        else:
+            chat_val = default_chat
+            report_val = default_report
+
+        return chat_options, chat_val, report_options, report_val, placeholder, key_value
+
+    # ── Onboarding AI Provider connection testing ──
+    @app.callback(
+        Output("setup-ai-test-status", "children"),
+        Output("setup-ai-test-status", "style"),
+        Input("setup-ai-test-btn", "n_clicks"),
+        State("setup-ai-provider", "value"),
+        State("setup-ai-api-key", "value"),
+        prevent_initial_call=True,
+    )
+    def test_setup_ai_connection(n_clicks, provider, api_key_input):
+        if not n_clicks or not provider:
+            return dash.no_update, dash.no_update
+
+        # Resolve the actual API key to test
+        api_key_val = str(api_key_input).strip() if api_key_input else ""
+        if api_key_val == "••••••••••••••••":
+            env_key_name = f"{provider.upper()}_API_KEY"
+            api_key_val = os.getenv(env_key_name)
+            if not api_key_val:
+                try:
+                    api_key_val = repo.get_api_key(provider)
+                except Exception:
+                    pass
+
+        if not api_key_val:
+            return "❌ API key is empty", {"color": "var(--red)"}
+
+        test_prompt = "Say only 'OK'"
+        env_key_name = f"{provider.upper()}_API_KEY"
+        old_env_val = os.environ.get(env_key_name)
+        os.environ[env_key_name] = api_key_val
+
+        from unittest.mock import patch
+
+        try:
+            with patch("services.ai_provider.get_setting", return_value=provider):
+                from services.ai_provider import generate_content
+
+                test_model = (
+                    "gemini-2.5-flash"
+                    if provider == "gemini"
+                    else ("gpt-4o-mini" if provider == "openai" else "claude-3-5-haiku-latest")
+                )
+                response = generate_content(test_prompt, model=test_model, max_tokens=10)
+
+            if (
+                "error" in response.lower()
+                or "fail" in response.lower()
+                or "api key" in response.lower()
+            ):
+                return f"❌ Connection failed: {response}", {"color": "var(--red)"}
+            return f"✓ Connection successful! ({response})", {"color": "var(--green)"}
+        except Exception as e:
+            return f"❌ Connection failed: {e}", {"color": "var(--red)"}
+        finally:
+            if old_env_val is not None:
+                os.environ[env_key_name] = old_env_val
+            elif env_key_name in os.environ:
+                del os.environ[env_key_name]
 
     # ── Page 2: AI Key & Strategy Setup ──
     @app.callback(
@@ -344,13 +506,27 @@ def register_setup_callbacks(app):
         Input("setup-ai-save-btn", "n_clicks"),
         Input("setup-ai-skip-btn", "n_clicks"),
         Input("setup-ai-back-btn", "n_clicks"),
-        State("setup-gemini-key", "value"),
+        State("setup-ai-provider", "value"),
+        State("setup-chat-model", "value"),
+        State("setup-report-model", "value"),
+        State("setup-ai-api-key", "value"),
         State("setup-investment-goal", "value"),
         State("setup-risk-tolerance", "value"),
         State("setup-tax-bracket", "value"),
         prevent_initial_call=True,
     )
-    def handle_ai_setup(save_clicks, skip_clicks, back_clicks, api_key, goal, risk, tax):
+    def handle_ai_setup(
+        save_clicks,
+        skip_clicks,
+        back_clicks,
+        ai_provider,
+        chat_model,
+        report_model,
+        api_key,
+        goal,
+        risk,
+        tax,
+    ):
         ctx_triggered = dash.callback_context.triggered
         if not ctx_triggered:
             return dash.no_update, dash.no_update
@@ -376,42 +552,49 @@ def register_setup_callbacks(app):
             save_setting("risk_tolerance", "Moderate")
             save_setting("tax_bracket", "37%")
             save_setting("ai_provider", "gemini")
+            save_setting("ai_chat_model", "gemini-2.5-flash")
+            save_setting("ai_report_model", "gemini-3.1-flash-lite")
 
-            # Clear Gemini API key from database/env if skipped
-            try:
-                repo.set_gemini_api_key("")
-            except Exception:
-                pass
-            if "GEMINI_API_KEY" in os.environ:
-                del os.environ["GEMINI_API_KEY"]
+            # Clear active provider API keys from database/env if skipped
+            for p in ["gemini", "openai", "anthropic"]:
+                try:
+                    repo.set_api_key(p, "")
+                except Exception:
+                    pass
+                env_var_name = f"{p.upper()}_API_KEY"
+                if env_var_name in os.environ:
+                    del os.environ[env_var_name]
 
             return dash.no_update, dcc.Location(
                 pathname="/setup/ready", id="setup-redir-skip", refresh=True
             )
 
         if trigger_id == "setup-ai-save-btn":
+            provider = ai_provider or "gemini"
             # Save selected strategy settings
             save_setting("investment_goal", goal or "Balanced")
             save_setting("risk_tolerance", risk or "Moderate")
             save_setting("tax_bracket", tax or "37%")
-            save_setting("ai_provider", "gemini")
+            save_setting("ai_provider", provider)
+            save_setting("ai_chat_model", chat_model or "gemini-2.5-flash")
+            save_setting("ai_report_model", report_model or "gemini-3.1-flash-lite")
 
-            # Optionally save AI API Key if entered
+            # Optionally save AI API Key if entered and not masked
             api_key_str = str(api_key).strip() if api_key else ""
-            if api_key_str:
+            if api_key_str and api_key_str != "••••••••••••••••":
                 try:
-                    repo.set_gemini_api_key(api_key_str)
+                    repo.set_api_key(provider, api_key_str)
                 except Exception as e:
-                    logger.error(f"AI Onboarding: Failed to save to database metadata: {e}")
-                os.environ["GEMINI_API_KEY"] = api_key_str
-            else:
-                # If they saved with an empty key, make sure it is cleared
+                    logger.error(f"AI Onboarding: Failed to save key for {provider}: {e}")
+                os.environ[f"{provider.upper()}_API_KEY"] = api_key_str
+            elif api_key_str == "":
                 try:
-                    repo.set_gemini_api_key("")
+                    repo.set_api_key(provider, "")
                 except Exception:
                     pass
-                if "GEMINI_API_KEY" in os.environ:
-                    del os.environ["GEMINI_API_KEY"]
+                env_var_name = f"{provider.upper()}_API_KEY"
+                if env_var_name in os.environ:
+                    del os.environ[env_var_name]
 
             return dash.no_update, dcc.Location(
                 pathname="/setup/ready", id="setup-redir-ready", refresh=True

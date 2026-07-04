@@ -184,7 +184,12 @@ Prevent "Duplicate ID" errors and callback collisions by maintaining a central m
 
 
 ### Setup Pages (`/setup/*`)
-- `setup-gemini-key`: Text input for Gemini API Key in setup wizard.
+- `setup-ai-provider`: Dropdown selector for AI Provider in setup wizard.
+- `setup-ai-api-key`: Password input for selected provider's API key in setup wizard.
+- `setup-ai-test-btn`: Button to test AI provider key connection in setup wizard.
+- `setup-ai-test-status`: Feedback text for connection test status in setup wizard.
+- `setup-chat-model`: Dropdown selector for AI Chat Model in setup wizard.
+- `setup-report-model`: Dropdown selector for AI Report Model in setup wizard.
 - `setup-investment-goal`: Dropdown selector for Investment Goal in setup wizard.
 - `setup-risk-tolerance`: Dropdown selector for Risk Tolerance in setup wizard.
 - `setup-tax-bracket`: Dropdown selector for Tax Bracket in setup wizard.

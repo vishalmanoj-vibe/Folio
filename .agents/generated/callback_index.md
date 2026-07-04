@@ -1,12 +1,12 @@
 # Callback Output Index — Auto-Generated
 
-> **Generated**: 2026-07-04 15:13  
+> **Generated**: 2026-07-04 15:45  
 > **Do not edit** — run `python .agents/generated/sync_docs.py` to refresh.
 > For ownership intent and architecture notes, see `docs/reference/callback_ownership.md`.
 
 ---
 
-**Total outputs indexed**: 198 across 13 files
+**Total outputs indexed**: 207 across 13 files
 
 ## `app.py`
 
@@ -161,36 +161,45 @@
 
 | Output ID | Property | Line | Duplicate? | Pattern? |
 |-----------|----------|------|-----------|---------|
-| `dummy-redirect-output` | `children` | 184 |  |  |
-| `setup-portfolio-table-body` | `children` | 191 |  |  |
-| `setup-portfolio-rows-store` | `data` | 200 |  |  |
-| `setup-portfolio-rows-store` | `data` | 214 | ✓ |  |
-| `setup-portfolio-continue-btn` | `disabled` | 242 |  |  |
-| `url` | `pathname` | 263 | ✓ |  |
-| `setup-portfolio-feedback` | `children` | 264 |  |  |
-| `txn-store` | `data` | 265 | ✓ |  |
-| `setup-investment-goal` | `value` | 320 |  |  |
-| `setup-risk-tolerance` | `value` | 321 |  |  |
-| `setup-tax-bracket` | `value` | 322 |  |  |
-| `url` | `pathname` | 342 | ✓ |  |
-| `setup-ai-feedback` | `children` | 343 |  |  |
-| `setup-init-tasks-store` | `data` | 424 |  |  |
-| `setup-poll-interval` | `disabled` | 425 |  |  |
-| `url` | `pathname` | 527 | ✓ |  |
-| `setup-is-first-run-store` | `data` | 528 | ✓ |  |
-| `setup-ready-feedback` | `children` | 529 |  |  |
-| `setup-init-step-list` | `children` | 572 |  |  |
-| `setup-init-progress-label` | `children` | 573 |  |  |
-| `setup-init-progress-bar` | `style` | 574 |  |  |
-| `setup-init-status-msg` | `children` | 575 |  |  |
-| `setup-ready-launch-btn` | `disabled` | 576 |  |  |
-| `setup-poll-interval` | `disabled` | 577 | ✓ |  |
-| `setup-init-tasks-store` | `data` | 578 | ✓ |  |
-| `setup-ready-summary` | `children` | 579 |  |  |
-| `setup-ready-summary` | `style` | 580 |  |  |
-| `setup-init-progress-container` | `style` | 581 |  |  |
-| `setup-init-title` | `children` | 582 |  |  |
-| `setup-init-subtitle` | `children` | 583 |  |  |
+| `dummy-redirect-output` | `children` | 219 |  |  |
+| `setup-portfolio-table-body` | `children` | 226 |  |  |
+| `setup-portfolio-rows-store` | `data` | 235 |  |  |
+| `setup-portfolio-rows-store` | `data` | 249 | ✓ |  |
+| `setup-portfolio-continue-btn` | `disabled` | 277 |  |  |
+| `url` | `pathname` | 298 | ✓ |  |
+| `setup-portfolio-feedback` | `children` | 299 |  |  |
+| `txn-store` | `data` | 300 | ✓ |  |
+| `setup-investment-goal` | `value` | 355 |  |  |
+| `setup-risk-tolerance` | `value` | 356 |  |  |
+| `setup-tax-bracket` | `value` | 357 |  |  |
+| `setup-ai-provider` | `value` | 358 |  |  |
+| `setup-chat-model` | `options` | 379 |  |  |
+| `setup-chat-model` | `value` | 380 |  |  |
+| `setup-report-model` | `options` | 381 |  |  |
+| `setup-report-model` | `value` | 382 |  |  |
+| `setup-ai-api-key` | `placeholder` | 383 |  |  |
+| `setup-ai-api-key` | `value` | 384 |  |  |
+| `setup-ai-test-status` | `children` | 444 |  |  |
+| `setup-ai-test-status` | `style` | 445 |  |  |
+| `url` | `pathname` | 504 | ✓ |  |
+| `setup-ai-feedback` | `children` | 505 |  |  |
+| `setup-init-tasks-store` | `data` | 607 |  |  |
+| `setup-poll-interval` | `disabled` | 608 |  |  |
+| `url` | `pathname` | 710 | ✓ |  |
+| `setup-is-first-run-store` | `data` | 711 | ✓ |  |
+| `setup-ready-feedback` | `children` | 712 |  |  |
+| `setup-init-step-list` | `children` | 755 |  |  |
+| `setup-init-progress-label` | `children` | 756 |  |  |
+| `setup-init-progress-bar` | `style` | 757 |  |  |
+| `setup-init-status-msg` | `children` | 758 |  |  |
+| `setup-ready-launch-btn` | `disabled` | 759 |  |  |
+| `setup-poll-interval` | `disabled` | 760 | ✓ |  |
+| `setup-init-tasks-store` | `data` | 761 | ✓ |  |
+| `setup-ready-summary` | `children` | 762 |  |  |
+| `setup-ready-summary` | `style` | 763 |  |  |
+| `setup-init-progress-container` | `style` | 764 |  |  |
+| `setup-init-title` | `children` | 765 |  |  |
+| `setup-init-subtitle` | `children` | 766 |  |  |
 
 ## `signals_callbacks.py`
 
