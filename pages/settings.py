@@ -148,6 +148,89 @@ def layout() -> html.Div:
                                             ],
                                             className="settings-form-row",
                                         ),
+                                        # ── AI Provider ──────────────────────
+                                        html.Div(
+                                            [
+                                                html.Label(
+                                                    "AI Provider",
+                                                    className="settings-label",
+                                                ),
+                                                html.P(
+                                                    "Select the AI service provider to power insights, sentiment, and chat.",
+                                                    className="settings-preview-description",
+                                                    style={"marginBottom": "6px"},
+                                                ),
+                                                dcc.Dropdown(
+                                                    id="settings-ai-provider",
+                                                    options=[
+                                                        {
+                                                            "label": "Google Gemini (Default)",
+                                                            "value": "gemini",
+                                                        },
+                                                        {
+                                                            "label": "OpenAI (ChatGPT)",
+                                                            "value": "openai",
+                                                        },
+                                                        {
+                                                            "label": "Anthropic (Claude)",
+                                                            "value": "anthropic",
+                                                        },
+                                                    ],
+                                                    value="gemini",
+                                                    clearable=False,
+                                                    className="settings-dropdown",
+                                                ),
+                                            ],
+                                            className="settings-form-row",
+                                        ),
+                                        # API Key
+                                        html.Div(
+                                            [
+                                                html.Label(
+                                                    "AI Provider API Key",
+                                                    className="settings-label",
+                                                ),
+                                                html.P(
+                                                    "Enter your API key for the selected provider. Key is saved securely locally.",
+                                                    className="settings-preview-description",
+                                                    style={"marginBottom": "6px"},
+                                                ),
+                                                dcc.Input(
+                                                    id="settings-ai-api-key-input",
+                                                    type="password",
+                                                    placeholder="Enter API key",
+                                                    className="txn-input",
+                                                    style={"width": "100%"},
+                                                ),
+                                                html.Div(
+                                                    [
+                                                        html.Button(
+                                                            "Test Connection",
+                                                            id="settings-ai-test-btn",
+                                                            className="setup-btn-primary",
+                                                            type="button",
+                                                            style={
+                                                                "marginTop": "8px",
+                                                                "marginRight": "12px",
+                                                                "padding": "6px 12px",
+                                                                "fontSize": "12px",
+                                                            },
+                                                        ),
+                                                        html.Span(
+                                                            id="settings-ai-test-status",
+                                                            className="settings-status-message",
+                                                            style={
+                                                                "display": "inline-block",
+                                                                "verticalAlign": "middle",
+                                                                "marginTop": "8px",
+                                                            },
+                                                        ),
+                                                    ],
+                                                    style={"marginTop": "8px"},
+                                                ),
+                                            ],
+                                            className="settings-form-row",
+                                        ),
                                         # ── AI Model Selection ──────────────
                                         html.Div(
                                             [

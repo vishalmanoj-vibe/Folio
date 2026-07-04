@@ -88,9 +88,9 @@ def test_analyze_signals_low_conviction() -> None:
 
 @patch("services.ai_engine.get_cache")
 @patch("services.ai_engine.set_cache")
-@patch("google.genai.Client")
+@patch("services.ai_provider.generate_content")
 def test_analyze_signals_mocked_gemini(
-    mock_client_class: MagicMock,
+    mock_generate_content: MagicMock,
     mock_set_cache: MagicMock,
     mock_get_cache: MagicMock,
 ) -> None:
@@ -101,15 +101,9 @@ def test_analyze_signals_mocked_gemini(
         "VAS": {"signal": "BUY", "score": 0.8, "indicators": {}, "hysteresis_forced": False}
     }
 
-    # Setup mock Gemini Response
-    mock_client = MagicMock()
-    mock_client_class.return_value = mock_client
-
-    mock_response = MagicMock()
-    mock_response.text = (
+    mock_generate_content.return_value = (
         '{"VAS": {"explanation": "Perfect", "risks": ["Volatile"], "verdict": "Reasonable"}}'
     )
-    mock_client.models.generate_content.return_value = mock_response
 
     with patch.dict(os.environ, {"GEMINI_API_KEY": "dummy_key"}):
         result: dict[str, dict[str, Any]] = analyze_signals(mock_signals)
@@ -119,3 +113,28 @@ def test_analyze_signals_mocked_gemini(
     assert result["VAS"]["verdict"] == "Confident"
     assert result["VAS"]["risks"] == ["Volatile"]
     mock_set_cache.assert_called_once()
+
+
+def test_resolve_model() -> None:
+    """Verify that _resolve_model correctly handles matching and mismatched model/provider combinations."""
+    from services.ai_provider import _resolve_model
+
+    # Matching provider and model
+    assert _resolve_model("gemini", "gemini-2.5-flash") == "gemini-2.5-flash"
+    assert _resolve_model("openai", "gpt-4o") == "gpt-4o"
+    assert _resolve_model("anthropic", "claude-3-5-sonnet-latest") == "claude-3-5-sonnet-latest"
+
+    # Mismatched model should fall back to default
+    assert _resolve_model("openai", "gemini-2.5-flash", "gpt-4o-mini") == "gpt-4o-mini"
+    assert (
+        _resolve_model("anthropic", "gpt-4o", "claude-3-5-haiku-latest")
+        == "claude-3-5-haiku-latest"
+    )
+    assert (
+        _resolve_model("gemini", "claude-3-5-sonnet-latest", "gemini-2.5-flash")
+        == "gemini-2.5-flash"
+    )
+
+    # Empty/None model should fall back to default
+    assert _resolve_model("openai", "", "gpt-4o-mini") == "gpt-4o-mini"
+    assert _resolve_model("openai", None, "gpt-4o-mini") == "gpt-4o-mini"

@@ -4,9 +4,6 @@ import logging
 import os
 import re
 
-import google.genai as genai
-
-from config.settings import GEMINI_FLASH_MODEL
 from core.cache import get_cache, set_cache
 
 logger = logging.getLogger(__name__)
@@ -132,11 +129,32 @@ def _normalize_ai_response(ai_dict: dict) -> dict:
 
 
 def analyze_signals(signals_dict: dict) -> dict:
-    api_key = os.getenv("GEMINI_API_KEY")
+    from data.settings_repository import get_setting
+
+    provider = get_setting("ai_provider", "gemini") or "gemini"
+    provider = provider.lower().strip()
+
+    # Load API key for active provider
+    from data.repository import PortfolioRepository
+
+    env_key_name = f"{provider.upper()}_API_KEY"
+    api_key = os.getenv(env_key_name)
     if not api_key:
-        logger.warning("GEMINI_API_KEY missing for ai_engine.")
+        try:
+            api_key = PortfolioRepository().get_api_key(provider)
+        except Exception:
+            pass
+
+    if api_key:
+        os.environ[env_key_name] = api_key
+    else:
+        logger.warning(f"API key missing for provider '{provider}' in ai_engine.")
         return {
-            ticker: {"explanation": "API key missing", "risks": [], "verdict": "Mixed"}
+            ticker: {
+                "explanation": "API key missing",
+                "risks": [],
+                "verdict": "Mixed",
+            }
             for ticker in signals_dict
         }
 
@@ -168,8 +186,6 @@ def analyze_signals(signals_dict: dict) -> dict:
 
     # Load user persona to inject into system prompt
     try:
-        from data.settings_repository import get_setting
-
         persona = get_setting("ai_persona", "Conservative") or "Conservative"
     except Exception:
         persona = "Conservative"
@@ -190,7 +206,6 @@ def analyze_signals(signals_dict: dict) -> dict:
         ai_insights.update(cached)
         return ai_insights
 
-    client = genai.Client(api_key=api_key)
     prompt = f"""
 You are a conservative long-term investment analyst.
 STRICT RULES:
@@ -219,20 +234,24 @@ Return ONLY valid JSON in this format:
 """
 
     try:
-        response = client.models.generate_content(
-            model=GEMINI_FLASH_MODEL,
-            contents=prompt,
-            config=genai.types.GenerateContentConfig(
-                system_instruction=dynamic_system_prompt,
-                temperature=0.2,
-            ),
+        from services.ai_provider import generate_content
+
+        # Resolve active model to use
+        chat_model = get_setting("ai_chat_model")
+
+        response_text = generate_content(
+            prompt=prompt,
+            system_prompt=dynamic_system_prompt,
+            model=chat_model,
+            temperature=0.2,
+            max_tokens=2048,
         )
 
-        if not response or not getattr(response, "text", None):
-            raise ValueError("Empty AI response")
+        if not response_text or response_text.startswith("Error:"):
+            raise ValueError(response_text or "Empty AI response")
 
-        logger.debug(f"Raw AI response for {list(filtered_signals.keys())}: {response.text}")
-        raw_output = _safe_parse(response.text)
+        logger.debug(f"Raw AI response for {list(filtered_signals.keys())}: {response_text}")
+        raw_output = _safe_parse(response_text)
         logger.debug(f"Parsed AI output: {raw_output}")
         normalized_output = _normalize_ai_response(raw_output)
 

@@ -267,9 +267,6 @@ def get_ai_commentary(
     Calls Gemini to write the weekly portfolio commentary.
     """
     try:
-        import google.genai as genai
-
-        from config.settings import GEMINI_REPORT_MODEL
         from data.settings_repository import get_all_settings, get_setting
         from services.sentiment_service import get_cached_sentiment
 
@@ -340,15 +337,42 @@ def get_ai_commentary(
         )
 
         # ── Resolve report model from user settings ───────────────────────────
-        # The `or` guard narrows `str | None` → `str` to satisfy the SDK type check.
+        provider = get_setting("ai_provider", "gemini") or "gemini"
+        provider = provider.lower().strip()
+
+        # Load API key for active provider
+        from data.repository import PortfolioRepository
+
+        env_key_name = f"{provider.upper()}_API_KEY"
+        provider_key = os.getenv(env_key_name)
+        if not provider_key:
+            try:
+                provider_key = PortfolioRepository().get_api_key(provider)
+            except Exception:
+                pass
+
+        if provider_key:
+            os.environ[env_key_name] = provider_key
+        else:
+            raise ValueError(f"API key is not configured for {provider.capitalize()}")
+
+        from config.settings import GEMINI_REPORT_MODEL
+
         ai_report_model = get_setting("ai_report_model", GEMINI_REPORT_MODEL) or GEMINI_REPORT_MODEL
 
-        client = genai.Client(api_key=api_key)
-        response = client.models.generate_content(
+        from services.ai_provider import generate_content
+
+        response_text = generate_content(
+            prompt=prompt,
             model=ai_report_model,
-            contents=prompt,
+            temperature=0.2,
+            max_tokens=2048,
         )
-        return response.text.strip()
+
+        if not response_text or response_text.startswith("Error:"):
+            raise ValueError(response_text or "Empty AI response")
+
+        return response_text.strip()
 
     except Exception as e:
         logger.error(f"get_ai_commentary failed: {e}")
@@ -366,12 +390,27 @@ def generate_news_summaries(
     try:
         import json
 
-        import google.genai as genai
-
-        from config.settings import GEMINI_REPORT_MODEL
         from data.settings_repository import get_setting
 
-        client = genai.Client(api_key=api_key)
+        provider = get_setting("ai_provider", "gemini") or "gemini"
+        provider = provider.lower().strip()
+
+        # Load API key for active provider
+        from data.repository import PortfolioRepository
+
+        env_key_name = f"{provider.upper()}_API_KEY"
+        provider_key = os.getenv(env_key_name)
+        if not provider_key:
+            try:
+                provider_key = PortfolioRepository().get_api_key(provider)
+            except Exception:
+                pass
+
+        if provider_key:
+            os.environ[env_key_name] = provider_key
+        else:
+            logger.warning(f"API key missing for provider '{provider}' in generate_news_summaries.")
+            return {}
 
         # Prepare context for prompt
         news_context = ""
@@ -380,7 +419,7 @@ def generate_news_summaries(
                 continue
             news_context += f"Ticker: {ticker}\n"
             for idx, a in enumerate(articles):
-                news_context += f"  Article {idx+1}: {a.get('title', '')}\n"
+                news_context += f"  Article {idx + 1}: {a.get('title', '')}\n"
                 news_context += f"  Snippet: {a.get('body', '')}\n\n"
 
         if not news_context:
@@ -396,17 +435,23 @@ def generate_news_summaries(
             "Here is the news data:\n\n" + news_context
         )
 
+        from config.settings import GEMINI_REPORT_MODEL
+
         ai_report_model = get_setting("ai_report_model", GEMINI_REPORT_MODEL) or GEMINI_REPORT_MODEL
 
-        response = client.models.generate_content(
+        from services.ai_provider import generate_content
+
+        response_text = generate_content(
+            prompt=prompt,
             model=ai_report_model,
-            contents=prompt,
-            config=genai.types.GenerateContentConfig(
-                response_mime_type="application/json",
-            ),
+            temperature=0.2,
+            max_tokens=2048,
         )
 
-        raw_text = response.text.strip()
+        if not response_text or response_text.startswith("Error:"):
+            raise ValueError(response_text or "Empty AI response")
+
+        raw_text = response_text.strip()
         # Clean up code block wrappers if any
         if raw_text.startswith("```"):
             raw_text = raw_text.strip("`").replace("json\n", "", 1).strip()

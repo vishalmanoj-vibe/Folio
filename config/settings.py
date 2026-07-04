@@ -64,3 +64,6 @@ LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO").upper()
 GEMINI_FLASH_MODEL = os.getenv("GEMINI_FLASH_MODEL", "gemini-2.5-flash")
 # Enhanced model: default for manually-triggered PDF reports (higher quality).
 GEMINI_REPORT_MODEL = os.getenv("GEMINI_REPORT_MODEL", "gemini-3.1-flash-lite")
+
+# Default AI provider (backward compatible)
+AI_PROVIDER = os.getenv("AI_PROVIDER", "gemini")

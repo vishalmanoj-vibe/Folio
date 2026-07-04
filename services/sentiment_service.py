@@ -12,9 +12,6 @@ import os
 import re
 from datetime import datetime, timedelta
 
-import google.genai as genai
-
-from config.settings import GEMINI_FLASH_MODEL
 from data.database import get_connection
 from services.web_search import search_financial_news
 
@@ -86,16 +83,33 @@ def save_sentiment_to_cache(ticker: str, data: dict) -> None:
 
 
 def analyze_news_sentiment(ticker: str, headlines: list[dict]) -> dict:
-    """Calls Gemini to analyze the sentiment of retrieved news headlines."""
-    api_key = os.getenv("GEMINI_API_KEY")
+    """Calls AI provider to analyze the sentiment of retrieved news headlines."""
+    from data.settings_repository import get_setting
+
+    provider = get_setting("ai_provider", "gemini") or "gemini"
+    provider = provider.lower().strip()
+
+    # Load API key for active provider
+    from data.repository import PortfolioRepository
+
+    env_key_name = f"{provider.upper()}_API_KEY"
+    api_key = os.getenv(env_key_name)
+    if not api_key:
+        try:
+            api_key = PortfolioRepository().get_api_key(provider)
+        except Exception:
+            pass
+
     fallback = {
         "sentiment": "Neutral",
         "score": 0.0,
         "rationale": "Failed to analyze sentiment.",
     }
 
-    if not api_key:
-        logger.warning("GEMINI_API_KEY is missing. Returning neutral sentiment.")
+    if api_key:
+        os.environ[env_key_name] = api_key
+    else:
+        logger.warning(f"API key missing for provider '{provider}' in sentiment_service.")
         return fallback
 
     if not headlines:
@@ -126,29 +140,34 @@ Return ONLY valid JSON in this exact structure:
 """
 
     try:
-        client = genai.Client(api_key=api_key)
-        response = client.models.generate_content(
-            model=GEMINI_FLASH_MODEL,
-            contents=prompt,
-            config=genai.types.GenerateContentConfig(
-                temperature=0.1,
-            ),
+        from services.ai_provider import generate_content
+
+        chat_model = get_setting("ai_chat_model")
+
+        resp_text = generate_content(
+            prompt=prompt,
+            model=chat_model,
+            temperature=0.1,
+            max_tokens=1024,
         )
 
-        # Clean markdown formatting if present
-        resp_text = response.text.strip()
-        match = re.search(r"\{.*\}", resp_text, re.DOTALL)
-        if match:
-            resp_text = match.group()
+        if not resp_text or resp_text.startswith("Error:"):
+            raise ValueError(resp_text or "Empty AI response")
 
-        parsed = json.loads(resp_text)
+        # Clean markdown formatting if present
+        resp_text_clean = resp_text.strip()
+        match = re.search(r"\{.*\}", resp_text_clean, re.DOTALL)
+        if match:
+            resp_text_clean = match.group()
+
+        parsed = json.loads(resp_text_clean)
         return {
             "sentiment": parsed.get("sentiment", "Neutral"),
             "score": float(parsed.get("score", 0.0)),
             "rationale": parsed.get("rationale", "No explanation provided."),
         }
     except Exception as e:
-        logger.error(f"Error calling Gemini for sentiment analysis on {ticker}: {e}")
+        logger.error(f"Error calling AI for sentiment analysis on {ticker}: {e}")
         return fallback
 
 

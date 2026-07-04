@@ -243,8 +243,11 @@
 | `settings-investment-goal` | `value` | Initial settings load. |
 | `settings-risk-tolerance` | `value` | Initial settings load. |
 | `settings-tax-bracket` | `value` | Initial settings load. |
-| `settings-chat-model` | `value` | AI chat model selection (Standard/Enhanced). |
-| `settings-report-model` | `value` | AI report model selection (Standard/Enhanced). |
+| `settings-ai-provider` | `value` | Active AI provider selection (Gemini/Claude/ChatGPT). |
+| `settings-ai-api-key-input` | `value`, `placeholder` | Selected provider's API key field. |
+| `settings-ai-test-status` | `children`, `style` | Connection test result feedback. |
+| `settings-chat-model` | `value`, `options` | AI chat model selection (Standard/Enhanced, dynamically filtered). |
+| `settings-report-model` | `value`, `options` | AI report model selection (Standard/Enhanced, dynamically filtered). |
 | `settings-portfolio-benchmark` | `value` | Benchmark index selection. |
 | `settings-custom-benchmark` | `value` | Free-form custom benchmark ticker input. |
 | `settings-ai-persona` | `value` | AI analyst tone/persona selection. |

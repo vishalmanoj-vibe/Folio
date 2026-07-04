@@ -16,6 +16,7 @@ DEFAULTS = {
     "investment_goal": "Balanced",
     "risk_tolerance": "Moderate",
     "tax_bracket": "37%",
+    "ai_provider": "gemini",
     "ai_chat_model": "gemini-2.5-flash",
     "ai_report_model": "gemini-3.1-flash-lite",
     "portfolio_benchmark": "^AXJO",

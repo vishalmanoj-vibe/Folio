@@ -2,7 +2,6 @@ import copy
 import logging
 import os
 
-import google.genai as genai
 import pandas as pd
 
 from config.settings import GEMINI_FLASH_MODEL
@@ -10,10 +9,6 @@ from services.technical_indicators import compute_signals
 from services.web_search import format_search_results, search_financial_news, should_search_web
 
 logger = logging.getLogger(__name__)
-
-api_key = os.getenv("GEMINI_API_KEY")
-if not api_key:
-    logger.warning("GEMINI_API_KEY is missing from environment variables.")
 
 SYSTEM_PROMPT = """You are an Australian ASX ETF investment research assistant.
 Always reason from the portfolio data provided in each message.
@@ -180,11 +175,28 @@ def get_ai_response(history: list[dict], portfolio_data: dict, ticker: str = "")
         f"history_len: {len(history)}"
     )
     try:
-        api_key = os.getenv("GEMINI_API_KEY")
-        if not api_key:
-            return "API key is not configured. Please add GEMINI_API_KEY to your .env file."
+        from data.settings_repository import get_setting
 
-        client = genai.Client(api_key=api_key)
+        provider = get_setting("ai_provider", "gemini") or "gemini"
+        provider = provider.lower().strip()
+
+        # Load API key for active provider
+        from data.repository import PortfolioRepository
+
+        env_key_name = f"{provider.upper()}_API_KEY"
+        api_key = os.getenv(env_key_name)
+        if not api_key:
+            try:
+                api_key = PortfolioRepository().get_api_key(provider)
+            except Exception:
+                pass
+
+        if api_key:
+            os.environ[env_key_name] = api_key
+        else:
+            return (
+                f"API key is not configured for {provider.capitalize()}. Please add it in Settings."
+            )
 
         # Build context and inject into a copy of the last user message
         context = build_portfolio_context(portfolio_data, ticker)
@@ -224,14 +236,9 @@ def get_ai_response(history: list[dict], portfolio_data: dict, ticker: str = "")
             full_context += "\n\n" + search_context
         full_message = full_context + "\n\n" + current_message
 
-        # Convert past turns to google-genai Content objects
-        # google-genai uses "model" not "assistant" for AI role
-        chat_history: list[genai.types.ContentOrDict] = []
-        for msg in past_turns:
-            role = "model" if msg["role"] == "assistant" else "user"
-            chat_history.append(
-                genai.types.Content(role=role, parts=[genai.types.Part(text=msg["content"])])
-            )
+        # Reconstruct history with context injected in the last turn
+        chat_history = copy.deepcopy(past_turns)
+        chat_history.append({"role": "user", "content": full_message})
 
         # Load user profile settings for customized AI context
         from data.settings_repository import get_all_settings
@@ -257,25 +264,21 @@ def get_ai_response(history: list[dict], portfolio_data: dict, ticker: str = "")
         system_prompt_dynamic = persona_instruction + "\n\n" + SYSTEM_PROMPT + profile_instruction
 
         # Resolve chat model from user settings (fallback to Flash).
-        # The `or` guard narrows the type from `str | None` → `str` to satisfy the SDK.
-        from data.settings_repository import get_setting
+        ai_chat_model = settings.get("ai_chat_model")
 
-        ai_chat_model = get_setting("ai_chat_model", GEMINI_FLASH_MODEL) or GEMINI_FLASH_MODEL
+        # Call the unified provider chat completion
+        from services.ai_provider import chat_completion
 
-        # Create chat session with history
-        chat = client.chats.create(
-            model=ai_chat_model,
+        response_text = chat_completion(
             history=chat_history,
-            config=genai.types.GenerateContentConfig(
-                system_instruction=system_prompt_dynamic,
-                max_output_tokens=2048,
-            ),
+            system_prompt=system_prompt_dynamic,
+            model=ai_chat_model,
+            temperature=0.2,
+            max_tokens=2048,
         )
 
-        # Send the current message with context prepended
-        response = chat.send_message(full_message)
-        return response.text
+        return response_text
 
     except Exception as e:
-        logger.error(f"Error calling Gemini: {e}")
+        logger.error(f"Error calling AI provider: {e}")
         return "I couldn't reach the AI service. Please check your API key and try again."

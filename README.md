@@ -141,7 +141,7 @@ Allows configuring settings that dynamically adjust calculation models and AI re
 
 ---
 
-## 🤖 AI Assistant & Gemini Integration
+## 🤖 AI Assistant & Provider Integration (Gemini, Claude, ChatGPT)
 
 The chatbot widget in the bottom-right corner acts as a portfolio-aware assistant.
 
@@ -212,7 +212,7 @@ Folio manages its own environment automatically. You do not need to install comp
 -   Configures **Python 3.12** inside a local virtual environment (`.venv/`) to avoid polluting global files.
 -   Installs required Python packages listed in [requirements.txt](requirements.txt).
 -   Installs **Playwright WebKit** (a headless browser engine used to scrape underlying ETF holdings).
--   Prompts for a **Gemini API Key** (optional, get a free key at [aistudio.google.com](https://aistudio.google.com)) and writes it to a local `.env` configuration file.
+-   Prompts for a **Gemini API Key** (optional). You can configure keys for Gemini, Claude, and ChatGPT. Refer to the [AI Provider API Keys Guide](docs/guides/AI_PROVIDERS.md) for full instructions.
 -   Places a launch shortcut on your **Desktop**.
 
 ---

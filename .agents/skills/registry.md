@@ -163,6 +163,10 @@ Prevent "Duplicate ID" errors and callback collisions by maintaining a central m
 - `report-cache-store`: dcc.Store for session-based report caching.
 
 ### Settings Page (`/settings`)
+- `settings-ai-provider`: Dropdown selector for active AI provider (Gemini, Claude, ChatGPT).
+- `settings-ai-api-key-input`: Password input field for the selected AI provider's API key.
+- `settings-ai-test-btn`: Button to trigger testing the API key connection.
+- `settings-ai-test-status`: Text display showing the connection test result status.
 - `settings-investment-goal`: Dropdown selector for investment goal.
 - `settings-risk-tolerance`: Dropdown selector for risk tolerance.
 - `settings-tax-bracket`: Dropdown selector for tax bracket.

@@ -375,6 +375,7 @@ def register_setup_callbacks(app):
             save_setting("investment_goal", "Balanced")
             save_setting("risk_tolerance", "Moderate")
             save_setting("tax_bracket", "37%")
+            save_setting("ai_provider", "gemini")
 
             # Clear Gemini API key from database/env if skipped
             try:
@@ -393,6 +394,7 @@ def register_setup_callbacks(app):
             save_setting("investment_goal", goal or "Balanced")
             save_setting("risk_tolerance", risk or "Moderate")
             save_setting("tax_bracket", tax or "37%")
+            save_setting("ai_provider", "gemini")
 
             # Optionally save AI API Key if entered
             api_key_str = str(api_key).strip() if api_key else ""

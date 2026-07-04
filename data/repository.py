@@ -197,18 +197,19 @@ class PortfolioRepository:
         finally:
             conn.close()
 
-    def get_gemini_api_key(self) -> str | None:
-        """Retrieve the Gemini API key from database metadata."""
+    def get_api_key(self, provider: str) -> str | None:
+        """Retrieve the API key for a provider from database metadata."""
+        key_name = f"{provider.lower()}_api_key"
         conn = get_connection()
         try:
             row = conn.execute(
-                "SELECT value FROM app_metadata WHERE key = 'gemini_api_key'"
+                "SELECT value FROM app_metadata WHERE key = ?", (key_name,)
             ).fetchone()
             if row:
                 return row["value"]
             return None
         except Exception as e:
-            logger.error(f"Failed to get gemini_api_key from DB: {e}")
+            logger.error(f"Failed to get {key_name} from DB: {e}")
             return None
         finally:
             try:
@@ -216,24 +217,33 @@ class PortfolioRepository:
             except Exception:
                 pass
 
-    def set_gemini_api_key(self, api_key: str) -> None:
-        """Save the Gemini API key to database metadata."""
+    def set_api_key(self, provider: str, api_key: str) -> None:
+        """Save the API key for a provider to database metadata."""
+        key_name = f"{provider.lower()}_api_key"
         conn = get_connection()
         try:
             conn.execute(
                 """
-                INSERT INTO app_metadata (key, value) VALUES ('gemini_api_key', ?)
+                INSERT INTO app_metadata (key, value) VALUES (?, ?)
                 ON CONFLICT(key) DO UPDATE SET value = ?
                 """,
-                (api_key, api_key),
+                (key_name, api_key, api_key),
             )
             conn.commit()
-            logger.info("Successfully saved Gemini API key to database metadata.")
+            logger.info(f"Successfully saved {provider.capitalize()} API key to database metadata.")
         except Exception as e:
-            logger.error(f"Failed to save gemini_api_key to DB: {e}")
+            logger.error(f"Failed to save {key_name} to DB: {e}")
             conn.rollback()
         finally:
             conn.close()
+
+    def get_gemini_api_key(self) -> str | None:
+        """Retrieve the Gemini API key from database metadata."""
+        return self.get_api_key("gemini")
+
+    def set_gemini_api_key(self, api_key: str) -> None:
+        """Save the Gemini API key to database metadata."""
+        self.set_api_key("gemini", api_key)
 
     # ── Asset (Ticker Master) Methods ──────────────────────────────────────────
 

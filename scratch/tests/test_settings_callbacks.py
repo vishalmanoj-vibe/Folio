@@ -36,10 +36,9 @@ def test_load_user_settings_not_settings(mock_app: MockDashApp) -> None:
     load_func = mock_app.callbacks.get("load_user_settings")
     assert load_func is not None
 
-    # When not on /settings, all 9 outputs should be no_update
+    # When not on /settings, all 8 outputs should be no_update
     res = load_func("/portfolio")
     assert res == (
-        dash.no_update,
         dash.no_update,
         dash.no_update,
         dash.no_update,
@@ -59,8 +58,7 @@ def test_load_user_settings_success(mock_app: MockDashApp) -> None:
         "investment_goal": "Growth",
         "risk_tolerance": "High",
         "tax_bracket": "45%",
-        "ai_chat_model": "gemini-2.5-pro",
-        "ai_report_model": "gemini-2.5-pro",
+        "ai_provider": "gemini",
         "portfolio_benchmark": "^GSPC",
         "custom_benchmark": "SPY",
         "ai_persona": "Skeptical",
@@ -75,8 +73,7 @@ def test_load_user_settings_success(mock_app: MockDashApp) -> None:
             "Growth",
             "High",
             "45%",
-            "gemini-2.5-pro",
-            "gemini-2.5-pro",
+            "gemini",
             "^GSPC",
             "SPY",
             "Skeptical",
@@ -122,8 +119,10 @@ def test_save_user_settings(mock_app: MockDashApp) -> None:
             "Balanced",
             "Moderate",
             "37%",
+            "gemini",
             "m1",
             "m2",
+            "••••••••••••••••",
             "^AXJO",
             "",
             "Conservative",
@@ -138,8 +137,10 @@ def test_save_user_settings(mock_app: MockDashApp) -> None:
             "Balanced",
             "Moderate",
             "37%",
+            "gemini",
             "m1",
             "m2",
+            "••••••••••••••••",
             "^AXJO",
             "",
             "Conservative",
@@ -148,7 +149,7 @@ def test_save_user_settings(mock_app: MockDashApp) -> None:
         == dash.no_update
     )
 
-    # Success — 9 settings should be saved
+    # Success — 10 settings should be saved
     with patch("callbacks.settings_callbacks.save_setting") as mock_save:
         res = save_func(
             1,
@@ -156,16 +157,19 @@ def test_save_user_settings(mock_app: MockDashApp) -> None:
             "Balanced",
             "Moderate",
             "37%",
+            "gemini",
             "gemini-2.5-flash",
             "gemini-3.1-flash-lite",
+            "••••••••••••••••",
             "^GSPC",
             "SPY",
             "Skeptical",
             "15m",
         )
         assert "✓ Profile settings saved successfully" in res
-        assert mock_save.call_count == 9
+        assert mock_save.call_count == 10
         mock_save.assert_any_call("investment_goal", "Balanced")
+        mock_save.assert_any_call("ai_provider", "gemini")
         mock_save.assert_any_call("portfolio_benchmark", "^GSPC")
         mock_save.assert_any_call("ai_persona", "Skeptical")
         mock_save.assert_any_call("data_refresh_policy", "15m")

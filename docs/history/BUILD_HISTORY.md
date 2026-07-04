@@ -33,7 +33,7 @@ Please note that early development phases contain a version numbering typo (`v3.
     *   *Related Specs:* [spec_phase10_watchlist_reorder.md](../../.agents/production_artifacts/spec_phase10_watchlist_reorder.md), [spec_phase10_treemap_underlying.md](../../.agents/production_artifacts/spec_phase10_treemap_underlying.md), [spec_phase10_correlation_reactivity.md](../../.agents/production_artifacts/spec_phase10_correlation_reactivity.md), [spec_phase10_setup_prefetch.md](../../.agents/production_artifacts/spec_phase10_setup_prefetch.md)
 
 ### 3. [Onboarding, Packaging & Settings (Post-v2.0.0 Tracks)](BUILD_HISTORY_ONBOARDING_LIFECYCLE.md)
-*Covers macOS App bundle build, uv installers, browser lifecycle hooks, layman dictionaries, and onboarding settings wizard (v2.4.0 – v2.7.0).*
+*Covers macOS App bundle build, uv installers, browser lifecycle hooks, layman dictionaries, onboarding settings wizard, and multi-provider AI config (v2.4.0 – v2.8.0).*
 *   **Phase 7: Distribution, Packaging & Setup UX (v2.4.0)**: uv-based automatic installer scripts, macOS `.app` bundle, Windows startup launchers, and desktop shortcuts.
     *   *Related Specs:* [spec_phase11_packaging_uv.md](../../.agents/production_artifacts/spec_phase11_packaging_uv.md)
 *   **Phase 8: Browser-Close Graceful Shutdown (v2.5.0)**: `beforeunload` beacon tracking and debounced Flask termination to match browser lifetime.
@@ -41,3 +41,5 @@ Please note that early development phases contain a version numbering typo (`v3.
     *   *Related Specs:* [spec_phase13_readme_overhaul.md](../../.agents/production_artifacts/spec_phase13_readme_overhaul.md)
 *   **Phase 12: Investor Profile Settings in Onboarding Wizard (v2.7.0)**: Strategy setups, investment goal/riskTolerance dropdowns, SQLite profile persistence, and dynamic weights preview.
     *   *Related Specs:* [spec_phase14_onboarding_settings.md](../../.agents/production_artifacts/spec_phase14_onboarding_settings.md)
+*   **Phase 13: Multi-Provider AI Model Selection (v2.8.0)**: abstraction gateway (`services/ai_provider.py`), active provider selection, dynamic model options, API key test connection button, settings configuration UI.
+    *   *Related Specs:* [implementation_plan.md](../../.agents/production_artifacts/implementation_plan.md)

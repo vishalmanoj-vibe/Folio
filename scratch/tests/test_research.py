@@ -205,7 +205,7 @@ def test_build_portfolio_context(mock_portfolio_data: dict[str, Any]) -> None:
     assert "TICKER USER IS CONSIDERING BUYING: VAS" in context
 
 
-@patch("services.research_service.genai")
+@patch("services.ai_provider.chat_completion")
 @patch("services.research_service.should_search_web", return_value=True)
 @patch(
     "services.research_service.search_financial_news",
@@ -214,24 +214,15 @@ def test_build_portfolio_context(mock_portfolio_data: dict[str, Any]) -> None:
 def test_get_ai_response_success(
     mock_search: MagicMock,
     mock_should_search: MagicMock,
-    mock_genai: MagicMock,
+    mock_chat_completion: MagicMock,
     mock_portfolio_data: dict[str, Any],
 ) -> None:
-    """Assert AI response parses chat histories, runs web searches, and calls Gemini."""
+    """Assert AI response parses chat histories, runs web searches, and calls AI provider."""
     history = [{"role": "user", "content": "How is VAS looking?"}]
 
-    mock_client = MagicMock()
-    mock_genai.Client.return_value = mock_client
-
-    # Setup mock Gemini Chat and response
-    mock_chat = MagicMock()
-    mock_client.chats.create.return_value = mock_chat
-
-    mock_response = MagicMock()
-    mock_response.text = (
+    mock_chat_completion.return_value = (
         "VAS looks very strong based on your portfolio. Note: This is not financial advice."
     )
-    mock_chat.send_message.return_value = mock_response
 
     with patch.dict(os.environ, {"GEMINI_API_KEY": "dummy_key"}):
         reply = get_ai_response(history, mock_portfolio_data, ticker="VAS")
@@ -239,7 +230,7 @@ def test_get_ai_response_success(
     assert "VAS looks very strong" in reply
     mock_should_search.assert_called_once()
     mock_search.assert_called_once()
-    mock_chat.send_message.assert_called_once()
+    mock_chat_completion.assert_called_once()
 
 
 @patch.dict(os.environ, {}, clear=True)

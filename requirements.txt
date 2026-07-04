@@ -15,6 +15,8 @@ matplotlib>=3.8.0                    # Helper plotting framework for static char
 
 # ── AI Analyst & Document Generation ──────────────────────────────────────────
 google-genai>=1.30.0                 # Official SDK for Gemini AI portfolio risk analysis
+openai>=1.30.0                       # OpenAI ChatGPT SDK (optional)
+anthropic>=0.30.0                    # Anthropic Claude SDK (optional)
 python-dotenv>=1.0.0                 # Secure env variable loader (.env secrets)
 reportlab>=4.1.0                     # PDF rendering engine for weekly report downloads
 

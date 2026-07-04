@@ -47,6 +47,7 @@ data/*.db*
 !.agents/
 !.agents/**/*.md
 !.agents/**/*.py
+.Obsidian
 
 # ── One-off / scratch scripts ─────────────────────────────────────────────────
 scratch/*
@@ -75,3 +76,4 @@ dist/
 # They contain hardcoded absolute paths specific to each machine.
 Folio.command
 folio_launch.bat
+
