@@ -483,7 +483,7 @@ def register_setup_callbacks(app):
                     if provider == "gemini"
                     else ("gpt-4o-mini" if provider == "openai" else "claude-3-5-haiku-latest")
                 )
-                response = generate_content(test_prompt, model=test_model, max_tokens=10)
+                response = generate_content(test_prompt, model=test_model, max_tokens=150)
 
             if (
                 "error" in response.lower()
@@ -747,7 +747,7 @@ def register_setup_callbacks(app):
             return window.dash_clientside.no_update;
         }
         """,
-        Output("dummy-redirect-output", "children", allow_duplicate=True),
+        Output("setup-ready-redirect-dummy", "children"),
         Input("setup-ready-launch-btn", "n_clicks"),
         prevent_initial_call=True,
     )

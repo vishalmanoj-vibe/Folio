@@ -357,7 +357,7 @@ def register_callbacks(app):
                     if provider == "gemini"
                     else ("gpt-4o-mini" if provider == "openai" else "claude-3-5-haiku-latest")
                 )
-                response = generate_content(test_prompt, model=test_model, max_tokens=10)
+                response = generate_content(test_prompt, model=test_model, max_tokens=150)
 
             if (
                 "error" in response.lower()

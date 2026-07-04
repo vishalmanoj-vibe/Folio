@@ -112,6 +112,7 @@ def layout() -> html.Div:
                     ),
                     # Redirect / error feedback slot
                     html.Div(id="setup-ready-feedback"),
+                    html.Div(id="setup-ready-redirect-dummy", style={"display": "none"}),
                 ],
                 className="setup-card",
             ),
