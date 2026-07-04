@@ -727,23 +727,29 @@ def register_setup_callbacks(app):
                 return window.dash_clientside.no_update;
             }
 
-            // Periodically check if the server is back online, then redirect to root
+            console.log("Onboarding complete. Starting server restart polling...");
+
             function pollServer() {
-                fetch('/')
+                var cacheBuster = "?_cb=" + new Date().getTime();
+                console.log("Polling server...");
+                fetch('/' + cacheBuster)
                     .then(response => {
                         if (response.status === 200) {
+                            console.log("Server is back online! Redirecting to dashboard...");
                             window.location.href = '/';
                         } else {
+                            console.log("Server returned status " + response.status + ", retrying in 1s...");
                             setTimeout(pollServer, 1000);
                         }
                     })
-                    .catch(() => {
+                    .catch(err => {
+                        console.log("Server is offline, retrying in 1s...");
                         setTimeout(pollServer, 1000);
                     });
             }
 
-            // Wait 2.0s to let the server shut down first
-            setTimeout(pollServer, 2000);
+            // Wait 2.5s to let the server shut down first
+            setTimeout(pollServer, 2500);
             return window.dash_clientside.no_update;
         }
         """,
