@@ -56,6 +56,7 @@ if not os.environ.get("GEMINI_API_KEY"):
 import os
 import secrets
 import signal
+import subprocess
 import threading
 import time
 import webbrowser
@@ -650,7 +651,7 @@ def open_browser():
 
     if sys.platform == "darwin":
         # Guaranteed to use Safari on macOS
-        os.system("open -a Safari http://127.0.0.1:8050/")
+        subprocess.run(["open", "-a", "Safari", "http://127.0.0.1:8050/"], check=False)
     else:
         webbrowser.open_new("http://127.0.0.1:8050/")
 
@@ -665,8 +666,13 @@ def close_browser():
     if sys.platform == "darwin":
         logger.info("\n  Shutting down... closing browser tabs.")
         # Target both 127.0.0.1 and localhost in Safari
-        cmd_safari = 'osascript -e \'tell application "Safari" to close (every tab of every window whose URL contains "127.0.0.1:8050" or URL contains "localhost:8050")\' 2>/dev/null'
-        os.system(cmd_safari)
+        cmd_safari = 'tell application "Safari" to close (every tab of every window whose URL contains "127.0.0.1:8050" or URL contains "localhost:8050")'
+        subprocess.run(
+            ["osascript", "-e", cmd_safari],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            check=False,
+        )
 
 
 # ── Browser-Close Shutdown Flask Routes ──────────────────────────────────────
