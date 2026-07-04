@@ -42,4 +42,6 @@ Please note that early development phases contain a version numbering typo (`v3.
 *   **Phase 12: Investor Profile Settings in Onboarding Wizard (v2.7.0)**: Strategy setups, investment goal/riskTolerance dropdowns, SQLite profile persistence, and dynamic weights preview.
     *   *Related Specs:* [spec_phase14_onboarding_settings.md](../../.agents/production_artifacts/spec_phase14_onboarding_settings.md)
 *   **Phase 13: Multi-Provider AI Model Selection (v2.8.0)**: abstraction gateway (`services/ai_provider.py`), active provider selection, dynamic model options, API key test connection button, settings configuration UI.
-    *   *Related Specs:* [implementation_plan.md](../../.agents/production_artifacts/implementation_plan.md)
+    *   *Related Specs:* [spec_phase13_multi_provider.md](../../.agents/production_artifacts/spec_phase13_multi_provider.md)
+*   **Phase 14: Onboarding Graceful Restart (v2.9.0)**: Graceful Dash process restart using exit code 3 upon onboarding completion, enabling clean reload of initial holdings and transactions.
+    *   *Related Specs:* [spec_phase15_graceful_restart.md](../../.agents/production_artifacts/spec_phase15_graceful_restart.md)

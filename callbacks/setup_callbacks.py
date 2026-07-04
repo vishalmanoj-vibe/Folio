@@ -706,6 +706,19 @@ def register_setup_callbacks(app):
             logger.error(f"Onboarding: failed to enqueue data fetch tasks: {e}")
             return no_update, True  # Keep interval disabled
 
+    def request_restart():
+        """Request a graceful restart of the Dash server process."""
+        import os
+        import threading
+
+        def _do_restart():
+            logger.info("Restarting Dash server process (onboarding completed)...")
+            os._exit(3)
+
+        timer = threading.Timer(1.0, _do_restart)
+        timer.daemon = True
+        timer.start()
+
     @app.callback(
         Output("url", "pathname", allow_duplicate=True),
         Output("setup-is-first-run-store", "data", allow_duplicate=True),
@@ -739,6 +752,9 @@ def register_setup_callbacks(app):
                 repo.set_onboarding_completed(True)
             except Exception as e:
                 logger.error(f"Failed to save persistent onboarding state: {e}")
+
+            # Request a graceful restart to reload startup states
+            request_restart()
 
             # Data fetch tasks were already enqueued by auto_start_fetch on page load.
             # Turn off first-run flag and redirect to the main dashboard.

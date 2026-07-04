@@ -72,7 +72,17 @@ This document details the desktop integration, installer automation, graceful sh
 *   **Dynamic Options & Prefilled Masked Keys**: Wrote Dash callbacks (`callbacks/settings_callbacks.py` and `callbacks/setup_callbacks.py`) to dynamically filter model options based on the active provider (e.g. Claude Sonnet vs GPT-4o vs Gemini Flash) and prefill a masked `••••••••••••••••` API key representation if a key already exists in environment variables or database metadata.
 *   **Test Connection Action**: Added a **Test Connection** button to both Settings and Onboarding pages. This validates the API key live by issuing a tiny test completion request to the active provider and returns immediate color-coded success/failure feedback in the UI.
 *   **Consumer Migration**: Migrated all four AI-consuming services (`services/ai_engine.py` for signals, `services/research_service.py` for chat, `services/sentiment_service.py` for sentiment, and `services/report_service.py` for PDF commentaries) to call the unified `ai_provider` interface instead of hardcoding `google.genai` imports.
-*   **API Keys Setup Guide**: Created a comprehensive user-facing markdown documentation guide at [docs/guides/AI_PROVIDERS.md](file:///Users/vishal/Library/CloudStorage/OneDrive-Personal/Projects/portfolio_dashboard/docs/guides/AI_PROVIDERS.md) with instructions to acquire keys for Google Gemini, OpenAI, and Anthropic. Linked it directly in the root `README.md`.
+*   **API Keys Setup Guide**: Created a comprehensive user-facing markdown documentation guide at [docs/guides/AI_PROVIDERS.md](../guides/AI_PROVIDERS.md) with instructions to acquire keys for Google Gemini, OpenAI, and Anthropic. Linked it directly in the root `README.md`.
 *   **Unit Test Suite Updates**: Updated and expanded the unit tests in `scratch/tests/test_ai_engine.py`, `scratch/tests/test_research.py`, `scratch/tests/test_settings_callbacks.py`, and `scratch/tests/test_setup_callbacks.py` to match the refactored providers, dynamic options, test validations, and signature arguments.
 *   **Files Changed**: `services/ai_provider.py` (new), `docs/guides/AI_PROVIDERS.md` (new), `pages/settings.py`, `pages/setup_ai.py`, `callbacks/settings_callbacks.py`, `callbacks/setup_callbacks.py`, `services/ai_engine.py`, `services/research_service.py`, `services/sentiment_service.py`, `services/report_service.py`, `data/repository.py`, `data/settings_repository.py`, `config/settings.py`, `requirements.txt`, `.env.example`, `README.md`, `.agents/skills/registry.md`, `docs/reference/callback_ownership.md`, `scratch/tests/test_ai_engine.py`, `scratch/tests/test_research.py`, `scratch/tests/test_settings_callbacks.py`, `scratch/tests/test_setup_callbacks.py`.
+
+---
+
+## Phase 14: Onboarding Graceful Restart (v2.9.0)
+**Theme**: Life-cycle synchronization — reloading startup configurations automatically upon onboarding completion.
+
+*   **Exit Code Restart**: Added process restart capability via exit code `3`. The Dash process requests a restart upon onboarding completion by calling a utility `request_restart()` which launches a 1-second delayed background thread to invoke `os._exit(3)`.
+*   **Launcher Integration**: Upgraded the `launcher.py` process manager to intercept exit code `3` from the Dash process. It logs the restart request cleanly and immediately boots up a fresh Dash UI process, bypassing the crash warning.
+*   **Startup Hydration**: On restart, the new Dash process loads the newly-configured holdings and transactions from the database at startup, resolving loading issues on dependent pages.
+*   **Files Changed**: `launcher.py`, `callbacks/setup_callbacks.py`, `GEMINI.md`.
 

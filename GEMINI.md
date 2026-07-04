@@ -117,6 +117,7 @@ Then read these documents **in order**:
 - **UI Transitions**: All theme-aware elements (body, cards, nav) MUST have a 200ms CSS transition on `background-color`, `color`, and `border-color` to prevent jarring theme snaps.
 - **Data Freshness**: The header status indicator MUST accurately reflect `is_market_open(include_auction=False)` with a pulsing green dot during trading and a static grey dot otherwise.
 - **Diagnostic/Test Scripts**: All diagnostic, test, benchmark, or throwaway scripts and code MUST be saved exclusively in the `scratch/` folder to prevent codebase clutter and directory pollution.
+- **Absolute Paths**: Never include absolute paths (e.g. pointing to local user directories like `file:///Users/...`) in any documentation or spec files. Use relative links instead.
 
 ## Self-Improvement
 - After every task, evaluate if a new Rule or Skill should be added to the `.agents/` directory to prevent repeating mistakes or to codify successful new patterns.

@@ -1,6 +1,6 @@
 # Callback Output Index — Auto-Generated
 
-> **Generated**: 2026-07-04 15:45  
+> **Generated**: 2026-07-04 15:56  
 > **Do not edit** — run `python .agents/generated/sync_docs.py` to refresh.
 > For ownership intent and architecture notes, see `docs/reference/callback_ownership.md`.
 
@@ -185,21 +185,21 @@
 | `setup-ai-feedback` | `children` | 505 |  |  |
 | `setup-init-tasks-store` | `data` | 607 |  |  |
 | `setup-poll-interval` | `disabled` | 608 |  |  |
-| `url` | `pathname` | 710 | ✓ |  |
-| `setup-is-first-run-store` | `data` | 711 | ✓ |  |
-| `setup-ready-feedback` | `children` | 712 |  |  |
-| `setup-init-step-list` | `children` | 755 |  |  |
-| `setup-init-progress-label` | `children` | 756 |  |  |
-| `setup-init-progress-bar` | `style` | 757 |  |  |
-| `setup-init-status-msg` | `children` | 758 |  |  |
-| `setup-ready-launch-btn` | `disabled` | 759 |  |  |
-| `setup-poll-interval` | `disabled` | 760 | ✓ |  |
-| `setup-init-tasks-store` | `data` | 761 | ✓ |  |
-| `setup-ready-summary` | `children` | 762 |  |  |
-| `setup-ready-summary` | `style` | 763 |  |  |
-| `setup-init-progress-container` | `style` | 764 |  |  |
-| `setup-init-title` | `children` | 765 |  |  |
-| `setup-init-subtitle` | `children` | 766 |  |  |
+| `url` | `pathname` | 723 | ✓ |  |
+| `setup-is-first-run-store` | `data` | 724 | ✓ |  |
+| `setup-ready-feedback` | `children` | 725 |  |  |
+| `setup-init-step-list` | `children` | 771 |  |  |
+| `setup-init-progress-label` | `children` | 772 |  |  |
+| `setup-init-progress-bar` | `style` | 773 |  |  |
+| `setup-init-status-msg` | `children` | 774 |  |  |
+| `setup-ready-launch-btn` | `disabled` | 775 |  |  |
+| `setup-poll-interval` | `disabled` | 776 | ✓ |  |
+| `setup-init-tasks-store` | `data` | 777 | ✓ |  |
+| `setup-ready-summary` | `children` | 778 |  |  |
+| `setup-ready-summary` | `style` | 779 |  |  |
+| `setup-init-progress-container` | `style` | 780 |  |  |
+| `setup-init-title` | `children` | 781 |  |  |
+| `setup-init-subtitle` | `children` | 782 |  |  |
 
 ## `signals_callbacks.py`
 
