@@ -455,10 +455,10 @@ def register_callbacks(app) -> None:
         if portfolio_data and "holdings" in portfolio_data:
             portfolio_tickers = [h["ticker"] for h in portfolio_data["holdings"]]
 
-        # Merge with defaults and portfolio, user URLs override
-        all_tickers = sorted(
-            set(list(PROVIDER_SEED_URLS.keys()) + list(user_urls.keys()) + portfolio_tickers)
-        )
+        # Only show tickers the user actually holds or has custom-configured.
+        # PROVIDER_SEED_URLS are still used for data fetching (lookup below) but
+        # we don't pre-populate the table with unheld default tickers.
+        all_tickers = sorted(set(list(user_urls.keys()) + portfolio_tickers))
 
         if not all_tickers:
             return html.P(

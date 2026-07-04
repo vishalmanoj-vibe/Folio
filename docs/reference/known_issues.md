@@ -410,3 +410,34 @@ Change `prevent_initial_call=False` on the settings rendering/hydration callback
 **Fix**:
 Modify `get_benchmarks_db()` to read the user's current benchmark preferences from settings. If the user's preferred index symbol is missing from the cached database records, return `None` immediately. This triggers the Dash UI callback to enqueue a background fetch task to pull the missing index via yfinance.
 
+---
+
+## BUG-023 · Empty Browser Page After Onboarding Restart
+
+**Status**: Fixed  
+**Files affected**: `callbacks/setup_callbacks.py` (clientside `pollServer`)  
+**Symptom**: After clicking "Restart and Launch Dashboard", the browser navigates to `/` but the page is blank — no layout, no data.
+
+**Root Cause**:  
+The `pollServer` function polled `GET /` (the Flask root route). Flask's WSGI layer responds with HTTP 200 as soon as the Flask server is bound and listening — **before** Dash has finished registering all pages, callbacks, and the layout. The browser therefore arrived at `/` while Dash was still initialising its callback graph, producing an empty render.
+
+**Fix Pattern**:
+Poll `/_dash-layout` instead of `/`. This Dash-internal endpoint is only registered and returns 200 **after** the Dash application object has fully initialised all layouts. This is a reliable sentinel for "Dash is ready".  
+Add a `1s` post-confirmation delay before `window.location.href = '/'` to allow the new process's `startup-interval` to fire first.  
+Increase initial shutdown wait from `2500ms` to `3500ms` to account for Python multiprocess cold-start time.
+
+```js
+// ❌ BROKEN — Flask responds before Dash is ready
+fetch('/' + cacheBuster)
+
+// ✅ FIXED — only 200s after Dash has fully initialised
+fetch('/_dash-layout' + cacheBuster)
+    .then(response => {
+        if (response.status === 200) {
+            setTimeout(function() { window.location.href = '/'; }, 1000);
+        }
+    })
+```
+
+**Prevention**: Any future restart/reload polling must target `/_dash-layout`, never the root path.
+

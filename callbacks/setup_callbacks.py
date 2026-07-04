@@ -730,15 +730,23 @@ def register_setup_callbacks(app):
             console.log("Onboarding complete. Starting server restart polling...");
 
             function pollServer() {
+                // Poll /_dash-layout — it only responds 200 once Dash has fully
+                // registered all pages and callbacks. The root '/' path returns
+                // 200 as soon as Flask starts, before Dash is ready, which
+                // causes the browser to land on an empty page.
                 var cacheBuster = "?_cb=" + new Date().getTime();
-                console.log("Polling server...");
-                fetch('/' + cacheBuster)
+                console.log("Polling server (/_dash-layout)...");
+                fetch('/_dash-layout' + cacheBuster)
                     .then(response => {
                         if (response.status === 200) {
-                            console.log("Server is back online! Redirecting to dashboard...");
-                            window.location.href = '/';
+                            console.log("Dash fully ready! Redirecting to dashboard in 1s...");
+                            // Small delay to let the startup-interval fire on the
+                            // new process before we arrive.
+                            setTimeout(function() {
+                                window.location.href = '/';
+                            }, 1000);
                         } else {
-                            console.log("Server returned status " + response.status + ", retrying in 1s...");
+                            console.log("Dash not ready (status " + response.status + "), retrying in 1s...");
                             setTimeout(pollServer, 1000);
                         }
                     })
@@ -748,8 +756,8 @@ def register_setup_callbacks(app):
                     });
             }
 
-            // Wait 2.5s to let the server shut down first
-            setTimeout(pollServer, 2500);
+            // Wait 3.5s to let the old process shut down and the new one start
+            setTimeout(pollServer, 3500);
             return window.dash_clientside.no_update;
         }
         """,

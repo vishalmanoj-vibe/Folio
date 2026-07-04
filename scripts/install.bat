@@ -70,7 +70,7 @@ REM ── Step 4: Playwright WebKit ──────────────�
 echo.
 echo [4/5] Installing Playwright WebKit browser...
 
-"%FOLIO_DIR%\.venv\Scripts\playwright" install webkit 2>NUL || (
+"%FOLIO_DIR%\.venv\Scripts\playwright" install webkit || (
     echo  WARNING: Playwright had warnings — usually fine.
     echo  If ETF scraping fails, run: uv run playwright install webkit
 )

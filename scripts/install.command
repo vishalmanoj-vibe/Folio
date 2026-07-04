@@ -73,7 +73,7 @@ print_ok "All packages installed"
 # ── Step 4: Playwright WebKit ─────────────────────────────────────────────────
 print_step "Installing Playwright WebKit browser (ETF data scraper)..."
 
-"$FOLIO_DIR/.venv/bin/playwright" install webkit --quiet 2>/dev/null || {
+"$FOLIO_DIR/.venv/bin/playwright" install webkit || {
     print_warn "Playwright install had warnings — usually fine."
     print_warn "If ETF scraping fails later, run: uv run playwright install webkit"
 }

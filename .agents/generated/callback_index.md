@@ -1,12 +1,12 @@
 # Callback Output Index — Auto-Generated
 
-> **Generated**: 2026-07-04 15:56  
+> **Generated**: 2026-07-04 16:47  
 > **Do not edit** — run `python .agents/generated/sync_docs.py` to refresh.
 > For ownership intent and architecture notes, see `docs/reference/callback_ownership.md`.
 
 ---
 
-**Total outputs indexed**: 207 across 13 files
+**Total outputs indexed**: 208 across 13 files
 
 ## `app.py`
 
@@ -161,45 +161,46 @@
 
 | Output ID | Property | Line | Duplicate? | Pattern? |
 |-----------|----------|------|-----------|---------|
-| `dummy-redirect-output` | `children` | 219 |  |  |
-| `setup-portfolio-table-body` | `children` | 226 |  |  |
-| `setup-portfolio-rows-store` | `data` | 235 |  |  |
-| `setup-portfolio-rows-store` | `data` | 249 | ✓ |  |
-| `setup-portfolio-continue-btn` | `disabled` | 277 |  |  |
-| `url` | `pathname` | 298 | ✓ |  |
-| `setup-portfolio-feedback` | `children` | 299 |  |  |
-| `txn-store` | `data` | 300 | ✓ |  |
-| `setup-investment-goal` | `value` | 355 |  |  |
-| `setup-risk-tolerance` | `value` | 356 |  |  |
-| `setup-tax-bracket` | `value` | 357 |  |  |
-| `setup-ai-provider` | `value` | 358 |  |  |
-| `setup-chat-model` | `options` | 379 |  |  |
-| `setup-chat-model` | `value` | 380 |  |  |
-| `setup-report-model` | `options` | 381 |  |  |
-| `setup-report-model` | `value` | 382 |  |  |
-| `setup-ai-api-key` | `placeholder` | 383 |  |  |
-| `setup-ai-api-key` | `value` | 384 |  |  |
-| `setup-ai-test-status` | `children` | 444 |  |  |
-| `setup-ai-test-status` | `style` | 445 |  |  |
-| `url` | `pathname` | 504 | ✓ |  |
-| `setup-ai-feedback` | `children` | 505 |  |  |
-| `setup-init-tasks-store` | `data` | 607 |  |  |
-| `setup-poll-interval` | `disabled` | 608 |  |  |
-| `url` | `pathname` | 723 | ✓ |  |
-| `setup-is-first-run-store` | `data` | 724 | ✓ |  |
-| `setup-ready-feedback` | `children` | 725 |  |  |
-| `setup-init-step-list` | `children` | 771 |  |  |
-| `setup-init-progress-label` | `children` | 772 |  |  |
-| `setup-init-progress-bar` | `style` | 773 |  |  |
-| `setup-init-status-msg` | `children` | 774 |  |  |
-| `setup-ready-launch-btn` | `disabled` | 775 |  |  |
-| `setup-poll-interval` | `disabled` | 776 | ✓ |  |
-| `setup-init-tasks-store` | `data` | 777 | ✓ |  |
-| `setup-ready-summary` | `children` | 778 |  |  |
-| `setup-ready-summary` | `style` | 779 |  |  |
-| `setup-init-progress-container` | `style` | 780 |  |  |
-| `setup-init-title` | `children` | 781 |  |  |
-| `setup-init-subtitle` | `children` | 782 |  |  |
+| `dummy-redirect-output` | `children` | 220 |  |  |
+| `setup-portfolio-table-body` | `children` | 227 |  |  |
+| `setup-portfolio-rows-store` | `data` | 236 |  |  |
+| `setup-portfolio-rows-store` | `data` | 250 | ✓ |  |
+| `setup-portfolio-continue-btn` | `disabled` | 278 |  |  |
+| `url` | `pathname` | 299 | ✓ |  |
+| `setup-portfolio-feedback` | `children` | 300 |  |  |
+| `txn-store` | `data` | 301 | ✓ |  |
+| `setup-investment-goal` | `value` | 356 |  |  |
+| `setup-risk-tolerance` | `value` | 357 |  |  |
+| `setup-tax-bracket` | `value` | 358 |  |  |
+| `setup-ai-provider` | `value` | 359 |  |  |
+| `setup-chat-model` | `options` | 380 |  |  |
+| `setup-chat-model` | `value` | 381 |  |  |
+| `setup-report-model` | `options` | 382 |  |  |
+| `setup-report-model` | `value` | 383 |  |  |
+| `setup-ai-api-key` | `placeholder` | 384 |  |  |
+| `setup-ai-api-key` | `value` | 385 |  |  |
+| `setup-ai-test-status` | `children` | 445 |  |  |
+| `setup-ai-test-status` | `style` | 446 |  |  |
+| `url` | `pathname` | 505 | ✓ |  |
+| `setup-ai-feedback` | `children` | 506 |  |  |
+| `setup-init-tasks-store` | `data` | 608 |  |  |
+| `setup-poll-interval` | `disabled` | 609 |  |  |
+| `setup-ready-redirect-dummy` | `children` | 764 |  |  |
+| `url` | `pathname` | 770 | ✓ |  |
+| `setup-is-first-run-store` | `data` | 771 | ✓ |  |
+| `setup-ready-feedback` | `children` | 772 |  |  |
+| `setup-init-step-list` | `children` | 833 |  |  |
+| `setup-init-progress-label` | `children` | 834 |  |  |
+| `setup-init-progress-bar` | `style` | 835 |  |  |
+| `setup-init-status-msg` | `children` | 836 |  |  |
+| `setup-ready-launch-btn` | `disabled` | 837 |  |  |
+| `setup-poll-interval` | `disabled` | 838 | ✓ |  |
+| `setup-init-tasks-store` | `data` | 839 | ✓ |  |
+| `setup-ready-summary` | `children` | 840 |  |  |
+| `setup-ready-summary` | `style` | 841 |  |  |
+| `setup-init-progress-container` | `style` | 842 |  |  |
+| `setup-init-title` | `children` | 843 |  |  |
+| `setup-init-subtitle` | `children` | 844 |  |  |
 
 ## `signals_callbacks.py`
 
