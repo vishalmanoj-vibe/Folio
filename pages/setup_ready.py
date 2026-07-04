@@ -101,7 +101,7 @@ def layout() -> html.Div:
                                 type="button",
                             ),
                             html.Button(
-                                "Launch Dashboard",
+                                "Restart and Launch Dashboard",
                                 id="setup-ready-launch-btn",
                                 className="setup-btn-primary",
                                 type="button",

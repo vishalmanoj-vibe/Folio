@@ -13,6 +13,7 @@ from datetime import datetime
 from typing import Any, cast
 
 import dash
+import dash_mantine_components as dmc
 from dash import ALL, Input, Output, State, dcc, html, no_update
 
 from data.repository import PortfolioRepository
@@ -719,6 +720,38 @@ def register_setup_callbacks(app):
         timer.daemon = True
         timer.start()
 
+    app.clientside_callback(
+        """
+        function(n_clicks) {
+            if (!n_clicks || n_clicks < 1) {
+                return window.dash_clientside.no_update;
+            }
+
+            // Periodically check if the server is back online, then redirect to root
+            function pollServer() {
+                fetch('/')
+                    .then(response => {
+                        if (response.status === 200) {
+                            window.location.href = '/';
+                        } else {
+                            setTimeout(pollServer, 1000);
+                        }
+                    })
+                    .catch(() => {
+                        setTimeout(pollServer, 1000);
+                    });
+            }
+
+            // Wait 2.0s to let the server shut down first
+            setTimeout(pollServer, 2000);
+            return window.dash_clientside.no_update;
+        }
+        """,
+        Output("dummy-redirect-output", "children", allow_duplicate=True),
+        Input("setup-ready-launch-btn", "n_clicks"),
+        prevent_initial_call=True,
+    )
+
     @app.callback(
         Output("url", "pathname", allow_duplicate=True),
         Output("setup-is-first-run-store", "data", allow_duplicate=True),
@@ -757,11 +790,26 @@ def register_setup_callbacks(app):
             request_restart()
 
             # Data fetch tasks were already enqueued by auto_start_fetch on page load.
-            # Turn off first-run flag and redirect to the main dashboard.
+            # Turn off first-run flag. Redirect is handled clientside by pollServer.
             return (
                 dash.no_update,
                 False,
-                dcc.Location(pathname="/", id="setup-redir-home", refresh=True),
+                html.Div(
+                    [
+                        html.Span(
+                            "Restarting server and launching dashboard...",
+                            style={"marginRight": "8px"},
+                        ),
+                        dmc.Loader(size="xs", color="blue", variant="dots"),
+                    ],
+                    style={
+                        "display": "flex",
+                        "alignItems": "center",
+                        "gap": "8px",
+                        "color": "var(--t-sec)",
+                        "fontSize": "13px",
+                    },
+                ),
             )
 
         return dash.no_update, dash.no_update, dash.no_update
@@ -883,7 +931,7 @@ def register_setup_callbacks(app):
                 new_title = "Dashboard Ready!"
                 new_subtitle = (
                     "All market data has been loaded. "
-                    "Click 'Launch Dashboard' to open your portfolio."
+                    "Click 'Restart and Launch Dashboard' to open your portfolio."
                 )
                 bar_style = {"width": "100%", "transition": "width 0.6s ease"}
                 progress_label = f"{total} of {total} tasks complete"

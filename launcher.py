@@ -109,6 +109,9 @@ class FolioLauncher:
             # 1. Start Dash if not running (only reached on crash or restart request)
             if not self.dash_process or not self.dash_process.is_alive():
                 if self.dash_process:
+                    import os
+
+                    os.environ["FOLIO_RESTARTED"] = "1"
                     if exit_code == 3:
                         logger.info("Starting new Dash UI process...")
                     else:

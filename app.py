@@ -770,8 +770,11 @@ if __name__ == "__main__":
     # ── Background Worker ─────────────────
     # Worker is now managed by launcher.py as a separate process.
 
-    # Start browser after a short delay
-    threading.Timer(1.5, open_browser).start()
+    # Start browser after a short delay if not restarted
+    if os.getenv("FOLIO_RESTARTED") != "1":
+        threading.Timer(1.5, open_browser).start()
+    else:
+        logger.info("Dash process restarted; skipping automatic browser tab launch.")
 
     try:
         app.run(debug=False, port=8050)
