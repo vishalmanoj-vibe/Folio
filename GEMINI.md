@@ -12,12 +12,12 @@ This regenerates `.agents/generated/callback_index.md` and `.agents/generated/st
 
 Then read these documents **in order**:
 
-0. **`.agents/project_map.md`** — Navigation index. Find which doc and which file to look at for any task.
-1. **`.agents/skills/registry.md`** — Component ID registry. Check for ID collisions before writing any layout.
-2. **`docs/reference/callback_ownership.md`** — Output ownership map. Verify the Output ID is not already owned before adding a callback. For exact line numbers, also check `.agents/generated/callback_index.md`.
-3. **`docs/reference/store_contracts.md`** — Exact JSON shapes for `portfolio-store`, `signals-store`, `watchlist-store`. Never guess the shape.
-4. **`docs/reference/known_issues.md`** — Bug registry. If you're touching a chart, callback, or store, confirm you're not re-introducing a known bug.
-5. **This file (GEMINI.md)** — Architecture rules. Read the relevant section for what you're changing.
+0. **[`.agents/project_map.md`](.agents/project_map.md)** — Navigation index. Find which doc and which file to look at for any task.
+1. **[`.agents/skills/registry.md`](.agents/skills/registry.md)** — Component ID registry. Check for ID collisions before writing any layout.
+2. **[`docs/reference/callback_ownership.md`](docs/reference/callback_ownership.md)** — Output ownership map. Verify the Output ID is not already owned before adding a callback. For exact line numbers, also check [`.agents/generated/callback_index.md`](.agents/generated/callback_index.md).
+3. **[`docs/reference/store_contracts.md`](docs/reference/store_contracts.md)** — Exact JSON shapes for `portfolio-store`, `signals-store`, `watchlist-store`. Never guess the shape.
+4. **[`docs/reference/known_issues.md`](docs/reference/known_issues.md)** — Bug registry. If you're touching a chart, callback, or store, confirm you're not re-introducing a known bug.
+5. **This file ([`GEMINI.md`](GEMINI.md))** — Architecture rules. Read the relevant section for what you're changing.
 6. **The specific file you're editing** — Read the full function/callback before changing any line.
 
 > Skipping steps 1–4 is the single biggest source of regressions in this project.

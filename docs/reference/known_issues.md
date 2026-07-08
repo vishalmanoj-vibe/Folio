@@ -1,4 +1,9 @@
 # Known Issues — Folio
+
+---
+Related: [`GEMINI.md`](../../GEMINI.md) | [`project_map.md`](../../.agents/project_map.md)
+---
+
 ## "Never Repeat This" Bug Registry
 
 > These are confirmed, production bugs that have already been fixed.
@@ -10,7 +15,7 @@
 ## BUG-001 · Plotly `update_layout` TypeError (Silent White Chart)
 
 **Status**: Fixed  
-**Files affected**: Any chart builder in `components/charts/`  
+**Files affected**: Any chart builder in [`components/charts/`](../../components/charts/)  
 **Symptom**: Chart renders as a stark white grid; no visible Python error, but browser console shows a 500.
 
 **Root Cause**:
@@ -26,14 +31,14 @@ layout_args["margin"] = dict(t=10, b=10)
 fig.update_layout(**layout_args)
 ```
 
-**Prevention**: `apply_standard_layout()` in `components/charts/helpers.py` handles this pattern correctly. Always use it instead of calling `update_layout` directly.
+**Prevention**: `apply_standard_layout()` in [`components/charts/helpers.py`](../../components/charts/helpers.py) handles this pattern correctly. Always use it instead of calling `update_layout` directly.
 
 ---
 
 ## BUG-002 · Pattern-Matching "Ghost" Click
 
 **Status**: Fixed  
-**Files affected**: `callbacks/watchlist_callbacks.py` (remove button callback)  
+**Files affected**: [`callbacks/watchlist_callbacks.py`](../../callbacks/watchlist_callbacks.py) (remove button callback)  
 **Symptom**: Dynamic table rows trigger their own removal callback immediately on creation, deleting themselves before the user interacts.
 
 **Root Cause**:
@@ -57,7 +62,7 @@ if not ctx.triggered or not ctx.triggered[0]["value"] or ctx.triggered[0]["value
 ## BUG-003 · `scaleanchor` Y-axis Misalignment (Candlestick Chart)
 
 **Status**: Fixed  
-**Files affected**: `components/charts/` (any chart using multiple Y axes)  
+**Files affected**: [`components/charts/`](../../components/charts/) (any chart using multiple Y axes)  
 **Symptom**: Volume bars render overlapping the price candles; chart proportions look wrong.
 
 **Root Cause**:
@@ -79,7 +84,7 @@ fig.update_layout(
 ## BUG-004 · `dcc.Loading` Spinner Never Fires
 
 **Status**: Fixed  
-**Files affected**: `pages/positions.py`, `components/watchlist_layout.py`  
+**Files affected**: [`pages/positions.py`](../../pages/positions.py), [`components/watchlist_layout.py`](../../components/watchlist_layout.py)  
 **Symptom**: A loading spinner wrapping a button never shows during a long-running callback.
 
 **Root Cause**:
@@ -102,7 +107,7 @@ dcc.Loading(
 ## BUG-005 · Intelligence Chart Blank on Forecast Toggle
 
 **Status**: Fixed  
-**Files affected**: `callbacks/intelligence_callbacks.py`, `components/charts/`  
+**Files affected**: [`callbacks/intelligence_callbacks.py`](../../callbacks/intelligence_callbacks.py), [`components/charts/`](../../components/charts/)  
 **Symptom**: The equity forecast chart goes blank when the user toggles the forecast switch.
 
 **Root Cause**:
@@ -121,7 +126,7 @@ fig.update_layout(uirevision=f"pred_{pred_on}")
 ## BUG-006 · Interval-Triggered Chat Reset
 
 **Status**: Fixed  
-**Files affected**: `callbacks/research_callbacks.py`  
+**Files affected**: [`callbacks/research_callbacks.py`](../../callbacks/research_callbacks.py)  
 **Symptom**: Chat conversation history is wiped every 30 seconds.
 
 **Root Cause**:
@@ -170,6 +175,7 @@ def init_chat(pathname, current_history):
 **Fix**: Use public helpers only. Never import private `_extract_col`:
 ```python
 from services.market.data_fetcher import extract_close, get_full_history_cache
+# See: [`services/market/data_fetcher.py`](../../services/market/data_fetcher.py)
 
 # ✅ Correct
 close_series = extract_close(df, "CBA.AX")  # Returns pd.Series
@@ -180,7 +186,7 @@ close_series = extract_close(df, "CBA.AX")  # Returns pd.Series
 ## BUG-009 · yfinance Returns 0.0 Price During ASX Off-Hours
 
 **Status**: Fixed  
-**Files affected**: `services/market/data_fetcher.py`  
+**Files affected**: [`services/market/data_fetcher.py`](../../services/market/data_fetcher.py)  
 **Symptom**: Portfolio P&L shows $0 or NaN for all ASX positions outside trading hours.
 
 **Root Cause**:
@@ -200,7 +206,7 @@ if not price or price == 0.0:
 ## BUG-010 · Gemini API `request_options` SDK Incompatibility
 
 **Status**: Fixed  
-**Files affected**: `services/ai_engine.py`  
+**Files affected**: [`services/ai_engine.py`](../../services/ai_engine.py)  
 **Symptom**: `TypeError` on AI analysis calls; requests never complete.
 
 **Root Cause**: The Gemini Python SDK does not accept a `request_options` kwarg in `generate_content()`. Passing it causes an immediate crash.
@@ -212,7 +218,7 @@ if not price or price == 0.0:
 ## BUG-011 · Backend Memory Thrashing via task-poll-interval Feedback Loop
 
 **Status**: Fixed  
-**Files affected**: `callbacks/chart_callbacks.py`  
+**Files affected**: [`callbacks/chart_callbacks.py`](../../callbacks/chart_callbacks.py)  
 **Symptom**: RAM usage on landing page balloons from 200MB to 1.2GB.
 
 **Root Cause**: Wrapping a heavy graph generation callback (like `pnl_history_chart`) with a high-frequency polling trigger `Input("task-poll-interval", "n_intervals")` causes the entire chart to rebuild every 2 seconds when any background task is running. This creates massive pandas and Plotly figure allocations that Python's memory manager cannot reclaim fast enough.
@@ -224,7 +230,7 @@ if not price or price == 0.0:
 ## BUG-012 · MutationObserver Cascade Feedback Loop (Browser Tab Freeze)
 
 **Status**: Fixed  
-**Files affected**: `assets/sync_hover.js`, `assets/countup.js`  
+**Files affected**: [`assets/sync_hover.js`](../../assets/sync_hover.js), [`assets/countup.js`](../../assets/countup.js)  
 **Symptom**: Browser tab chews up high CPU and memory, sometimes freezing.
 
 **Root Cause**: Setting `MutationObserver` on `document.body` with `{ childList: true, subtree: true }` intercepts every DOM update. Because Plotly rendering generates hundreds of minor DOM updates during creation, the observer fires continuously. If the observer callback queries the DOM and unbinds/re-binds event listeners (or updates text node content), it creates an infinite feedback loop of mutations.
@@ -240,7 +246,7 @@ if not price or price == 0.0:
 ## BUG-013 · Missing Previous-Day Lookback in Intraday P&L Chart (1d)
 
 **Status**: Fixed  
-**Files affected**: `components/charts/pnl_history.py`, `services/market/data_fetcher.py`  
+**Files affected**: [`components/charts/pnl_history.py`](../../components/charts/pnl_history.py), [`services/market/data_fetcher.py`](../../services/market/data_fetcher.py)  
 **Symptom**: Today's P&L chart starts exactly at 10:00 AM of the current session, missing the final hour (15:00 onwards) of the previous trading day for context. On weekends or closed market periods, the previous day hour scale is rendered but no data points are plotted for it (appearing empty).
 
 **Root Cause**:
@@ -253,6 +259,7 @@ Both the chart builder and the data fetcher backfill logic must resolve the prev
 ```python
 # ✅ Correct Lookback Start Calculation relative to effective context
 from services.market.market_status import get_previous_trading_session_start
+# See: [`services/market/market_status.py`](../../services/market/market_status.py)
 chart_start = get_previous_trading_session_start(relative_to=effective_start)
 ```
 
@@ -261,7 +268,7 @@ chart_start = get_previous_trading_session_start(relative_to=effective_start)
 ## BUG-014 · P&L and Normalized Price Chart Axis Auto-scaling Blocked by uirevision
 
 **Status**: Fixed  
-**Files affected**: `components/charts/pnl_history.py`, `components/charts/price_history.py`  
+**Files affected**: [`components/charts/pnl_history.py`](../../components/charts/pnl_history.py), [`components/charts/price_history.py`](../../components/charts/price_history.py)  
 **Symptom**: Changing the chart period filters (e.g. from "max" to "1y") updates the data correctly but doesn't adjust the x-axis and y-axis scale. The chart only resets and scales properly when the browser page is hard refreshed.
 
 **Root Cause**:
@@ -283,7 +290,7 @@ fig.update_layout(uirevision=f"{selected}_{period}_{mode}")
 ## BUG-015 · Appending Memory Summaries Duplication
 
 **Status**: Fixed  
-**Files affected**: `services/research_memory.py`  
+**Files affected**: [`services/research_memory.py`](../../services/research_memory.py)  
 **Symptom**: The Welcome message of the Assistant shows multiple stacked, duplicate "Here's a summary of the investment research conversations" sections that grow indefinitely over time.
 
 **Root Cause**:
@@ -297,7 +304,7 @@ Updated `summarise_old_turns` to accept the `existing_summary` as an optional pa
 ## BUG-016 · Ticker Suffix Corruption & Missing Display Name Merge
 
 **Status**: Fixed  
-**Files affected**: `app.py`, `callbacks/transaction_callbacks.py`, `data/cache_manager.py`, `services/market/data_fetcher.py`, `data/database.py`  
+**Files affected**: [`app.py`](../../app.py), [`callbacks/transaction_callbacks.py`](../../callbacks/transaction_callbacks.py), [`data/cache_manager.py`](../../data/cache_manager.py), [`services/market/data_fetcher.py`](../../services/market/data_fetcher.py), [`data/database.py`](../../data/database.py)  
 **Symptom**: Adding a new ticker with `.ax` or `.AX` suffix (e.g. `URNM.ax`) does not update its long name in the main holdings table, and fails to populate the Positions detail panel and Analytics price charts.
 
 **Root Cause**:
@@ -315,7 +322,7 @@ Updated `summarise_old_turns` to accept the `existing_summary` as an optional pa
 ## BUG-017 · Plotly `branchvalues="total"` Validation Failure (Blank Treemap)
 
 **Status**: Fixed  
-**Files affected**: `components/charts/treemap.py`  
+**Files affected**: [`components/charts/treemap.py`](../../components/charts/treemap.py)  
 **Symptom**: The treemap visual does not render (displays a blank screen or console errors) when trying to view hierarchical layouts like Underlying Holdings.
 
 **Root Cause**:
@@ -330,7 +337,7 @@ When using `branchvalues="total"`, Plotly strictly validates that the value of e
 ## BUG-018 · `UnboundLocalError` on Positions & Watchlist Pages for New Tickers
 
 **Status**: Fixed  
-**Files affected**: `callbacks/positions_callbacks.py`, `callbacks/watchlist_callbacks.py`  
+**Files affected**: [`callbacks/positions_callbacks.py`](../../callbacks/positions_callbacks.py), [`callbacks/watchlist_callbacks.py`](../../callbacks/watchlist_callbacks.py)  
 **Symptom**: Navigating to `/positions` or `/watchlist` fails to load metrics and detail elements, showing an infinite loading spinner. Python logs show `UnboundLocalError: local variable 'tech_signals' referenced before assignment`.
 
 **Root Cause**:
@@ -342,6 +349,7 @@ Initialize `tech_signals = None` before fetching and checking the close series:
 # ✅ FIXED — always define tech_signals to avoid UnboundLocalError
 tech_signals = None
 history_s = HistoryRepository().load_close_series(ticker, ...)
+# See: [`data/repository.py`](../../data/repository.py)
 if not history_s.empty:
     tech_signals = tech_signal_badges(ticker, history_s)
 ```
@@ -351,7 +359,7 @@ if not history_s.empty:
 ## BUG-019 · Page Load Deadlock / Freeze on Refresh & Direct Load
 
 **Status**: Fixed  
-**Files affected**: `callbacks/positions_callbacks.py`, `callbacks/watchlist_callbacks.py`  
+**Files affected**: [`callbacks/positions_callbacks.py`](../../callbacks/positions_callbacks.py), [`callbacks/watchlist_callbacks.py`](../../callbacks/watchlist_callbacks.py)  
 **Symptom**: Navigating directly to `/positions` or `/watchlist` (or reloading the page on those routes) causes the UI to freeze indefinitely on loading spinners/skeletons. The python logs show HTTP 200 without any exception stack traces.
 
 **Root Cause**:
@@ -365,7 +373,7 @@ Change `prevent_initial_call=False` on the page-specific rendering callbacks, an
 ## BUG-020 · Server Shutdown on Full Page Reload or Standard Link Navigation
 
 **Status**: Fixed  
-**Files affected**: `assets/browser_shutdown.js`  
+**Files affected**: [`assets/browser_shutdown.js`](../../assets/browser_shutdown.js)  
 **Symptom**: Navigating to page routes using standard `html.A` links (such as clicking "Investor Profile") or performing a full page refresh causes the Dash app server process to crash and close after 3 seconds.
 
 **Root Cause**:
@@ -387,7 +395,7 @@ if (document.readyState === "loading") {
 ## BUG-021 · Settings Revert to Defaults on Page Load
 
 **Status**: Fixed  
-**Files affected**: `callbacks/settings_callbacks.py`  
+**Files affected**: [`callbacks/settings_callbacks.py`](../../callbacks/settings_callbacks.py)  
 **Symptom**: Opening the Settings page displays default values (e.g. 37% tax bracket, Balanced goal, moderate risk) instead of the user's previously saved options. If the user clicks Save, these defaults overwrite their actual preferences in the database.
 
 **Root Cause**:
@@ -401,7 +409,7 @@ Change `prevent_initial_call=False` on the settings rendering/hydration callback
 ## BUG-022 · Benchmark Chart Fails to Load Custom/Preferred Benchmark Indices
 
 **Status**: Fixed  
-**Files affected**: `data/cache_manager.py` (`get_benchmarks_db`), `callbacks/chart_callbacks.py`  
+**Files affected**: [`data/cache_manager.py`](../../data/cache_manager.py) (`get_benchmarks_db`), [`callbacks/chart_callbacks.py`](../../callbacks/chart_callbacks.py)  
 **Symptom**: Selecting a non-default benchmark index (like Nasdaq 100 or a custom ticker) fails to display its line trace on the holdings chart. The chart remains loaded with only S&P 500 and ASX 200.
 
 **Root Cause**:
@@ -415,7 +423,7 @@ Modify `get_benchmarks_db()` to read the user's current benchmark preferences fr
 ## BUG-023 · Empty Browser Page After Onboarding Restart
 
 **Status**: Fixed  
-**Files affected**: `callbacks/setup_callbacks.py` (clientside `pollServer`)  
+**Files affected**: [`callbacks/setup_callbacks.py`](../../callbacks/setup_callbacks.py) (clientside `pollServer`)  
 **Symptom**: After clicking "Restart and Launch Dashboard", the browser navigates to `/` but the page is blank — no layout, no data.
 
 **Root Cause**:  
@@ -440,4 +448,53 @@ fetch('/_dash-layout' + cacheBuster)
 ```
 
 **Prevention**: Any future restart/reload polling must target `/_dash-layout`, never the root path.
+
+---
+
+## BUG-024 · yfinance Session Reset Downgrades to Raw `requests`
+
+**Status**: Fixed  
+**Files affected**: [`services/market/data_fetcher.py`](../../services/market/data_fetcher.py)  
+**Symptom**: Stock price downloads fail with `possibly delisted; no price data found` warnings for all tickers after a temporary network drop or crumb expiration.
+
+**Root Cause**:
+Upon encountering a `401 Unauthorized` error (common when crumb/cookie expires), the download retry logic reset the global yfinance data session using:
+```python
+data_obj._session = requests.Session()
+```
+This replaced yfinance's browser-impersonating `curl_cffi` session with a standard Python `requests` session. Yahoo Finance immediately blocks standard `python-requests/*` User-Agents, causing all subsequent download retries and API calls to fail.
+
+**Fix Pattern**:
+Verify and use `yf.data.new_session()` when resetting the session to preserve the `curl_cffi` TLS/header impersonation:
+```python
+if hasattr(yf.data, "new_session"):
+    data_obj._session = yf.data.new_session()
+else:
+    data_obj._session = requests.Session()
+```
+
+---
+
+## BUG-025 · Infinite Benchmark Fetch Loop Due to Legacy Stale Rows
+
+**Status**: Fixed  
+**Files affected**: [`data/cache_manager.py`](../../data/cache_manager.py)  
+**Symptom**: Benchmark indices (e.g., S&P 500, ASX 200) do not display on the holdings chart, and the background worker runs duplicate `fetch_benchmarks` tasks continuously.
+
+**Root Cause**:
+`get_benchmarks_db()` checked cache staleness by querying a single random row using `LIMIT 1`:
+```python
+row = conn.execute("SELECT history, fetched_at FROM benchmark_data LIMIT 1").fetchone()
+```
+If the database contained any stale, inactive benchmark records (e.g., `^NDX` from a previous preference setup that is older than 24 hours), the function returned `None` to trigger a fetch. However, the background worker's `fetch_benchmarks` task only requests currently active symbols, leaving the legacy symbol stale forever and keeping the database cache in a permanently locked stale state.
+
+**Fix Pattern**:
+Collect the active required symbols, check staleness **only** for these required symbols, and filter database selection using `IN`:
+```python
+required_symbols = ["^GSPC", "^AXJO"]
+if required_symbol and required_symbol != "__custom__" and required_symbol not in required_symbols:
+    required_symbols.append(required_symbol)
+
+# Check presence and staleness for required_symbols...
+```
 

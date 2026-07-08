@@ -1,5 +1,9 @@
 # Store Contracts — Folio
 
+---
+Related: [`GEMINI.md`](../../GEMINI.md) | [`project_map.md`](../../.agents/project_map.md) | [`store_index.md`](../../.agents/generated/store_index.md)
+---
+
 > **Purpose**: Prevent silent callback failures by documenting the exact JSON
 > shape of every major `dcc.Store`. Treat these as immutable contracts.
 > If a store's shape must change, update this document AND all consuming callbacks.
@@ -9,7 +13,7 @@
 ## `portfolio-store`
 
 **Storage type**: default (memory, cleared on refresh)  
-**Single owner (writer)**: `update_portfolio_store()` in `app.py`  
+**Single owner (writer)**: `update_portfolio_store()` in [`app.py`](../../app.py)  
 **Seeded by**: `load_portfolio_snapshot()` at startup
 
 ```json
@@ -48,7 +52,7 @@
 ## `txn-store`
 
 **Storage type**: default (memory)  
-**Single owner (writer)**: `update_txn_store()` in `app.py`  
+**Single owner (writer)**: `update_txn_store()` in [`app.py`](../../app.py)  
 **Seeded by**: `repo.load_transactions()` at startup
 
 ```json
@@ -146,7 +150,7 @@
 ## `pending-tasks-store`
 
 **Storage type**: `session`  
-**Writers**: `signals_callbacks.py`, `app.py`
+**Writers**: [`callbacks/signals_callbacks.py`](../../callbacks/signals_callbacks.py), [`app.py`](../../app.py)
 
 ```json
 [

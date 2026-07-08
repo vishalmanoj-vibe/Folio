@@ -280,29 +280,39 @@ def get_benchmarks_db() -> dict | None:
 
     conn = get_connection()
     try:
-        # 1. Check if the preferred benchmark exists in the database
-        if required_symbol:
-            row_pref = conn.execute(
-                "SELECT 1 FROM benchmark_data WHERE symbol = ?", (required_symbol,)
+        # 1. Determine active benchmarks we actually need
+        required_symbols = ["^GSPC", "^AXJO"]
+        if (
+            required_symbol
+            and required_symbol != "__custom__"
+            and required_symbol not in required_symbols
+        ):
+            required_symbols.append(required_symbol)
+
+        # 2. Check if all required benchmarks exist and are fresh (< 24h)
+        for sym in required_symbols:
+            row = conn.execute(
+                "SELECT history, fetched_at FROM benchmark_data WHERE symbol = ?", (sym,)
             ).fetchone()
-            if not row_pref:
+            if not row:
                 logger.info(
-                    f"Preferred benchmark {required_symbol} is missing from cache; returning None to trigger fetch."
+                    f"Required benchmark {sym} is missing from cache; returning None to trigger fetch."
                 )
                 return None
 
-        # 2. Check staleness of any entry (they are fetched together)
-        row = conn.execute("SELECT history, fetched_at FROM benchmark_data LIMIT 1").fetchone()
-        if not row:
-            return None
+            fetched_at = pd.to_datetime(row["fetched_at"])
+            if (pd.Timestamp.now() - fetched_at).total_seconds() > 86400:
+                logger.info(
+                    f"Required benchmark {sym} is stale ({fetched_at}); returning None to trigger fetch."
+                )
+                return None
 
-        fetched_at = pd.to_datetime(row["fetched_at"])
-        # History gating: 24h threshold for benchmarks
-        if (pd.Timestamp.now() - fetched_at).total_seconds() > 86400:
-            return None  # Stale
-
-        # If not stale and contains our preferred index, fetch all
-        rows = conn.execute("SELECT label, history FROM benchmark_data").fetchall()
+        # If all are fresh, fetch and return them
+        placeholders = ",".join("?" for _ in required_symbols)
+        rows = conn.execute(
+            f"SELECT label, history FROM benchmark_data WHERE symbol IN ({placeholders})",
+            required_symbols,
+        ).fetchall()
         return {r["label"]: json.loads(r["history"]) for r in rows}
     finally:
         conn.close()

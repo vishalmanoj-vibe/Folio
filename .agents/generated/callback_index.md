@@ -1,6 +1,6 @@
 # Callback Output Index — Auto-Generated
 
-> **Generated**: 2026-07-04 16:47  
+> **Generated**: 2026-07-08 23:26  
 > **Do not edit** — run `python .agents/generated/sync_docs.py` to refresh.
 > For ownership intent and architecture notes, see `docs/reference/callback_ownership.md`.
 
@@ -12,20 +12,20 @@
 
 | Output ID | Property | Line | Duplicate? | Pattern? |
 |-----------|----------|------|-----------|---------|
-| `txn-store` | `data` | 271 | ✓ |  |
-| `portfolio-store` | `data` | 403 | ✓ |  |
-| `period-store` | `data` | 476 |  |  |
-| `pnl-mode-store` | `data` | 486 |  |  |
-| `ticker-store` | `data` | 496 |  |  |
-| `treemap-mode-store` | `data` | 506 |  |  |
-| `analytics-period-store` | `data` | 516 |  |  |
-| `intel-period-store` | `data` | 526 |  |  |
-| `intel-pred-store` | `data` | 555 |  |  |
-| `intel-forecast-label` | `children` | 556 |  |  |
-| `url` | `search` | 581 |  |  |
-| `pending-tasks-store` | `data` | 599 | ✓ |  |
+| `txn-store` | `data` | 272 | ✓ |  |
+| `portfolio-store` | `data` | 404 | ✓ |  |
+| `period-store` | `data` | 477 |  |  |
+| `pnl-mode-store` | `data` | 487 |  |  |
+| `ticker-store` | `data` | 497 |  |  |
+| `treemap-mode-store` | `data` | 507 |  |  |
+| `analytics-period-store` | `data` | 517 |  |  |
+| `intel-period-store` | `data` | 527 |  |  |
+| `intel-pred-store` | `data` | 556 |  |  |
+| `intel-forecast-label` | `children` | 557 |  |  |
+| `url` | `search` | 582 |  |  |
+| `pending-tasks-store` | `data` | 600 | ✓ |  |
 | `nav-link-store` | `data` | 633 | ✓ |  |
-| `task-poll-interval` | `disabled` | 743 |  |  |
+| `task-poll-interval` | `disabled` | 748 |  |  |
 
 ## `alert_callbacks.py`
 

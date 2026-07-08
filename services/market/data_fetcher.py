@@ -252,7 +252,10 @@ def _download_with_retry(
                             except:
                                 pass
                         # Assign a fresh session; yfinance will handle crumb re-acquisition
-                        data_obj._session = requests.Session()
+                        if hasattr(yf.data, "new_session"):
+                            data_obj._session = yf.data.new_session()
+                        else:
+                            data_obj._session = requests.Session()
                 except Exception as reset_err:
                     logger.debug("Failed to reset yfinance session: %s", reset_err)
 

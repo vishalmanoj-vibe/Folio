@@ -1,5 +1,9 @@
 # Skill: Component ID Registry
 
+---
+Related: [`GEMINI.md`](../../GEMINI.md) | [`project_map.md`](../project_map.md)
+---
+
 ## Objective
 Prevent "Duplicate ID" errors and callback collisions by maintaining a central map of all critical Dash component IDs.
 

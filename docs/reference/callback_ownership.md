@@ -1,5 +1,9 @@
 # Callback Output Ownership Map — Folio
 
+---
+Related: [`GEMINI.md`](../../GEMINI.md) | [`project_map.md`](../../.agents/project_map.md) | [`callback_index.md`](../../.agents/generated/callback_index.md)
+---
+
 > **Purpose**: Every `Output` ID is owned by exactly ONE callback in ONE file.
 > Before adding any callback, check this map. Duplicate Outputs cause silent
 > Dash crashes. If using `allow_duplicate=True`, document the reason inline.
@@ -8,7 +12,7 @@
 
 ---
 
-## `app.py` (Global / Cross-Page)
+## [`app.py`](../../app.py) (Global / Cross-Page)
 
 | Output ID | Property | Notes |
 |-----------|----------|-------|
@@ -30,7 +34,7 @@
 
 ---
 
-## `callbacks/portfolio_callbacks.py`
+## [`callbacks/portfolio_callbacks.py`](../../callbacks/portfolio_callbacks.py)
 
 | Output ID | Property | Notes |
 |-----------|----------|-------|
@@ -42,7 +46,7 @@
 
 ---
 
-## `callbacks/chart_callbacks.py`
+## [`callbacks/chart_callbacks.py`](../../callbacks/chart_callbacks.py)
 
 | Output ID | Property | Notes |
 |-----------|----------|-------|
@@ -62,7 +66,7 @@
 
 ---
 
-## `callbacks/positions_callbacks.py`
+## [`callbacks/positions_callbacks.py`](../../callbacks/positions_callbacks.py)
 
 | Output ID | Property | Notes |
 |-----------|----------|-------|
@@ -85,7 +89,7 @@
 
 ---
 
-## `callbacks/watchlist_callbacks.py`
+## [`callbacks/watchlist_callbacks.py`](../../callbacks/watchlist_callbacks.py)
 
 | Output ID | Property | Notes |
 |-----------|----------|-------|
@@ -107,7 +111,7 @@
 
 ---
 
-## `callbacks/signals_callbacks.py`
+## [`callbacks/signals_callbacks.py`](../../callbacks/signals_callbacks.py)
 
 | Output ID | Property | Notes |
 |-----------|----------|-------|
@@ -120,7 +124,7 @@
 
 ---
 
-## `callbacks/intelligence_callbacks.py`
+## [`callbacks/intelligence_callbacks.py`](../../callbacks/intelligence_callbacks.py)
 
 | Output ID | Property | Notes |
 |-----------|----------|-------|
@@ -133,7 +137,7 @@
 
 ---
 
-## `callbacks/ui_callbacks.py`
+## [`callbacks/ui_callbacks.py`](../../callbacks/ui_callbacks.py)
 
 | Output ID | Property | Notes |
 |-----------|----------|-------|
@@ -150,7 +154,7 @@
 
 ---
 
-## `callbacks/alert_callbacks.py`
+## [`callbacks/alert_callbacks.py`](../../callbacks/alert_callbacks.py)
 
 | Output ID | Property | Notes |
 |-----------|----------|-------|
@@ -159,7 +163,7 @@
 
 ---
 
-## `callbacks/transaction_callbacks.py`
+## [`callbacks/transaction_callbacks.py`](../../callbacks/transaction_callbacks.py)
 
 | Output ID | Property | Notes |
 |-----------|----------|-------|
@@ -179,7 +183,7 @@
 
 ---
 
-## `callbacks/setup_callbacks.py`
+## [`callbacks/setup_callbacks.py`](../../callbacks/setup_callbacks.py)
 
 | Output ID | Property | Notes |
 |-----------|----------|-------|
@@ -216,7 +220,7 @@
 
 ---
 
-## `callbacks/research_callbacks.py`
+## [`callbacks/research_callbacks.py`](../../callbacks/research_callbacks.py)
 
 | Output ID | Property | Notes |
 |-----------|----------|-------|
@@ -241,7 +245,7 @@
 
 ---
 
-## `callbacks/settings_callbacks.py`
+## [`callbacks/settings_callbacks.py`](../../callbacks/settings_callbacks.py)
 
 | Output ID | Property | Notes |
 |-----------|----------|-------|
