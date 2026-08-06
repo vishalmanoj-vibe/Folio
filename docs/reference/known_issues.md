@@ -498,3 +498,18 @@ if required_symbol and required_symbol != "__custom__" and required_symbol not i
 # Check presence and staleness for required_symbols...
 ```
 
+---
+
+## BUG-026 · SQLite Startup Write Lock Contention on Concurrent Process Launch
+
+**Status**: Fixed  
+**Files affected**: [`launcher.py`](../../launcher.py), [`scripts/Folio.command`](../../scripts/Folio.command)  
+**Symptom**: Double-clicking `folio.command` stuck on initial startup with Safari reporting "Safari can't connect to the server".
+
+**Root Cause**:
+`launcher.py` spawned `DashUI` and `Worker` processes simultaneously at launch. `Worker` immediately executed heavy SQLite write operations (`session_cache` backfilling) in `portfolio.db` (located in a cloud-synced directory like OneDrive), causing SQLite WAL lock contention while `DashUI` was attempting to initialize and read disk snapshots. This delayed `DashUI` startup beyond `folio.command`'s 30-second readiness timeout.
+
+**Fix Pattern**:
+Stagger `Worker` startup slightly in `launcher.py` (`time.sleep(1.5)`) after starting `DashUI` to give `DashUI` time to finish initial snapshot reads before `Worker` starts heavy SQLite writes. Update `Folio.command` readiness wait loop (45s max) and gate browser launch strictly on `IS_READY=1`.
+
+

@@ -119,6 +119,8 @@ class FolioLauncher:
                 self.dash_process = Process(target=run_dash, name="DashUI")
                 self.dash_process.start()
                 logger.info(f"Dash process started (PID: {self.dash_process.pid})")
+                # Give DashUI time to read SQLite snapshot before Worker starts heavy writes
+                time.sleep(1.5)
 
             # 2. Start Worker if not running
             if not self.worker_process or not self.worker_process.is_alive():
