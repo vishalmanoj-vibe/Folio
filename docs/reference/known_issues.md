@@ -500,16 +500,20 @@ if required_symbol and required_symbol != "__custom__" and required_symbol not i
 
 ---
 
-## BUG-026 · SQLite Startup Write Lock Contention on Concurrent Process Launch
+## BUG-026 · SQLite Startup Write Lock Contention & Cold Start Timeout on Concurrent Process Launch
 
 **Status**: Fixed  
-**Files affected**: [`launcher.py`](../../launcher.py), [`scripts/Folio.command`](../../scripts/Folio.command)  
+**Files affected**: [`launcher.py`](../../launcher.py), [`scripts/Folio.command`](../../scripts/Folio.command), [`scripts/install_shortcut.py`](../../scripts/install_shortcut.py)  
 **Symptom**: Double-clicking `folio.command` stuck on initial startup with Safari reporting "Safari can't connect to the server".
 
 **Root Cause**:
-`launcher.py` spawned `DashUI` and `Worker` processes simultaneously at launch. `Worker` immediately executed heavy SQLite write operations (`session_cache` backfilling) in `portfolio.db` (located in a cloud-synced directory like OneDrive), causing SQLite WAL lock contention while `DashUI` was attempting to initialize and read disk snapshots. This delayed `DashUI` startup beyond `folio.command`'s 30-second readiness timeout.
+1. `launcher.py` spawned `DashUI` and `Worker` processes simultaneously. `Worker` immediately executed heavy SQLite write operations (`session_cache` backfilling) in `portfolio.db` (located in a cloud-synced OneDrive directory), causing SQLite WAL lock contention while `DashUI` was attempting to initialize and read disk snapshots.
+2. Heavy module imports (`pandas`, `plotly`, `dash_mantine_components`) caused Python startup to take 20-25 seconds on cold starts.
+3. The shell script (`folio.command`) polled `http://127.0.0.1:8050` with a fixed 30s `sleep` loop in bash. When Python cold startup exceeded 30s, bash timed out and opened Safari prematurely before port 8050 was ready.
 
 **Fix Pattern**:
-Stagger `Worker` startup slightly in `launcher.py` (`time.sleep(1.5)`) after starting `DashUI` to give `DashUI` time to finish initial snapshot reads before `Worker` starts heavy SQLite writes. Update `Folio.command` readiness wait loop (45s max) and gate browser launch strictly on `IS_READY=1`.
+1. Stagger `Worker` startup slightly in `launcher.py` (`time.sleep(1.5)`) after starting `DashUI` so `DashUI` completes initial snapshot reads before `Worker` begins SQLite writes.
+2. Delegate browser readiness verification entirely to `launcher.py`: a daemon thread (`_wait_and_open_browser`) polls `http://127.0.0.1:8050/` until `HTTP 200 OK` is returned (up to 120s timeout), opening Safari at the exact millisecond the server is live.
+3. Streamline `scripts/Folio.command` bash script to delegate readiness verification and browser launching directly to Python. Provide `scripts/install_shortcut.py` for Desktop shortcut sync.
 
 
