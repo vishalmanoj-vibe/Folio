@@ -16,11 +16,16 @@ from pathlib import Path
 
 from config.settings import get_data_dir
 
-DATA_DIR = get_data_dir()
+
+def get_default_log_file() -> str:
+    """Returns default log file path in ~/.folio/logs/ to avoid cloud sync file lock latency."""
+    log_dir = os.path.expanduser("~/.folio/logs")
+    os.makedirs(log_dir, exist_ok=True)
+    return os.path.join(log_dir, "portfolio.log")
+
+
 LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO").upper()
-
-LOG_FILE = os.getenv("LOG_FILE", os.path.join(DATA_DIR, "logs", "portfolio.log"))
-
+LOG_FILE = os.getenv("LOG_FILE", get_default_log_file())
 LOG_FILE_ENABLED = os.getenv("LOG_FILE_ENABLED", "true").lower() == "true"
 
 # Create handlers list dynamically

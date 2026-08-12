@@ -8,9 +8,11 @@ Ensures process resilience and graceful shutdown.
 
 import logging
 import multiprocessing
+import os
 import signal
 import subprocess
 import sys
+import threading
 import time
 from multiprocessing import Process
 
@@ -61,10 +63,51 @@ class FolioLauncher:
         self.worker_process = None
         self.running = True
         self.last_mem_check = 0
+        self.browser_opened = False
 
         # Register signals for graceful shutdown
         signal.signal(signal.SIGINT, self.handle_exit)
         signal.signal(signal.SIGTERM, self.handle_exit)
+
+    def _wait_and_open_browser(self):
+        """Polls port 8050 until Dash server is listening and returns HTTP 200 OK."""
+        import socket
+        import urllib.request
+        import webbrowser
+
+        url = "http://127.0.0.1:8050/"
+        start_time = time.time()
+        logger.info("Waiting for Dash server to respond on port 8050...")
+
+        # Phase 1: Wait for port 8050 to accept TCP connection
+        port_open = False
+        while self.running and (time.time() - start_time < 120):
+            try:
+                with socket.create_connection(("127.0.0.1", 8050), timeout=0.5):
+                    port_open = True
+                    break
+            except Exception:
+                time.sleep(0.5)
+
+        if not port_open:
+            logger.warning("Dash server port 8050 did not open after 120s.")
+            return
+
+        # Phase 2: Verify HTTP 200 OK
+        while self.running and (time.time() - start_time < 120):
+            try:
+                with urllib.request.urlopen(url, timeout=3) as resp:
+                    if resp.status == 200:
+                        logger.info("Dash server verified live on port 8050! Opening browser.")
+                        if sys.platform == "darwin":
+                            subprocess.run(["open", "-a", "Safari", url], check=False)
+                        else:
+                            webbrowser.open_new(url)
+                        return
+            except Exception:
+                time.sleep(0.5)
+
+        logger.warning("Dash server readiness check timed out after 120s.")
 
     def handle_exit(self, sig, frame):
         """Signal handler for graceful shutdown."""
@@ -109,8 +152,6 @@ class FolioLauncher:
             # 1. Start Dash if not running (only reached on crash or restart request)
             if not self.dash_process or not self.dash_process.is_alive():
                 if self.dash_process:
-                    import os
-
                     os.environ["FOLIO_RESTARTED"] = "1"
                     if exit_code == 3:
                         logger.info("Starting new Dash UI process...")
@@ -119,6 +160,18 @@ class FolioLauncher:
                 self.dash_process = Process(target=run_dash, name="DashUI")
                 self.dash_process.start()
                 logger.info(f"Dash process started (PID: {self.dash_process.pid})")
+
+                # Trigger background browser check thread on initial launch
+                if (
+                    not self.browser_opened
+                    and os.environ.get("FOLIO_RESTARTED") != "1"
+                    and os.environ.get("FOLIO_HEADLESS") != "1"
+                ):
+                    self.browser_opened = True
+                    threading.Thread(
+                        target=self._wait_and_open_browser, daemon=True, name="BrowserLauncher"
+                    ).start()
+
                 # Give DashUI time to read SQLite snapshot before Worker starts heavy writes
                 time.sleep(1.5)
 
