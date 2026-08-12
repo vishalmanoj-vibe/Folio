@@ -65,7 +65,8 @@ def handle_fetch_history(payload: dict):
 
 
 def handle_generate_signals(payload: dict):
-    """Run strategy engine and AI analysis for tickers."""
+    """Run strategy engine and AI analysis for tickers, committing each ticker's result
+    to SQLite immediately so the Dash UI can stream partial results during polling."""
     tickers = payload.get("tickers", [])
     scope = payload.get("scope", "portfolio")  # 'portfolio' or 'watchlist'
 
@@ -118,17 +119,19 @@ def handle_generate_signals(payload: dict):
     if multi_full.empty:
         logger.warning("Could not retrieve any history for signal generation.")
         return {"error": "Insufficient market data history for technical signals"}
-    # Load previous signals for hysteresis
+
+    # 2. Load previous signals for hysteresis — built upfront, updated in-memory per ticker
+    table = "signal_results" if scope == "portfolio" else "watchlist_signal_results"
     conn = get_connection()
     prev_signals = {}
     try:
-        rows = conn.execute("SELECT ticker, signal FROM signal_results").fetchall()
+        rows = conn.execute(f"SELECT ticker, signal FROM {table}").fetchall()
         for r in rows:
             prev_signals[r["ticker"]] = {"signal": r["signal"]}
     finally:
         conn.close()
 
-    # 2. Strategy Engine (incorporating investor profile settings)
+    # 3. Load investor profile settings for strategy weights (once, upfront)
     from data.settings_repository import get_all_settings
     from services.strategy_engine import get_profile_weights
 
@@ -137,53 +140,81 @@ def handle_generate_signals(payload: dict):
         investment_goal=settings.get("investment_goal", "Balanced"),
         risk_tolerance=settings.get("risk_tolerance", "Moderate"),
     )
-    signals = generate_portfolio_signals(multi_full, holdings, prev_signals, weights=weights)
 
-    # 3. AI Analysis
-    ai_results = analyze_signals(signals)
+    # 4. Process each ticker end-to-end: Strategy → AI → SQLite commit (incremental)
+    # Each ticker's result is committed immediately so the Dash task-poll-interval
+    # callback can stream partial results into signals-store during the task's running phase.
+    completed_tickers = []
+    now = datetime.now().isoformat()
 
-    # 3. Persist to SQLite
-    table = "signal_results" if scope == "portfolio" else "watchlist_signal_results"
+    for h in holdings:
+        ticker = h["ticker"]
+        try:
+            # 4a. Strategy Engine for this single holding
+            single_holding_signals = generate_portfolio_signals(
+                multi_full, [h], prev_signals, weights=weights
+            )
+            if not single_holding_signals:
+                logger.warning(f"No signal generated for {ticker}, skipping.")
+                continue
 
-    conn = get_connection()
-    try:
-        now = datetime.now().isoformat()
-        for ticker, sig in signals.items():
+            sig = single_holding_signals[ticker]
+
+            # Update in-memory prev_signals so subsequent tickers have hysteresis context
+            prev_signals[ticker] = {"signal": sig["signal"]}
+
+            # 4b. AI Analysis for this single ticker
+            ai_results = analyze_signals(single_holding_signals)
             ai_res = ai_results.get(ticker, {})
 
-            conn.execute(
-                f"""
-                INSERT OR REPLACE INTO {table} (
-                    ticker, signal, score, confidence, reasons, indicators,
-                    ai_explanation, generated_at, hysteresis_forced
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """,
-                (
+            # 4c. Persist to SQLite immediately and commit (per-ticker — enables streaming)
+            conn = get_connection()
+            try:
+                conn.execute(
+                    f"""
+                    INSERT OR REPLACE INTO {table} (
+                        ticker, signal, score, confidence, reasons, indicators,
+                        ai_explanation, generated_at, hysteresis_forced
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                    (
+                        ticker,
+                        sig["signal"],
+                        sig["score"],
+                        sig.get("confidence"),
+                        json.dumps(sig["reasons"]),
+                        json.dumps(sig["indicators"]),
+                        json.dumps(ai_res) if ai_res else None,
+                        now,
+                        1 if sig.get("hysteresis_forced") else 0,
+                    ),
+                )
+                conn.commit()
+                completed_tickers.append(ticker)
+                logger.info(
+                    "[%s] Signal committed: %s → %s (score=%.2f)",
+                    scope,
                     ticker,
                     sig["signal"],
                     sig["score"],
-                    sig.get("confidence"),
-                    json.dumps(sig["reasons"]),
-                    json.dumps(sig["indicators"]),
-                    json.dumps(ai_res) if ai_res else None,
-                    now,
-                    1 if sig.get("hysteresis_forced") else 0,
-                ),
-            )
-        conn.commit()
-    finally:
-        conn.close()
+                )
+            finally:
+                conn.close()
 
-    # 4. News Sentiment Analysis (runs as part of signal generation)
-    from services.sentiment_service import get_sentiment
+            # 4d. News Sentiment for this ticker (non-blocking; errors don't abort batch)
+            from services.sentiment_service import get_sentiment
 
-    for ticker in signals.keys():
-        try:
-            get_sentiment(ticker, force_refresh=True)
+            try:
+                get_sentiment(ticker, force_refresh=True)
+            except Exception as e:
+                logger.error(f"Failed to fetch sentiment for {ticker}: {e}")
+
         except Exception as e:
-            logger.error(f"Failed to fetch sentiment for {ticker} in batch: {e}")
+            logger.error(f"Signal generation failed for {ticker}: {e}")
+            # Isolated failure — continue processing remaining tickers
+            continue
 
-    return {"status": "success", "tickers": list(signals.keys()), "scope": scope}
+    return {"status": "success", "tickers": completed_tickers, "scope": scope}
 
 
 def handle_generate_ai_response(payload: dict):

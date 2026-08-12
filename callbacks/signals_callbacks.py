@@ -11,7 +11,6 @@ logger = logging.getLogger(__name__)
 
 
 def register_callbacks(app):
-
     # ── Global Intelligence Generation ───────────────────────────────────────
     @app.callback(
         Output("pending-tasks-store", "data", allow_duplicate=True),
@@ -104,9 +103,13 @@ def register_callbacks(app):
         State("pending-tasks-store", "data"),
         State("portfolio-store", "data"),
         State("watchlist-store", "data"),
+        State("signals-store", "data"),
+        State("watchlist-signals-store", "data"),
         prevent_initial_call=True,
     )
-    def poll_tasks_and_update_stores(n, pending, port_data, watch_data):
+    def poll_tasks_and_update_stores(
+        n, pending, port_data, watch_data, current_signals, current_watch_signals
+    ):
         if not pending:
             return dash.no_update, dash.no_update, [], dash.no_update
 
@@ -115,7 +118,8 @@ def register_callbacks(app):
             still_pending = []
             from collections import defaultdict
 
-            updates_needed = defaultdict(bool)
+            # Track which task types need store updates and whether they are still running
+            task_status_map = defaultdict(str)  # type -> 'running' | 'complete' | 'failed'
 
             for task in pending:
                 task_id = task["id"]
@@ -124,11 +128,20 @@ def register_callbacks(app):
                 ).fetchone()
 
                 if row:
-                    if row["status"] == "complete":
-                        updates_needed[task["type"]] = True
-                    elif row["status"] == "failed":
-                        # We still remove it from pending even if it failed
-                        pass
+                    status = row["status"]
+                    task_type = task["type"]
+                    if status == "complete":
+                        task_status_map[task_type] = "complete"
+                    elif status == "failed":
+                        # Remove from pending even if failed; don't update store
+                        task_status_map[task_type] = "failed"
+                    elif status == "running":
+                        # Keep in pending, but attempt to stream partial results
+                        still_pending.append(task)
+                        if task_type in ("signals", "watchlist_signals"):
+                            # Only mark running if not already complete from another task
+                            if task_status_map[task_type] != "complete":
+                                task_status_map[task_type] = "running"
                     else:
                         still_pending.append(task)
                 else:
@@ -139,24 +152,37 @@ def register_callbacks(app):
             out_watch = dash.no_update
             out_refresh = dash.no_update
 
-            if updates_needed["signals"]:
+            # Stream partial results for signals during 'running' phase, and final on 'complete'
+            if task_status_map["signals"] in ("running", "complete"):
                 from core.engine import build_holdings
                 from data.repository import PortfolioRepository
 
                 p_repo = PortfolioRepository()
                 p_holdings = build_holdings(p_repo.load_transactions())
                 tickers = [h["ticker"] for h in p_holdings]
-                out_signals = _load_signal_results(tickers, table="signal_results")
+                new_data = _load_signal_results(tickers, table="signal_results")
 
-            if updates_needed["watchlist_signals"]:
+                # Only update store if new tickers have been committed since last poll
+                current_ticker_count = len((current_signals or {}).get("raw", {}))
+                new_ticker_count = len(new_data.get("raw", {}))
+                if new_ticker_count > current_ticker_count:
+                    out_signals = new_data
+
+            if task_status_map["watchlist_signals"] in ("running", "complete"):
                 from data.watchlist_repository import WatchlistRepository
 
                 w_repo = WatchlistRepository()
                 w_items = w_repo.load_watchlist()
                 tickers = [item["ticker"] for item in w_items]
-                out_watch = _load_signal_results(tickers, table="watchlist_signal_results")
+                new_data = _load_signal_results(tickers, table="watchlist_signal_results")
 
-            if updates_needed["refresh_portfolio"]:
+                # Only update store if new tickers have been committed since last poll
+                current_ticker_count = len((current_watch_signals or {}).get("raw", {}))
+                new_ticker_count = len(new_data.get("raw", {}))
+                if new_ticker_count > current_ticker_count:
+                    out_watch = new_data
+
+            if task_status_map["refresh_portfolio"] == "complete":
                 out_refresh = n
 
             return out_signals, out_watch, still_pending, out_refresh

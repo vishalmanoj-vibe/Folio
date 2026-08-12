@@ -1,6 +1,6 @@
 # Callback Output Index — Auto-Generated
 
-> **Generated**: 2026-08-12 12:43  
+> **Generated**: 2026-08-12 12:58  
 > **Do not edit** — run `python .agents/generated/sync_docs.py` to refresh.
 > For ownership intent and architecture notes, see `docs/reference/callback_ownership.md`.
 
@@ -212,8 +212,8 @@
 | `watchlist-signals-store` | `data` | 100 |  |  |
 | `pending-tasks-store` | `data` | 101 | ✓ |  |
 | `refresh-trigger-store` | `data` | 102 |  |  |
-| `global-signals-status-label` | `children` | 169 | ✓ |  |
-| `signals-updated-chip` | `style` | 170 |  |  |
+| `global-signals-status-label` | `children` | 196 | ✓ |  |
+| `signals-updated-chip` | `style` | 197 |  |  |
 
 ## `transaction_callbacks.py`
 
