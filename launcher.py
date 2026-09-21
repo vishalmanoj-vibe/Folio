@@ -100,7 +100,7 @@ class FolioLauncher:
                     if resp.status == 200:
                         logger.info("Dash server verified live on port 8050! Opening browser.")
                         if sys.platform == "darwin":
-                            subprocess.run(["open", "-a", "Safari", url], check=False)
+                            subprocess.run(["open", "-a", "Google Chrome", url], check=False)
                         else:
                             webbrowser.open_new(url)
                         return
