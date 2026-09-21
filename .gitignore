@@ -43,6 +43,7 @@ data/*.db*
 *.md
 !README.md
 !GEMINI.md
+!CLAUDE.md
 !docs/**/*.md
 !.agents/
 !.agents/**/*.md
