@@ -3,8 +3,6 @@ import logging
 import os
 from datetime import datetime, timedelta
 
-import google.genai as genai
-
 from config.settings import DATA_CACHE_DIR, GEMINI_FLASH_MODEL
 
 logger = logging.getLogger(__name__)
@@ -129,6 +127,8 @@ def summarise_old_turns(old_turns: list, api_key: str, existing_summary: str = "
         return ""
 
     try:
+        import google.genai as genai
+
         client = genai.Client(api_key=api_key)
 
         # Format new turns if any
