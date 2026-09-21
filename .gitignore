@@ -47,6 +47,7 @@ data/*.db*
 !.agents/
 !.agents/**/*.md
 !.agents/**/*.py
+!.claude/**/*.md
 .Obsidian
 
 # ── One-off / scratch scripts ─────────────────────────────────────────────────
