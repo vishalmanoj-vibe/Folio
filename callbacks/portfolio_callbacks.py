@@ -13,6 +13,7 @@ Every non-trivial computation is delegated:
 import logging
 
 from dash import Input, Output, State, html
+from dash_iconify import DashIconify
 
 logger = logging.getLogger(__name__)
 
@@ -21,6 +22,42 @@ from components.ui_helpers import stat_card, stat_card_skeleton, table_skeleton
 from config.constants import GREEN, RED
 from core.engine.stats_engine import build_live_table_rows, compute_portfolio_stats
 from services.market.market_status import is_market_open
+
+# Columns right-aligned as numbers in the live positions table
+_NUM_COLS = {
+    "total_shares",
+    "avg_cost",
+    "last_price",
+    "day_chg",
+    "day_high",
+    "mkt_value",
+    "total_cost",
+    "pnl",
+    "day_pnl",
+    "div_yield",
+    "realized_div",
+}
+
+
+def _signed_money(val: float, dp: int = 2) -> str:
+    """Format a signed dollar amount as +$1.23 / -$1.23 (never $-1.23)."""
+    return f"{'+' if val >= 0 else '-'}${abs(val):,.{dp}f}"
+
+
+def _trend_line(text: str, is_up: bool, color: str) -> html.Div:
+    """Tabler-style trend line: arrow icon + text, coloured by direction."""
+    return html.Div(
+        [
+            DashIconify(
+                icon="tabler:trending-up" if is_up else "tabler:trending-down",
+                width=12,
+                className="trend-icon",
+            ),
+            html.Span(text),
+        ],
+        className="trend table-td-sub",
+        style={"color": color},
+    )
 
 
 def register_callbacks(app) -> None:
@@ -104,10 +141,11 @@ def register_callbacks(app) -> None:
             stat_card(
                 "Total value",
                 f"${s['total_val']:,.2f}",
-                f"{ds}${abs(s['total_day']):,.2f} ({ds}{s['day_pct']:.2f}%) today",
+                f"{_signed_money(s['total_day'])} ({ds}{s['day_pct']:.2f}%) today",
                 "var(--t-pri)",
                 dc,
                 tip="Current market value of all holdings combined.",
+                trend="up" if s["total_day"] >= 0 else "down",
             ),
             stat_card(
                 "Cost basis",
@@ -116,19 +154,21 @@ def register_callbacks(app) -> None:
             ),
             stat_card(
                 "Unrealised P&L",
-                f"{ps}${s['total_pnl']:,.2f}",
+                _signed_money(s["total_pnl"]),
                 f"{ps}{s['pnl_pct']:.2f}% all time",
                 pc,
                 pc,
                 tip="Paper profit or loss since purchase. Not realised until you sell.",
+                trend="up" if s["total_pnl"] >= 0 else "down",
             ),
             stat_card(
                 "Today's P&L",
-                f"{ds}${s['total_day']:,.2f}",
+                _signed_money(s["total_day"]),
                 f"{ds}{s['day_pct']:.2f}%{as_at}",
                 dc,
                 dc,
                 tip="Estimated change in portfolio value since yesterday's close.",
+                trend="up" if s["total_day"] >= 0 else "down",
             ),
             stat_card(
                 "Total return",
@@ -145,6 +185,7 @@ def register_callbacks(app) -> None:
                 "var(--cyan)",
                 tpc,
                 tip="The holding with the highest percentage gain in your portfolio during today's trading session.",
+                trend="up" if s["top_perf_pct"] >= 0 else "down",
             ),
             stat_card(
                 "Realized dividends",
@@ -244,51 +285,38 @@ def register_callbacks(app) -> None:
 
         rows_data = build_live_table_rows(holdings, sort_col, sort_dir)
 
-        th_style = {
-            "fontSize": "11px",
-            "color": "var(--t-sec)",
-            "fontWeight": "600",
-            "padding": "10px 12px",
-            "textAlign": "left",
-            "borderBottom": "1px solid var(--border)",
-            "backgroundColor": "var(--surface)",
-            "whiteSpace": "nowrap",
-        }
-        td_style = {
-            "fontSize": "13px",
-            "padding": "10px 12px",
-            "borderBottom": "0.5px solid var(--border)",
-            "whiteSpace": "nowrap",
-            "color": "var(--t-pri)",
-        }
-
         def pnl_td(val, pct, color, sign):
             return html.Td(
                 [
-                    html.Div(
-                        f"{sign}${val:,.2f}",
-                        style={"color": color, "fontWeight": "500", "fontSize": "13px"},
-                    ),
-                    html.Div(f"{sign}{pct:.2f}%", style={"color": color, "fontSize": "11px"}),
+                    html.Div(_signed_money(val), style={"color": color, "fontWeight": "500"}),
+                    _trend_line(f"{sign}{pct:.2f}%", val >= 0, color),
                 ],
-                style=td_style,
+                className="table-td num",
             )
 
         # Helper to render sortable header
         def sortable_th(label, col_id):
             is_active = sort_col == col_id
-            icon = " ↓" if sort_dir == "desc" else " ↑"
+            icon = DashIconify(
+                icon="tabler:arrow-down" if sort_dir == "desc" else "tabler:arrow-up", width=11
+            )
+            cls = "table-th table-th-sortable"
+            if col_id in _NUM_COLS:
+                cls += " num"
+            if col_id == "ticker":
+                cls += " table-sticky-col"
             return html.Th(
                 [html.Span(label), html.Span(icon if is_active else "", className="sort-icon")],
                 id={"type": "table-th", "index": col_id},
-                style=th_style,
-                className="table-th-sortable",
+                className=cls,
             )
 
-        def _sentiment_badge_td(ticker, td_style):
+        def _sentiment_badge_td(ticker):
             sent_data = sentiment_dict.get(ticker)
             if not sent_data:
-                return html.Td(html.Span("—", style={"color": "var(--t-sec)"}), style=td_style)
+                return html.Td(
+                    html.Span("—", style={"color": "var(--t-sec)"}), className="table-td"
+                )
             sent_val = sent_data["sentiment"]
             sent_score = sent_data["score"]
             sent_color = (
@@ -301,13 +329,15 @@ def register_callbacks(app) -> None:
                     f"{sent_val} ({sent_score:+.2f})",
                     style={"color": sent_color, "fontWeight": "500", "fontSize": "12px"},
                 ),
-                style=td_style,
+                className="table-td",
             )
 
-        def _signal_badge_td(ticker, signals_store, td_style):
+        def _signal_badge_td(ticker, signals_store):
             sig = (signals_store or {}).get("raw", {}).get(ticker)
             if not sig:
-                return html.Td(html.Span("—", style={"color": "var(--t-sec)"}), style=td_style)
+                return html.Td(
+                    html.Span("—", style={"color": "var(--t-sec)"}), className="table-td"
+                )
             signal_val = sig.get("signal", "—")
             badge_color = (
                 GREEN if signal_val == "BUY" else (RED if signal_val == "SELL" else "var(--t-sec)")
@@ -325,7 +355,7 @@ def register_callbacks(app) -> None:
                         "border": f"1px solid {badge_color}",
                     },
                 ),
-                style=td_style,
+                className="table-td",
             )
 
         rows = []
@@ -339,12 +369,12 @@ def register_callbacks(app) -> None:
                                 href=f"/positions?ticker={x['ticker']}",
                                 className="ticker-link",
                             ),
-                            style=td_style,
+                            className="table-td table-sticky-col",
                         ),
                         html.Td(
                             x["name"],
+                            className="table-td",
                             style={
-                                **td_style,
                                 "color": "var(--t-sec)",
                                 "fontSize": "12px",
                                 "maxWidth": "160px",
@@ -353,43 +383,41 @@ def register_callbacks(app) -> None:
                             },
                             title=x["name"],
                         ),
-                        html.Td(f"{x['total_shares']:,.2f}", style=td_style),
-                        html.Td(f"${x['avg_cost']:,.4f}", style=td_style),
-                        html.Td(f"${x['last_price']:,.3f}", style=td_style),
+                        html.Td(f"{x['total_shares']:,.2f}", className="table-td num"),
+                        html.Td(f"${x['avg_cost']:,.4f}", className="table-td num"),
+                        html.Td(f"${x['last_price']:,.3f}", className="table-td num"),
                         html.Td(
                             [
                                 html.Div(
-                                    f"{x['day_chg_sign']}${x['day_chg']:,.3f}",
-                                    style={
-                                        "color": x["day_chg_color"],
-                                        "fontWeight": "500",
-                                        "fontSize": "13px",
-                                    },
+                                    _signed_money(x["day_chg"], 3),
+                                    style={"color": x["day_chg_color"], "fontWeight": "500"},
                                 ),
-                                html.Div(
+                                _trend_line(
                                     f"{x['day_chg_sign']}{x['day_chg_pct']:.2f}%",
-                                    style={"color": x["day_chg_color"], "fontSize": "11px"},
+                                    x["day_chg"] >= 0,
+                                    x["day_chg_color"],
                                 ),
                             ],
-                            style=td_style,
+                            className="table-td num",
                         ),
                         html.Td(
                             f"${x['day_high']:,.3f} / ${x['day_low']:,.3f}",
-                            style={**td_style, "fontSize": "12px", "color": "var(--t-sec)"},
+                            className="table-td num",
+                            style={"color": "var(--t-sec)"},
                         ),
-                        html.Td(f"${x['mkt_value']:,.2f}", style=td_style),
-                        html.Td(f"${x['total_cost']:,.2f}", style=td_style),
+                        html.Td(f"${x['mkt_value']:,.2f}", className="table-td num"),
+                        html.Td(f"${x['total_cost']:,.2f}", className="table-td num"),
                         pnl_td(x["pnl"], x["pnl_pct"], x["pnl_color"], x["pnl_sign"]),
                         pnl_td(
                             x["day_pnl"], x["day_chg_pct"], x["day_pnl_color"], x["day_pnl_sign"]
                         ),
-                        _sentiment_badge_td(x["ticker"], td_style),
-                        _signal_badge_td(x["ticker"], signals_store, td_style),
-                        html.Td(f"{x['div_yield']:.2f}%", style=td_style),
-                        html.Td(f"${x['realized_div']:,.2f}", style=td_style),
+                        _sentiment_badge_td(x["ticker"]),
+                        _signal_badge_td(x["ticker"], signals_store),
+                        html.Td(f"{x['div_yield']:.2f}%", className="table-td num"),
+                        html.Td(f"${x['realized_div']:,.2f}", className="table-td num"),
                         html.Td(
-                            x["div_frequency"],
-                            style={**td_style, "fontSize": "11px", "color": "var(--t-sec)"},
+                            html.Span(x["div_frequency"], className="tag"),
+                            className="table-td",
                         ),
                     ]
                 )
@@ -411,8 +439,8 @@ def register_callbacks(app) -> None:
             ("Realized div", "realized_div"),
             ("Freq", "div_frequency"),
         ]
-        sentiment_th = html.Th("Sentiment", style=th_style)
-        suggestion_th = html.Th("Suggestion", style=th_style)
+        sentiment_th = html.Th("Sentiment", className="table-th")
+        suggestion_th = html.Th("Suggestion", className="table-th")
 
         return html.Div(
             html.Table(
@@ -426,11 +454,7 @@ def register_callbacks(app) -> None:
                     ),
                     html.Tbody(rows),
                 ],
-                style={"width": "100%", "borderCollapse": "collapse"},
+                className="table-container",
             ),
-            style={
-                "overflowX": "auto",
-                "borderRadius": "8px",
-                "border": "0.5px solid var(--border)",
-            },
+            className="overflow-table",
         )

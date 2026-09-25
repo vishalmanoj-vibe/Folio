@@ -543,3 +543,21 @@ sample <dash_pid> 2 | grep -A3 "Sort by top of stack"            # stuck in `rea
 - Don't run `grep -r`, `find -exec cat` or other content-reading walks over the project root or `.venv` while debugging. They download every evicted file one at a time and hang the shell the same way. Use `git grep` (tracked files only) or `find -flags +dataless`, which only reads metadata.
 - `data/portfolio.db` is still in OneDrive. If it's evicted, the guard downloads it before SQLite opens it. Moving the DB out of OneDrive (`DB_PATH` env var) needs the user's decision, because it changes where their data is backed up.
 
+
+---
+
+## BUG-028 · Negative Currency Rendered as `$-6.00` (and Missing Minus in Total Value Subline)
+
+**Status**: Fixed  
+**Files affected**: [`callbacks/portfolio_callbacks.py`](../../callbacks/portfolio_callbacks.py)  
+**Symptom**: Losses in the live positions table showed as `$-0.200` / `$-6.00`. The Total value stat card subline dropped the minus entirely on down days (`$76.31 (-1.24%) today`).
+
+**Root Cause**:
+`build_live_table_rows()` and `update_stats()` return a `*_sign` that is `"+"` for gains and `""` for losses, and the value itself stays signed. Rendering with `f"{sign}${val:,.2f}"` puts the value's own minus *after* the `$`. The Total value subline used `abs()` with the empty sign, so the minus was lost.
+
+**Fix Pattern**:
+Format signed dollar amounts only through `_signed_money(val, dp)` in `portfolio_callbacks.py`, which returns `+$1.23` / `-$1.23`. Keep `*_sign` for percentages only, since `f"{sign}{pct:.2f}%"` is correct because the percentage carries its own minus.
+
+**Never do this (regression guard)**:
+- Don't write `f"{sign}${value}"` when `value` can be negative.
+- Don't combine `abs(value)` with a sign that is `""` for negatives.

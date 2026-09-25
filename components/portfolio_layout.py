@@ -10,6 +10,7 @@ from typing import Any, cast
 
 import dash_mantine_components as dmc
 from dash import dcc, html
+from dash_iconify import DashIconify
 
 from components.ui_helpers import chart_title, section
 from config.settings import DB_PATH
@@ -194,16 +195,14 @@ def create_layout(initial_history: list[dict] | None = None) -> html.Div:
                                     id="table-filter",
                                     placeholder="Filter positions...",
                                     size="xs",
-                                    leftSection=html.Span("🔍", style={"fontSize": "14px"}),
+                                    leftSection=DashIconify(icon="tabler:search", width=14),
                                     className="table-filter-input",
                                     style={"width": "260px"},
                                     persistence=True,
                                 ),
                                 html.Button(
                                     [
-                                        html.Span(
-                                            "+", style={"fontSize": "16px", "fontWeight": "bold"}
-                                        ),
+                                        DashIconify(icon="tabler:plus", width=14),
                                         "Add/Modify Transaction",
                                     ],
                                     id="compact-toggle-btn",

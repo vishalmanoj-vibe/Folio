@@ -108,6 +108,18 @@
 .badge-open   { background: var(--green-bg);  color: var(--green);   border: 0.5px solid rgba(0,232,122,0.25); }
 .badge-closed { background: var(--surface);   color: var(--t-sec);   border: 0.5px solid var(--border); }
 
+/* Status dot (Tabler "status" pattern) — pulses only while the market is open */
+.market-badge { gap: 6px; }
+.market-badge::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  flex-shrink: 0;
+}
+.badge-open::before { animation: pulse 2s infinite; }
+
 .last-updated {
   font-size: 10px;
   color: var(--t-sec);
@@ -186,9 +198,9 @@
 
 .header-title-row {
   display: flex;
-  align-items: center;
-  gap: 12px;
-  flex-wrap: wrap;
+  flex-direction: column-reverse;  /* subtitle renders above title as a pretitle */
+  align-items: flex-start;
+  gap: 2px;
 }
 
 .header-title {
@@ -200,8 +212,11 @@
 }
 
 .header-subtitle {
-  margin: 3px 0 0;
-  font-size: 11px;
+  margin: 0;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
   color: var(--t-sec);
 }
 

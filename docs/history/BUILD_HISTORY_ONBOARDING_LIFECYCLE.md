@@ -86,3 +86,18 @@ This document details the desktop integration, installer automation, graceful sh
 *   **Startup Hydration**: On restart, the new Dash process loads the newly-configured holdings and transactions from the database at startup, resolving loading issues on dependent pages.
 *   **Files Changed**: `launcher.py`, `callbacks/setup_callbacks.py`, `GEMINI.md`.
 
+---
+
+## Phase 15: Tabler-Inspired UI Polish — Tier 1 (v2.10.0)
+**Theme**: Adopting component patterns from the open-source [Tabler](https://github.com/tabler/tabler) UI kit (MIT) while keeping Folio's own colour tokens. Only the patterns were ported into Folio's modular CSS. The Tabler/Bootstrap 5 stylesheet was not imported, because it would clash with `dbc.themes.BOOTSTRAP` and Mantine.
+
+*   **Tabler Icons via `dash-iconify`**: Emoji and text glyphs were replaced with `tabler:*` icons. This covers the chart and stat-card info markers (`info-circle`), the positions filter (`search`), Add/Modify Transaction (`plus`), the transaction edit/delete buttons (`pencil`, `trash`), the sort arrows (`arrow-up`/`arrow-down`), and the header icons (`settings`, `user`, `refresh`, `download`, `robot`). Iconify loads icon data from its API on first use, and the browser caches it after that.
+*   **Trend Indicators**: `stat_card()` accepts an optional `trend="up" | "down"` argument that puts a trending arrow before the sub-line. Existing calls are unchanged. The Holdings cards (Total value, Unrealised P&L, Today's P&L, Top performer) and the live table's Day change, Unrealised P&L and Today's P&L cells use it.
+*   **Signed Currency Fix**: Negative amounts rendered as `$-6.00`, and the Total value subline lost its minus on down days. A new `_signed_money()` helper in `portfolio_callbacks.py` formats them as `+$1.23` / `-$1.23` (see BUG-028).
+*   **Live Table Polish**: The live positions table uses the shared `.table-th` / `.table-td` classes instead of per-cell inline style dicts. It adds right-aligned numeric columns (`.num`), vertically centred rows, row hover, a sticky Ticker column (`.table-sticky-col`) for sideways scrolling, and dividend frequency rendered as a `.tag`.
+*   **Status Dot**: The Open/Closed market badge has a dot (`::before`) that pulses only while the market is open, reusing the existing `pulse` keyframes.
+*   **Page Pretitle**: The page header subtitle renders as a small uppercase pretitle above the title on all pages. This was a CSS-only change to `.header-title-row` and `.header-subtitle`.
+*   **Shape Tokens**: `--radius-sm`, `--radius-md`, `--radius-lg` and `--radius-pill` were added to `base-tokens.css` as a theme-agnostic `:root` block, with the same values as before.
+*   **No IDs, stores, callback Inputs/Outputs or engine code changed.**
+*   **Files Changed**: `assets/base-tokens.css`, `assets/layout.css`, `assets/ui-components.css`, `components/ui_helpers.py`, `components/header.py`, `components/portfolio_layout.py`, `callbacks/portfolio_callbacks.py`, `docs/reference/known_issues.md`, `docs/guides/ALGORITHMS_AND_FEATURES.md`, `docs/history/BUILD_HISTORY.md`.
+

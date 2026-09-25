@@ -89,3 +89,11 @@ body[data-theme="light"] {
 
   color-scheme: light;
 }
+
+/* ── Shape tokens (theme-agnostic, Tabler-style radius scale) ── */
+:root {
+  --radius-sm:   6px;    /* inputs, small buttons */
+  --radius-md:   8px;    /* stat cards, tables */
+  --radius-lg:   10px;   /* cards, panels */
+  --radius-pill: 999px;  /* badges, tags, status pills */
+}

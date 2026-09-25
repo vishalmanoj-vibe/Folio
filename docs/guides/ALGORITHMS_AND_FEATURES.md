@@ -43,6 +43,7 @@ The application uses a strictly themed design system defined in `assets/base-tok
 | **Brand** | `--cyan`, `--cyan-2` | Primary accents & active states |
 | **Status** | `--green`, `--red`, `--warning` | Semantic feedback (P&L, Alerts) |
 | **Lines** | `--border`, `--border-2` | Section dividers & accent borders |
+| **Shape** | `--radius-sm`, `--radius-md`, `--radius-lg`, `--radius-pill` | Theme-agnostic corner radius scale (`:root`) |
 
 ### CSS Modularization & Loading
 1.  **`base-tokens.css`**: Defines CSS variables.
@@ -57,6 +58,16 @@ To maintain a "Linear-inspired" aesthetic, the dashboard implements several high
 - **Smooth Transitions**: All theme-aware layout shifts use a `0.2s ease` transition duration for background and border colors.
 - **Interactive Depth**: Dashboard cards and stat containers implement a `translateY(-2px)` lift on hover, combined with a subtle teal glow (`var(--glow)`) to provide tactile feedback.
 - **Data Vitality**: A real-time pulse indicator in the header provides at-a-glance evidence of live market monitoring, with a CSS-animated "heartbeat" synchronized with the ASX trading session.
+
+### Tabler-Derived Patterns
+Component patterns adapted from the [Tabler](https://github.com/tabler/tabler) UI kit (MIT), styled only with Folio tokens. The Tabler/Bootstrap stylesheet is **not** loaded.
+- **Iconography**: All icons are Tabler Icons rendered with `DashIconify(icon="tabler:<name>")`. Don't use emoji or text glyphs as icons. Icons inherit `currentColor`, so colour them through the parent's CSS.
+- **Trend indicator**: `.trend` + `.trend-icon` (`tabler:trending-up` / `tabler:trending-down`). Stat cards opt in with `stat_card(..., trend="up" | "down")`.
+- **Signed currency**: Format signed dollar values with `_signed_money()` (`+$1.23` / `-$1.23`), never `f"{sign}${value}"`.
+- **Tables**: Use `.table-container` inside `.overflow-table`, with `.table-th` / `.table-td` cells. Add `.num` for right-aligned numeric columns and `.table-sticky-col` for a pinned first column. `.table-td-sub` is the smaller second line in a two-line cell.
+- **Tag**: `.tag` is a neutral pill label (e.g. dividend frequency).
+- **Status dot**: `.market-badge::before` draws the dot, and `.badge-open` adds the pulse.
+- **Page pretitle**: `.header-subtitle` renders above `.header-title` as a small uppercase label.
 
 ### Chart Standardization (`apply_standard_layout`)
 All Plotly visualizations must be routed through the `apply_standard_layout()` helper in `components/charts/helpers.py`. This ensures:

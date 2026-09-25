@@ -403,21 +403,15 @@ button:active { transform: scale(0.97); }
   align-items: center;
   justify-content: center;
   width: 16px; height: 16px;
-  border-radius: 50%;
-  background: var(--surface-3);
-  border: 0.5px solid var(--border);
-  font-size: 10px;
   color: var(--t-sec);
   cursor: help;
-  margin-left: 8px;
-  transition: all 0.2s ease;
+  margin-left: 6px;
+  transition: color 0.2s ease;
   line-height: 1;
 }
 
 .chart-info-icon:hover {
-  background: var(--surface);
   color: var(--cyan);
-  border-color: var(--cyan-border);
 }
 
 /* Mantine Tooltip Overrides */
@@ -672,3 +666,58 @@ button:active { transform: scale(0.97); }
 .chatbot-window-container .quick-prompt-chip {
   flex-shrink: 0;
 }
+
+/* ============================================================
+   Tabler-derived patterns (icons, trend, tags, table polish)
+   Colours come from Folio tokens only.
+   ============================================================ */
+
+/* ── Icon alignment (dash-iconify SVGs) ── */
+.icon-inline { display: inline-flex; align-items: center; vertical-align: middle; }
+
+/* ── Trend indicator (Tabler "trending") ── */
+.trend {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+.trend-icon { flex-shrink: 0; }
+
+/* ── Tag (Tabler "tag") — neutral label, e.g. dividend frequency ── */
+.tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: var(--radius-pill);
+  font-size: 10px;
+  font-weight: 500;
+  color: var(--t-sec);
+  background: var(--surface-3);
+  border: 0.5px solid var(--border);
+  white-space: nowrap;
+  transition: background-color 0.2s, color 0.2s, border-color 0.2s;
+}
+
+/* ── Table polish (Tabler "table-vcenter" + numeric alignment) ── */
+.overflow-table { border-radius: var(--radius-md); }
+.table-container .table-td {
+  vertical-align: middle;
+  transition: background-color 0.15s, color 0.2s, border-color 0.2s;
+}
+.table-container tbody tr:hover .table-td { background: var(--surface-2); }
+.table-th.num,
+.table-td.num { text-align: right; }
+.table-th.num .sort-icon { margin-left: 3px; }
+.sort-icon { display: inline-flex; align-items: center; vertical-align: middle; }
+.table-td-sub { font-size: 11px; }
+.table-td.num .trend { justify-content: flex-end; }
+
+/* Sticky first column so the ticker stays visible when scrolling sideways */
+.table-sticky-col {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  background: var(--bg);
+}
+.table-th.table-sticky-col { background: var(--surface-2); z-index: 2; }
+

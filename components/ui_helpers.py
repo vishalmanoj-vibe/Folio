@@ -10,6 +10,7 @@ from typing import Any, cast
 import dash_mantine_components as dmc
 import pandas as pd
 from dash import html
+from dash_iconify import DashIconify
 
 from config.constants import CHART_INFO, COLORS
 
@@ -38,8 +39,12 @@ def stat_card(
     color: str = "var(--t-pri)",
     sub_color: str = "var(--t-sec)",
     tip: str = "",
+    trend: str | None = None,
 ) -> html.Div:
-    """Creates a styled stat card component."""
+    """Creates a styled stat card component.
+
+    trend: optional "up" / "down" — prefixes the sub-line with a trending arrow.
+    """
     label_children: list = [html.Span(label, className="stat-card-title")]
     if tip:
         label_children.append(
@@ -51,14 +56,27 @@ def stat_card(
                 transitionProps=cast(Any, {"transition": "fade", "duration": 200}),
                 position="top",
                 zIndex=2000,
-                children=html.Span("ℹ", className="chart-info-icon"),
+                children=html.Span(
+                    DashIconify(icon="tabler:info-circle", width=14), className="chart-info-icon"
+                ),
             )
         )
     children = [
         html.Div(label_children, className="stat-card-label-row"),
         html.P(value, className="stat-card-value", style={"color": color}),
     ]
-    if sub:
+    if sub and trend in ("up", "down"):
+        children.append(
+            html.P(
+                [
+                    DashIconify(icon=f"tabler:trending-{trend}", width=13, className="trend-icon"),
+                    html.Span(sub),
+                ],
+                className="stat-card-sub trend",
+                style={"color": sub_color},
+            )
+        )
+    elif sub:
         children.append(html.P(sub, className="stat-card-sub", style={"color": sub_color}))
 
     return html.Div(children, className="stat-card-container")
@@ -82,7 +100,9 @@ def chart_title(label: str, info_key: str = "") -> html.Div:
                 transitionProps=cast(Any, {"transition": "fade", "duration": 200}),
                 position="top",
                 zIndex=2000,
-                children=html.Span("ℹ", className="chart-info-icon"),
+                children=html.Span(
+                    DashIconify(icon="tabler:info-circle", width=14), className="chart-info-icon"
+                ),
             )
         )
 
@@ -127,9 +147,9 @@ def txn_table(history: list[dict], editing_id: int | None = None) -> html.Div:
         if t_id is not None:
             is_editing = editing_id == t_id
             edit_btn = html.Button(
-                "✏️",
+                DashIconify(icon="tabler:pencil", width=14),
                 id={"type": "txn-edit-btn", "index": t_id},
-                className="btn-sm",
+                className="btn-sm icon-inline",
                 style={
                     "marginRight": "6px",
                     "padding": "2px 6px",
@@ -142,9 +162,9 @@ def txn_table(history: list[dict], editing_id: int | None = None) -> html.Div:
                 disabled=is_editing,
             )
             delete_btn = html.Button(
-                "🗑️",
+                DashIconify(icon="tabler:trash", width=14),
                 id={"type": "txn-delete-btn", "index": t_id},
-                className="btn-sm",
+                className="btn-sm icon-inline",
                 style={
                     "padding": "2px 6px",
                     "color": "var(--red)",

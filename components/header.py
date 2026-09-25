@@ -9,6 +9,7 @@ from typing import Any, cast
 
 import dash_mantine_components as dmc
 from dash import dcc, html
+from dash_iconify import DashIconify
 
 
 def create_header(
@@ -58,7 +59,13 @@ def create_header(
     settings_dropdown = dmc.Menu(
         [
             dmc.MenuTarget(
-                html.Div(html.Span("⚙", id="settings-icon-text"), className="settings-summary")
+                html.Div(
+                    html.Span(
+                        DashIconify(icon="tabler:settings", width=18, style={"display": "block"}),
+                        id="settings-icon-text",
+                    ),
+                    className="settings-summary",
+                )
             ),
             dmc.MenuDropdown(
                 [
@@ -74,7 +81,7 @@ def create_header(
                     html.A(
                         dmc.MenuItem(
                             "Investor Profile",
-                            leftSection=html.Span("👤"),
+                            leftSection=DashIconify(icon="tabler:user", width=14),
                             style={"fontSize": "11px", "color": "var(--t-pri)"},
                         ),
                         href="/settings",
@@ -89,13 +96,13 @@ def create_header(
                     dmc.MenuItem(
                         "Refresh Data",
                         id="refresh-btn",
-                        leftSection=html.Span("↻"),
+                        leftSection=DashIconify(icon="tabler:refresh", width=14),
                         style={"fontSize": "11px"},
                     ),
                     dmc.MenuItem(
                         "Export PDF",
                         id="pdf-btn",
-                        leftSection=html.Span("⬇"),
+                        leftSection=DashIconify(icon="tabler:download", width=14),
                         style={"fontSize": "11px"},
                     ),
                 ],
@@ -124,7 +131,7 @@ def create_header(
                 position="bottom",
                 withArrow=True,
                 children=dmc.ActionIcon(
-                    "🤖",
+                    DashIconify(icon="tabler:robot", width=16),
                     id="global-generate-signals-btn",
                     variant="subtle",
                     color="cyan",

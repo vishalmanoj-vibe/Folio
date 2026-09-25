@@ -43,6 +43,7 @@ Please note that early development phases contain a version numbering typo (`v3.
     *   *Related Specs:* `spec_phase12_onboarding_settings.md`
 *   **Phase 13: Multi-Provider AI Model Selection (v2.8.0)**: abstraction gateway (`services/ai_provider.py`), active provider selection, dynamic model options, API key test connection button, settings configuration UI.
     *   *Related Specs:* `spec_phase16_multi_provider.md`
+*   **Phase 15: Tabler-Inspired UI Polish — Tier 1 (v2.10.0)**: Tabler Icons via `dash-iconify`, trend indicators on stat cards and table cells, signed-currency fix, class-based live table (numeric alignment, sticky ticker column, frequency tags), market status dot, page pretitles, radius tokens.
 *   **Phase 14: Onboarding Graceful Restart (v2.9.0)**: Graceful Dash process restart using exit code 3 upon onboarding completion, enabling clean reload of initial holdings and transactions.
     *   *Related Specs:* `spec_phase17_graceful_restart.md`
 *   **Phase 15: Dynamic Sources Filter & Playwright Fix (v2.10.0)**: Filtered the "Configure Sources" URL table to only show tickers held in the user's portfolio or saved as custom URLs (NDQ, VAS, etc. appear automatically). Removed silent suppression of Playwright browser install errors in `install.command` and `install.bat` so fresh-install failures surface correctly in the terminal.
