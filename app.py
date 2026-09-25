@@ -639,18 +639,15 @@ app.clientside_callback(
 # ── Browser Management ────────────────────────────────────────────────────────
 def open_browser():
     """
-    Automatically opens the dashboard in the default browser.
-    On macOS (darwin), it forces the use of Safari to ensure consistent
-    rendering of premium CSS effects (like glassmorphism and backdrop-filters)
-    which are highly optimized in WebKit.
+    Automatically opens the dashboard in the system default browser.
     """
     if os.getenv("FOLIO_HEADLESS") == "1":
         logger.info("Headless mode active; skipping browser launch.")
         return
 
     if sys.platform == "darwin":
-        # Guaranteed to use Safari on macOS
-        subprocess.run(["open", "-a", "Safari", "http://127.0.0.1:8050/"], check=False)
+        # `open <url>` uses the system default browser
+        subprocess.run(["open", "http://127.0.0.1:8050/"], check=False)
     else:
         webbrowser.open_new("http://127.0.0.1:8050/")
 
@@ -658,20 +655,36 @@ def open_browser():
 def close_browser():
     """
     Attempts to close the dashboard tab on shutdown.
-    Uses AppleScript (osascript) to find and close any Safari tabs
-    pointing to the local dashboard URL. This prevents tab bloat
-    during development.
+    Uses AppleScript (osascript) to find and close any dashboard tabs in
+    Safari or Chromium browsers (Chrome/Edge/Brave). Only browsers that are
+    already running are scripted, so shutdown never launches a browser.
     """
     if sys.platform == "darwin":
         logger.info("\n  Shutting down... closing browser tabs.")
-        # Target both 127.0.0.1 and localhost in Safari
-        cmd_safari = 'tell application "Safari" to close (every tab of every window whose URL contains "127.0.0.1:8050" or URL contains "localhost:8050")'
-        subprocess.run(
-            ["osascript", "-e", cmd_safari],
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
-            check=False,
-        )
+        url_match = 'URL contains "127.0.0.1:8050" or URL contains "localhost:8050"'
+        for browser in ("Safari", "Google Chrome", "Microsoft Edge", "Brave Browser"):
+            running = subprocess.run(["pgrep", "-x", browser], capture_output=True, check=False)
+            if running.returncode != 0:
+                continue
+            # Per-window loop: Chrome ignores the one-line "every tab of every window" form
+            subprocess.run(
+                [
+                    "osascript",
+                    "-e",
+                    f'tell application "{browser}"',
+                    "-e",
+                    "repeat with w in windows",
+                    "-e",
+                    f"close (every tab of w whose {url_match})",
+                    "-e",
+                    "end repeat",
+                    "-e",
+                    "end tell",
+                ],
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                check=False,
+            )
 
 
 # ── Browser-Close Shutdown Flask Routes ──────────────────────────────────────
