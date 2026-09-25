@@ -56,24 +56,28 @@ print_ok "uv ready — $UV_VERSION"
 print_step "Setting up Python 3.12 environment..."
 
 cd "$FOLIO_DIR"
+# Keep the venv OUTSIDE the project: cloud-synced folders (OneDrive/iCloud) evict
+# site-packages to online-only placeholders and startup then hangs (BUG-027).
+VENV_DIR="$HOME/.folio/venv"
 uv python install 3.12 --quiet
-if [ -d "$FOLIO_DIR/.venv" ]; then
-    print_ok "Virtual environment already exists at .venv/ — reusing"
+if [ -d "$VENV_DIR" ]; then
+    print_ok "Virtual environment already exists at $VENV_DIR — reusing"
 else
-    uv venv .venv --python 3.12 --quiet
-    print_ok "Virtual environment created at .venv/"
+    mkdir -p "$HOME/.folio"
+    uv venv "$VENV_DIR" --python 3.12 --quiet
+    print_ok "Virtual environment created at $VENV_DIR"
 fi
 
 # ── Step 3: Install all Python dependencies from requirements.txt ─────────────
 print_step "Installing all Python dependencies from requirements.txt..."
 
-uv pip install -r "$FOLIO_DIR/requirements.txt" --quiet
+uv pip install --python "$VENV_DIR/bin/python" -r "$FOLIO_DIR/requirements.txt" --quiet
 print_ok "All packages installed"
 
 # ── Step 4: Playwright WebKit ─────────────────────────────────────────────────
 print_step "Installing Playwright WebKit browser (ETF data scraper)..."
 
-"$FOLIO_DIR/.venv/bin/playwright" install webkit || {
+"$VENV_DIR/bin/playwright" install webkit || {
     print_warn "Playwright install had warnings — usually fine."
     print_warn "If ETF scraping fails later, run: uv run playwright install webkit"
 }
@@ -151,9 +155,11 @@ echo "Clearing port 8050..."
 lsof -ti:8050 | xargs kill -9 2>/dev/null
 sleep 1
 
-# Start the app using the venv installed by scripts/install.sh
+# Start the app. Prefer the venv outside OneDrive (BUG-027); fall back to the in-project .venv
 cd "\$PROJECT"
-"\$PROJECT/.venv/bin/python" "\$PROJECT/launcher.py" &
+PYTHON="\$HOME/.folio/venv/bin/python"
+[ -x "\$PYTHON" ] || PYTHON="\$PROJECT/.venv/bin/python"
+"\$PYTHON" "\$PROJECT/launcher.py" &
 LAUNCHER_PID=\$!
 
 # Wait for the Dash server to become ready (up to 30s)
@@ -200,7 +206,9 @@ if [[ "$OSTYPE" == "darwin"* ]]; then
 #!/usr/bin/env bash
 FOLIO_DIR="$FOLIO_DIR"
 cd "\$FOLIO_DIR"
-"\$FOLIO_DIR/.venv/bin/python" "\$FOLIO_DIR/launcher.py"
+PYTHON="\$HOME/.folio/venv/bin/python"
+[ -x "\$PYTHON" ] || PYTHON="\$FOLIO_DIR/.venv/bin/python"
+"\$PYTHON" "\$FOLIO_DIR/launcher.py"
 APPSCRIPT
 
     chmod +x "$APP_PATH/Contents/MacOS/Folio"

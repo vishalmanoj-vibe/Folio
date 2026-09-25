@@ -45,10 +45,12 @@ echo "Clearing port 8050..."
 lsof -ti:8050 | xargs kill -9 2>/dev/null
 sleep 1
 
-# Start the app using the venv installed by scripts/install.sh
+# Start the app. Prefer the venv outside OneDrive (BUG-027); fall back to the in-project .venv
 cd "$PROJECT"
 echo "Starting Folio..."
-"$PROJECT/.venv/bin/python" "$PROJECT/launcher.py" &
+PYTHON="$HOME/.folio/venv/bin/python"
+[ -x "$PYTHON" ] || PYTHON="$PROJECT/.venv/bin/python"
+"$PYTHON" "$PROJECT/launcher.py" &
 LAUNCHER_PID=$!
 
 # Keep alive until the launcher exits

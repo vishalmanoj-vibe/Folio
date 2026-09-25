@@ -62,6 +62,7 @@ Then read these documents **in order**:
 - **Fast Startup**: `app.py` MUST NOT perform blocking yfinance fetches during initialization. It must seed stores with disk snapshots and defer the first live refresh to a `startup-interval`.
 - **Measurement Hygiene**: `@profile` decorators from `memory_profiler` are strictly PROHIBITED in application code outside of `scripts/`. They must be removed immediately after debugging.
 - **Lazy Dependencies**: Heavy libraries (e.g. `prophet`, `playwright`) MUST be imported lazily inside the function body that requires them, never at the module level, to ensure fast application startup.
+- **Cloud-Sync Safe Startup**: The venv lives at `~/.folio/venv`, never inside the project (OneDrive evicts files to online-only placeholders). `launcher.py` imports only stdlib and `config.logging` at module level, and `ensure_files_local()` MUST run before `launch()`. Never `grep -r` over the project root or `.venv`. Use `git grep` instead. See BUG-027.
 - **Dynamic Sleep**: Background threads must use `time_until_market_open()` for sleep scheduling to prevent idle CPU cycles during weekends and market off-hours.
 - **Memory Hygiene**: 
   - `portfolio-store` MUST NEVER contain historical price arrays. It only stores holdings metadata and live metrics.

@@ -516,4 +516,34 @@ if required_symbol and required_symbol != "__custom__" and required_symbol not i
 2. Delegate browser readiness verification entirely to `launcher.py`: a daemon thread (`_wait_and_open_browser`) polls `http://127.0.0.1:8050/` until `HTTP 200 OK` is returned (up to 120s timeout), opening Safari at the exact millisecond the server is live.
 3. Streamline `scripts/Folio.command` bash script to delegate readiness verification and browser launching directly to Python. Provide `scripts/install_shortcut.py` for Desktop shortcut sync.
 
+---
+
+## BUG-027 · Startup Hangs Forever — OneDrive "Online-Only" Files (Dash Never Binds Port 8050)
+
+**Status**: Fixed  
+**Files affected**: [`launcher.py`](../../launcher.py), [`scripts/Folio.command`](../../scripts/Folio.command), [`scripts/install.command`](../../scripts/install.command)  
+**Symptom**: Double-clicking `folio.command` prints `Dash process started` / `Worker process started` / `Logging configured` and then nothing: no `Dash server verified live`, no browser, no error. The processes use ~0% CPU. It looks like a deadlock, but it isn't one.
+
+**Root Cause**:
+The project lives in `~/Library/CloudStorage/OneDrive-Personal/`. macOS File Provider (OneDrive "Files On-Demand") evicts unused files and leaves `dataless` placeholders in their place (`ls -lO` shows `compressed,dataless`). On 2026-09-25, **18,591 of 19,479 files in `.venv/`** had been evicted, plus `worker.py`, `data/*.py` and `data/portfolio.db`. Each `read()` of an evicted file blocks ~1.3s while OneDrive downloads it. `from app import app` pulls in pandas, plotly, dash and lxml, which touches thousands of files one at a time in series, so startup took an hour or more. `sample <pid>` showed both children blocked in `read` under `import_find_and_load`.
+BUG-026's "20–25s cold start" was very likely an early, partial case of the same problem.
+
+**Diagnosis commands** (safe, don't download anything):
+```bash
+find ~/.folio/venv .venv -flags +dataless 2>/dev/null | wc -l   # count evicted files
+ls -lO data/portfolio.db                                         # 'dataless' = evicted
+sample <dash_pid> 2 | grep -A3 "Sort by top of stack"            # stuck in `read` = hydration
+```
+
+**Fix Pattern**:
+1. **The venv lives outside cloud sync** at `~/.folio/venv`. It's disposable and rebuilt from uv's cache in seconds. `scripts/install.command` creates it there, and every launcher (`scripts/Folio.command`, the Desktop copy, `Folio.app`) prefers `$HOME/.folio/venv/bin/python` and falls back to `$PROJECT/.venv/bin/python`.
+2. **`ensure_files_local()` in `launcher.py`** runs in `__main__` *before* `FolioLauncher().launch()`. It `lstat`s the project tree (skipping `.git`, `.venv`, `htmlcov`, `scratch`, `screenshots`, `logs`), plus `sys.prefix` if the venv is in a cloud folder, and checks for `SF_DATALESS` (`0x40000000`). It downloads any placeholders in parallel (32 threads) and logs progress plus a "Keep on This Device" hint. Measured: 671 evicted project files downloaded in ~70s, and a normal start takes 2s.
+3. User action (one time): in Finder, right-click the project folder → **Always Keep on This Device**.
+
+**Never do this (regression guard)**:
+- Don't point any launcher back at `$PROJECT/.venv` as the primary interpreter, or create the venv inside the project folder again.
+- Don't add third-party or project imports (pandas, dash, `app`, services) at **module level in `launcher.py`**. Only stdlib and `config.logging` may load before `ensure_files_local()` runs. Anything heavier gets imported from evicted files before the guard can download them.
+- Don't move the `ensure_files_local()` call after `launcher.launch()`, or into the spawned `run_dash` / `run_background_worker` children.
+- Don't run `grep -r`, `find -exec cat` or other content-reading walks over the project root or `.venv` while debugging. They download every evicted file one at a time and hang the shell the same way. Use `git grep` (tracked files only) or `find -flags +dataless`, which only reads metadata.
+- `data/portfolio.db` is still in OneDrive. If it's evicted, the guard downloads it before SQLite opens it. Moving the DB out of OneDrive (`DB_PATH` env var) needs the user's decision, because it changes where their data is backed up.
 

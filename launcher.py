@@ -32,6 +32,62 @@ def get_process_memory_mb(pid):
         return 0
 
 
+def ensure_files_local():
+    """Download OneDrive/iCloud 'online-only' placeholders before Dash imports them (BUG-027).
+
+    macOS File Provider evicts unused files to the cloud. Reading an evicted file blocks
+    ~1s while it downloads, so importing pandas/plotly/dash from evicted files makes
+    startup look frozen for an hour. Hydrating them in parallel up front takes seconds.
+    """
+    if sys.platform != "darwin":
+        return
+    from concurrent.futures import ThreadPoolExecutor
+
+    SF_DATALESS = 0x40000000  # st_flags bit: content lives only in the cloud
+    skip_dirs = {".git", ".venv", "htmlcov", "scratch", "screenshots", "logs"}
+    project_dir = os.path.dirname(os.path.abspath(__file__))
+    roots = [project_dir]
+    if "/Library/CloudStorage/" in sys.prefix or "/Mobile Documents/" in sys.prefix:
+        logger.warning(
+            f"Python environment is inside a cloud-synced folder ({sys.prefix}). "
+            "Re-run scripts/install.command to move it to ~/.folio/venv."
+        )
+        roots.append(sys.prefix)
+
+    pending = []
+    for root in roots:
+        for dirpath, dirnames, filenames in os.walk(root):
+            if root == project_dir:
+                dirnames[:] = [d for d in dirnames if d not in skip_dirs]
+            for name in filenames:
+                path = os.path.join(dirpath, name)
+                try:
+                    if os.lstat(path).st_flags & SF_DATALESS:
+                        pending.append(path)
+                except OSError:
+                    pass
+    if not pending:
+        return
+
+    logger.warning(
+        f"{len(pending)} file(s) are online-only in OneDrive/iCloud — downloading before "
+        "startup. In Finder, right-click the project folder → 'Always Keep on This Device'."
+    )
+
+    def _hydrate(path):
+        try:
+            with open(path, "rb") as f:
+                while f.read(1 << 20):
+                    pass
+        except OSError:
+            pass
+
+    with ThreadPoolExecutor(max_workers=32) as pool:
+        for i, _ in enumerate(pool.map(_hydrate, pending), 1):
+            if i % 500 == 0 or i == len(pending):
+                logger.info(f"Downloaded {i}/{len(pending)} online-only file(s)")
+
+
 def run_dash():
     """Wrapper to run the Dash app."""
     # We import app inside the function to ensure the worker process
@@ -205,5 +261,6 @@ if __name__ == "__main__":
     # Ensure we use 'spawn' to avoid issues with database handles being inherited
     multiprocessing.set_start_method("spawn", force=True)
 
+    ensure_files_local()
     launcher = FolioLauncher()
     launcher.launch()
