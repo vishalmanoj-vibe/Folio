@@ -356,7 +356,6 @@ from data.watchlist_repository import WatchlistRepository
 
 For deeper documentation:
 - [Developer Guide & Architecture](docs/guides/DEVELOPER_GUIDE.md)
-- [Architectural Rules (GEMINI.md)](GEMINI.md)
 - [Contributing Guide](docs/guides/CONTRIBUTING.md)
 - [Testing Guide](docs/testing/TESTING.md)
 

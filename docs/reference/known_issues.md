@@ -1,9 +1,5 @@
 # Known Issues — Folio
 
----
-Related: [`GEMINI.md`](../../GEMINI.md) | [`project_map.md`](../../.agents/project_map.md)
----
-
 ## "Never Repeat This" Bug Registry
 
 > These are confirmed, production bugs that have already been fixed.

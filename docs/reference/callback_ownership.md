@@ -1,9 +1,5 @@
 # Callback Output Ownership Map — Folio
 
----
-Related: [`GEMINI.md`](../../GEMINI.md) | [`project_map.md`](../../.agents/project_map.md) | [`callback_index.md`](../../.agents/generated/callback_index.md)
----
-
 > **Purpose**: Every `Output` ID is owned by exactly ONE callback in ONE file.
 > Before adding any callback, check this map. Duplicate Outputs cause silent
 > Dash crashes. If using `allow_duplicate=True`, document the reason inline.

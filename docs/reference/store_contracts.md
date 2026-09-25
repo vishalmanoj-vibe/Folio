@@ -1,9 +1,5 @@
 # Store Contracts — Folio
 
----
-Related: [`GEMINI.md`](../../GEMINI.md) | [`project_map.md`](../../.agents/project_map.md) | [`store_index.md`](../../.agents/generated/store_index.md)
----
-
 > **Purpose**: Prevent silent callback failures by documenting the exact JSON
 > shape of every major `dcc.Store`. Treat these as immutable contracts.
 > If a store's shape must change, update this document AND all consuming callbacks.

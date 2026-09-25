@@ -42,13 +42,7 @@ data/*.db*
 !requirements.txt
 *.md
 !README.md
-!GEMINI.md
-!CLAUDE.md
 !docs/**/*.md
-!.agents/
-!.agents/**/*.md
-!.agents/**/*.py
-!.claude/**/*.md
 .Obsidian
 
 # ── One-off / scratch scripts ─────────────────────────────────────────────────
@@ -79,3 +73,8 @@ dist/
 Folio.command
 folio_launch.bat
 
+# ── AI agent tooling (local only — not part of the project) ───────────────────
+.agents/
+.claude/
+CLAUDE.md
+GEMINI.md

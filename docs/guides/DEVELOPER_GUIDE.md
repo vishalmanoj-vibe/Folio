@@ -153,7 +153,6 @@ The application utilizes a sophisticated `dcc.Store` ecosystem to manage state a
 
 For specific mathematical formulas, visual standardization, custom chart helpers, and detailed specialized algorithms, refer to:
 *   **[ALGORITHMS_AND_FEATURES.md](ALGORITHMS_AND_FEATURES.md)**: Standardized Plotly chart layouts, realized dividend calculations, FB Prophet continuity offset, and custom HTML5 drag-and-drop mechanics.
-*   **[GEMINI.md](../../GEMINI.md)**: Coding rules, architecture constraints, and AI agent boundaries.
 
 ---
 

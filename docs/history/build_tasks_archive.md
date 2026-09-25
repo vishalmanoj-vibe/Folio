@@ -1,8 +1,6 @@
 # Current Build Tasks Archive
 
-> Back to [GEMINI.md](../../GEMINI.md)
-
-This document contains the archive of completed build tasks, moved here from [GEMINI.md](../../GEMINI.md) to keep the core rules lightweight.
+This document contains the archive of completed build tasks, moved here from the project rules file to keep the core rules lightweight.
 
 ---
 
